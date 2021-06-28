@@ -344,12 +344,16 @@ void vren::renderer::create_command_pools()
 	VkCommandPoolCreateInfo command_pool_info{};
 	command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 
-	command_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx; /* Graphics */
+	// Graphics
+	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	command_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx;
 	if (vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_graphics_command_pool) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create graphics command pool.");
 	}
 
-	command_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx; /* Transfer */
+	// Transfer
+	command_pool_info.flags = NULL;
+	command_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx;
 	if (vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_transfer_command_pool) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create transfer command pool.");
 	}
@@ -381,6 +385,12 @@ VkSemaphore vren::renderer::render(
 	VkCommandBuffer cmd_buf = m_graphics_command_buffers.at(frame_idx);
 	vkResetCommandBuffer(cmd_buf, NULL);
 
+	VkCommandBufferBeginInfo cmd_buffer_begin_info{};
+	cmd_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	if (vkBeginCommandBuffer(cmd_buf, &cmd_buffer_begin_info) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to begin recording to the command buffer.");
+	}
+
 	VkRenderPassBeginInfo render_pass_begin_info{};
 	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	render_pass_begin_info.renderPass = m_render_pass;
@@ -400,6 +410,10 @@ VkSemaphore vren::renderer::render(
 	}
 
 	vkCmdEndRenderPass(cmd_buf);
+
+	if (vkEndCommandBuffer(cmd_buf) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to end command buffer recording.");
+	}
 
 	/* Submission */
 	VkSubmitInfo submit_info{};

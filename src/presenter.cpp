@@ -207,12 +207,12 @@ void vren::presenter::recreate_swapchain(VkExtent2D extent)
 	create_swapchain_framebuffers();
 }
 
-vren::presenter::presenter(vren::renderer& renderer, presenter_info& info,VkSurfaceKHR surface, VkExtent2D extent) :
+vren::presenter::presenter(vren::renderer& renderer, presenter_info& info,VkSurfaceKHR surface, VkExtent2D initial_extent) :
 	m_renderer(renderer),
 	m_info(info),
 	m_surface(surface)
 {
-	recreate_swapchain(extent);
+	recreate_swapchain(initial_extent);
 
 	create_sync_objects();
 }

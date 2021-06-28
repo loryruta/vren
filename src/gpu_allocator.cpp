@@ -136,7 +136,7 @@ void vren::gpu_allocator::update_device_only_buffer(
 	size_t dst_offset
 )
 {
-	vren::gpu_buffer staging_buf;
+	vren::gpu_buffer staging_buf{};
 	alloc_host_visible_buffer(staging_buf, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
 	update_host_visible_buffer(staging_buf, data, size, 0);
 
@@ -146,7 +146,7 @@ void vren::gpu_allocator::update_device_only_buffer(
 	cmd_buf_alloc_info.commandPool = m_transfer_cmd_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
-	VkCommandBuffer cmd_buf;
+	VkCommandBuffer cmd_buf{};
 	vkAllocateCommandBuffers(m_renderer.m_device, &cmd_buf_alloc_info, &cmd_buf);
 
 	VkCommandBufferBeginInfo begin_info{};

@@ -47,7 +47,7 @@ namespace vren
 		VkExtent2D m_current_extent{};
 		uint32_t m_image_count;
 
-		VkSwapchainKHR m_swapchain;
+		VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
 		std::vector<VkImage> m_swapchain_images;
 		std::vector<VkImageView> m_swapchain_image_views;
 		std::vector<VkFramebuffer> m_swapchain_framebuffers;
@@ -64,7 +64,7 @@ namespace vren
 
 		void recreate_swapchain(VkExtent2D extent);
 
-		presenter(vren::renderer& renderer, vren::presenter_info& info, VkSurfaceKHR surface, VkExtent2D extent);
+		presenter(vren::renderer& renderer, vren::presenter_info& info, VkSurfaceKHR surface, VkExtent2D initial_extent);
 		~presenter();
 
 		void present(vren::render_list const& render_list, vren::camera const& camera);

@@ -40,7 +40,7 @@ void vren::render_object::set_indices_data(uint32_t const* indices_data, size_t 
 	allocator.destroy_buffer_if_any(m_indices_buffer);
 
 	allocator.alloc_device_only_buffer(m_indices_buffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint32_t) * count);
-	allocator.update_buffer(m_indices_buffer, indices_data, sizeof(vren::vertex) * count, 0);
+	allocator.update_buffer(m_indices_buffer, indices_data, sizeof(uint32_t) * count, 0);
 
 	m_indices_count = count;
 }
