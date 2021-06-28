@@ -33,13 +33,26 @@ vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysical
 
 void vren::presenter::create_sync_objects()
 {
+	// Image available semaphores
 	m_image_available_semaphores.resize(m_image_count);
 
-	VkSemaphoreCreateInfo semaphore_info{};
-	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	for (VkSemaphore& semaphore : m_image_available_semaphores) {
+		VkSemaphoreCreateInfo semaphore_info{};
+		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		vkCreateSemaphore(m_renderer.m_device, &semaphore_info, nullptr, &semaphore);
+	}
 
-	for (int i = 0; i < m_image_count; i++) {
-		vkCreateSemaphore(m_renderer.m_device, &semaphore_info, nullptr, &m_image_available_semaphores.at(i));
+	// In-flight frame fences
+	m_inflight_fences.resize(m_image_count);
+
+	for (VkFence& fence : m_inflight_fences) {
+		VkFenceCreateInfo fence_info{};
+		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		if (vkCreateFence(m_renderer.m_device, &fence_info, nullptr, &fence) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create fence.");
+		}
 	}
 }
 
@@ -194,6 +207,8 @@ void vren::presenter::destroy_swapchain()
 		vkDestroySwapchainKHR(m_renderer.m_device, m_swapchain, nullptr);
 		m_swapchain = VK_NULL_HANDLE;
 	}
+
+	// todo destroy sync objects
 }
 
 void vren::presenter::recreate_swapchain(VkExtent2D extent)
@@ -205,6 +220,8 @@ void vren::presenter::recreate_swapchain(VkExtent2D extent)
  	create_swapchain_images();
 	create_swapchain_image_views();
 	create_swapchain_framebuffers();
+
+	create_sync_objects();
 }
 
 vren::presenter::presenter(vren::renderer& renderer, presenter_info& info,VkSurfaceKHR surface, VkExtent2D initial_extent) :
@@ -213,8 +230,6 @@ vren::presenter::presenter(vren::renderer& renderer, presenter_info& info,VkSurf
 	m_surface(surface)
 {
 	recreate_swapchain(initial_extent);
-
-	create_sync_objects();
 }
 
 vren::presenter::~presenter()
@@ -224,6 +239,8 @@ vren::presenter::~presenter()
 
 void vren::presenter::present(vren::render_list const& render_list, vren::camera const& camera)
 {
+	vkWaitForFences(m_renderer.m_device, 1, &m_inflight_fences.at(m_current_frame_idx), VK_TRUE, UINT64_MAX); // Wait for the current frame to be available
+
 	VkResult result;
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
@@ -236,19 +253,39 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 		throw std::runtime_error("Acquirement of the next swapchain image failed.");
 	}
 
-	// Calls the renderer with the image as a target.
+	// Render
 	vren::renderer::target target{};
 	target.m_framebuffer = m_swapchain_framebuffers.at(image_idx);
 	target.m_render_area.offset = {0, 0};
 	target.m_render_area.extent = m_current_extent;
+	target.m_viewport = { // todo leave freedom to set viewport outside
+		.x = 0,
+		.y = 0,
+		.width = (float) m_current_extent.width,
+		.height = (float) m_current_extent.height,
+		.minDepth = 0.0f,
+		.maxDepth = 1.0f
+	};
 
-	VkSemaphore render_finished_semaphore = m_renderer.render(image_idx, target, render_list, camera);
+	vkResetFences(m_renderer.m_device, 1, &m_inflight_fences.at(m_current_frame_idx));
 
-	/* Present */
+	VkSemaphore render_finished_semaphore = m_renderer.render(
+		image_idx,
+		target,
+		render_list,
+		camera,
+		{m_image_available_semaphores.at(m_current_frame_idx)}, // Waits for the framebuffer image to be available before issuing the draw
+		m_inflight_fences.at(m_current_frame_idx) // Signals the fence the draw is finished
+	);
+
+	// Present
 	VkPresentInfoKHR present_info{};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = &render_finished_semaphore; // Waits for the rendering to be completed before presenting.
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = &m_swapchain;
+	present_info.waitSemaphoreCount = 1; // Waits for the rendering to be finished before presenting
+	present_info.pWaitSemaphores = &render_finished_semaphore;
+	present_info.pImageIndices = &image_idx;
 
 	result = vkQueuePresentKHR(m_renderer.m_queues.at(m_present_queue_family_idx), &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {

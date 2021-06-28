@@ -374,14 +374,26 @@ void vren::renderer::alloc_command_buffers()
 	}
 }
 
+void vren::renderer::create_sync_objects()
+{
+	VkSemaphoreCreateInfo semaphore_info{};
+	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	for (VkSemaphore& semaphore : m_render_finished_semaphores) {
+		vkCreateSemaphore(m_device, &semaphore_info, nullptr, &semaphore);
+	}
+}
+
 VkSemaphore vren::renderer::render(
 	uint32_t frame_idx,
 	vren::renderer::target const& target,
 	vren::render_list const& render_list,
-	vren::camera const& camera
+	vren::camera const& camera,
+	std::vector<VkSemaphore> const& wait_semaphores,
+	VkFence signal_fence
 )
 {
-	/* Commands re-recording */
+	// Commands re-recording
 	VkCommandBuffer cmd_buf = m_graphics_command_buffers.at(frame_idx);
 	vkResetCommandBuffer(cmd_buf, NULL);
 
@@ -405,6 +417,9 @@ VkSemaphore vren::renderer::render(
 
 	vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
+	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+
 	{
 		m_simple_draw_pass.record_commands(frame_idx, cmd_buf, render_list, camera);
 	}
@@ -415,16 +430,20 @@ VkSemaphore vren::renderer::render(
 		throw std::runtime_error("Failed to end command buffer recording.");
 	}
 
-	/* Submission */
+	// Submission
 	VkSubmitInfo submit_info{};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-
-	submit_info.signalSemaphoreCount = 1; // Signals a semaphore when the render finished.
+	submit_info.waitSemaphoreCount = wait_semaphores.size(); // The semaphores to wait before submitting
+	submit_info.pWaitSemaphores = wait_semaphores.data();
+	submit_info.signalSemaphoreCount = 1; // Signals a semaphore when the render finished
 	submit_info.pSignalSemaphores = &m_render_finished_semaphores.at(frame_idx);
 
-	if (vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS) {
+	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	submit_info.pWaitDstStageMask = wait_stages;
+
+	if (vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, signal_fence) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to submit command buffer.");
 	}
 
@@ -448,6 +467,8 @@ vren::renderer::renderer(renderer_info& info) :
 	create_descriptor_pools();
 	create_command_pools();
 	alloc_command_buffers();
+
+	create_sync_objects();
 
 	m_simple_draw_pass.init();
 }

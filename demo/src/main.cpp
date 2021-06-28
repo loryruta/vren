@@ -7,18 +7,27 @@
 
 void create_cube(vren::render_object& render_object)
 {
-	auto vertices = {
-		vren::vertex{ .m_position = { 0.0f, 0.0f, 0.0f } },
-		vren::vertex{ .m_position = { 0.0f, 0.0f, 0.0f } },
-		vren::vertex{ .m_position = { 0.0f, 0.0f, 0.0f } },
-		vren::vertex{ .m_position = { 0.0f, 0.0f, 0.0f } }
+	std::vector<vren::vertex> vertices = {
+		vren::vertex{ .m_position = { -1, -1, -1 } },
+		vren::vertex{ .m_position = { 1, -1, -1 } },
+		vren::vertex{ .m_position = { 1, 1, -1 } },
+		vren::vertex{ .m_position = { -1, 1, -1 } },
+		vren::vertex{ .m_position = { -1, -1, 1 } },
+		vren::vertex{ .m_position = { 1, -1, 1 } },
+		vren::vertex{ .m_position = { 1, 1, 1 } },
+		vren::vertex{ .m_position = { -1, 1, 1 } }
 	};
-	render_object.set_vertex_data(vertices.begin(), vertices.size());
+	render_object.set_vertex_data(vertices.data(), vertices.size());
 
-	std::initializer_list<uint32_t> indices = {
-		10,
+	std::vector<uint32_t> indices = {
+		0, 1, 3, 3, 1, 2,
+		1, 5, 2, 2, 5, 6,
+		5, 4, 6, 6, 4, 7,
+		4, 0, 7, 7, 0, 3,
+		3, 2, 7, 7, 2, 6,
+		4, 5, 0, 0, 5, 1
 	};
-	render_object.set_indices_data(indices.begin(), indices.size());
+	render_object.set_indices_data(indices.data(), indices.size());
 
 	std::initializer_list<vren::instance_data> instances = {
 		vren::instance_data{}

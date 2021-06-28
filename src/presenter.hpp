@@ -52,13 +52,13 @@ namespace vren
 		std::vector<VkImageView> m_swapchain_image_views;
 		std::vector<VkFramebuffer> m_swapchain_framebuffers;
 
+		std::vector<VkFence> m_inflight_fences;
 		std::vector<VkSemaphore> m_image_available_semaphores;
 
 		uint32_t m_current_frame_idx = 0;
 
 		void create_sync_objects();
 		void destroy_sync_objects();
-
 
 		void destroy_swapchain();
 

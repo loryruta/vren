@@ -53,6 +53,8 @@ namespace vren
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
 
+		void create_sync_objects();
+
 	public:
 		vren::renderer_info m_info;
 
@@ -66,7 +68,7 @@ namespace vren
 
 		vren::gpu_allocator m_gpu_allocator;
 
-		VkClearColorValue m_clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 		static const VkFormat m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
 
 		// Descriptor pools
@@ -90,16 +92,21 @@ namespace vren
 		renderer(renderer_info& info);
 		~renderer();
 
-		struct target {
+		struct target
+		{
 			VkFramebuffer m_framebuffer;
 			VkRect2D m_render_area;
+			VkViewport m_viewport;
+			VkRect2D m_scissor;
 		};
 
 		VkSemaphore render(
 			uint32_t frame_idx,
 			vren::renderer::target const& target,
 			vren::render_list const& render_list,
-			vren::camera const& camera
+			vren::camera const& camera,
+			std::vector<VkSemaphore> const& wait_semaphores = {},
+			VkFence signal_fence = VK_NULL_HANDLE
 		);
 	};
 }

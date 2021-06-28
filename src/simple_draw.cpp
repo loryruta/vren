@@ -75,24 +75,23 @@ VkShaderModule create_shader_module(VkDevice device, char const* path)
 
 void vren::simple_draw_pass::create_graphics_pipeline()
 {
-	/* Create pipeline layout */
-	VkShaderModule vert_shader_mod = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.vert.bin");
-	VkShaderModule frag_shader_mod = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.frag.bin");
+	// Shader stages
+	std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
 
-	VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
-	vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vert_shader_stage_info.module = vert_shader_mod;
-	vert_shader_stage_info.pName = "main";
+	VkPipelineShaderStageCreateInfo shader_stage_info{};
+	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 
-	VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
-	frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	frag_shader_stage_info.module = frag_shader_mod;
-	frag_shader_stage_info.pName = "main";
+	shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	shader_stage_info.module = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.vert.bin");
+	shader_stage_info.pName = "main";
+	shader_stage_infos.push_back(shader_stage_info);
 
-	VkPipelineShaderStageCreateInfo shader_stages_info[] = {vert_shader_stage_info, frag_shader_stage_info};
+	shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shader_stage_info.module =  create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.frag.bin");
+	shader_stage_info.pName = "main";
+	shader_stage_infos.push_back(shader_stage_info);
 
+	//
 	VkVertexInputBindingDescription vtx_binding{};
 	vtx_binding.binding = 0;
 	vtx_binding.stride = sizeof(float) * (3 + 3 + 4); // position + normal + color
@@ -118,35 +117,36 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_info.primitiveRestartEnable = VK_FALSE;
 
-	VkPipelineViewportStateCreateInfo viewport_state_info{};
-	viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewport_state_info.viewportCount = 1;
+	//VkPipelineViewportStateCreateInfo viewport_state_info{};
+	//viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	//viewport_state_info.viewportCount = 1;
 	//viewport_state_info.pViewports = &viewport;
 	//viewport_state_info.scissorCount = 1;
 	//viewport_state_info.pScissors = &scissor;
 
 	VkPipelineRasterizationStateCreateInfo rasterization_state_info{};
 	rasterization_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterization_state_info.depthClampEnable = VK_FALSE;
-	rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
 	rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterization_state_info.lineWidth = 1.0f;
-	rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	rasterization_state_info.depthBiasEnable = VK_FALSE;
-	rasterization_state_info.rasterizerDiscardEnable = VK_TRUE; // If dynamic viewport is set, rasterizer discard must be enabled.
+	//rasterization_state_info.depthClampEnable = VK_FALSE;
+	//rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
+	//rasterization_state_info.depthBiasEnable = VK_FALSE;
+	//rasterization_state_info.rasterizerDiscardEnable = VK_TRUE; // If dynamic viewport is set, rasterizer discard must be enabled.
 
 	VkPipelineMultisampleStateCreateInfo multisampling_info{};
 	multisampling_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling_info.sampleShadingEnable = VK_FALSE;
 	multisampling_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-	VkPipelineDepthStencilStateCreateInfo depth_stencil{};
-	depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depth_stencil.depthTestEnable = VK_TRUE;
-	depth_stencil.depthWriteEnable = VK_TRUE;
-	depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-	depth_stencil.depthBoundsTestEnable = VK_FALSE;
-	depth_stencil.stencilTestEnable = VK_FALSE;
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
+	depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depth_stencil_info.depthTestEnable = VK_TRUE;
+	depth_stencil_info.depthWriteEnable = VK_TRUE;
+	depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+	depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+	depth_stencil_info.stencilTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment{};
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -179,27 +179,34 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 		throw std::runtime_error("Failed to create pipeline layout.");
 	}
 
-	std::initializer_list<VkDynamicState> dynamic_states = {
-		VK_DYNAMIC_STATE_VIEWPORT
-	};
+	// Viewport state
+	VkPipelineViewportStateCreateInfo viewport_state_info{};
+	viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewport_state_info.viewportCount = 1;
+	viewport_state_info.scissorCount = 1;
 
+	// Dynamic states
+	std::vector<VkDynamicState> dynamic_states = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
 	VkPipelineDynamicStateCreateInfo dynamic_state_info{};
 	dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamic_state_info.dynamicStateCount = (uint32_t) dynamic_states.size();
-	dynamic_state_info.pDynamicStates = dynamic_states.begin();
+	dynamic_state_info.pDynamicStates = dynamic_states.data();
 
 	/* Graphics pipeline */
 	VkGraphicsPipelineCreateInfo graphics_pipeline_info{};
 	graphics_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	graphics_pipeline_info.stageCount = 2;
-	graphics_pipeline_info.pStages = shader_stages_info;
+	graphics_pipeline_info.stageCount = shader_stage_infos.size();
+	graphics_pipeline_info.pStages = shader_stage_infos.data();
 	graphics_pipeline_info.pVertexInputState = &vtx_input_info;
 	graphics_pipeline_info.pInputAssemblyState = &input_assembly_info;
+	graphics_pipeline_info.pViewportState = &viewport_state_info;
 	graphics_pipeline_info.pDynamicState = &dynamic_state_info;
-	graphics_pipeline_info.pViewportState = nullptr; // Using dynamic viewport
 	graphics_pipeline_info.pRasterizationState = &rasterization_state_info;
 	graphics_pipeline_info.pMultisampleState = &multisampling_info;
-	graphics_pipeline_info.pDepthStencilState = &depth_stencil;
+	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
 	graphics_pipeline_info.pColorBlendState = &color_blend_info;
 	graphics_pipeline_info.layout = m_pipeline_layout;
 	graphics_pipeline_info.renderPass = m_renderer.m_render_pass;
@@ -210,9 +217,8 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 		throw std::runtime_error("Failed to create the graphics pipeline.");
 	}
 
-	/**/
-	vkDestroyShaderModule(m_renderer.m_device, vert_shader_mod, nullptr);
-	vkDestroyShaderModule(m_renderer.m_device, frag_shader_mod, nullptr);
+	//vkDestroyShaderModule(m_renderer.m_device, vert_shader_mod, nullptr);
+	//vkDestroyShaderModule(m_renderer.m_device, frag_shader_mod, nullptr);
 }
 
 void vren::simple_draw_pass::fill_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes)
