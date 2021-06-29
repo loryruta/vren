@@ -24,6 +24,8 @@ set(GLFW_INCLUDE_DIR ${GLFW_DIR}/include)
 
 add_executable(${PROJECT_NAME}
         src/main.cpp
+        src/camera.hpp
+        src/camera.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/src")

@@ -2,8 +2,20 @@
 #include "renderer.hpp"
 #include "presenter.hpp"
 
+#include "camera.hpp"
+
+#include <iostream>
+#include <optional>
+
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#define WINDOW_WIDTH  500
+#define WINDOW_HEIGHT 500
+
+GLFWwindow* g_window;
 
 void create_cube(vren::render_object& render_object)
 {
@@ -35,6 +47,52 @@ void create_cube(vren::render_object& render_object)
 	render_object.set_instances_data(instances.begin(), instances.size());
 }
 
+template<glm::length_t L, typename T>
+void log_vec(glm::vec<L, T> v)
+{
+	for (int i = 0; i < L; i++) {
+		std::cout << " v[" << i << "]: " << v[i];
+	}
+	std::cout << std::endl;
+}
+
+void update_camera(float dt, vren_demo::camera& camera)
+{
+	const glm::vec4 k_world_up = glm::vec4(0, 1, 0, 0);
+
+	// Movement
+	const float k_speed = 4.0f; // m/s
+
+	glm::vec3 direction{};
+	if (glfwGetKey(g_window, GLFW_KEY_W) == GLFW_PRESS) direction += -camera.get_forward();
+	if (glfwGetKey(g_window, GLFW_KEY_S) == GLFW_PRESS) direction += camera.get_forward();
+	if (glfwGetKey(g_window, GLFW_KEY_A) == GLFW_PRESS) direction += -camera.get_right();
+	if (glfwGetKey(g_window, GLFW_KEY_D) == GLFW_PRESS) direction += camera.get_right();
+	if (glfwGetKey(g_window, GLFW_KEY_SPACE) == GLFW_PRESS) direction += camera.get_up();
+	if (glfwGetKey(g_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) direction += -camera.get_up();
+
+	camera.m_position += direction * (k_speed * dt);
+
+	// Rotation
+	static std::optional<glm::dvec2> last_cur_pos;
+	const glm::vec2 k_sensitivity = glm::radians(glm::vec2(90.0f)); // rad/(pixel * s)
+
+	glm::dvec2 cur_pos{};
+	glfwGetCursorPos(g_window, &cur_pos.x, &cur_pos.y);
+
+	if (last_cur_pos.has_value())
+	{
+		glm::vec2 d_cur_pos = glm::vec2(cur_pos - last_cur_pos.value()) * k_sensitivity * dt;
+		camera.m_yaw += d_cur_pos.x;
+		camera.m_pitch += d_cur_pos.y;
+	}
+
+	last_cur_pos = cur_pos;
+
+	// Scale
+	// todo
+}
+
 int main(int argc, char* argv[])
 {
 	if (glfwInit() != GLFW_TRUE) {
@@ -43,10 +101,12 @@ int main(int argc, char* argv[])
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	GLFWwindow* window = glfwCreateWindow(500, 500, "VRen Example", nullptr, nullptr);
-	if (window == nullptr) {
+	g_window = glfwCreateWindow(500, 500, "VRen Example", nullptr, nullptr);
+	if (g_window == nullptr) {
 		throw std::runtime_error("Couldn't create the window.");
 	}
+
+	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	vren::renderer_info renderer_info;
 	renderer_info.m_app_name = "vren_example";
@@ -65,7 +125,7 @@ int main(int argc, char* argv[])
 	vren::renderer renderer(renderer_info);
 
 	VkSurfaceKHR surface;
-	if (glfwCreateWindowSurface(renderer.m_instance, window, nullptr, &surface) != VK_SUCCESS) {
+	if (glfwCreateWindowSurface(renderer.m_instance, g_window, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create window surface.");
 	}
 
@@ -79,14 +139,26 @@ int main(int argc, char* argv[])
 	vren::render_object& cube = render_list.create_render_object();
 	create_cube(cube);
 
-	vren::camera camera{};
-	camera.m_projection_matrix = glm::identity<glm::mat4>();
-	camera.m_view_matrix = glm::identity<glm::mat4>();
+	vren_demo::camera camera{};
+	camera.m_aspect_ratio = WINDOW_WIDTH / (float) WINDOW_HEIGHT;
 
-	while (!glfwWindowShouldClose(window)) {
+	float last_time = -1.0;
+
+	while (!glfwWindowShouldClose(g_window))
+	{
 		glfwPollEvents();
 
-		presenter.present(render_list, camera);
+		auto cur_time = (float) glfwGetTime();
+		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
+		last_time = cur_time;
+
+		if (glfwGetKey(g_window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+			glfwSetWindowShouldClose(g_window, GLFW_TRUE);
+		}
+
+		update_camera(dt, camera);
+
+		presenter.present(render_list, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
 	}
 
 	// todo destroy stuff

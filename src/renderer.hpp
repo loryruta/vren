@@ -27,8 +27,8 @@ namespace vren
 
 	struct camera
 	{
-		glm::mat4 m_view_matrix;
-		glm::mat4 m_projection_matrix;
+		glm::mat4 m_view;
+		glm::mat4 m_projection;
 	};
 
 	struct renderer

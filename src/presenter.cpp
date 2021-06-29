@@ -260,9 +260,9 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 	target.m_render_area.extent = m_current_extent;
 	target.m_viewport = { // todo leave freedom to set viewport outside
 		.x = 0,
-		.y = 0,
+		.y = (float) m_current_extent.height,
 		.width = (float) m_current_extent.width,
-		.height = (float) m_current_extent.height,
+		.height = -float(m_current_extent.height),
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f
 	};

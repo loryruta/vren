@@ -117,24 +117,15 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_info.primitiveRestartEnable = VK_FALSE;
 
-	//VkPipelineViewportStateCreateInfo viewport_state_info{};
-	//viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	//viewport_state_info.viewportCount = 1;
-	//viewport_state_info.pViewports = &viewport;
-	//viewport_state_info.scissorCount = 1;
-	//viewport_state_info.pScissors = &scissor;
-
+	// Rasterization state
 	VkPipelineRasterizationStateCreateInfo rasterization_state_info{};
 	rasterization_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterization_state_info.cullMode = VK_CULL_MODE_NONE;
 	rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterization_state_info.lineWidth = 1.0f;
-	//rasterization_state_info.depthClampEnable = VK_FALSE;
-	//rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
-	//rasterization_state_info.depthBiasEnable = VK_FALSE;
-	//rasterization_state_info.rasterizerDiscardEnable = VK_TRUE; // If dynamic viewport is set, rasterizer discard must be enabled.
 
+	// Multisampling state
 	VkPipelineMultisampleStateCreateInfo multisampling_info{};
 	multisampling_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling_info.sampleShadingEnable = VK_FALSE;
