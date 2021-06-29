@@ -3,6 +3,7 @@
 #include "presenter.hpp"
 
 #include "camera.hpp"
+#include "obj_loader.hpp"
 
 #include <iostream>
 #include <optional>
@@ -71,7 +72,12 @@ void update_camera(float dt, vren_demo::camera& camera)
 	if (glfwGetKey(g_window, GLFW_KEY_SPACE) == GLFW_PRESS) direction += camera.get_up();
 	if (glfwGetKey(g_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) direction += -camera.get_up();
 
-	camera.m_position += direction * (k_speed * dt);
+	float inc = k_speed * dt;
+	if (glfwGetKey(g_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+		inc *= 100;
+	}
+
+	camera.m_position += direction * inc;
 
 	// Rotation
 	static std::optional<glm::dvec2> last_cur_pos;
@@ -108,6 +114,8 @@ int main(int argc, char* argv[])
 
 	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	// ---------------------------------------------------------------- Context initialization
+
 	vren::renderer_info renderer_info;
 	renderer_info.m_app_name = "vren_example";
 	renderer_info.m_app_version = VK_MAKE_VERSION(1, 0, 0);
@@ -136,14 +144,38 @@ int main(int argc, char* argv[])
 
 	vren::render_list render_list(renderer);
 
-	vren::render_object& cube = render_list.create_render_object();
-	create_cube(cube);
+	// ---------------------------------------------------------------- Creation of a test cube
+
+	auto& cube = render_list.create_render_object();
+	create_cube(cube); // Baking
+
+	// ---------------------------------------------------------------- Creation of the scene
+
+	// Scene loading
+	vren_demo::scene scene{};
+	std::filesystem::path scene_file = "resources/models/sponza_cathedral/sponza.obj";
+
+	std::cout << "Loading scene at: " << scene_file << std::endl;
+	bool ret = vren_demo::load_scene(scene_file, scene);
+	if (!ret) {
+		throw std::runtime_error("Failed to load obj scene.");
+	}
+	std::cout << "Scene loaded" << std::endl;
+
+	// Scene baking
+	auto& baked_scene = render_list.create_render_object();
+	baked_scene.set_vertex_data(scene.m_vertices.data(), scene.m_vertices.size());
+	baked_scene.set_indices_data(scene.m_indices.data(), scene.m_indices.size());
+
+	vren::instance_data single_instance{ .m_transform = glm::identity<glm::mat4>() };
+	baked_scene.set_instances_data(&single_instance, 1);
+
+	// ---------------------------------------------------------------- Game loop
 
 	vren_demo::camera camera{};
 	camera.m_aspect_ratio = WINDOW_WIDTH / (float) WINDOW_HEIGHT;
 
 	float last_time = -1.0;
-
 	while (!glfwWindowShouldClose(g_window))
 	{
 		glfwPollEvents();

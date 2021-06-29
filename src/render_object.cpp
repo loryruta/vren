@@ -2,12 +2,16 @@
 
 #include "renderer.hpp"
 
+#include <iostream>
+
+
 vren::render_object::render_object(vren::renderer* renderer) :
 	m_renderer(renderer)
 {}
 
 vren::render_object::~render_object()
 {
+	/* TODO destroy somewhere else
 	for (auto& vertex_buf : m_vertex_buffers) {
 		m_renderer->m_gpu_allocator.destroy_buffer_if_any(vertex_buf);
 	}
@@ -16,7 +20,7 @@ vren::render_object::~render_object()
 
 	for (auto& instance_buf : m_instances_buffers) {
 		m_renderer->m_gpu_allocator.destroy_buffer_if_any(instance_buf);
-	}
+	}*/
 }
 
 void vren::render_object::set_vertex_data(vren::vertex const* vertices_data, size_t count)

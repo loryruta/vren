@@ -7,3 +7,6 @@
 [submodule "demo/third_party/glfw"]
 	path = demo/third_party/glfw
 	url = https://github.com/glfw/glfw
+[submodule "demo/third_party/tinyobjloader"]
+	path = demo/third_party/tinyobjloader
+	url = https://github.com/tinyobjloader/tinyobjloader

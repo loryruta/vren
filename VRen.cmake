@@ -14,6 +14,19 @@ function (compile_shader _SHADERS IN_PATH OUT_PATH)  # SHADER_0, SHADER_1 ...
     set(${_SHADERS} ${SUPER_VAR} PARENT_SCOPE)
 endfunction()
 
+function (copy_resources TARGET_NAME FROM TO)
+    set(FROM "${CMAKE_CURRENT_SOURCE_DIR}/${FROM}")
+    set(TO "${CMAKE_CURRENT_BINARY_DIR}/${TO}")
+    add_custom_command(
+            OUTPUT ${TO}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FROM} ${TO}
+            MAIN_DEPENDENCY ${FROM}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Copying resources from `${FROM}` to: `${TO}`"
+    )
+    target_sources(${TARGET_NAME} PRIVATE ${TO})
+endfunction()
+
 function (setup_resources TARGET_NAME)
     set(RESOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/.vren/resources")
     add_custom_target(create_dirs

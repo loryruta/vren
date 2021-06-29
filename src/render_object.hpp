@@ -17,13 +17,16 @@ namespace vren
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 
-	struct vertex {
+	struct vertex
+	{
 		glm::vec3 m_position;
 		glm::vec3 m_normal;
 		glm::vec4 m_tangent;
 		glm::vec2 m_texcoord;
 		glm::vec4 m_color;
 	};
+
+	using vertex_index_t = uint32_t; // todo use it
 
 	struct instance_data {
 		glm::mat4 m_transform;

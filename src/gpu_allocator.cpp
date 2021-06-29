@@ -119,7 +119,9 @@ void vren::gpu_allocator::alloc_device_only_buffer(
 	VmaAllocationCreateInfo alloc_info{};
 	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	vmaCreateBuffer(m_allocator, &buf_info, &alloc_info, &handle.m_buffer, &handle.m_allocation, nullptr);
+	if (vmaCreateBuffer(m_allocator, &buf_info, &alloc_info, &handle.m_buffer, &handle.m_allocation, nullptr) != VK_SUCCESS) {
+		throw std::runtime_error("Unable to create buffer.");
+	}
 }
 
 void vren::gpu_allocator::update_device_only_buffer(

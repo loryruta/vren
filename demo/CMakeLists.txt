@@ -20,12 +20,18 @@ set(GLFW_DIR third_party/glfw)
 add_subdirectory(${GLFW_DIR})
 set(GLFW_INCLUDE_DIR ${GLFW_DIR}/include)
 
+# tinyobjloader
+set(TINYOBJLOADER_DIR third_party/tinyobjloader)
+set(TINYOBJLOADER_INCLUDE_DIR ${TINYOBJLOADER_DIR})
+
 # ------------------------------------------------------------------------------------------------
 
 add_executable(${PROJECT_NAME}
         src/main.cpp
         src/camera.hpp
         src/camera.cpp
+        src/obj_loader.hpp
+        src/obj_loader.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/src")
@@ -35,8 +41,13 @@ target_link_libraries(${PROJECT_NAME} vren)
 target_include_directories(${PROJECT_NAME} PUBLIC ${GLFW_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} glfw)
 
+# tinyobjloader
+target_include_directories(${PROJECT_NAME} PUBLIC ${TINYOBJLOADER_INCLUDE_DIR})
+
 # ------------------------------------------------------------------------------------------------
 
 include("${VREN_HOME}/VRen.cmake")
+
+copy_resources(${PROJECT_NAME} "resources/models" "resources/models")
 
 setup_resources(${PROJECT_NAME})
