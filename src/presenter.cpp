@@ -168,13 +168,14 @@ void vren::presenter::create_swapchain_framebuffers()
 	for (size_t i = 0; i < m_image_count; i++)
 	{
 		std::initializer_list<VkImageView> attachments = {
-			m_swapchain_image_views.at(i)
+			m_swapchain_image_views.at(i),
+			m_depth_buffer.m_image_view.m_handle
 		};
 
 		VkFramebufferCreateInfo framebuffer_info{};
 		framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebuffer_info.renderPass = m_renderer.m_render_pass;
-		framebuffer_info.attachmentCount = (uint32_t)attachments.size();
+		framebuffer_info.attachmentCount = (uint32_t) attachments.size();
 		framebuffer_info.pAttachments = attachments.begin();
 		framebuffer_info.width = m_current_extent.width;
 		framebuffer_info.height = m_current_extent.height;
@@ -184,6 +185,39 @@ void vren::presenter::create_swapchain_framebuffers()
 			throw std::runtime_error("Failed to create the framebuffer.");
 		}
 	}
+}
+
+void vren::presenter::create_depth_buffer()
+{
+	vren::create_image(
+		m_renderer,
+		m_current_extent.width,
+		m_current_extent.height,
+		VK_FORMAT_D32_SFLOAT,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		m_depth_buffer.m_image
+	);
+
+	vren::create_image_view(
+		m_renderer,
+		m_depth_buffer.m_image,
+		VK_IMAGE_ASPECT_DEPTH_BIT,
+		m_depth_buffer.m_image_view
+	);
+}
+
+void vren::presenter::destroy_depth_buffer()
+{
+	vren::destroy_image(
+		m_renderer,
+		m_depth_buffer.m_image
+	);
+
+	vren::destroy_image_view(
+		m_renderer,
+		m_depth_buffer.m_image_view
+	);
 }
 
 void vren::presenter::destroy_swapchain()
@@ -213,10 +247,11 @@ void vren::presenter::destroy_swapchain()
 
 void vren::presenter::recreate_swapchain(VkExtent2D extent)
 {
+	destroy_depth_buffer();
 	destroy_swapchain();
 
 	create_swapchain(extent);
-
+	create_depth_buffer();
  	create_swapchain_images();
 	create_swapchain_image_views();
 	create_swapchain_framebuffers();

@@ -50,6 +50,7 @@ namespace vren
 		vren::renderer::queue_families get_queue_families(VkPhysicalDevice physical_device);
 		VkPhysicalDevice find_physical_device();
 		VkDevice create_logical_device();
+		VmaAllocator create_allocator();
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
 
@@ -66,6 +67,7 @@ namespace vren
 		std::vector<VkQueue> m_queues;
 		VkRenderPass m_render_pass;
 
+		VmaAllocator m_allocator; // todo initialize it
 		vren::gpu_allocator m_gpu_allocator;
 
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};

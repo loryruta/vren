@@ -137,6 +137,8 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	depth_stencil_info.depthWriteEnable = VK_TRUE;
 	depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
 	depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+	depth_stencil_info.minDepthBounds = 0.0f;
+	depth_stencil_info.maxDepthBounds = 1.0f;
 	depth_stencil_info.stencilTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment{};

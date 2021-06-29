@@ -20,12 +20,7 @@ vren::gpu_buffer::~gpu_buffer()
 vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
 	m_renderer(renderer)
 {
-	VmaAllocatorCreateInfo allocator_info{};
-	allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
-	allocator_info.physicalDevice = renderer.m_physical_device;
-	allocator_info.device = renderer.m_device;
-	allocator_info.instance = renderer.m_instance;
-	vmaCreateAllocator(&allocator_info, &m_allocator);
+	m_allocator = m_renderer.m_allocator;
 
 	uint32_t transfer_queue_family_idx = m_renderer.m_queue_families.m_transfer_idx;
 	m_transfer_queue = m_renderer.m_queues.at(transfer_queue_family_idx);
@@ -44,8 +39,6 @@ vren::gpu_allocator::~gpu_allocator()
 	vkDestroyCommandPool(m_renderer.m_device, m_transfer_cmd_pool, nullptr);
 
 	m_transfer_queue = VK_NULL_HANDLE;
-
-	vmaDestroyAllocator(m_allocator);
 }
 
 void vren::gpu_allocator::destroy_buffer_if_any(vren::gpu_buffer& buffer)

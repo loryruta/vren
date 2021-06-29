@@ -245,6 +245,21 @@ VkDevice vren::renderer::create_logical_device()
 	return device;
 }
 
+VmaAllocator vren::renderer::create_allocator()
+{
+	VmaAllocatorCreateInfo allocator_info{};
+	allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
+	allocator_info.instance = m_instance;
+	allocator_info.physicalDevice = m_physical_device;
+	allocator_info.device = m_device;
+
+	VmaAllocator allocator;
+	if (vmaCreateAllocator(&allocator_info, &allocator) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create the VMA allocator.");
+	}
+	return allocator;
+}
+
 std::vector<VkQueue> vren::renderer::get_queues()
 {
 	uint32_t queue_families_count = 0;
@@ -259,56 +274,75 @@ std::vector<VkQueue> vren::renderer::get_queues()
 
 VkRenderPass vren::renderer::create_render_pass()
 {
-	// Attachments
-	std::vector<VkAttachmentDescription> attachments;
-	{ // Color
-		VkAttachmentDescription attachment{};
-		attachment.format = VK_FORMAT_B8G8R8A8_SRGB; // Should be the format of the final target image.
-		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// ---------------------------------------------------------------- Attachments
 
-		attachments.push_back(attachment);
-	}
+	VkAttachmentDescription color_attachment{};
+	color_attachment.format = VK_FORMAT_B8G8R8A8_SRGB; // Should be the format of the final target image.
+	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // todo
 
-	// Subpasses
+	VkAttachmentDescription depth_attachment{};
+	depth_attachment.format = VK_FORMAT_D32_SFLOAT;
+	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::initializer_list<VkAttachmentDescription> attachments = {
+		color_attachment,
+		depth_attachment
+	};
+
+	// ---------------------------------------------------------------- Subpasses
+
 	std::vector<VkSubpassDescription> subpasses;
-	{ // simple_draw
+	{
+		// simple_draw
 		VkAttachmentReference color_attachment_ref{};
 		color_attachment_ref.attachment = 0;
 		color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference depth_attachment_ref{};
+		depth_attachment_ref.attachment = 1;
+		depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &color_attachment_ref;
+		subpass.pDepthStencilAttachment = &depth_attachment_ref;
 		subpasses.push_back(subpass);
 	}
 
-	// Dependencies
+	// ---------------------------------------------------------------- Dependencies
+
 	std::vector<VkSubpassDependency> dependencies;
 	{
 		VkSubpassDependency dependency{};
 		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependency.dstSubpass = 0;
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 		dependency.srcAccessMask = 0;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		dependencies.push_back(dependency);
 	}
 
 	VkRenderPassCreateInfo render_pass_info{};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = (uint32_t) attachments.size();
-	render_pass_info.pAttachments = attachments.data();
-	render_pass_info.subpassCount = (uint32_t) subpasses.size();
+	render_pass_info.attachmentCount = attachments.size();
+	render_pass_info.pAttachments = attachments.begin();
+	render_pass_info.subpassCount = subpasses.size();
 	render_pass_info.pSubpasses = subpasses.data();
-	render_pass_info.dependencyCount = (uint32_t) dependencies.size();
+	render_pass_info.dependencyCount = dependencies.size();
 	render_pass_info.pDependencies = dependencies.data();
 
 	VkRenderPass render_pass;
@@ -410,7 +444,8 @@ VkSemaphore vren::renderer::render(
 	render_pass_begin_info.renderArea = target.m_render_area;
 
 	std::initializer_list<VkClearValue> clear_values{
-		{ .color = m_clear_color }
+		{ .color = m_clear_color },
+		{ .depthStencil = { 1.0f, 0 } }
 	};
 	render_pass_begin_info.clearValueCount = (uint32_t) clear_values.size();
 	render_pass_begin_info.pClearValues = clear_values.begin();
@@ -456,6 +491,7 @@ vren::renderer::renderer(renderer_info& info) :
 	m_instance(create_instance()),
 	m_debug_messenger(setup_debug_messenger()),
 	m_physical_device(find_physical_device()),
+	m_allocator(create_allocator()),
 	m_queue_families(get_queue_families(m_physical_device)),
 	m_device(create_logical_device()),
 	m_queues(get_queues()),

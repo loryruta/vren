@@ -37,6 +37,8 @@ add_library(${PROJECT_NAME}
         src/config.hpp
         src/presenter.cpp
         src/presenter.hpp
+        src/vk_utils.hpp
+        src/vk_utils.cpp
 )
 
 # Vulkan

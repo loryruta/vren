@@ -2,6 +2,7 @@
 #pragma once
 
 #include "renderer.hpp"
+#include "vk_utils.hpp"
 
 #include <vector>
 
@@ -37,6 +38,9 @@ namespace vren
 		void create_swapchain_image_views();
 		void create_swapchain_framebuffers();
 
+		void create_depth_buffer();
+		void destroy_depth_buffer();
+
 	public:
 		vren::renderer& m_renderer;
 
@@ -51,6 +55,13 @@ namespace vren
 		std::vector<VkImage> m_swapchain_images;
 		std::vector<VkImageView> m_swapchain_image_views;
 		std::vector<VkFramebuffer> m_swapchain_framebuffers;
+
+		struct depth_buffer
+		{
+			vren::image m_image;
+			vren::image_view m_image_view;
+		};
+		depth_buffer m_depth_buffer;
 
 		std::vector<VkFence> m_inflight_fences;
 		std::vector<VkSemaphore> m_image_available_semaphores;
