@@ -11,19 +11,18 @@ find_package(Vulkan REQUIRED)
 # ${Vulkan_INCLUDE_DIRS}
 # ${Vulkan_LIBRARIES}
 
-# VulkanMemoryAllocator
-set(VULKAN_MEMORY_ALLOCATOR_DIR "third_party/VulkanMemoryAllocator")
-set(VULKAN_MEMORY_ALLOCATOR_INCLUDE_DIR "${VULKAN_MEMORY_ALLOCATOR_DIR}/include")
-
-# glm
-set(GLM_DIR "third_party/glm")
-set(GLM_INCLUDE_DIR "${GLM_DIR}")
+# VCPKG
+include(FetchContent)
+message(STATUS "Fetching vcpkg...")
+FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2021.05.12.tar.gz")
+FetchContent_MakeAvailable(vcpkg)
+include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
 
 # ------------------------------------------------------------------------------------------------
 # Library
 # ------------------------------------------------------------------------------------------------
 
-add_library(${PROJECT_NAME}
+add_library(vren
         src/gpu_allocator.hpp
         src/gpu_allocator.cpp
         src/render_list.cpp
@@ -39,17 +38,21 @@ add_library(${PROJECT_NAME}
         src/presenter.hpp
         src/vk_utils.hpp
         src/vk_utils.cpp
+        src/material.hpp
+        src/material.cpp
 )
 
 # Vulkan
-target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${Vulkan_LIBRARIES})
+target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(vren PUBLIC ${Vulkan_LIBRARIES})
 
 # VulkanMemoryAllocator
-target_include_directories(${PROJECT_NAME} PUBLIC ${VULKAN_MEMORY_ALLOCATOR_INCLUDE_DIR})
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
 
 # glm
-target_include_directories(${PROJECT_NAME} PUBLIC ${GLM_INCLUDE_DIR})
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC glm::glm)
 
 if (${BUILD_DEMO})
     add_subdirectory(demo)
