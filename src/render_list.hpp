@@ -6,6 +6,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+
 namespace vren
 {
 	// Forward decl
@@ -13,7 +14,6 @@ namespace vren
 
 	struct render_list
 	{
-	private:
 		vren::renderer& m_renderer;
 
 		std::vector<uint32_t> m_position_by_idx;
@@ -21,7 +21,6 @@ namespace vren
 
 		std::vector<vren::render_object> m_render_objects;
 
-	public:
 		render_list(vren::renderer& renderer);
 		~render_list() = default;
 

@@ -3,11 +3,14 @@
 #include <type_traits>
 #include <memory>
 #include <array>
+#include <filesystem>
 
 #include "config.hpp"
 #include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "gpu_allocator.hpp"
+#include "frame.hpp"
+#include "material.hpp"
 
 #include <glm/glm.hpp>
 
@@ -39,7 +42,7 @@ namespace vren
 			uint32_t m_compute_idx = -1;
 			uint32_t m_transfer_idx = -1;
 
-			bool is_fine() const {
+			[[nodiscard]] bool is_fine() const {
 				return m_graphics_idx >= 0 && m_compute_idx >= 0 && m_transfer_idx >= 0;
 			}
 		};
@@ -54,7 +57,7 @@ namespace vren
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
 
-		void create_sync_objects();
+		void create_white_texture();
 
 	public:
 		vren::renderer_info m_info;
@@ -65,6 +68,9 @@ namespace vren
 		vren::renderer::queue_families m_queue_families;
 		VkDevice m_device;
 		std::vector<VkQueue> m_queues;
+		VkQueue m_transfer_queue;
+		VkQueue m_graphics_queue;
+		VkQueue m_compute_queue;
 		VkRenderPass m_render_pass;
 
 		VmaAllocator m_allocator; // todo initialize it
@@ -73,9 +79,6 @@ namespace vren
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 		static const VkFormat m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
 
-		// Descriptor pools
-		VkDescriptorPool m_descriptor_pool;
-
 		/* Command pools */
 		VkCommandPool m_graphics_command_pool;
 		VkCommandPool m_transfer_command_pool;
@@ -83,13 +86,12 @@ namespace vren
 		/* Subpasses */
 		vren::simple_draw_pass m_simple_draw_pass;
 
-		/* Per frame data */
-		std::array<VkSemaphore, VREN_MAX_FRAME_COUNT> m_render_finished_semaphores;
-		std::array<VkCommandBuffer, VREN_MAX_FRAME_COUNT> m_graphics_command_buffers;
+		vren::material_descriptor_set_pool m_material_descriptor_set_pool;
 
-		void create_descriptor_pools();
+		std::vector<std::unique_ptr<vren::material>> m_materials;
+		vren::texture m_white_texture;
+
 		void create_command_pools();
-		void alloc_command_buffers();
 
 		renderer(renderer_info& info);
 		~renderer();
@@ -102,8 +104,13 @@ namespace vren
 			VkRect2D m_scissor;
 		};
 
-		VkSemaphore render(
-			uint32_t frame_idx,
+		// ---------------------------------------------------------------- Texture
+
+		vren::material* create_material();
+		vren::material* get_material(size_t idx);
+
+		void render(
+			vren::frame& frame,
 			vren::renderer::target const& target,
 			vren::render_list const& render_list,
 			vren::camera const& camera,

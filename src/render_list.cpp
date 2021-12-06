@@ -7,7 +7,6 @@ vren::render_list::render_list(vren::renderer& renderer) :
 	m_renderer(renderer)
 {}
 
-
 vren::render_object& vren::render_list::create_render_object()
 {
 	size_t pos = m_render_objects.size();
@@ -19,6 +18,12 @@ vren::render_object& vren::render_list::create_render_object()
 
 	return inserted_obj;
 }
+
+vren::render_object& vren::render_list::get_render_object(uint32_t idx)
+{
+	return m_render_objects.at(m_position_by_idx.at(idx));
+}
+
 
 void vren::render_list::destroy_render_object(uint32_t idx)
 {
@@ -38,9 +43,4 @@ void vren::render_list::destroy_render_object(uint32_t idx)
 	m_position_by_idx[cur_obj.m_render_list_idx] = UINT32_MAX; // The position of the deleted object is set to an invalid value.
 
 	m_render_objects.pop_back();
-}
-
-vren::render_object& vren::render_list::get_render_object(uint32_t idx)
-{
-	return m_render_objects.at(m_position_by_idx.at(idx));
 }

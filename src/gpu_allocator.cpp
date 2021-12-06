@@ -21,24 +21,10 @@ vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
 	m_renderer(renderer)
 {
 	m_allocator = m_renderer.m_allocator;
-
-	uint32_t transfer_queue_family_idx = m_renderer.m_queue_families.m_transfer_idx;
-	m_transfer_queue = m_renderer.m_queues.at(transfer_queue_family_idx);
-
-	VkCommandPoolCreateInfo cmd_pool_create_info{};
-	cmd_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmd_pool_create_info.queueFamilyIndex = transfer_queue_family_idx;
-	cmd_pool_create_info.flags = NULL;
-	if (vkCreateCommandPool(m_renderer.m_device, &cmd_pool_create_info, nullptr, &m_transfer_cmd_pool) != VK_SUCCESS) {
-		throw std::runtime_error("Couldn't create transfer command pool.");
-	}
 }
 
 vren::gpu_allocator::~gpu_allocator()
 {
-	vkDestroyCommandPool(m_renderer.m_device, m_transfer_cmd_pool, nullptr);
-
-	m_transfer_queue = VK_NULL_HANDLE;
 }
 
 void vren::gpu_allocator::destroy_buffer_if_any(vren::gpu_buffer& buffer)
@@ -138,7 +124,7 @@ void vren::gpu_allocator::update_device_only_buffer(
 	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
 	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_alloc_info.commandPool = m_transfer_cmd_pool;
+	cmd_buf_alloc_info.commandPool = m_renderer.m_transfer_command_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
@@ -162,11 +148,11 @@ void vren::gpu_allocator::update_device_only_buffer(
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-	vkQueueSubmit(m_transfer_queue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(m_renderer.m_queues.at(m_renderer.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
 
-	vkQueueWaitIdle(m_transfer_queue);
+	vkQueueWaitIdle(m_renderer.m_transfer_queue);
 
-	vkResetCommandPool(m_renderer.m_device, m_transfer_cmd_pool, NULL);
+	vkResetCommandPool(m_renderer.m_device, m_renderer.m_transfer_command_pool, NULL);
 
 	destroy_buffer_if_any(staging_buf);
 }

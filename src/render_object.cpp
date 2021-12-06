@@ -23,23 +23,24 @@ vren::render_object::~render_object()
 	}*/
 }
 
-void vren::render_object::set_vertex_data(vren::vertex const* vertices_data, size_t count)
+void vren::render_object::set_material(vren::material* material)
+{
+	m_material = material;
+}
+
+void vren::render_object::set_vertex_data(vren::vertex const* vertices_data, size_t vertices_count)
 {
 	vren::gpu_allocator& allocator = m_renderer->m_gpu_allocator;
 
-	for (auto& vbo : m_vertex_buffers) {
-		allocator.destroy_buffer_if_any(vbo);
-	}
+	allocator.destroy_buffer_if_any(m_vertex_buffer);
 
-	m_vertex_buffers.resize(1);
-
-	allocator.alloc_device_only_buffer(m_vertex_buffers.at(0), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(vren::vertex) * count);
-	allocator.update_buffer(m_vertex_buffers.at(0), vertices_data, sizeof(vren::vertex) * count, 0);
+	allocator.alloc_device_only_buffer(m_vertex_buffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(vren::vertex) * vertices_count);
+	allocator.update_buffer(m_vertex_buffer, vertices_data, sizeof(vren::vertex) * vertices_count, 0);
 }
 
 void vren::render_object::set_indices_data(uint32_t const* indices_data, size_t count)
 {
-	vren::gpu_allocator& allocator = m_renderer->m_gpu_allocator;
+	auto& allocator = m_renderer->m_gpu_allocator;
 
 	allocator.destroy_buffer_if_any(m_indices_buffer);
 
@@ -51,16 +52,12 @@ void vren::render_object::set_indices_data(uint32_t const* indices_data, size_t 
 
 void vren::render_object::set_instances_data(vren::instance_data const* instances_data, size_t count)
 {
-	vren::gpu_allocator& allocator = m_renderer->m_gpu_allocator;
+	auto& gpu_allocator = m_renderer->m_gpu_allocator;
 
-	for (auto& idb : m_instances_buffers) {
-		allocator.destroy_buffer_if_any(idb);
-	}
+	gpu_allocator.destroy_buffer_if_any(m_instances_buffer);
 
-	m_instances_buffers.resize(1);
-
-	allocator.alloc_device_only_buffer(m_instances_buffers.at(0), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(vren::instance_data) * count);
-	allocator.update_buffer(m_instances_buffers.at(0), instances_data, sizeof(vren::instance_data) * count, 0);
+	gpu_allocator.alloc_device_only_buffer(m_instances_buffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(vren::instance_data) * count);
+	gpu_allocator.update_buffer(m_instances_buffer, instances_data, sizeof(vren::instance_data) * count, 0);
 
 	m_instances_count = count;
 }

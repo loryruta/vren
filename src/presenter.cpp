@@ -31,40 +31,6 @@ vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysical
 	return surface_details;
 }
 
-void vren::presenter::create_sync_objects()
-{
-	// Image available semaphores
-	m_image_available_semaphores.resize(m_image_count);
-
-	for (VkSemaphore& semaphore : m_image_available_semaphores) {
-		VkSemaphoreCreateInfo semaphore_info{};
-		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		vkCreateSemaphore(m_renderer.m_device, &semaphore_info, nullptr, &semaphore);
-	}
-
-	// In-flight frame fences
-	m_inflight_fences.resize(m_image_count);
-
-	for (VkFence& fence : m_inflight_fences) {
-		VkFenceCreateInfo fence_info{};
-		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-		if (vkCreateFence(m_renderer.m_device, &fence_info, nullptr, &fence) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create fence.");
-		}
-	}
-}
-
-void vren::presenter::destroy_sync_objects()
-{
-	for (int i = 0; i < m_image_count; i++) {
-		vkDestroySemaphore(m_renderer.m_device, m_image_available_semaphores.at(i), nullptr);
-	}
-
-	m_image_available_semaphores.clear();
-}
-
 VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 {
 	auto surface_details = vren::get_surface_details(m_surface, m_renderer.m_physical_device);
@@ -130,21 +96,22 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 	std::cout << "[presenter] Swapchain image count: " << m_image_count << std::endl;
 }
 
-void vren::presenter::create_swapchain_images()
+void vren::presenter::_create_frames()
 {
-	m_swapchain_images.resize(m_image_count);
-	vkGetSwapchainImagesKHR(m_renderer.m_device, m_swapchain, &m_image_count, m_swapchain_images.data());
-}
+	std::vector<VkImage> swapchain_images(m_image_count);
+	vkGetSwapchainImagesKHR(m_renderer.m_device, m_swapchain, &m_image_count, swapchain_images.data());
 
-void vren::presenter::create_swapchain_image_views()
-{
-	m_swapchain_image_views.resize(m_image_count);
-
-	for (uint32_t i = 0; i < m_image_count; i++)
+	for (int i = 0; i < m_image_count; i++)
 	{
+		auto& frame = m_frames.emplace_back(m_renderer);
+
+		// Swapchain image
+		frame.m_swapchain_image = swapchain_images.at(i);
+
+		// Swapchain image view
 		VkImageViewCreateInfo image_view_info{};
 		image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_info.image = m_swapchain_images.at(i);
+		image_view_info.image = swapchain_images.at(i);
 		image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		image_view_info.format = vren::renderer::m_color_output_format;
 		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -153,22 +120,14 @@ void vren::presenter::create_swapchain_image_views()
 		image_view_info.subresourceRange.baseArrayLayer = 0;
 		image_view_info.subresourceRange.layerCount = 1;
 
-		VkImageView image_view;
-		if (vkCreateImageView(m_renderer.m_device, &image_view_info, nullptr, &image_view) != VK_SUCCESS) {
+		if (vkCreateImageView(m_renderer.m_device, &image_view_info, nullptr, &frame.m_swapchain_image_view) != VK_SUCCESS)
+		{
 			throw std::runtime_error("Failed to create the image view.");
 		}
-		m_swapchain_image_views[i] = image_view;
-	}
-}
 
-void vren::presenter::create_swapchain_framebuffers()
-{
-	m_swapchain_framebuffers.resize(m_image_count);
-
-	for (size_t i = 0; i < m_image_count; i++)
-	{
+		// Swapchain framebuffer
 		std::initializer_list<VkImageView> attachments = {
-			m_swapchain_image_views.at(i),
+			frame.m_swapchain_image_view,
 			m_depth_buffer.m_image_view.m_handle
 		};
 
@@ -181,8 +140,9 @@ void vren::presenter::create_swapchain_framebuffers()
 		framebuffer_info.height = m_current_extent.height;
 		framebuffer_info.layers = 1;
 
-		if (vkCreateFramebuffer(m_renderer.m_device, &framebuffer_info, nullptr, &m_swapchain_framebuffers.at(i)) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create the framebuffer.");
+		if (vkCreateFramebuffer(m_renderer.m_device, &framebuffer_info, nullptr, &frame.m_swapchain_framebuffer) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create the framebuffer");
 		}
 	}
 }
@@ -193,6 +153,7 @@ void vren::presenter::create_depth_buffer()
 		m_renderer,
 		m_current_extent.width,
 		m_current_extent.height,
+		nullptr,
 		VK_FORMAT_D32_SFLOAT,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -222,27 +183,13 @@ void vren::presenter::destroy_depth_buffer()
 
 void vren::presenter::destroy_swapchain()
 {
-	for (auto framebuffer : m_swapchain_framebuffers) {
-		vkDestroyFramebuffer(m_renderer.m_device, framebuffer, nullptr);
-	}
-	//m_swapchain_framebuffers.clear();
+	m_frames.clear();
 
-	for (auto image_view : m_swapchain_image_views) {
-		vkDestroyImageView(m_renderer.m_device, image_view, nullptr);
-	}
-	//m_swapchain_image_views.clear();
-
-	for (auto image : m_swapchain_images) {
-		vkDestroyImage(m_renderer.m_device, image, nullptr);
-	}
-	//m_swapchain_images.clear();
-
-	if (m_swapchain != VK_NULL_HANDLE) {
+	if (m_swapchain != VK_NULL_HANDLE)
+	{
 		vkDestroySwapchainKHR(m_renderer.m_device, m_swapchain, nullptr);
 		m_swapchain = VK_NULL_HANDLE;
 	}
-
-	// todo destroy sync objects
 }
 
 void vren::presenter::recreate_swapchain(VkExtent2D extent)
@@ -252,11 +199,8 @@ void vren::presenter::recreate_swapchain(VkExtent2D extent)
 
 	create_swapchain(extent);
 	create_depth_buffer();
- 	create_swapchain_images();
-	create_swapchain_image_views();
-	create_swapchain_framebuffers();
 
-	create_sync_objects();
+	_create_frames();
 }
 
 vren::presenter::presenter(vren::renderer& renderer, presenter_info& info,VkSurfaceKHR surface, VkExtent2D initial_extent) :
@@ -274,13 +218,16 @@ vren::presenter::~presenter()
 
 void vren::presenter::present(vren::render_list const& render_list, vren::camera const& camera)
 {
-	vkWaitForFences(m_renderer.m_device, 1, &m_inflight_fences.at(m_current_frame_idx), VK_TRUE, UINT64_MAX); // Wait for the current frame to be available
+	auto& frame = m_frames.at(m_current_frame_idx);
+
+	vkWaitForFences(m_renderer.m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
+	frame._on_render();
 
 	VkResult result;
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
 	uint32_t image_idx;
-	result = vkAcquireNextImageKHR(m_renderer.m_device, m_swapchain, UINT64_MAX, m_image_available_semaphores.at(m_current_frame_idx), VK_NULL_HANDLE, &image_idx);
+	result = vkAcquireNextImageKHR(m_renderer.m_device, m_swapchain, UINT64_MAX, frame.m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreate_swapchain(m_current_extent); // The swapchain is invalid (due to surface change for example), it needs to be re-created.
 		return;
@@ -290,7 +237,7 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 
 	// Render
 	vren::renderer::target target{};
-	target.m_framebuffer = m_swapchain_framebuffers.at(image_idx);
+	target.m_framebuffer = frame.m_swapchain_framebuffer;
 	target.m_render_area.offset = {0, 0};
 	target.m_render_area.extent = m_current_extent;
 	target.m_viewport = { // todo leave freedom to set viewport outside
@@ -302,16 +249,9 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 		.maxDepth = 1.0f
 	};
 
-	vkResetFences(m_renderer.m_device, 1, &m_inflight_fences.at(m_current_frame_idx));
+	vkResetFences(m_renderer.m_device, 1, &frame.m_render_finished_fence);
 
-	VkSemaphore render_finished_semaphore = m_renderer.render(
-		image_idx,
-		target,
-		render_list,
-		camera,
-		{m_image_available_semaphores.at(m_current_frame_idx)}, // Waits for the framebuffer image to be available before issuing the draw
-		m_inflight_fences.at(m_current_frame_idx) // Signals the fence the draw is finished
-	);
+	m_renderer.render(frame, target, render_list, camera, {frame.m_image_available_semaphore}, frame.m_render_finished_fence);
 
 	// Present
 	VkPresentInfoKHR present_info{};
@@ -319,7 +259,7 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &m_swapchain;
 	present_info.waitSemaphoreCount = 1; // Waits for the rendering to be finished before presenting
-	present_info.pWaitSemaphores = &render_finished_semaphore;
+	present_info.pWaitSemaphores = &frame.m_render_finished_semaphore;
 	present_info.pImageIndices = &image_idx;
 
 	result = vkQueuePresentKHR(m_renderer.m_queues.at(m_present_queue_family_idx), &present_info);
@@ -330,5 +270,5 @@ void vren::presenter::present(vren::render_list const& render_list, vren::camera
 		throw std::runtime_error("Presentation to swapchain image failed.");
 	}
 
-	m_current_frame_idx = (m_current_frame_idx + 1) % m_swapchain_framebuffers.size();
+	m_current_frame_idx = (m_current_frame_idx + 1) % m_frames.size();
 }

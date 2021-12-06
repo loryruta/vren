@@ -3,15 +3,19 @@
 #include "presenter.hpp"
 
 #include "camera.hpp"
-#include "obj_loader.hpp"
+#include "ai_scene_loader.hpp"
 
 #include <iostream>
 #include <optional>
+#include <stdio.h>
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 #define WINDOW_WIDTH  500
 #define WINDOW_HEIGHT 500
@@ -132,6 +136,8 @@ int main(int argc, char* argv[])
 
 	vren::renderer renderer(renderer_info);
 
+	renderer.m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
+
 	VkSurfaceKHR surface;
 	if (glfwCreateWindowSurface(renderer.m_instance, g_window, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create window surface.");
@@ -146,29 +152,40 @@ int main(int argc, char* argv[])
 
 	// ---------------------------------------------------------------- Creation of a test cube
 
-	auto& cube = render_list.create_render_object();
-	create_cube(cube); // Baking
+	//auto& cube = render_list.create_render_object();
+	//create_cube(cube); // Baking
 
 	// ---------------------------------------------------------------- Creation of the scene
 
 	// Scene loading
-	vren_demo::scene scene{};
-	std::filesystem::path scene_file = "resources/models/sponza_cathedral/sponza.obj";
+	char const* scene_path = "resources/models/skull/12140_Skull_v3_L2.obj";
 
-	std::cout << "Loading scene at: " << scene_file << std::endl;
-	bool ret = vren_demo::load_scene(scene_file, scene);
-	if (!ret) {
-		throw std::runtime_error("Failed to load obj scene.");
+	printf("Loading scene: %s\n", scene_path);
+	fflush(stdout);
+
+	Assimp::Importer importer;
+	aiScene const* ai_scene = importer.ReadFile(scene_path,
+		aiProcess_Triangulate |
+		aiProcess_JoinIdenticalVertices |
+		//aiProcess_GenNormals |
+		//aiProcess_CalcTangentSpace |
+		aiProcess_EmbedTextures |
+		aiProcess_FlipUVs
+	);
+
+	if (!ai_scene)
+	{
+		fprintf(stderr, "Couldn't load scene at: %s\n", scene_path);
+		fflush(stderr);
+
+		return 1;
 	}
-	std::cout << "Scene loaded" << std::endl;
 
-	// Scene baking
-	auto& baked_scene = render_list.create_render_object();
-	baked_scene.set_vertex_data(scene.m_vertices.data(), scene.m_vertices.size());
-	baked_scene.set_indices_data(scene.m_indices.data(), scene.m_indices.size());
+	printf("Baking scene\n");
+	fflush(stdout);
 
-	vren::instance_data single_instance{ .m_transform = glm::identity<glm::mat4>() };
-	baked_scene.set_instances_data(&single_instance, 1);
+	vren_demo::ai_scene_baker scene_baker(renderer);
+	scene_baker.bake(ai_scene, render_list);
 
 	// ---------------------------------------------------------------- Game loop
 

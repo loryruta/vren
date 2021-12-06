@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "gpu_allocator.hpp"
+#include "material.hpp"
 
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
@@ -21,14 +22,15 @@ namespace vren
 	{
 		glm::vec3 m_position;
 		glm::vec3 m_normal;
-		glm::vec4 m_tangent;
+		glm::vec3 m_tangent;
 		glm::vec2 m_texcoord;
 		glm::vec4 m_color;
 	};
 
 	using vertex_index_t = uint32_t; // todo use it
 
-	struct instance_data {
+	struct instance_data
+	{
 		glm::mat4 m_transform;
 	};
 
@@ -66,7 +68,7 @@ namespace vren
 				.location = 0,
 				.binding = 0,
 				.format = VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = 0
+				.offset = offsetof(vren::vertex, m_position)
 			};
 
 			// Normal
@@ -74,7 +76,7 @@ namespace vren
 				.location = 1,
 				.binding = 0,
 				.format = VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = sizeof(glm::vec3)
+				.offset = offsetof(vren::vertex, m_normal)
 			};
 
 			// Tangent
@@ -82,7 +84,7 @@ namespace vren
 				.location = 2,
 				.binding = 0,
 				.format = VK_FORMAT_R32G32B32A32_SFLOAT,
-				.offset = sizeof(glm::vec3) + sizeof(glm::vec3)
+				.offset = offsetof(vren::vertex, m_tangent)
 			};
 
 			// Texcoord
@@ -90,7 +92,7 @@ namespace vren
 				.location = 3,
 				.binding = 0,
 				.format = VK_FORMAT_R32G32_SFLOAT,
-				.offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec4)
+				.offset = offsetof(vren::vertex, m_texcoord)
 			};
 
 			// Color
@@ -98,7 +100,7 @@ namespace vren
 				.location = 4,
 				.binding = 0,
 				.format = VK_FORMAT_R32G32B32A32_SFLOAT,
-				.offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec4) + sizeof(glm::vec2)
+				.offset = offsetof(vren::vertex, m_color)
 			};
 
 			return attrib_desc;
@@ -168,19 +170,24 @@ namespace vren
 
 		uint32_t m_render_list_idx = -1;
 
-		std::vector<vren::gpu_buffer> m_vertex_buffers;
-
-		vren::gpu_buffer m_indices_buffer;
-		uint32_t m_indices_count;
 		static constexpr VkIndexType s_index_type = VK_INDEX_TYPE_UINT32;
 
-		std::vector<vren::gpu_buffer> m_instances_buffers;
+		vren::gpu_buffer m_vertex_buffer;
+		vren::gpu_buffer m_indices_buffer;
+
+		uint32_t m_indices_count;
+
+		vren::gpu_buffer m_instances_buffer;
 		uint32_t m_instances_count;
+
+		vren::material* m_material;
 
 		render_object(vren::renderer* renderer);
 		~render_object();
 
-		void set_vertex_data(vren::vertex const* vertices, size_t count);
+		void set_material(vren::material* material);
+
+		void set_vertex_data(vren::vertex const* vertices, size_t vertices_count);
 		void set_indices_data(uint32_t const* indices, size_t count);
 		void set_instances_data(vren::instance_data const* instances_data, size_t count);
 	};

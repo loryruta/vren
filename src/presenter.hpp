@@ -3,6 +3,7 @@
 
 #include "renderer.hpp"
 #include "vk_utils.hpp"
+#include "frame.hpp"
 
 #include <vector>
 
@@ -34,9 +35,10 @@ namespace vren
 	private:
 		VkSwapchainKHR create_swapchain(VkExtent2D extent);
 
-		void create_swapchain_images();
-		void create_swapchain_image_views();
-		void create_swapchain_framebuffers();
+		void _create_frames();
+		//void create_swapchain_images();
+		//void create_swapchain_image_views();
+		//void create_swapchain_framebuffers();
 
 		void create_depth_buffer();
 		void destroy_depth_buffer();
@@ -52,9 +54,6 @@ namespace vren
 		uint32_t m_image_count;
 
 		VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-		std::vector<VkImage> m_swapchain_images;
-		std::vector<VkImageView> m_swapchain_image_views;
-		std::vector<VkFramebuffer> m_swapchain_framebuffers;
 
 		struct depth_buffer
 		{
@@ -63,13 +62,9 @@ namespace vren
 		};
 		depth_buffer m_depth_buffer;
 
-		std::vector<VkFence> m_inflight_fences;
-		std::vector<VkSemaphore> m_image_available_semaphores;
+		std::vector<vren::frame> m_frames;
 
 		uint32_t m_current_frame_idx = 0;
-
-		void create_sync_objects();
-		void destroy_sync_objects();
 
 		void destroy_swapchain();
 

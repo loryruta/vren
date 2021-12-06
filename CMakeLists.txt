@@ -40,19 +40,21 @@ add_library(vren
         src/vk_utils.cpp
         src/material.hpp
         src/material.cpp
+        src/frame.cpp
+        src/frame.hpp
 )
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(vren PUBLIC ${Vulkan_LIBRARIES})
 
-# VulkanMemoryAllocator
-find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
-
 # glm
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC glm::glm)
+
+# VulkanMemoryAllocator
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
 
 if (${BUILD_DEMO})
     add_subdirectory(demo)

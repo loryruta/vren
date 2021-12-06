@@ -247,14 +247,14 @@ VkDevice vren::renderer::create_logical_device()
 
 VmaAllocator vren::renderer::create_allocator()
 {
-	VmaAllocatorCreateInfo allocator_info{};
-	allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
-	allocator_info.instance = m_instance;
-	allocator_info.physicalDevice = m_physical_device;
-	allocator_info.device = m_device;
+	VmaAllocatorCreateInfo create_info{};
+	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
+	create_info.instance = m_instance;
+	create_info.physicalDevice = m_physical_device;
+	create_info.device = m_device;
 
 	VmaAllocator allocator;
-	if (vmaCreateAllocator(&allocator_info, &allocator) != VK_SUCCESS) {
+	if (vmaCreateAllocator(&create_info, &allocator) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create the VMA allocator.");
 	}
 	return allocator;
@@ -355,24 +355,6 @@ VkRenderPass vren::renderer::create_render_pass()
 	return render_pass;
 }
 
-void vren::renderer::create_descriptor_pools()
-{
-	std::vector<VkDescriptorPoolSize> descriptor_pool_sizes;
-
-	m_simple_draw_pass.fill_descriptor_pool_sizes(descriptor_pool_sizes);
-
-	VkDescriptorPoolCreateInfo descriptor_pool_info{};
-	descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptor_pool_info.poolSizeCount = (uint32_t) descriptor_pool_sizes.size();
-	descriptor_pool_info.pPoolSizes = descriptor_pool_sizes.data();
-	descriptor_pool_info.maxSets = VREN_MAX_FRAME_COUNT * 1; // The max number of frames multiplied by the number of passes
-	if (vkCreateDescriptorPool(m_device, &descriptor_pool_info, nullptr, &m_descriptor_pool) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create descriptor pool.");
-	}
-
-	std::cout << "Descriptor pool created" << std::endl;
-}
-
 void vren::renderer::create_command_pools()
 {
 	VkCommandPoolCreateInfo command_pool_info{};
@@ -395,31 +377,35 @@ void vren::renderer::create_command_pools()
 	std::cout << "Command pools created" << std::endl;
 }
 
-void vren::renderer::alloc_command_buffers()
+void vren::renderer::create_white_texture()
 {
-	VkCommandBufferAllocateInfo alloc_info{};
-	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	alloc_info.commandPool = m_graphics_command_pool;
-	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	alloc_info.commandBufferCount = (uint32_t) m_graphics_command_buffers.size();
+	uint8_t image_data[] = {
+		255, 255, 255, 255,
+	};
 
-	if (vkAllocateCommandBuffers(m_device, &alloc_info, m_graphics_command_buffers.data()) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to allocate command buffers.");
-	}
+	vren::create_texture(
+		*this,
+		1,
+		1,
+		image_data,
+		VK_FORMAT_R8G8B8A8_UNORM,
+		m_white_texture
+	);
 }
 
-void vren::renderer::create_sync_objects()
+vren::material* vren::renderer::create_material()
 {
-	VkSemaphoreCreateInfo semaphore_info{};
-	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	for (VkSemaphore& semaphore : m_render_finished_semaphores) {
-		vkCreateSemaphore(m_device, &semaphore_info, nullptr, &semaphore);
-	}
+	auto& material = m_materials.emplace_back(std::make_unique<vren::material>(*this));
+	return material.get();
 }
 
-VkSemaphore vren::renderer::render(
-	uint32_t frame_idx,
+vren::material* vren::renderer::get_material(size_t idx)
+{
+	return m_materials.at(idx).get();
+}
+
+void vren::renderer::render(
+	vren::frame& frame,
 	vren::renderer::target const& target,
 	vren::render_list const& render_list,
 	vren::camera const& camera,
@@ -428,13 +414,14 @@ VkSemaphore vren::renderer::render(
 )
 {
 	// Commands re-recording
-	VkCommandBuffer cmd_buf = m_graphics_command_buffers.at(frame_idx);
+	VkCommandBuffer cmd_buf = frame.m_command_buffer;
 	vkResetCommandBuffer(cmd_buf, NULL);
 
 	VkCommandBufferBeginInfo cmd_buffer_begin_info{};
 	cmd_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
 	if (vkBeginCommandBuffer(cmd_buf, &cmd_buffer_begin_info) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to begin recording to the command buffer.");
+		throw std::runtime_error("Failed to begin recording to the command buffer");
 	}
 
 	VkRenderPassBeginInfo render_pass_begin_info{};
@@ -455,14 +442,12 @@ VkSemaphore vren::renderer::render(
 	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
 	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
-	{
-		m_simple_draw_pass.record_commands(frame_idx, cmd_buf, render_list, camera);
-	}
+	m_simple_draw_pass.record_commands(frame, cmd_buf, render_list, camera);
 
 	vkCmdEndRenderPass(cmd_buf);
 
 	if (vkEndCommandBuffer(cmd_buf) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to end command buffer recording.");
+		throw std::runtime_error("Failed to end command buffer recording");
 	}
 
 	// Submission
@@ -472,8 +457,8 @@ VkSemaphore vren::renderer::render(
 	submit_info.pCommandBuffers = &cmd_buf;
 	submit_info.waitSemaphoreCount = wait_semaphores.size(); // The semaphores to wait before submitting
 	submit_info.pWaitSemaphores = wait_semaphores.data();
-	submit_info.signalSemaphoreCount = 1; // Signals a semaphore when the render finished
-	submit_info.pSignalSemaphores = &m_render_finished_semaphores.at(frame_idx);
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = &frame.m_render_finished_semaphore;
 
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submit_info.pWaitDstStageMask = wait_stages;
@@ -481,8 +466,6 @@ VkSemaphore vren::renderer::render(
 	if (vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, signal_fence) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to submit command buffer.");
 	}
-
-	return m_render_finished_semaphores.at(frame_idx);
 }
 
 vren::renderer::renderer(renderer_info& info) :
@@ -498,13 +481,17 @@ vren::renderer::renderer(renderer_info& info) :
 	m_render_pass(create_render_pass()),
 
 	m_simple_draw_pass(*this),
-	m_gpu_allocator(*this)
-{
-	create_descriptor_pools();
-	create_command_pools();
-	alloc_command_buffers();
+	m_gpu_allocator(*this),
 
-	create_sync_objects();
+	m_material_descriptor_set_pool(*this)
+{
+	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
+	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
+	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
+
+	create_command_pools();
+
+	create_white_texture();
 
 	m_simple_draw_pass.init();
 }

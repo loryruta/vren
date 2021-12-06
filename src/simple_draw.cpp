@@ -10,6 +10,9 @@
 #define UBO_CAMERA_BINDING 0
 #define UBO_CAMERA_SIZE (sizeof(float) * (16 + 16))
 
+#define VREN_DRAW_MATERIAL_TEXTURES_BINDING 1
+
+
 // ------------------------------------------------------------------------------------------------ simple_draw_pass
 
 vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
@@ -18,29 +21,14 @@ vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
 
 vren::simple_draw_pass::~simple_draw_pass()
 {
-	vkDestroyDescriptorSetLayout(m_renderer.m_device, m_descriptor_set_layout, nullptr);
 	vkDestroyPipelineLayout(m_renderer.m_device, m_pipeline_layout, nullptr);
 	vkDestroyPipeline(m_renderer.m_device, m_graphics_pipeline, nullptr);
 }
 
 void vren::simple_draw_pass::create_descriptor_set_layout()
 {
-	/* Camera */
-	VkDescriptorSetLayoutBinding camera_binding{};
-	camera_binding.binding = 0;
-	camera_binding.descriptorCount = 1;
-	camera_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	camera_binding.pImmutableSamplers = nullptr;
-	camera_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	// Textures
 
-	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info{};
-	descriptor_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptor_set_layout_info.bindingCount = 1;
-	descriptor_set_layout_info.pBindings = &camera_binding;
-
-	if (vkCreateDescriptorSetLayout(m_renderer.m_device, &descriptor_set_layout_info, nullptr, &m_descriptor_set_layout) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create descriptor set layout.");
-	}
 }
 
 VkShaderModule create_shader_module(VkDevice device, char const* path)
@@ -94,12 +82,12 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	//
 	VkVertexInputBindingDescription vtx_binding{};
 	vtx_binding.binding = 0;
-	vtx_binding.stride = sizeof(float) * (3 + 3 + 4); // position + normal + color
+	vtx_binding.stride = sizeof(vren::vertex);
 	vtx_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	VkVertexInputBindingDescription instance_data_binding{};
 	instance_data_binding.binding = 1;
-	instance_data_binding.stride = sizeof(float) * 16; // transform
+	instance_data_binding.stride = sizeof(vren::instance_data);
 	instance_data_binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
 	auto binding_descriptions = render_object::get_all_binding_desc();
@@ -154,7 +142,7 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	VkPipelineLayoutCreateInfo pipeline_layout_info{};
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_layout_info.setLayoutCount = 1;
-	pipeline_layout_info.pSetLayouts = &m_descriptor_set_layout;
+	pipeline_layout_info.pSetLayouts = &m_renderer.m_material_descriptor_set_pool.m_descriptor_set_layout;
 
 	std::vector<VkPushConstantRange> push_constants;
 
@@ -188,7 +176,7 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	dynamic_state_info.dynamicStateCount = (uint32_t) dynamic_states.size();
 	dynamic_state_info.pDynamicStates = dynamic_states.data();
 
-	/* Graphics pipeline */
+	// Graphics pipeline
 	VkGraphicsPipelineCreateInfo graphics_pipeline_info{};
 	graphics_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	graphics_pipeline_info.stageCount = shader_stage_infos.size();
@@ -214,113 +202,83 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	//vkDestroyShaderModule(m_renderer.m_device, frag_shader_mod, nullptr);
 }
 
-void vren::simple_draw_pass::fill_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes)
-{
-	VkDescriptorPoolSize descriptor_pool_size{};
-
-	descriptor_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptor_pool_size.descriptorCount = (uint32_t) VREN_MAX_FRAME_COUNT;
-	descriptor_pool_sizes.push_back(descriptor_pool_size);
-}
-
-void vren::simple_draw_pass::init_descriptor_sets()
-{
-	/* Allocation */
-	std::vector<VkDescriptorSetLayout> descriptor_set_layouts(VREN_MAX_FRAME_COUNT, m_descriptor_set_layout);
-
-	VkDescriptorSetAllocateInfo alloc_info{};
-	alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	alloc_info.descriptorPool = m_renderer.m_descriptor_pool;
-	alloc_info.descriptorSetCount = VREN_MAX_FRAME_COUNT;
-	alloc_info.pSetLayouts = descriptor_set_layouts.data();
-
-	if (vkAllocateDescriptorSets(m_renderer.m_device, &alloc_info, m_descriptor_sets.data()) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to allocate descriptor sets.");
-	}
-
-	/* Writing */
-	for (int i = 0; i < VREN_MAX_FRAME_COUNT; i++) {
-		std::vector<VkWriteDescriptorSet> descriptor_set_writes;
-
-		// Nothing to write
-
-		vkUpdateDescriptorSets(
-			m_renderer.m_device,
-			descriptor_set_writes.size(),
-			descriptor_set_writes.data(),
-			0,
-			nullptr
-		);
-	}
-}
-
 void vren::simple_draw_pass::init()
 {
+	std::cout << "Creating descriptor set layout..." << std::endl;
 	create_descriptor_set_layout();
-	std::cout << "[simple_draw] Create descriptor set layout" << std::endl;
 
+	std::cout << "Creating graphics pipeline..." << std::endl;
 	create_graphics_pipeline();
-	std::cout << "[simple_draw] Create graphics pipeline" << std::endl;
-
-	//init_descriptor_sets();
-	//std::cout << "[simple_draw] Create descriptor sets" << std::endl;
-}
-
-void vren::simple_draw_pass::fill_dst_dependency(VkSubpassDependency& dep)
-{
-	dep.dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dep.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 }
 
 void vren::simple_draw_pass::record_commands(
-	uint32_t frame_idx,
-	VkCommandBuffer command_buffer,
+	vren::frame& frame,
+	VkCommandBuffer cmd_buf,
 	vren::render_list const& render_list,
 	vren::camera const& camera
 )
 {
-	//VkDescriptorSet descriptor_set = m_descriptor_sets.at(frame_idx);
-
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
-	//vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
+	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
 
 	// Camera
-	vkCmdPushConstants(command_buffer, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vren::camera), &camera);
+	vkCmdPushConstants(cmd_buf, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vren::camera), &camera);
 
-	for (vren::render_object const& obj : render_list)
+	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
-		// Vertex buffer
-		for (size_t i = 0; i < obj.m_vertex_buffers.size(); i++) {
-			VkDeviceSize offset = 0;
-			vkCmdBindVertexBuffers(
-				command_buffer,
-				vren::render_object::get_vbo_binding_desc().at(i).binding,
-				1,
-				&obj.m_vertex_buffers.at(i).m_buffer,
-				&offset
-			);
+		auto& render_object  = render_list.m_render_objects.at(i);
+
+		VkDeviceSize offsets[] = { 0 };
+
+		if (render_object.m_instances_buffer.m_buffer == VK_NULL_HANDLE)
+		{
+			continue;
 		}
+
+		// Vertex buffer
+		vkCmdBindVertexBuffers(
+			cmd_buf,
+			0,
+			1,
+			&render_object.m_vertex_buffer.m_buffer,
+			offsets
+		);
 
 		// Indices buffer
 		vkCmdBindIndexBuffer(
-			command_buffer,
-			obj.m_indices_buffer.m_buffer,
+			cmd_buf,
+			render_object.m_indices_buffer.m_buffer,
 			0,
 			vren::render_object::s_index_type
 		);
 
 		// Instances buffer
-		for (size_t i = 0; i < obj.m_instances_buffers.size(); i++) {
-			VkDeviceSize offset = 0;
-			vkCmdBindVertexBuffers(
-				command_buffer,
-				vren::render_object::get_idb_binding_desc().at(i).binding,
-				1,
-				&obj.m_instances_buffers.at(i).m_buffer,
-				&offset
-			);
-		}
+		vkCmdBindVertexBuffers(
+			cmd_buf,
+			1,
+			1,
+			&render_object.m_instances_buffer.m_buffer,
+			offsets
+		);
 
-		vkCmdDrawIndexed(command_buffer, obj.m_indices_count, obj.m_instances_count, 0, 0, 0);
+		// Material
+		VkDescriptorSet material_descriptor_set = frame.acquire_material_descriptor_set();
+		vkCmdBindDescriptorSets(
+			cmd_buf,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			m_pipeline_layout,
+			0,
+			1,
+			&material_descriptor_set,
+			0,
+			nullptr
+		);
+
+		m_renderer.m_material_descriptor_set_pool.update_descriptor_set(
+			render_object.m_material,
+			material_descriptor_set
+		);
+
+		//
+		vkCmdDrawIndexed(cmd_buf, render_object.m_indices_count, render_object.m_instances_count, 0, 0, 0);
 	}
 }

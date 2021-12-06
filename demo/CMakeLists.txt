@@ -8,8 +8,8 @@ add_executable(vren_demo
         src/main.cpp
         src/camera.hpp
         src/camera.cpp
-        src/obj_loader.hpp
-        src/obj_loader.cpp
+        src/ai_scene_loader.hpp
+        src/ai_scene_loader.cpp
 )
 
 # vren

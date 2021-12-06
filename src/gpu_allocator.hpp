@@ -22,15 +22,11 @@ namespace vren
 
 	class gpu_allocator
 	{
-	private:
+	public:
 		vren::renderer& m_renderer;
 
 		VmaAllocator m_allocator;
 
-		VkQueue m_transfer_queue;
-		VkCommandPool m_transfer_cmd_pool;
-
-	public:
 		gpu_allocator(vren::renderer& renderer);
 		~gpu_allocator();
 
