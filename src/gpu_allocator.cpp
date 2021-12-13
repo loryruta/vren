@@ -11,8 +11,25 @@
 
 // ------------------------------------------------------------------------------------------------ gpu_buffer
 
+vren::gpu_buffer::gpu_buffer(vren::gpu_buffer&& other)
+{
+	*this = std::move(other);
+}
+
 vren::gpu_buffer::~gpu_buffer()
 {
+	// TODO better to destroy here
+}
+
+vren::gpu_buffer& vren::gpu_buffer::operator=(vren::gpu_buffer&& other) noexcept
+{
+	m_buffer = other.m_buffer;
+	m_allocation = other.m_allocation;
+
+	other.m_buffer = VK_NULL_HANDLE;
+	other.m_allocation = VK_NULL_HANDLE;
+
+	return *this;
 }
 
 // ------------------------------------------------------------------------------------------------ gpu_allocator
@@ -155,6 +172,8 @@ void vren::gpu_allocator::update_device_only_buffer(
 	vkResetCommandPool(m_renderer.m_device, m_renderer.m_transfer_command_pool, NULL);
 
 	destroy_buffer_if_any(staging_buf);
+
+	// TODO use copy_buffer(...)
 }
 
 void vren::gpu_allocator::update_buffer(
@@ -171,4 +190,46 @@ void vren::gpu_allocator::update_buffer(
 	} else {
 		update_device_only_buffer(gpu_buffer, data, size, dst_offset);
 	}
+}
+
+void vren::gpu_allocator::copy_buffer(
+	vren::gpu_buffer& src_buffer,
+	vren::gpu_buffer& dst_buffer,
+	size_t size,
+	size_t src_offset,
+	size_t dst_offset
+)
+{
+	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
+	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmd_buf_alloc_info.commandPool = m_renderer.m_transfer_command_pool;
+	cmd_buf_alloc_info.commandBufferCount = 1;
+
+	VkCommandBuffer cmd_buf{};
+	vkAllocateCommandBuffers(m_renderer.m_device, &cmd_buf_alloc_info, &cmd_buf);
+
+	VkCommandBufferBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(cmd_buf, &begin_info);
+
+	VkBufferCopy copy_region{};
+	copy_region.srcOffset = src_offset;
+	copy_region.dstOffset = dst_offset;
+	copy_region.size = size;
+	vkCmdCopyBuffer(cmd_buf, src_buffer.m_buffer, dst_buffer.m_buffer, 1, &copy_region);
+
+	vkEndCommandBuffer(cmd_buf);
+
+	VkSubmitInfo submit_info{};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &cmd_buf;
+	vkQueueSubmit(m_renderer.m_queues.at(m_renderer.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
+
+	vkQueueWaitIdle(m_renderer.m_transfer_queue);
+
+	vkResetCommandPool(m_renderer.m_device, m_renderer.m_transfer_command_pool, NULL);
 }

@@ -11,6 +11,7 @@
 #include "gpu_allocator.hpp"
 #include "frame.hpp"
 #include "material.hpp"
+#include "descriptor_set_pool.hpp"
 
 #include <glm/glm.hpp>
 
@@ -37,14 +38,26 @@ namespace vren
 	struct renderer
 	{
 	public:
-		struct queue_families {
+		static VkFormat const m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
+
+		struct queue_families
+		{
 			uint32_t m_graphics_idx = -1;
-			uint32_t m_compute_idx = -1;
+			uint32_t m_compute_idx  = -1;
 			uint32_t m_transfer_idx = -1;
 
-			[[nodiscard]] bool is_fine() const {
+			inline bool is_valid() const
+			{
 				return m_graphics_idx >= 0 && m_compute_idx >= 0 && m_transfer_idx >= 0;
 			}
+		};
+
+		struct target
+		{
+			VkFramebuffer m_framebuffer;
+			VkRect2D m_render_area;
+			VkViewport m_viewport;
+			VkRect2D m_scissor;
 		};
 
 	private:
@@ -56,6 +69,7 @@ namespace vren
 		VmaAllocator create_allocator();
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
+		void create_command_pools();
 
 		void create_white_texture();
 
@@ -64,55 +78,51 @@ namespace vren
 
 		VkInstance m_instance;
 		VkDebugUtilsMessengerEXT m_debug_messenger;
+
 		VkPhysicalDevice m_physical_device;
+		VkPhysicalDeviceProperties m_physical_device_properties;
+
 		vren::renderer::queue_families m_queue_families;
 		VkDevice m_device;
+
 		std::vector<VkQueue> m_queues;
 		VkQueue m_transfer_queue;
 		VkQueue m_graphics_queue;
 		VkQueue m_compute_queue;
 		VkRenderPass m_render_pass;
 
-		VmaAllocator m_allocator; // todo initialize it
-		vren::gpu_allocator m_gpu_allocator;
-
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
-		static const VkFormat m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
 
-		/* Command pools */
+		// Allocator
+		VmaAllocator m_allocator;
+		std::unique_ptr<vren::gpu_allocator> m_gpu_allocator;
+
+		// Command pools
 		VkCommandPool m_graphics_command_pool;
 		VkCommandPool m_transfer_command_pool;
 
-		/* Subpasses */
-		vren::simple_draw_pass m_simple_draw_pass;
+		// Subpasses
+		std::unique_ptr<vren::simple_draw_pass> m_simple_draw_pass;
 
-		vren::material_descriptor_set_pool m_material_descriptor_set_pool;
+		std::unique_ptr<vren::descriptor_set_pool> m_descriptor_set_pool;
+		std::unique_ptr<vren::material_manager> m_material_manager;
 
-		std::vector<std::unique_ptr<vren::material>> m_materials;
 		vren::texture m_white_texture;
 
-		void create_command_pools();
+		std::vector<std::unique_ptr<vren::render_list>>  m_render_lists;
+		std::vector<std::unique_ptr<vren::lights_array>> m_light_arrays;
+
+		vren::render_list* create_render_list();
+		vren::lights_array* create_light_array();
 
 		renderer(renderer_info& info);
 		~renderer();
-
-		struct target
-		{
-			VkFramebuffer m_framebuffer;
-			VkRect2D m_render_area;
-			VkViewport m_viewport;
-			VkRect2D m_scissor;
-		};
-
-		// ---------------------------------------------------------------- Texture
-
-		vren::material* create_material();
-		vren::material* get_material(size_t idx);
 
 		void render(
 			vren::frame& frame,
 			vren::renderer::target const& target,
 			vren::render_list const& render_list,
+			vren::lights_array const& lights_array,
 			vren::camera const& camera,
 			std::vector<VkSemaphore> const& wait_semaphores = {},
 			VkFence signal_fence = VK_NULL_HANDLE

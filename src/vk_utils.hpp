@@ -49,4 +49,16 @@ namespace vren
 
 		vren::texture& result
 	);
+
+	void destroy_texture(
+		vren::renderer& renderer,
+		vren::texture& texture
+	);
+
+	//
+
+	namespace vk_utils
+	{
+		void check(VkResult result);
+	}
 }

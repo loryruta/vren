@@ -63,8 +63,6 @@ vren_demo::ai_scene_baker::~ai_scene_baker()
 
 void vren_demo::ai_scene_baker::create_texture(aiTexture const* ai_texture, vren::texture& result)
 {
-	printf("Creating texture: %s\n", ai_texture->mFilename.C_Str());
-
 	int w, h;
 	int ch;
 
@@ -114,17 +112,12 @@ void vren_demo::ai_scene_baker::bake(aiScene const* ai_scene, vren::render_list&
 	{
 		auto ai_mat = ai_scene->mMaterials[i];
 
-		vren::material* material = m_renderer.create_material();
+		vren::material* material = m_renderer.m_material_manager->create_material();
 
-		aiColor4D ai_col;
-		aiGetMaterialColor(ai_mat, AI_MATKEY_COLOR_DIFFUSE, &ai_col);
-		material->m_diffuse_color = to_glm_vec4(ai_col);
+		create_material_texture(ai_scene, ai_mat, AI_MATKEY_TEXTURE_DIFFUSE(0),  material->m_albedo_texture);
 
-		aiGetMaterialColor(ai_mat, AI_MATKEY_COLOR_SPECULAR, &ai_col);
-		material->m_specular_color = to_glm_vec4(ai_col);
-
-		create_material_texture(ai_scene, ai_mat, AI_MATKEY_TEXTURE_DIFFUSE(0),  material->m_diffuse_texture);
-		create_material_texture(ai_scene, ai_mat, AI_MATKEY_TEXTURE_SPECULAR(0), material->m_specular_texture);
+		material->m_metallic  = 1.0f;
+		material->m_roughness = 0.5f;
 
 		materials[i] = material;
 	}
@@ -175,7 +168,7 @@ void vren_demo::ai_scene_baker::bake(aiScene const* ai_scene, vren::render_list&
 			vertices[j] = v;
 		}
 
-		render_obj.set_vertex_data(vertices.data(), vertices.size());
+		render_obj.set_vertices_data(vertices.data(), vertices.size());
 
 		// Indices
 		std::vector<uint32_t> indices;
@@ -211,6 +204,4 @@ void vren_demo::ai_scene_baker::bake(aiScene const* ai_scene, vren::render_list&
 		auto& render_obj = render_list.get_render_object(mesh_idx);
 		render_obj.set_instances_data(instances_data.data(), instances_data.size());
 	}
-
-
 }

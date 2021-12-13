@@ -115,9 +115,7 @@ VkInstance vren::renderer::create_instance()
 
 	//
 	VkInstance instance;
-	if (vkCreateInstance(&instance_info, nullptr, &instance) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the Vulkan instance.");
-	}
+	vren::vk_utils::check(vkCreateInstance(&instance_info, nullptr, &instance));
 
 	std::cout << "Vulkan instance initialized" << std::endl;
 
@@ -130,9 +128,7 @@ VkDebugUtilsMessengerEXT vren::renderer::setup_debug_messenger()
 	populate_debug_messenger_info(debug_messenger_info);
 
 	VkDebugUtilsMessengerEXT debug_messenger;
-	if (CreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to setup the debug messenger.");
-	}
+	vren::vk_utils::check(CreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
 
 	std::cout << "Debug messenger set up" << std::endl;
 
@@ -164,7 +160,7 @@ vren::renderer::queue_families vren::renderer::get_queue_families(VkPhysicalDevi
 			queue_families.m_transfer_idx = i;
 		}
 
-		if (queue_families.is_fine()) {
+		if (queue_families.is_valid()) {
 			break;
 		}
 	}
@@ -183,7 +179,7 @@ VkPhysicalDevice vren::renderer::find_physical_device()
 	VkPhysicalDevice found = VK_NULL_HANDLE;
 	for (VkPhysicalDevice physical_device : physical_devices)
 	{
-		if (get_queue_families(physical_device).is_fine()) {
+		if (get_queue_families(physical_device).is_valid()) {
 			found = physical_device;
 			break;
 		}
@@ -192,17 +188,15 @@ VkPhysicalDevice vren::renderer::find_physical_device()
 	if (found == VK_NULL_HANDLE) {
 		throw std::runtime_error("Can't find a physical device that fits requirements.");
 	}
-
-	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(found, &properties);
+	vkGetPhysicalDeviceProperties(found, &m_physical_device_properties);
 
 	std::cout << "Physical device found:" << std::endl;
-	std::cout << "- Type:           " << properties.deviceType << std::endl;
-	std::cout << "- Vendor ID:      " << properties.vendorID << std::endl;
-	std::cout << "- Device ID:      " << properties.deviceID << std::endl;
-	std::cout << "- Driver version: " << properties.driverVersion << std::endl;
-	std::cout << "- Name:           " << properties.deviceName << std::endl;
-	std::cout << "- API version:    " << properties.apiVersion << std::endl;
+	std::cout << "- Type:           " << m_physical_device_properties.deviceType << std::endl;
+	std::cout << "- Vendor ID:      " << m_physical_device_properties.vendorID << std::endl;
+	std::cout << "- Device ID:      " << m_physical_device_properties.deviceID << std::endl;
+	std::cout << "- Driver version: " << m_physical_device_properties.driverVersion << std::endl;
+	std::cout << "- Name:           " << m_physical_device_properties.deviceName << std::endl;
+	std::cout << "- API version:    " << m_physical_device_properties.apiVersion << std::endl;
 
 	return found;
 }
@@ -213,7 +207,8 @@ VkDevice vren::renderer::create_logical_device()
 	vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_families_count, nullptr);
 
 	std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_families_count);
-	for (int i = 0; i < queue_families_count; i++) {
+	for (int i = 0; i < queue_families_count; i++)
+	{
 		float priority = 1.0f;
 		queue_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queue_infos[i].queueFamilyIndex = i;
@@ -236,12 +231,7 @@ VkDevice vren::renderer::create_logical_device()
 	device_info.ppEnabledLayerNames = nullptr;
 
 	VkDevice device;
-	if (vkCreateDevice(m_physical_device, &device_info, nullptr, &device) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the logical device.");
-	}
-
-	std::cout << "Device created" << std::endl;
-
+	vren::vk_utils::check(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
 	return device;
 }
 
@@ -254,9 +244,7 @@ VmaAllocator vren::renderer::create_allocator()
 	create_info.device = m_device;
 
 	VmaAllocator allocator;
-	if (vmaCreateAllocator(&create_info, &allocator) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the VMA allocator.");
-	}
+	vren::vk_utils::check(vmaCreateAllocator(&create_info, &allocator));
 	return allocator;
 }
 
@@ -266,8 +254,9 @@ std::vector<VkQueue> vren::renderer::get_queues()
 	vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_families_count, nullptr);
 
 	std::vector<VkQueue> queues(queue_families_count);
-	for (uint32_t i = 0; i < queue_families_count; i++) {
-		vkGetDeviceQueue(m_device, i, 0, &queues.at(i));
+	for (uint32_t i = 0; i < queue_families_count; i++)
+	{
+		vkGetDeviceQueue(m_device, i, 0, &queues.at(i)); // Gets a queue from every queue family.
 	}
 	return queues;
 }
@@ -284,7 +273,7 @@ VkRenderPass vren::renderer::create_render_pass()
 	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // todo
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // todo we're not always intending to present a frame (e.g. when we render to a texture (?))
 
 	VkAttachmentDescription depth_attachment{};
 	depth_attachment.format = VK_FORMAT_D32_SFLOAT;
@@ -346,11 +335,7 @@ VkRenderPass vren::renderer::create_render_pass()
 	render_pass_info.pDependencies = dependencies.data();
 
 	VkRenderPass render_pass;
-	if (vkCreateRenderPass(m_device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the render pass.");
-	}
-
-	std::cout << "Render pass created" << std::endl;
+	vren::vk_utils::check(vkCreateRenderPass(m_device, &render_pass_info, nullptr, &render_pass));
 
 	return render_pass;
 }
@@ -363,18 +348,14 @@ void vren::renderer::create_command_pools()
 	// Graphics
 	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	command_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx;
-	if (vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_graphics_command_pool) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create graphics command pool.");
-	}
+	vren::vk_utils::check(vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_graphics_command_pool));
 
 	// Transfer
 	command_pool_info.flags = NULL;
 	command_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx;
-	if (vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_transfer_command_pool) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create transfer command pool.");
-	}
+	vren::vk_utils::check(vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_transfer_command_pool));
 
-	std::cout << "Command pools created" << std::endl;
+	// Compute TODO
 }
 
 void vren::renderer::create_white_texture()
@@ -393,21 +374,21 @@ void vren::renderer::create_white_texture()
 	);
 }
 
-vren::material* vren::renderer::create_material()
+vren::render_list* vren::renderer::create_render_list()
 {
-	auto& material = m_materials.emplace_back(std::make_unique<vren::material>(*this));
-	return material.get();
+	return m_render_lists.emplace_back(std::make_unique<vren::render_list>(*this)).get();
 }
 
-vren::material* vren::renderer::get_material(size_t idx)
+vren::lights_array* vren::renderer::create_light_array()
 {
-	return m_materials.at(idx).get();
+	return m_light_arrays.emplace_back(std::make_unique<vren::lights_array>(*this)).get();
 }
 
 void vren::renderer::render(
 	vren::frame& frame,
 	vren::renderer::target const& target,
 	vren::render_list const& render_list,
+	vren::lights_array const& lights_array,
 	vren::camera const& camera,
 	std::vector<VkSemaphore> const& wait_semaphores,
 	VkFence signal_fence
@@ -415,14 +396,12 @@ void vren::renderer::render(
 {
 	// Commands re-recording
 	VkCommandBuffer cmd_buf = frame.m_command_buffer;
-	vkResetCommandBuffer(cmd_buf, NULL);
+	vren::vk_utils::check(vkResetCommandBuffer(cmd_buf, NULL));
 
 	VkCommandBufferBeginInfo cmd_buffer_begin_info{};
 	cmd_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	if (vkBeginCommandBuffer(cmd_buf, &cmd_buffer_begin_info) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to begin recording to the command buffer");
-	}
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &cmd_buffer_begin_info));
 
 	VkRenderPassBeginInfo render_pass_begin_info{};
 	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -442,13 +421,16 @@ void vren::renderer::render(
 	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
 	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
-	m_simple_draw_pass.record_commands(frame, cmd_buf, render_list, camera);
+	m_simple_draw_pass->record_commands(
+		frame,
+		render_list,
+		lights_array,
+		camera
+	);
 
 	vkCmdEndRenderPass(cmd_buf);
 
-	if (vkEndCommandBuffer(cmd_buf) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to end command buffer recording");
-	}
+	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
 
 	// Submission
 	VkSubmitInfo submit_info{};
@@ -463,9 +445,7 @@ void vren::renderer::render(
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submit_info.pWaitDstStageMask = wait_stages;
 
-	if (vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, signal_fence) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to submit command buffer.");
-	}
+	vren::vk_utils::check(vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, signal_fence));
 }
 
 vren::renderer::renderer(renderer_info& info) :
@@ -478,12 +458,7 @@ vren::renderer::renderer(renderer_info& info) :
 	m_queue_families(get_queue_families(m_physical_device)),
 	m_device(create_logical_device()),
 	m_queues(get_queues()),
-	m_render_pass(create_render_pass()),
-
-	m_simple_draw_pass(*this),
-	m_gpu_allocator(*this),
-
-	m_material_descriptor_set_pool(*this)
+	m_render_pass(create_render_pass())
 {
 	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
 	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
@@ -491,12 +466,39 @@ vren::renderer::renderer(renderer_info& info) :
 
 	create_command_pools();
 
+	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(*this);
+
 	create_white_texture();
 
-	m_simple_draw_pass.init();
+	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
+	m_material_manager = std::make_unique<vren::material_manager>(*this);
+
+	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(*this);
 }
 
 vren::renderer::~renderer()
 {
-	// todo destroy
+	m_light_arrays.clear();
+	m_render_lists.clear();
+
+	vren::destroy_texture(*this, m_white_texture);
+
+	m_material_manager.reset();
+	m_descriptor_set_pool.reset();
+
+	m_simple_draw_pass.reset();
+
+	vkDestroyCommandPool(m_device, m_graphics_command_pool, nullptr);
+	vkDestroyCommandPool(m_device, m_transfer_command_pool, nullptr);
+
+	m_gpu_allocator.reset();
+
+	vkDestroyRenderPass(m_device, m_render_pass, nullptr);
+
+	//m_queues.clear();
+
+	vkDestroyDevice(m_device, nullptr);
+
+	DestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
+	vkDestroyInstance(m_instance, nullptr);
 }

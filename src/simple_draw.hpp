@@ -7,6 +7,7 @@
 #include "config.hpp"
 #include "material.hpp"
 #include "frame.hpp"
+#include "light.hpp"
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -24,8 +25,6 @@ namespace vren
 	class simple_draw_pass
 	{
 	private:
-		// Init
-		void create_descriptor_set_layout();
 		void create_graphics_pipeline();
 
 	public:
@@ -39,12 +38,10 @@ namespace vren
 		simple_draw_pass(renderer& renderer);
 		~simple_draw_pass();
 
-		void init();
-
 		void record_commands(
 			vren::frame& frame,
-			VkCommandBuffer cmd_buf,
 			vren::render_list const& render_list,
+			vren::lights_array const& lights_array,
 			vren::camera const& camera
 		);
 	};

@@ -11,11 +11,21 @@ namespace vren
 
 	struct gpu_buffer
 	{
-		VkBuffer m_buffer = VK_NULL_HANDLE;
+		VkBuffer m_buffer          = VK_NULL_HANDLE;
 		VmaAllocation m_allocation = VK_NULL_HANDLE;
 
 		gpu_buffer() = default;
+		gpu_buffer(vren::gpu_buffer const& other) = delete;
+		gpu_buffer(vren::gpu_buffer&& other);
 		~gpu_buffer();
+
+		vren::gpu_buffer& operator=(vren::gpu_buffer const& other) = delete;
+		vren::gpu_buffer& operator=(vren::gpu_buffer&& other) noexcept;
+
+		inline bool is_valid() const
+		{
+			return m_buffer != VK_NULL_HANDLE && m_allocation != VK_NULL_HANDLE;
+		}
 	};
 
 	//
@@ -63,6 +73,14 @@ namespace vren
 			vren::gpu_buffer& buffer,
 			void const* data,
 			size_t size,
+			size_t dst_offset
+		);
+
+		void copy_buffer(
+			vren::gpu_buffer& src_buffer,
+			vren::gpu_buffer& dst_buffer,
+			size_t size,
+			size_t src_offset,
 			size_t dst_offset
 		);
 	};

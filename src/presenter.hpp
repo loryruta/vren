@@ -33,18 +33,15 @@ namespace vren
 		};
 
 	private:
-		VkSwapchainKHR create_swapchain(VkExtent2D extent);
+		VkSwapchainKHR _create_swapchain(VkExtent2D extent);
 
 		void _create_frames();
-		//void create_swapchain_images();
-		//void create_swapchain_image_views();
-		//void create_swapchain_framebuffers();
-
-		void create_depth_buffer();
-		void destroy_depth_buffer();
+		void _create_depth_buffer();
+		void _destroy_depth_buffer();
+		void _destroy_swapchain();
 
 	public:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		presenter_info m_info;
 		VkSurfaceKHR m_surface;
@@ -66,14 +63,16 @@ namespace vren
 
 		uint32_t m_current_frame_idx = 0;
 
-		void destroy_swapchain();
-
 		void recreate_swapchain(VkExtent2D extent);
 
-		presenter(vren::renderer& renderer, vren::presenter_info& info, VkSurfaceKHR surface, VkExtent2D initial_extent);
+		presenter(std::shared_ptr<vren::renderer>& renderer, vren::presenter_info& info, VkSurfaceKHR surface, VkExtent2D initial_extent);
 		~presenter();
 
-		void present(vren::render_list const& render_list, vren::camera const& camera);
+		void present(
+			vren::render_list const& render_list,
+			vren::lights_array const& light_array,
+			vren::camera const& camera
+		);
 	};
 }
 

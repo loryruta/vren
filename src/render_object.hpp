@@ -46,8 +46,9 @@ namespace vren
 		return join_impl( a, b, std::make_index_sequence<N>{}, std::make_index_sequence<M>{} );
 	}
 
-	struct render_object
+	class render_object
 	{
+	public:
 		static constexpr auto get_vbo_binding_desc()
 		{
 			std::array<VkVertexInputBindingDescription, 1> binding_desc{};
@@ -112,7 +113,7 @@ namespace vren
 			binding_desc[0] = {
 				.binding = 1,
 				.stride = sizeof(vren::instance_data),
-				.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+				.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
 			};
 			return binding_desc;
 		}
@@ -166,15 +167,18 @@ namespace vren
 			return vren::join(get_vbo_attrib_desc(), get_idb_attrib_desc());
 		}
 
-		vren::renderer* m_renderer;
-
-		uint32_t m_render_list_idx = -1;
-
 		static constexpr VkIndexType s_index_type = VK_INDEX_TYPE_UINT32;
 
-		vren::gpu_buffer m_vertex_buffer;
-		vren::gpu_buffer m_indices_buffer;
+	private:
+		vren::renderer* m_renderer;
 
+	public:
+		uint32_t m_idx = -1;
+
+		vren::gpu_buffer m_vertex_buffer;
+		uint32_t m_vertices_count;
+
+		vren::gpu_buffer m_indices_buffer;
 		uint32_t m_indices_count;
 
 		vren::gpu_buffer m_instances_buffer;
@@ -182,13 +186,18 @@ namespace vren
 
 		vren::material* m_material;
 
-		render_object(vren::renderer* renderer);
+		explicit render_object(vren::renderer* renderer);
+		render_object(vren::render_object const& other) = delete;
+		render_object(vren::render_object&& other) noexcept;
 		~render_object();
 
-		void set_material(vren::material* material);
+		vren::render_object& operator=(vren::render_object const& other) = delete;
+		vren::render_object& operator=(vren::render_object&& other) noexcept;
 
-		void set_vertex_data(vren::vertex const* vertices, size_t vertices_count);
-		void set_indices_data(uint32_t const* indices, size_t count);
-		void set_instances_data(vren::instance_data const* instances_data, size_t count);
+		bool is_valid() const;
+
+		void set_vertices_data(vren::vertex const* vertices_data, size_t vertices_count);
+		void set_indices_data(uint32_t const* indices, size_t indices_count);
+		void set_instances_data(vren::instance_data const* instances_data, size_t instances_count);
 	};
 }

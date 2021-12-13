@@ -33,25 +33,23 @@ void vren::create_image(
 	VmaAllocationCreateInfo alloc_create_info{};
 	alloc_create_info.requiredFlags = memory_properties;
 
-	if (vmaCreateImage(renderer.m_gpu_allocator.m_allocator, &image_info, &alloc_create_info, &result.m_handle, &result.m_allocation, nullptr) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create image");
-	}
+	vren::vk_utils::check(vmaCreateImage(renderer.m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &result.m_handle, &result.m_allocation, nullptr));
 
 	if (image_data)
 	{
-		auto gpu_allocator = renderer.m_gpu_allocator;
+		auto& allocator = renderer.m_gpu_allocator;
 
 		VkMemoryRequirements image_memory_requirements{};
 		vkGetImageMemoryRequirements(renderer.m_device, result.m_handle, &image_memory_requirements);
 		VkDeviceSize image_size = image_memory_requirements.size;
 
 		vren::gpu_buffer staging_buffer;
-		gpu_allocator.alloc_host_visible_buffer(staging_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
+		allocator->alloc_host_visible_buffer(staging_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
 
 		void* mapped_image_data;
-		vmaMapMemory(gpu_allocator.m_allocator, staging_buffer.m_allocation, &mapped_image_data);
+		vren::vk_utils::check(vmaMapMemory(allocator->m_allocator, staging_buffer.m_allocation, &mapped_image_data));
 			memcpy(mapped_image_data, image_data, static_cast<size_t>(image_size));
-		vmaUnmapMemory(gpu_allocator.m_allocator, staging_buffer.m_allocation);
+		vmaUnmapMemory(allocator->m_allocator, staging_buffer.m_allocation);
 
 		VkCommandBufferAllocateInfo cmd_buf_info{};
 		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -60,13 +58,13 @@ void vren::create_image(
 		cmd_buf_info.commandBufferCount = 1;
 
 		VkCommandBuffer cmd_buf{};
-		vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_info, &cmd_buf);
+		vren::vk_utils::check(vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_info, &cmd_buf));
 
 		VkCommandBufferBeginInfo begin_info{};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		vkBeginCommandBuffer(cmd_buf, &begin_info);
+		vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &begin_info));
 
 		VkImageMemoryBarrier memory_barrier{};
 
@@ -119,19 +117,18 @@ void vren::create_image(
 
 		vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
 
-		vkEndCommandBuffer(cmd_buf);
+		vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
 
 		VkSubmitInfo submit_info{};
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submit_info.commandBufferCount = 1;
 		submit_info.pCommandBuffers = &cmd_buf;
 
-		VkQueue transfer_queue = renderer.m_transfer_queue;
-		vkQueueSubmit(transfer_queue, 1, &submit_info, VK_NULL_HANDLE);
-		vkQueueWaitIdle(transfer_queue);
+		vren::vk_utils::check(vkQueueSubmit(renderer.m_transfer_queue, 1, &submit_info, VK_NULL_HANDLE));
+		vren::vk_utils::check(vkQueueWaitIdle(renderer.m_transfer_queue));
 
 		//vkFreeCommandBuffers(renderer.m_device, renderer.m_transfer_command_pool, 1, &cmd_buf);
-		vkResetCommandPool(renderer.m_device, renderer.m_transfer_command_pool, NULL);
+		vren::vk_utils::check(vkResetCommandPool(renderer.m_device, renderer.m_transfer_command_pool, NULL));
 	}
 }
 
@@ -163,9 +160,7 @@ void vren::create_image_view(vren::renderer& renderer, vren::image const& image,
 	image_view_info.subresourceRange.baseArrayLayer = 0;
 	image_view_info.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &result.m_handle) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the image view.");
-	}
+	vren::vk_utils::check(vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &result.m_handle));
 }
 
 void vren::destroy_image_view(vren::renderer& renderer, vren::image_view& result)
@@ -224,11 +219,29 @@ void vren::create_texture(
 	create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	create_info.unnormalizedCoordinates = VK_FALSE;
 
-	if (vkCreateSampler(renderer.m_device, &create_info, nullptr, &result.m_sampler_handle)) {
-		throw std::runtime_error("Failed to create texture sampler");
-	}
+	vren::vk_utils::check(vkCreateSampler(renderer.m_device, &create_info, nullptr, &result.m_sampler_handle));
 }
 
+void vren::destroy_texture(
+	vren::renderer& renderer,
+	vren::texture& texture
+)
+{
+	vkDestroySampler(renderer.m_device, texture.m_sampler_handle, nullptr);
+	vren::destroy_image_view(renderer, texture.m_image_view);
+	vren::destroy_image(renderer, texture.m_image);
+}
+
+void vren::vk_utils::check(VkResult result)
+{
+	if (result != VK_SUCCESS)
+	{
+		printf("Vulkan command failed with code: %d\n", result);
+		fflush(stdout);
+
+		throw std::runtime_error("Vulkan command failed");
+	}
+}
 
 
 

@@ -17,7 +17,9 @@
 
 vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
 	m_renderer(renderer)
-{}
+{
+	create_graphics_pipeline();
+}
 
 vren::simple_draw_pass::~simple_draw_pass()
 {
@@ -25,18 +27,12 @@ vren::simple_draw_pass::~simple_draw_pass()
 	vkDestroyPipeline(m_renderer.m_device, m_graphics_pipeline, nullptr);
 }
 
-void vren::simple_draw_pass::create_descriptor_set_layout()
-{
-	// Textures
-
-}
-
 VkShaderModule create_shader_module(VkDevice device, char const* path)
 {
 	// Read file
 	std::ifstream f(path, std::ios::ate | std::ios::binary);
 	if (!f.is_open()) {
-		throw std::runtime_error("Failed to open file.");
+		throw std::runtime_error("Failed to open file");
 	}
 
 	auto file_size = f.tellg();
@@ -54,9 +50,7 @@ VkShaderModule create_shader_module(VkDevice device, char const* path)
 	shader_info.pCode = reinterpret_cast<const uint32_t*>(buffer.data());
 
 	VkShaderModule shader_module;
-	if (vkCreateShaderModule(device, &shader_info, nullptr, &shader_module) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create shader module.");
-	}
+	vren::vk_utils::check(vkCreateShaderModule(device, &shader_info, nullptr, &shader_module));
 
 	return shader_module;
 }
@@ -139,26 +133,29 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	color_blend_info.attachmentCount = 1;
 	color_blend_info.pAttachments = &color_blend_attachment;
 
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts = {
+		m_renderer.m_descriptor_set_pool->m_material_layout,
+		m_renderer.m_descriptor_set_pool->m_lights_array_layout
+	};
+
 	VkPipelineLayoutCreateInfo pipeline_layout_info{};
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipeline_layout_info.setLayoutCount = 1;
-	pipeline_layout_info.pSetLayouts = &m_renderer.m_material_descriptor_set_pool.m_descriptor_set_layout;
+	pipeline_layout_info.setLayoutCount = descriptor_set_layouts.size();
+	pipeline_layout_info.pSetLayouts = descriptor_set_layouts.data();
 
 	std::vector<VkPushConstantRange> push_constants;
 
-	// Camera (view + projection)
+	// Camera
 	VkPushConstantRange push_constant{};
 	push_constant.offset = 0;
 	push_constant.size = sizeof(float) * (16 + 16);
-	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	push_constants.push_back(push_constant);
 
 	pipeline_layout_info.pPushConstantRanges = push_constants.data();
 	pipeline_layout_info.pushConstantRangeCount = (uint32_t) push_constants.size();
 
-	if (vkCreatePipelineLayout(m_renderer.m_device, &pipeline_layout_info, nullptr, &m_pipeline_layout) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create pipeline layout.");
-	}
+	vren::vk_utils::check(vkCreatePipelineLayout(m_renderer.m_device, &pipeline_layout_info, nullptr, &m_pipeline_layout));
 
 	// Viewport state
 	VkPipelineViewportStateCreateInfo viewport_state_info{};
@@ -194,91 +191,109 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	graphics_pipeline_info.subpass = 0;
 	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines(m_renderer.m_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_graphics_pipeline) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create the graphics pipeline.");
-	}
+	vren::vk_utils::check(vkCreateGraphicsPipelines(m_renderer.m_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_graphics_pipeline));
 
 	//vkDestroyShaderModule(m_renderer.m_device, vert_shader_mod, nullptr);
 	//vkDestroyShaderModule(m_renderer.m_device, frag_shader_mod, nullptr);
 }
 
-void vren::simple_draw_pass::init()
-{
-	std::cout << "Creating descriptor set layout..." << std::endl;
-	create_descriptor_set_layout();
-
-	std::cout << "Creating graphics pipeline..." << std::endl;
-	create_graphics_pipeline();
-}
-
 void vren::simple_draw_pass::record_commands(
 	vren::frame& frame,
-	VkCommandBuffer cmd_buf,
 	vren::render_list const& render_list,
+	vren::lights_array const& lights_array,
 	vren::camera const& camera
 )
 {
-	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+	vkCmdBindPipeline(frame.m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+
+	VkDescriptorSet descriptor_set;
 
 	// Camera
-	vkCmdPushConstants(cmd_buf, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vren::camera), &camera);
+	vkCmdPushConstants(
+		frame.m_command_buffer,
+		m_pipeline_layout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(vren::camera),
+		&camera
+	);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
-		auto& render_object  = render_list.m_render_objects.at(i);
+		auto& render_obj = render_list.m_render_objects.at(i);
 
-		VkDeviceSize offsets[] = { 0 };
-
-		if (render_object.m_instances_buffer.m_buffer == VK_NULL_HANDLE)
+		if (!render_obj.is_valid())
 		{
+			printf("WARNING: Render object %d is invalid.\n", render_obj.m_idx);
 			continue;
 		}
 
+		VkDeviceSize offsets[] = { 0 };
+
 		// Vertex buffer
 		vkCmdBindVertexBuffers(
-			cmd_buf,
+			frame.m_command_buffer,
 			0,
 			1,
-			&render_object.m_vertex_buffer.m_buffer,
+			&render_obj.m_vertex_buffer.m_buffer,
 			offsets
 		);
 
 		// Indices buffer
 		vkCmdBindIndexBuffer(
-			cmd_buf,
-			render_object.m_indices_buffer.m_buffer,
+			frame.m_command_buffer,
+			render_obj.m_indices_buffer.m_buffer,
 			0,
 			vren::render_object::s_index_type
 		);
 
 		// Instances buffer
 		vkCmdBindVertexBuffers(
-			cmd_buf,
+			frame.m_command_buffer,
 			1,
 			1,
-			&render_object.m_instances_buffer.m_buffer,
+			&render_obj.m_instances_buffer.m_buffer,
 			offsets
 		);
 
 		// Material
-		VkDescriptorSet material_descriptor_set = frame.acquire_material_descriptor_set();
+		descriptor_set = frame.acquire_material_descriptor_set();
 		vkCmdBindDescriptorSets(
-			cmd_buf,
+			frame.m_command_buffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			m_pipeline_layout,
-			0,
+			VREN_MATERIAL_DESCRIPTOR_SET,
 			1,
-			&material_descriptor_set,
+			&descriptor_set,
 			0,
 			nullptr
 		);
-
-		m_renderer.m_material_descriptor_set_pool.update_descriptor_set(
-			render_object.m_material,
-			material_descriptor_set
+		m_renderer.m_material_manager->update_material_descriptor_set(
+			render_obj.m_material,
+			descriptor_set
 		);
 
-		//
-		vkCmdDrawIndexed(cmd_buf, render_object.m_indices_count, render_object.m_instances_count, 0, 0, 0);
+		// Lights array
+		descriptor_set = frame.acquire_lights_array_descriptor_set();
+		vkCmdBindDescriptorSets(
+			frame.m_command_buffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			m_pipeline_layout,
+			VREN_LIGHTS_ARRAY_DESCRIPTOR_SET,
+			1,
+			&descriptor_set,
+			0,
+			nullptr
+		);
+		lights_array.update_descriptor_set(descriptor_set);
+
+		vkCmdDrawIndexed(
+			frame.m_command_buffer,
+			render_obj.m_indices_count,
+			render_obj.m_instances_count,
+			0,
+			0,
+			0
+		);
 	}
 }

@@ -42,6 +42,10 @@ add_library(vren
         src/material.cpp
         src/frame.cpp
         src/frame.hpp
+        src/light.cpp
+        src/light.hpp
+        src/descriptor_set_pool.hpp
+        src/descriptor_set_pool.cpp
 )
 
 # Vulkan

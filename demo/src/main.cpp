@@ -7,7 +7,6 @@
 
 #include <iostream>
 #include <optional>
-#include <stdio.h>
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -25,24 +24,19 @@ GLFWwindow* g_window;
 void create_cube(vren::render_object& render_object)
 {
 	std::vector<vren::vertex> vertices = {
-		vren::vertex{ .m_position = { -1, -1, -1 } },
-		vren::vertex{ .m_position = { 1, -1, -1 } },
-		vren::vertex{ .m_position = { 1, 1, -1 } },
-		vren::vertex{ .m_position = { -1, 1, -1 } },
-		vren::vertex{ .m_position = { -1, -1, 1 } },
-		vren::vertex{ .m_position = { 1, -1, 1 } },
-		vren::vertex{ .m_position = { 1, 1, 1 } },
-		vren::vertex{ .m_position = { -1, 1, 1 } }
+		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = {  } },
+		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = {  } }
 	};
-	render_object.set_vertex_data(vertices.data(), vertices.size());
+	render_object.set_vertices_data(vertices.data(), vertices.size());
 
 	std::vector<uint32_t> indices = {
-		0, 1, 3, 3, 1, 2,
-		1, 5, 2, 2, 5, 6,
-		5, 4, 6, 6, 4, 7,
-		4, 0, 7, 7, 0, 3,
-		3, 2, 7, 7, 2, 6,
-		4, 5, 0, 0, 5, 1
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 	};
 	render_object.set_indices_data(indices.data(), indices.size());
 
@@ -121,7 +115,7 @@ int main(int argc, char* argv[])
 	// ---------------------------------------------------------------- Context initialization
 
 	vren::renderer_info renderer_info;
-	renderer_info.m_app_name = "vren_example";
+	renderer_info.m_app_name = "vren_demo";
 	renderer_info.m_app_version = VK_MAKE_VERSION(1, 0, 0);
 	renderer_info.m_layers = {};
 
@@ -134,30 +128,42 @@ int main(int argc, char* argv[])
 
 	renderer_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-	vren::renderer renderer(renderer_info);
+	auto renderer = std::make_shared<vren::renderer>(renderer_info);
 
-	renderer.m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
+	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
 	VkSurfaceKHR surface;
-	if (glfwCreateWindowSurface(renderer.m_instance, g_window, nullptr, &surface) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create window surface.");
-	}
+	vren::vk_utils::check(glfwCreateWindowSurface(renderer->m_instance, g_window, nullptr, &surface));
 
 	vren::presenter_info presenter_info{};
 	presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
 	vren::presenter presenter(renderer, presenter_info, surface, {500, 500});
 
-	vren::render_list render_list(renderer);
+	auto render_list = renderer->create_render_list();
 
 	// ---------------------------------------------------------------- Creation of a test cube
 
-	//auto& cube = render_list.create_render_object();
-	//create_cube(cube); // Baking
+	auto light_array = renderer->create_light_array();
 
-	// ---------------------------------------------------------------- Creation of the scene
+	{ // Point light 1
+		vren::point_light& light = light_array->create_point_light().first;
+		light.m_position = glm::vec3(23, 34, 65);
+	}
 
-	// Scene loading
+	{ // Point light 2
+		vren::point_light& light = light_array->create_point_light().first;
+		light.m_position = glm::vec3(6, 2, 1);
+	}
+
+	{ // Directional light
+		vren::directional_light& light = light_array->create_directional_light().first;
+		light.m_direction = glm::normalize(glm::vec3(322, 23, 65));
+	}
+
+	light_array->update_device_buffers();
+
+	// Scene
 	char const* scene_path = "resources/models/skull/12140_Skull_v3_L2.obj";
 
 	printf("Loading scene: %s\n", scene_path);
@@ -184,8 +190,33 @@ int main(int argc, char* argv[])
 	printf("Baking scene\n");
 	fflush(stdout);
 
-	vren_demo::ai_scene_baker scene_baker(renderer);
-	scene_baker.bake(ai_scene, render_list);
+	vren_demo::ai_scene_baker scene_baker(*renderer);
+	scene_baker.bake(ai_scene, *render_list);
+
+	for (auto& render_obj : render_list->m_render_objects)
+	{
+		constexpr float r = 25.0f;
+		constexpr size_t obj_num = 10;
+
+		std::vector<vren::instance_data> instances{};
+
+		for (int i = 0; i < obj_num; i++)
+		{
+			vren::instance_data instance{};
+			instance.m_transform = glm::identity<glm::mat4>();
+			instance.m_transform = glm::translate(instance.m_transform, glm::vec3(
+				glm::cos((float) (2 * glm::pi<float>() / (float) obj_num) * (float) i) * r,
+				0,
+				glm::sin((float) (2 * glm::pi<float>() / (float) obj_num) * (float) i) * r
+			));
+
+			instances.push_back(instance);
+		}
+
+		render_obj.set_instances_data(instances.data(), instances.size());
+	}
+
+	renderer->m_material_manager->upload_device_buffer();
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -201,16 +232,15 @@ int main(int argc, char* argv[])
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
 		last_time = cur_time;
 
-		if (glfwGetKey(g_window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		if (glfwGetKey(g_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		{
 			glfwSetWindowShouldClose(g_window, GLFW_TRUE);
 		}
 
 		update_camera(dt, camera);
 
-		presenter.present(render_list, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
+		presenter.present(*render_list, *light_array, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
 	}
-
-	// todo destroy stuff
 
 	return 0;
 }

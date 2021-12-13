@@ -12,7 +12,7 @@ namespace vren
 	class frame
 	{
 	public:
-		std::vector<VkDescriptorSet> m_acquired_material_descriptor_sets;
+		std::vector<VkDescriptorSet> m_acquired_descriptor_sets;
 
 		vren::renderer& m_renderer;
 
@@ -26,8 +26,10 @@ namespace vren
 		VkSemaphore m_render_finished_semaphore = VK_NULL_HANDLE;
 		VkFence m_render_finished_fence         = VK_NULL_HANDLE;
 
-		void _release_material_descriptor_sets();
+		void _release_descriptor_sets();
+
 		VkDescriptorSet acquire_material_descriptor_set();
+		VkDescriptorSet acquire_lights_array_descriptor_set();
 
 		explicit frame(vren::renderer& renderer);
 		frame(vren::frame&& other) noexcept;
