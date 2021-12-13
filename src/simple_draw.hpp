@@ -25,16 +25,17 @@ namespace vren
 	class simple_draw_pass
 	{
 	private:
-		void create_graphics_pipeline();
-
-	public:
 		vren::renderer& m_renderer;
 
-		// General
-		VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
-		VkPipeline m_graphics_pipeline = VK_NULL_HANDLE;
+		void _create_graphics_pipeline();
 
-		// Per-frame data
+	public:
+		VkShaderModule m_vertex_shader   = VK_NULL_HANDLE;
+		VkShaderModule m_fragment_shader = VK_NULL_HANDLE;
+
+		VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
+		VkPipeline m_graphics_pipeline     = VK_NULL_HANDLE;
+
 		simple_draw_pass(renderer& renderer);
 		~simple_draw_pass();
 

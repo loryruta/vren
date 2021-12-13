@@ -2,12 +2,21 @@
 
 #include "renderer.hpp"
 
-vren::material::material(vren::renderer& renderer)
+vren::material::material(vren::renderer& renderer) :
+	m_renderer(renderer)
 {
 	m_albedo_texture = renderer.m_white_texture;
 
 	m_metallic  = 0;
 	m_roughness = 0;
+}
+
+vren::material::~material()
+{
+	if (m_albedo_texture != m_renderer.m_white_texture) // todo delegate the texture destruction to a specialized class (texture_manager)
+	{
+		vren::destroy_texture(m_renderer, m_albedo_texture);
+	}
 }
 
 struct material_struct

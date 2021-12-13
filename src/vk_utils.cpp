@@ -127,6 +127,8 @@ void vren::create_image(
 		vren::vk_utils::check(vkQueueSubmit(renderer.m_transfer_queue, 1, &submit_info, VK_NULL_HANDLE));
 		vren::vk_utils::check(vkQueueWaitIdle(renderer.m_transfer_queue));
 
+		allocator->destroy_buffer_if_any(staging_buffer);
+
 		//vkFreeCommandBuffers(renderer.m_device, renderer.m_transfer_command_pool, 1, &cmd_buf);
 		vren::vk_utils::check(vkResetCommandPool(renderer.m_device, renderer.m_transfer_command_pool, NULL));
 	}
@@ -163,12 +165,14 @@ void vren::create_image_view(vren::renderer& renderer, vren::image const& image,
 	vren::vk_utils::check(vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &result.m_handle));
 }
 
-void vren::destroy_image_view(vren::renderer& renderer, vren::image_view& result)
+void vren::destroy_image_view_if_any(vren::renderer& renderer, vren::image_view& image_view)
 {
-	if (result.m_handle != VK_NULL_HANDLE)
+	// TODO destructor?
+
+	if (image_view.is_valid())
 	{
-		vkDestroyImageView(renderer.m_device, result.m_handle, nullptr);
-		result.m_handle = VK_NULL_HANDLE;
+		vkDestroyImageView(renderer.m_device, image_view.m_handle, nullptr);
+		image_view.m_handle = VK_NULL_HANDLE;
 	}
 }
 
@@ -228,7 +232,7 @@ void vren::destroy_texture(
 )
 {
 	vkDestroySampler(renderer.m_device, texture.m_sampler_handle, nullptr);
-	vren::destroy_image_view(renderer, texture.m_image_view);
+	vren::destroy_image_view_if_any(renderer, texture.m_image_view);
 	vren::destroy_image(renderer, texture.m_image);
 }
 

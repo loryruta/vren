@@ -18,13 +18,16 @@
 vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
 	m_renderer(renderer)
 {
-	create_graphics_pipeline();
+	_create_graphics_pipeline();
 }
 
 vren::simple_draw_pass::~simple_draw_pass()
 {
 	vkDestroyPipelineLayout(m_renderer.m_device, m_pipeline_layout, nullptr);
 	vkDestroyPipeline(m_renderer.m_device, m_graphics_pipeline, nullptr);
+
+	vkDestroyShaderModule(m_renderer.m_device, m_fragment_shader, nullptr);
+	vkDestroyShaderModule(m_renderer.m_device, m_vertex_shader, nullptr);
 }
 
 VkShaderModule create_shader_module(VkDevice device, char const* path)
@@ -55,7 +58,7 @@ VkShaderModule create_shader_module(VkDevice device, char const* path)
 	return shader_module;
 }
 
-void vren::simple_draw_pass::create_graphics_pipeline()
+void vren::simple_draw_pass::_create_graphics_pipeline()
 {
 	// Shader stages
 	std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
@@ -64,12 +67,14 @@ void vren::simple_draw_pass::create_graphics_pipeline()
 	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 
 	shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shader_stage_info.module = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.vert.bin");
+	m_vertex_shader = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.vert.bin");
+	shader_stage_info.module = m_vertex_shader;
 	shader_stage_info.pName = "main";
 	shader_stage_infos.push_back(shader_stage_info);
 
 	shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shader_stage_info.module =  create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.frag.bin");
+	m_fragment_shader = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.frag.bin");
+	shader_stage_info.module = m_fragment_shader;
 	shader_stage_info.pName = "main";
 	shader_stage_infos.push_back(shader_stage_info);
 

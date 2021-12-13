@@ -5,6 +5,7 @@
 
 namespace vren
 {
+	// Forward decl
 	class renderer;
 
 	//

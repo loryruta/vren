@@ -56,6 +56,11 @@ namespace vren
 		{
 			vren::image m_image;
 			vren::image_view m_image_view;
+
+			inline bool is_valid() const
+			{
+				return m_image.is_valid() && m_image_view.is_valid();
+			}
 		};
 		depth_buffer m_depth_buffer;
 

@@ -37,16 +37,19 @@ vren::gpu_buffer& vren::gpu_buffer::operator=(vren::gpu_buffer&& other) noexcept
 vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
 	m_renderer(renderer)
 {
+	// todo init allocator here
 	m_allocator = m_renderer.m_allocator;
 }
 
 vren::gpu_allocator::~gpu_allocator()
 {
+	vmaDestroyAllocator(m_allocator);
 }
 
 void vren::gpu_allocator::destroy_buffer_if_any(vren::gpu_buffer& buffer)
 {
-	if (buffer.m_buffer != VK_NULL_HANDLE || buffer.m_allocation != VK_NULL_HANDLE) {
+	if (buffer.is_valid())
+	{
 		vmaDestroyBuffer(m_allocator, buffer.m_buffer, buffer.m_allocation);
 	}
 

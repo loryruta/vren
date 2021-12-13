@@ -64,6 +64,10 @@ vren::frame::frame(vren::frame&& other) noexcept :
 
 vren::frame::~frame()
 {
+	if (m_swapchain_framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(m_renderer.m_device, m_swapchain_framebuffer, nullptr);
+	if (m_swapchain_image_view != VK_NULL_HANDLE)  vkDestroyImageView(m_renderer.m_device, m_swapchain_image_view, nullptr);
+	//if (m_swapchain_image != VK_NULL_HANDLE)       vkDestroyImage(m_renderer.m_device, m_swapchain_image, nullptr);
+
 	if (m_command_buffer != VK_NULL_HANDLE)
 	{
 		vkFreeCommandBuffers(m_renderer.m_device, m_renderer.m_graphics_command_pool, 1, &m_command_buffer);

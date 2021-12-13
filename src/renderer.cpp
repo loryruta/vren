@@ -55,14 +55,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 	VkDebugUtilsMessageTypeFlagsEXT message_type,
 	VkDebugUtilsMessengerCallbackDataEXT const* data,
 	void* user_data
-) {
+)
+{
 	bool should_print = false;
+	//should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
 	should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 	should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 
-	if (should_print) {
+	if (should_print)
+	{
 		std::cerr << data->pMessage << std::endl;
 	}
+
 	return VK_FALSE;
 }
 

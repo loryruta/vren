@@ -15,6 +15,8 @@ namespace vren
 
 	struct material
 	{
+		vren::renderer& m_renderer; // todo tmp
+
 		uint32_t m_idx;
 
 		vren::texture m_albedo_texture;
@@ -23,6 +25,7 @@ namespace vren
 		float m_roughness;
 
 		explicit material(vren::renderer& renderer);
+		~material();
 	};
 
 	class material_manager

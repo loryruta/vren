@@ -169,7 +169,7 @@ void vren::presenter::_destroy_depth_buffer()
 		m_depth_buffer.m_image
 	);
 
-	vren::destroy_image_view(
+	vren::destroy_image_view_if_any(
 		*m_renderer,
 		m_depth_buffer.m_image_view
 	);
@@ -214,7 +214,11 @@ vren::presenter::~presenter()
 		vkWaitForFences(m_renderer->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
 	}
 
+	m_frames.clear();
+
 	_destroy_swapchain();
+
+	vkDestroySurfaceKHR(m_renderer->m_instance, m_surface, nullptr); // TODO should initialize the surface itself
 }
 
 void vren::presenter::present(

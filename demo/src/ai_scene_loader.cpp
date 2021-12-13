@@ -97,7 +97,8 @@ void vren_demo::ai_scene_baker::create_material_texture(
 
 	aiGetMaterialString(ai_mat, texture_key, texture_type, texture_index, &filename);
 	aiTexture const* ai_tex = ai_scene->GetEmbeddedTexture(filename.C_Str());
-	if (ai_tex) {
+	if (ai_tex)
+	{
 		create_texture(ai_tex, result);
 	}
 }
