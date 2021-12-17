@@ -3,8 +3,18 @@ cmake_minimum_required(VERSION 3.19)
 project(vren)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(BUILD_DEMO "Should build the renderer demo?" ON)
+
+# NsightAftermath
+find_package(NsightAftermath)
+
+#get_filename_component(NsightAftermath_LIBRARY_DIR ${NsightAftermath_LIBRARY} DIRECTORY)
+message(STATUS "Nsight Aftermath FOUND = ${NsightAftermath_FOUND}")
+message(STATUS "Nsight Aftermath Lib Dir = ${NsightAftermath_LIBRARY_DIR}")
+message(STATUS "Nsight Aftermath Lib = ${NsightAftermath_LIBRARY}")
+message(STATUS "Nsight Aftermath Headers Include = ${NsightAftermath_INCLUDE_DIR}")
 
 # Vulkan
 find_package(Vulkan REQUIRED)
@@ -47,6 +57,21 @@ add_library(vren
         src/descriptor_set_pool.hpp
         src/descriptor_set_pool.cpp
 )
+
+# NsightAftermath
+if (NsightAftermath_FOUND)
+    target_sources(vren PUBLIC
+            src/NsightAftermath/NsightAftermathGpuCrashTracker.cpp
+            src/NsightAftermath/NsightAftermathGpuCrashTracker.h
+            src/NsightAftermath/NsightAftermathHelpers.h
+            src/NsightAftermath/NsightAftermathShaderDatabase.cpp
+            src/NsightAftermath/NsightAftermathShaderDatabase.h
+            )
+
+    target_compile_definitions(vren PUBLIC NSIGHT_AFTERMATH)
+
+    target_link_libraries(vren PUBLIC NsightAftermath::NsightAftermath)
+endif()
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})

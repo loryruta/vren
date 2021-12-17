@@ -99,14 +99,16 @@ void update_camera(float dt, vren_demo::camera& camera)
 
 int main(int argc, char* argv[])
 {
-	if (glfwInit() != GLFW_TRUE) {
+	if (glfwInit() != GLFW_TRUE)
+	{
 		throw std::runtime_error("Couldn't initialize GLFW.");
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	g_window = glfwCreateWindow(500, 500, "VRen Example", nullptr, nullptr);
-	if (g_window == nullptr) {
+	if (g_window == nullptr)
+	{
 		throw std::runtime_error("Couldn't create the window.");
 	}
 

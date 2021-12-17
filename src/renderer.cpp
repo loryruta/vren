@@ -225,31 +225,25 @@ VkDevice vren::renderer::create_logical_device()
 	device_info.queueCreateInfoCount = (uint32_t) queue_infos.size();
 	device_info.pQueueCreateInfos = queue_infos.data();
 	device_info.pEnabledFeatures = nullptr;
-
-	// Device extensions
-	device_info.enabledExtensionCount = (uint32_t) m_info.m_device_extensions.size();
+	device_info.enabledExtensionCount = (uint32_t) m_info.m_device_extensions.size(); // Device extensions
 	device_info.ppEnabledExtensionNames = m_info.m_device_extensions.data();
-
-	// Device layers
-	device_info.enabledLayerCount = 0;
+	device_info.enabledLayerCount = 0; // Device layers
 	device_info.ppEnabledLayerNames = nullptr;
+
+#ifdef NSIGHT_AFTERMATH
+	VkDeviceDiagnosticsConfigCreateInfoNV device_diagnostics_config_info{};
+	device_diagnostics_config_info.sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV;
+	device_diagnostics_config_info.flags =
+		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV |    // Enables the generation of debug information for shaders.
+		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV |    // Enables driver side tracking of resources (images, buffers, etc.) used to augment the device fault information.
+		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV; // Enables automatic insertion of diagnostic checkpoints for draw calls, dispatches, trace rays, and copies.
+
+	device_info.pNext = &device_diagnostics_config_info;
+#endif
 
 	VkDevice device;
 	vren::vk_utils::check(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
 	return device;
-}
-
-VmaAllocator vren::renderer::create_allocator()
-{
-	VmaAllocatorCreateInfo create_info{};
-	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
-	create_info.instance = m_instance;
-	create_info.physicalDevice = m_physical_device;
-	create_info.device = m_device;
-
-	VmaAllocator allocator;
-	vren::vk_utils::check(vmaCreateAllocator(&create_info, &allocator));
-	return allocator;
 }
 
 std::vector<VkQueue> vren::renderer::get_queues()
@@ -453,17 +447,22 @@ void vren::renderer::render(
 }
 
 vren::renderer::renderer(renderer_info& info) :
-	m_info(info),
-
-	m_instance(create_instance()),
-	m_debug_messenger(setup_debug_messenger()),
-	m_physical_device(find_physical_device()),
-	m_allocator(create_allocator()),
-	m_queue_families(get_queue_families(m_physical_device)),
-	m_device(create_logical_device()),
-	m_queues(get_queues()),
-	m_render_pass(create_render_pass())
+	m_info(info)
 {
+	m_instance = create_instance();
+	m_debug_messenger = setup_debug_messenger();
+	m_physical_device = find_physical_device();
+	m_queue_families = get_queue_families(m_physical_device);
+
+#ifdef NSIGHT_AFTERMATH
+	m_gpu_crash_tracker.Initialize();
+#endif
+
+	m_device = create_logical_device();
+
+	m_queues = get_queues();
+	m_render_pass = create_render_pass();
+
 	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
 	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
 	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);

@@ -37,8 +37,13 @@ vren::gpu_buffer& vren::gpu_buffer::operator=(vren::gpu_buffer&& other) noexcept
 vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
 	m_renderer(renderer)
 {
-	// todo init allocator here
-	m_allocator = m_renderer.m_allocator;
+	VmaAllocatorCreateInfo create_info{};
+	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
+	create_info.instance = renderer.m_instance;
+	create_info.physicalDevice = renderer.m_physical_device;
+	create_info.device = renderer.m_device;
+
+	vren::vk_utils::check(vmaCreateAllocator(&create_info, &m_allocator));
 }
 
 vren::gpu_allocator::~gpu_allocator()

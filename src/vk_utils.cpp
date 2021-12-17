@@ -138,13 +138,13 @@ void vren::destroy_image(vren::renderer& renderer, vren::image& result)
 {
 	if (result.m_handle != VK_NULL_HANDLE)
 	{
-		vmaDestroyImage(renderer.m_allocator, result.m_handle, nullptr);
+		vmaDestroyImage(renderer.m_gpu_allocator->m_allocator, result.m_handle, nullptr);
 		result.m_handle = VK_NULL_HANDLE;
 	}
 
 	if (result.m_allocation != VK_NULL_HANDLE)
 	{
-		vmaFreeMemory(renderer.m_allocator, result.m_allocation);
+		vmaFreeMemory(renderer.m_gpu_allocator->m_allocator, result.m_allocation);
 		result.m_allocation = VK_NULL_HANDLE;
 	}
 }

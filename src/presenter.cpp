@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <optional>
+#include <thread>
+#include <chrono>
 
 vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device)
 {
@@ -231,7 +233,15 @@ void vren::presenter::present(
 
 	auto& frame = m_frames.at(m_current_frame_idx);
 
-	vren::vk_utils::check(vkWaitForFences(m_renderer->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX));
+	result = vkWaitForFences(m_renderer->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
+	if (result != VK_SUCCESS)
+	{
+#ifdef NSIGHT_AFTERMATH
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+#endif
+		vren::vk_utils::check(result);
+	}
+
 	frame._on_render();
 
 	// Acquires the next image that has to be processed by the current frame in-flight.

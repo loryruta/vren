@@ -15,6 +15,10 @@
 
 #include <glm/glm.hpp>
 
+#ifdef NSIGHT_AFTERMATH
+	#include "NsightAftermath/NsightAftermathGpuCrashTracker.h"
+#endif
+
 namespace vren
 {
 	void get_supported_layers(std::vector<VkLayerProperties>& layers);
@@ -66,7 +70,6 @@ namespace vren
 		vren::renderer::queue_families get_queue_families(VkPhysicalDevice physical_device);
 		VkPhysicalDevice find_physical_device();
 		VkDevice create_logical_device();
-		VmaAllocator create_allocator();
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
 		void create_command_pools();
@@ -77,7 +80,14 @@ namespace vren
 		vren::renderer_info m_info;
 
 		VkInstance m_instance;
+
+		// Debug messenger
 		VkDebugUtilsMessengerEXT m_debug_messenger;
+
+		// Nvidia Nsight Aftermath
+#ifdef NSIGHT_AFTERMATH
+		GpuCrashTracker m_gpu_crash_tracker;
+#endif
 
 		VkPhysicalDevice m_physical_device;
 		VkPhysicalDeviceProperties m_physical_device_properties;
@@ -94,7 +104,6 @@ namespace vren
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 
 		// Allocator
-		VmaAllocator m_allocator;
 		std::unique_ptr<vren::gpu_allocator> m_gpu_allocator;
 
 		// Command pools
