@@ -139,13 +139,11 @@ void vren::destroy_image(vren::renderer& renderer, vren::image& result)
 	if (result.m_handle != VK_NULL_HANDLE)
 	{
 		vmaDestroyImage(renderer.m_gpu_allocator->m_allocator, result.m_handle, nullptr);
-		result.m_handle = VK_NULL_HANDLE;
 	}
 
 	if (result.m_allocation != VK_NULL_HANDLE)
 	{
 		vmaFreeMemory(renderer.m_gpu_allocator->m_allocator, result.m_allocation);
-		result.m_allocation = VK_NULL_HANDLE;
 	}
 }
 
@@ -226,12 +224,16 @@ void vren::create_texture(
 	vren::vk_utils::check(vkCreateSampler(renderer.m_device, &create_info, nullptr, &result.m_sampler_handle));
 }
 
-void vren::destroy_texture(
+void vren::destroy_texture_if_any(
 	vren::renderer& renderer,
 	vren::texture& texture
 )
 {
-	vkDestroySampler(renderer.m_device, texture.m_sampler_handle, nullptr);
+	if (texture.m_sampler_handle != VK_NULL_HANDLE)
+	{
+		vkDestroySampler(renderer.m_device, texture.m_sampler_handle, nullptr);
+	}
+
 	vren::destroy_image_view_if_any(renderer, texture.m_image_view);
 	vren::destroy_image(renderer, texture.m_image);
 }

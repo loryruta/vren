@@ -356,20 +356,28 @@ void vren::renderer::create_command_pools()
 	// Compute TODO
 }
 
-void vren::renderer::create_white_texture()
+void vren::renderer::_create_single_color_textures()
 {
-	uint8_t image_data[] = {
-		255, 255, 255, 255,
+	auto create_color_texture = [&](
+		uint8_t r, uint8_t g, uint8_t b,
+		vren::texture& tex
+	) {
+		uint8_t image_data[] = { r, g, b, 255, };
+
+		vren::create_texture(
+			*this,
+			1,
+			1,
+			image_data,
+			VK_FORMAT_R8G8B8A8_UNORM,
+			tex
+		);
 	};
 
-	vren::create_texture(
-		*this,
-		1,
-		1,
-		image_data,
-		VK_FORMAT_R8G8B8A8_UNORM,
-		m_white_texture
-	);
+	create_color_texture(255, 255, 255, m_white_texture);
+	create_color_texture(255, 0, 0, m_red_texture);
+	create_color_texture(0, 255, 0, m_green_texture);
+	create_color_texture(0, 0, 255, m_blue_texture);
 }
 
 vren::render_list* vren::renderer::create_render_list()
@@ -471,7 +479,7 @@ vren::renderer::renderer(renderer_info& info) :
 
 	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(*this);
 
-	create_white_texture();
+	_create_single_color_textures();
 
 	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
 	m_material_manager = std::make_unique<vren::material_manager>(*this);
@@ -484,7 +492,10 @@ vren::renderer::~renderer()
 	m_light_arrays.clear();
 	m_render_lists.clear();
 
-	vren::destroy_texture(*this, m_white_texture);
+	vren::destroy_texture_if_any(*this, m_white_texture);
+	vren::destroy_texture_if_any(*this, m_red_texture);
+	vren::destroy_texture_if_any(*this, m_green_texture);
+	vren::destroy_texture_if_any(*this, m_blue_texture);
 
 	m_material_manager.reset();
 	m_descriptor_set_pool.reset();

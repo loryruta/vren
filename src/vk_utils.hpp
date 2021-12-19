@@ -81,7 +81,7 @@ namespace vren
 		vren::texture& result
 	);
 
-	void destroy_texture(
+	void destroy_texture_if_any(
 		vren::renderer& renderer,
 		vren::texture& texture
 	);

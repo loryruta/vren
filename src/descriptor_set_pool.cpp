@@ -131,6 +131,9 @@ void vren::descriptor_set_pool::_add_descriptor_pool()
 
 	m_descriptor_pools.push_back(descriptor_pool);
 
+	//printf("Added a descriptor set pool: %zu alive.\n", m_descriptor_pools.size());
+	//fflush(stdout);
+
 	m_last_pool_allocated_count = 0;
 }
 
@@ -173,6 +176,7 @@ void vren::descriptor_set_pool::_acquire_descriptor_sets(
 		if (m_last_pool_allocated_count >= VREN_DESCRIPTOR_SET_POOL_SIZE)
 		{
 			_add_descriptor_pool();
+			m_last_pool_allocated_count = 0;
 		}
 
 		size_t alloc_count = std::min(descriptor_sets_count - i, VREN_DESCRIPTOR_SET_POOL_SIZE - m_last_pool_allocated_count);
@@ -184,6 +188,7 @@ void vren::descriptor_set_pool::_acquire_descriptor_sets(
 		alloc_info.pSetLayouts = descriptor_set_layouts;
 
 		descriptor_sets_count -= alloc_count;
+		m_last_pool_allocated_count += alloc_count;
 
 		vren::vk_utils::check(vkAllocateDescriptorSets(m_renderer.m_device, &alloc_info, descriptor_sets + i));
 

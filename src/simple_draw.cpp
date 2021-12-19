@@ -223,6 +223,20 @@ void vren::simple_draw_pass::record_commands(
 		&camera
 	);
 
+	// Lights array
+	descriptor_set = frame.acquire_lights_array_descriptor_set();
+	vkCmdBindDescriptorSets(
+		frame.m_command_buffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		m_pipeline_layout,
+		VREN_LIGHTS_ARRAY_DESCRIPTOR_SET,
+		1,
+		&descriptor_set,
+		0,
+		nullptr
+	);
+	lights_array.update_descriptor_set(descriptor_set);
+
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
 		auto& render_obj = render_list.m_render_objects.at(i);
@@ -277,20 +291,6 @@ void vren::simple_draw_pass::record_commands(
 			render_obj.m_material,
 			descriptor_set
 		);
-
-		// Lights array
-		descriptor_set = frame.acquire_lights_array_descriptor_set();
-		vkCmdBindDescriptorSets(
-			frame.m_command_buffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_pipeline_layout,
-			VREN_LIGHTS_ARRAY_DESCRIPTOR_SET,
-			1,
-			&descriptor_set,
-			0,
-			nullptr
-		);
-		lights_array.update_descriptor_set(descriptor_set);
 
 		vkCmdDrawIndexed(
 			frame.m_command_buffer,

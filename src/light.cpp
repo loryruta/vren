@@ -15,47 +15,39 @@ vren::lights_array::~lights_array()
 	m_renderer.m_gpu_allocator->destroy_buffer_if_any(m_directional_lights_ssbo);
 }
 
-void vren::lights_array::_adapt_gpu_buffers_size()
+template<typename _light_type>
+void vren::lights_array::_try_realloc_light_buffer(vren::gpu_buffer& buf, size_t& buf_len, size_t el_count)
 {
-	{ // Point lights
-		size_t req_alloc_size = ((size_t) glm::ceil((float) m_point_lights.size() / (float) 256) * 256) * sizeof(vren::point_light);
-		if (req_alloc_size != m_point_lights_ssbo_alloc_size)
-		{
-			m_renderer.m_gpu_allocator->destroy_buffer_if_any(
-				m_point_lights_ssbo
-			);
-			m_point_lights_ssbo_alloc_size = req_alloc_size;
+	auto el_num = (size_t) glm::max<size_t>((size_t) glm::ceil((float) el_count / (float) 256) * 256, 256);
+	size_t alloc_size = sizeof(glm::vec4) + el_num * sizeof(_light_type);
 
-			if (req_alloc_size > 0)
-			{
-				m_renderer.m_gpu_allocator->alloc_host_visible_buffer(
-					m_point_lights_ssbo,
-					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-					sizeof(vren::point_light) * req_alloc_size
-				);
-			}
-		}
+	if (buf_len < alloc_size)
+	{
+		m_renderer.m_gpu_allocator->destroy_buffer_if_any(buf);
+
+		m_renderer.m_gpu_allocator->alloc_host_visible_buffer(
+			buf,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			alloc_size
+		);
+
+		buf_len = alloc_size;
 	}
+}
 
-	{ // Directional lights
-		size_t req_alloc_size = ((size_t) glm::ceil((float) m_directional_lights.size() / (float) 256) * 256) * sizeof(vren::directional_light);
-		if (req_alloc_size != m_directional_lights_ssbo_alloc_size)
-		{
-			m_renderer.m_gpu_allocator->destroy_buffer_if_any(
-				m_directional_lights_ssbo
-			);
-			m_directional_lights_ssbo_alloc_size = req_alloc_size;
+void vren::lights_array::_try_realloc_light_buffers()
+{
+	_try_realloc_light_buffer<vren::point_light>(
+		m_point_lights_ssbo,
+		m_point_lights_ssbo_alloc_size,
+		m_point_lights.size()
+	);
 
-			if (req_alloc_size > 0)
-			{
-				m_renderer.m_gpu_allocator->alloc_host_visible_buffer(
-					m_directional_lights_ssbo,
-					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-					sizeof(vren::point_light) * req_alloc_size
-				);
-			}
-		}
-	}
+	_try_realloc_light_buffer<vren::directional_light>(
+		m_directional_lights_ssbo,
+		m_directional_lights_ssbo_alloc_size,
+		m_directional_lights.size()
+	);
 }
 
 std::pair<std::reference_wrapper<vren::point_light>, uint32_t> vren::lights_array::create_point_light()
@@ -86,25 +78,43 @@ vren::directional_light& vren::lights_array::get_directional_light(uint32_t idx)
 
 void vren::lights_array::update_device_buffers()
 {
-	_adapt_gpu_buffers_size();
+	_try_realloc_light_buffers();
 
 	if (m_point_lights_ssbo_alloc_size > 0) // Point lights
 	{
+		auto num = (uint32_t) m_point_lights.size();
+
+		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+			m_point_lights_ssbo,
+			&num,
+			sizeof(uint32_t),
+			0
+		);
+
 		m_renderer.m_gpu_allocator->update_host_visible_buffer(
 			m_point_lights_ssbo,
 			m_point_lights.data(),
 			m_point_lights.size() * sizeof(vren::point_light),
-			0
+			sizeof(glm::vec4)
 		);
 	}
 
 	if (m_directional_lights_ssbo_alloc_size > 0) // Directional lights
 	{
+		auto num = (uint32_t) m_directional_lights.size();
+
+		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+			m_directional_lights_ssbo,
+			&num,
+			sizeof(uint32_t),
+			0
+		);
+
 		m_renderer.m_gpu_allocator->update_host_visible_buffer(
 			m_directional_lights_ssbo,
 			m_directional_lights.data(),
 			m_directional_lights.size() * sizeof(vren::directional_light),
-			0
+			sizeof(glm::vec4)
 		);
 	}
 }

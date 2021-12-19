@@ -74,7 +74,7 @@ namespace vren
 		VkRenderPass create_render_pass();
 		void create_command_pools();
 
-		void create_white_texture();
+		void _create_single_color_textures();
 
 	public:
 		vren::renderer_info m_info;
@@ -117,6 +117,9 @@ namespace vren
 		std::unique_ptr<vren::material_manager> m_material_manager;
 
 		vren::texture m_white_texture;
+		vren::texture m_red_texture;
+		vren::texture m_green_texture;
+		vren::texture m_blue_texture;
 
 		std::vector<std::unique_ptr<vren::render_list>>  m_render_lists;
 		std::vector<std::unique_ptr<vren::lights_array>> m_light_arrays;

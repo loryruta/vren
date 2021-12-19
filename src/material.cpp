@@ -15,7 +15,7 @@ vren::material::~material()
 {
 	if (m_albedo_texture != m_renderer.m_white_texture) // todo delegate the texture destruction to a specialized class (texture_manager)
 	{
-		vren::destroy_texture(m_renderer, m_albedo_texture);
+		// TODO DESTROY THE TEXTURE! vren::destroy_texture_if_any(m_renderer, m_albedo_texture);
 	}
 }
 
@@ -48,7 +48,7 @@ vren::material* vren::material_manager::create_material()
 
 	material->m_idx = m_materials.size() - 1;
 
-	printf("Creating material: %d\n", material->m_idx);
+	//printf("Creating material: %d\n", material->m_idx);
 
 	return material.get();
 }
@@ -82,6 +82,9 @@ void vren::material_manager::upload_device_buffer()
 		);
 
 		m_uniform_buffer_size = new_size;
+
+		printf("Materials UBO re-allocated to: %zu bytes\n", new_size);
+		fflush(stdout);
 	}
 
 	std::vector<uint8_t> uniform_buffer_data;

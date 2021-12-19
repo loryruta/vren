@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <optional>
+#include <numeric>
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -16,34 +17,183 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#define WINDOW_WIDTH  500
-#define WINDOW_HEIGHT 500
+#define VREN_DEMO_WINDOW_WIDTH  1024
+#define VREN_DEMO_WINDOW_HEIGHT 720
 
 GLFWwindow* g_window;
 
-void create_cube(vren::render_object& render_object)
+void create_cube(
+	vren::render_object& render_obj,
+	glm::vec3 position,
+	glm::vec3 rotation,
+	glm::vec3 scale,
+	vren::material* material
+)
 {
 	std::vector<vren::vertex> vertices = {
-		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = {  } },
-		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = {  } }
-	};
-	render_object.set_vertices_data(vertices.data(), vertices.size());
+		// Bottom face
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, -1, 0 } },
+		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, -1, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, -1, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, -1, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 0, -1, 0 } },
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, -1, 0 } },
 
-	std::vector<uint32_t> indices = {
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-	};
-	render_object.set_indices_data(indices.data(), indices.size());
+		// Top face
+		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 1, 0 } },
+		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { 0, 1, 0 } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 1, 0 } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 1, 0 } },
+		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 1, 0 } },
+		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 1, 0 } },
 
-	std::initializer_list<vren::instance_data> instances = {
-		vren::instance_data{}
+		// Left face
+		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { -1, 0, 0 } },
+		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { -1, 0, 0 } },
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { -1, 0, 0 } },
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { -1, 0, 0 } },
+		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { -1, 0, 0 } },
+		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { -1, 0, 0 } },
+
+		// Right face
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 1, 0, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 1, 0, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 1, 0, 0 } },
+		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 1, 0, 0 } },
+		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 1, 0, 0 } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 1, 0, 0 } },
+
+		// Back face
+		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, 0, -1 } },
+		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { 0, 0, -1 } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 0, -1 } },
+		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 0, -1 } },
+		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, 0, -1 } },
+		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, 0, -1 } },
+
+		// Front face
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, 0, 1 } },
+		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 0, 1 } },
+		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 0, 1 } },
+		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 0, 1 } },
+		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 0, 0, 1 } },
+		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, 0, 1 } },
 	};
-	render_object.set_instances_data(instances.begin(), instances.size());
+	render_obj.set_vertices_data(vertices.data(), vertices.size());
+
+	std::vector<uint32_t> indices(vertices.size());
+	std::iota(indices.begin(), indices.end(), 0);
+	render_obj.set_indices_data(indices.data(), indices.size());
+
+	auto transf = glm::identity<glm::mat4>();
+
+	// Translation
+	transf = glm::translate(transf, position);
+
+	// Rotation
+	transf = glm::translate(transf, glm::vec3(-0.5f));
+		transf = glm::rotate(transf, rotation.x, glm::vec3(1, 0, 0));
+		transf = glm::rotate(transf, rotation.y, glm::vec3(0, 1, 0));
+		transf = glm::rotate(transf, rotation.z, glm::vec3(0, 0, 1));
+	transf = glm::translate(transf, glm::vec3(0.5f));
+
+	// Scaling
+	transf = glm::scale(transf, scale);
+
+	vren::instance_data inst_data{};
+	inst_data.m_transform = transf;
+	render_obj.set_instances_data(&inst_data, 1);
+
+	render_obj.m_material = material;
+}
+
+void create_light(
+	vren::renderer& renderer,
+	vren::render_list* render_list,
+	vren::lights_array* lights_array,
+	glm::vec3 position,
+	glm::vec3 color
+)
+{
+	auto& render_obj = render_list->create_render_object();
+
+	auto mat = renderer.m_material_manager->create_material();
+	mat->m_albedo_texture = renderer.m_blue_texture;
+	mat->m_roughness = 1.0f;
+	mat->m_metallic = 0.0f;
+
+	create_cube(
+		render_obj,
+		position,
+		glm::vec3(0),
+		glm::vec3(1),
+		mat
+	);
+
+	auto& light = lights_array->create_point_light().first.get();
+	light.m_position = position;
+	light.m_color    = color;
+}
+
+void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list, vren::lights_array* lights_arr)
+{
+	float const surface_y = 1;
+	float const surface_side = 30;
+	float const r = 10;
+	int const n = 50;
+
+	{ // Surface
+		auto& surface = render_list->create_render_object();
+
+		auto mat = renderer.m_material_manager->create_material();
+		mat->m_albedo_texture = renderer.m_green_texture;
+		mat->m_metallic  = 0.5f;
+		mat->m_roughness = 0.8f;
+		surface.m_material = mat;
+
+		create_cube(
+			surface,
+			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
+			glm::vec3(0),
+			glm::vec3(surface_side, surface_y, surface_side),
+			mat
+		);
+	}
+
+	// Cubes
+	for (int i = 1; i <= n; i++)
+	{
+		auto& cube = render_list->create_render_object();
+
+		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
+		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
+
+		auto mat = renderer.m_material_manager->create_material();
+		mat->m_albedo_texture = renderer.m_red_texture;
+		mat->m_metallic  = 1.0f;
+		mat->m_roughness = 0.2f; // TODO metallic = 1, roughness = 1 excluded
+
+		create_cube(
+			cube,
+			glm::vec3(
+				cos_i * r,
+				surface_y + 0.1f,
+				sin_i * r
+			),
+			glm::vec3(0),
+			glm::vec3(1),
+			mat
+		);
+	}
+
+	// Lights
+	create_light(
+		renderer,
+		render_list,
+		lights_arr,
+		glm::vec3(0, 8, 0),
+		glm::vec3(1, 1, 1)
+	);
 }
 
 template<glm::length_t L, typename T>
@@ -106,7 +256,7 @@ int main(int argc, char* argv[])
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	g_window = glfwCreateWindow(500, 500, "VRen Example", nullptr, nullptr);
+	g_window = glfwCreateWindow(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, "VRen", nullptr, nullptr);
 	if (g_window == nullptr)
 	{
 		throw std::runtime_error("Couldn't create the window.");
@@ -140,90 +290,21 @@ int main(int argc, char* argv[])
 	vren::presenter_info presenter_info{};
 	presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
-	vren::presenter presenter(renderer, presenter_info, surface, {500, 500});
+	vren::presenter presenter(renderer, presenter_info, surface, {VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT});
 
 	auto render_list = renderer->create_render_list();
+	auto lights_arr  = renderer->create_light_array();
 
-	// ---------------------------------------------------------------- Creation of a test cube
+	create_cube_scene(*renderer.get(), render_list, lights_arr);
 
-	auto light_array = renderer->create_light_array();
-
-	{ // Point light 1
-		vren::point_light& light = light_array->create_point_light().first;
-		light.m_position = glm::vec3(23, 34, 65);
-	}
-
-	{ // Point light 2
-		vren::point_light& light = light_array->create_point_light().first;
-		light.m_position = glm::vec3(6, 2, 1);
-	}
-
-	{ // Directional light
-		vren::directional_light& light = light_array->create_directional_light().first;
-		light.m_direction = glm::normalize(glm::vec3(322, 23, 65));
-	}
-
-	light_array->update_device_buffers();
-
-	// Scene
-	char const* scene_path = "resources/models/skull/12140_Skull_v3_L2.obj";
-
-	printf("Loading scene: %s\n", scene_path);
-	fflush(stdout);
-
-	Assimp::Importer importer;
-	aiScene const* ai_scene = importer.ReadFile(scene_path,
-		aiProcess_Triangulate |
-		aiProcess_JoinIdenticalVertices |
-		//aiProcess_GenNormals |
-		//aiProcess_CalcTangentSpace |
-		aiProcess_EmbedTextures |
-		aiProcess_FlipUVs
-	);
-
-	if (!ai_scene)
-	{
-		fprintf(stderr, "Couldn't load scene at: %s\n", scene_path);
-		fflush(stderr);
-
-		return 1;
-	}
-
-	printf("Baking scene\n");
-	fflush(stdout);
-
-	vren_demo::ai_scene_baker scene_baker(*renderer);
-	scene_baker.bake(ai_scene, *render_list);
-
-	for (auto& render_obj : render_list->m_render_objects)
-	{
-		constexpr float r = 25.0f;
-		constexpr size_t obj_num = 10;
-
-		std::vector<vren::instance_data> instances{};
-
-		for (int i = 0; i < obj_num; i++)
-		{
-			vren::instance_data instance{};
-			instance.m_transform = glm::identity<glm::mat4>();
-			instance.m_transform = glm::translate(instance.m_transform, glm::vec3(
-				glm::cos((float) (2 * glm::pi<float>() / (float) obj_num) * (float) i) * r,
-				0,
-				glm::sin((float) (2 * glm::pi<float>() / (float) obj_num) * (float) i) * r
-			));
-
-			instances.push_back(instance);
-		}
-
-		render_obj.set_instances_data(instances.data(), instances.size());
-	}
-
+	//render_list->update_device_buffers();
+	lights_arr->update_device_buffers();
 	renderer->m_material_manager->upload_device_buffer();
 
 	// ---------------------------------------------------------------- Game loop
 
 	vren_demo::camera camera{};
-	camera.m_aspect_ratio = WINDOW_WIDTH / (float) WINDOW_HEIGHT;
+	camera.m_aspect_ratio = VREN_DEMO_WINDOW_WIDTH / (float) VREN_DEMO_WINDOW_HEIGHT;
 
 	float last_time = -1.0;
 	while (!glfwWindowShouldClose(g_window))
@@ -241,7 +322,7 @@ int main(int argc, char* argv[])
 
 		update_camera(dt, camera);
 
-		presenter.present(*render_list, *light_array, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
+		presenter.present(*render_list, *lights_arr, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
 	}
 
 	return 0;

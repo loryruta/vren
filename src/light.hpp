@@ -44,12 +44,16 @@ namespace vren
 		vren::gpu_buffer m_directional_lights_ssbo;
 		size_t m_directional_lights_ssbo_alloc_size;
 
-		void _adapt_gpu_buffers_size();
+		template<typename _light_type>
+		void _try_realloc_light_buffer(vren::gpu_buffer& buf, size_t& buf_len, size_t el_count);
+		void _try_realloc_light_buffers();
 
 	public:
 		explicit lights_array(vren::renderer& renderer);
 		~lights_array();
 
+		// todo index in point light like render_object
+		// todo index -> id
 		std::pair<std::reference_wrapper<vren::point_light>, uint32_t> create_point_light();
 		std::pair<std::reference_wrapper<vren::directional_light>, uint32_t> create_directional_light();
 

@@ -35,11 +35,15 @@ struct DirectionalLight
 
 layout(set = 1, binding = 0) buffer readonly PointLights
 {
+    uint num;
+    float _pad[3];
     PointLight data[];
 } b_point_lights;
 
 layout(set = 1, binding = 1) buffer readonly DirectionalLights
 {
+    uint num;
+    float _pad[3];
     DirectionalLight data[];
 } b_directional_lights;
 
@@ -81,49 +85,108 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-void main()
+vec3 apply_light(
+    vec3 V,
+    vec3 N,
+    vec3 L,
+    vec3 radiance,
+    vec3 surf_col
+)
 {
-    vec3 N = v_normal;
-    vec3 camera_position = push_constants.camera_view[3].xyz;
-    vec3 V = normalize(camera_position - v_position);
-
-    vec3 albedo = texture(u_albedo, v_tex_coords).rgb;
+    vec3 H = normalize(V + -L);
 
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, u_material.metallic);
+    F0 = mix(F0, surf_col, u_material.metallic);
 
-    vec3 Lo = vec3(0.0);
+    float NDF = DistributionGGX(N, H, u_material.roughness);
+    float G   = GeometrySmith(N, V, -L, u_material.roughness);
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
-    for (int i = 0; i < b_point_lights.data.length(); i++)
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - u_material.metallic;
+
+    vec3  num   = NDF * G * F;
+    float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, -L), 0.0) + 0.0001;
+    vec3 specular = num / denom;
+
+    float NdotL = max(dot(N, -L), 0.0);
+    return (kD * surf_col / PI + specular) * radiance * NdotL;
+}
+
+vec3 apply_point_lights(
+    vec3 frag_pos,
+    vec3 V,
+    vec3 N,
+    vec3 surf_col
+)
+{
+    vec3 Lo = vec3(0);
+
+    for (int i = 0; i < b_point_lights.num; i++)
     {
         PointLight light = b_point_lights.data[i];
 
+        vec3 L = normalize(frag_pos - light.position.xyz);
         vec3 radiance = light.color.rgb;
 
-        vec3 L = normalize(v_position - light.position.xyz);
-        vec3 H = normalize(V + L);
-
-        float NDF = DistributionGGX(N, H, u_material.roughness);
-        float G   = GeometrySmith(N, V, L, u_material.roughness);
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - u_material.metallic;
-
-        vec3  num   = NDF * G * F;
-        float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular = num / denom;
-
-        float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        Lo += apply_light(
+            V,
+            N,
+            L,
+            radiance,
+            surf_col
+        );
     }
 
+    return Lo;
+}
+
+vec3 apply_directional_lights(
+    vec3 frag_pos,
+    vec3 V,
+    vec3 N,
+    vec3 surf_col
+)
+{
+    vec3 Lo = vec3(0);
+
+    for (int i = 0; i < b_directional_lights.num; i++)
+    {
+        DirectionalLight light = b_directional_lights.data[i];
+
+        vec3 L = light.direction.xyz;
+        vec3 radiance = light.color.rgb;
+
+        Lo += apply_light(
+            V,
+            N,
+            L,
+            radiance,
+            surf_col
+        );
+    }
+
+    return Lo;
+}
+
+void main()
+{
+    vec3 N = v_normal;
+    vec3 cam_pos = -push_constants.camera_view[3].xyz;
+    vec3 V = normalize(cam_pos - v_position);
+
+    vec3 albedo = texture(u_albedo, v_tex_coords).rgb;
+
+    vec3 Lo = vec3(0.0);
+    Lo += apply_point_lights(v_position, V, N, albedo);
+    Lo += apply_directional_lights(v_position, V, N, albedo);
+
     vec3 ambient = vec3(0.03) * albedo; // * ao
+
     vec3 color = ambient + Lo;
-
     color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0 / 2.2));
+    color = pow(color, vec3(1.0 / 2.2)); // Gamma correction
 
-    f_color = vec4(albedo, 1.0);
+    f_color = vec4(color, 1.0);
 }
