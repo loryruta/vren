@@ -8,6 +8,7 @@ layout(location = 16) in mat4 i_transform;
 
 layout(push_constant) uniform PushConstants
 {
+    vec4 camera_pos;
     mat4 camera_view;
     mat4 camera_projection;
 } push_constants;

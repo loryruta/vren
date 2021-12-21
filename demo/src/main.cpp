@@ -17,7 +17,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#define VREN_DEMO_WINDOW_WIDTH  1024
+#define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
 
 GLFWwindow* g_window;
@@ -107,34 +107,6 @@ void create_cube(
 	render_obj.m_material = material;
 }
 
-void create_light(
-	vren::renderer& renderer,
-	vren::render_list* render_list,
-	vren::lights_array* lights_array,
-	glm::vec3 position,
-	glm::vec3 color
-)
-{
-	auto& render_obj = render_list->create_render_object();
-
-	auto mat = renderer.m_material_manager->create_material();
-	mat->m_albedo_texture = renderer.m_blue_texture;
-	mat->m_roughness = 1.0f;
-	mat->m_metallic = 0.0f;
-
-	create_cube(
-		render_obj,
-		position,
-		glm::vec3(0),
-		glm::vec3(1),
-		mat
-	);
-
-	auto& light = lights_array->create_point_light().first.get();
-	light.m_position = position;
-	light.m_color    = color;
-}
-
 void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list, vren::lights_array* lights_arr)
 {
 	float const surface_y = 1;
@@ -185,15 +157,6 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 			mat
 		);
 	}
-
-	// Lights
-	create_light(
-		renderer,
-		render_list,
-		lights_arr,
-		glm::vec3(0, 8, 0),
-		glm::vec3(1, 1, 1)
-	);
 }
 
 template<glm::length_t L, typename T>
@@ -242,9 +205,6 @@ void update_camera(float dt, vren_demo::camera& camera)
 	}
 
 	last_cur_pos = cur_pos;
-
-	// Scale
-	// todo
 }
 
 int main(int argc, char* argv[])
@@ -274,11 +234,13 @@ int main(int argc, char* argv[])
 	uint32_t glfw_extensions_count = 0;
 	char const** glfw_extensions;
 	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
-	for (int i = 0; i < glfw_extensions_count; i++) {
+	for (int i = 0; i < glfw_extensions_count; i++)
+	{
 		renderer_info.m_extensions.push_back(glfw_extensions[i]);
 	}
 
 	renderer_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	renderer_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
 	auto renderer = std::make_shared<vren::renderer>(renderer_info);
 
@@ -298,8 +260,19 @@ int main(int argc, char* argv[])
 	create_cube_scene(*renderer.get(), render_list, lights_arr);
 
 	//render_list->update_device_buffers();
-	lights_arr->update_device_buffers();
 	renderer->m_material_manager->upload_device_buffer();
+
+	{ // Static light
+		const float y = 10;
+
+		auto& stat_light = lights_arr->create_point_light().first.get();
+		stat_light.m_position = glm::vec3(0, y, 0);
+		stat_light.m_color    = glm::vec3(1, 1, 1);
+		lights_arr->update_device_buffers();
+	}
+
+	// Circular light
+	auto circ_light_idx = lights_arr->create_point_light().second;
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -320,9 +293,31 @@ int main(int argc, char* argv[])
 			glfwSetWindowShouldClose(g_window, GLFW_TRUE);
 		}
 
+		{ // Circular light update
+			const float freq = 2;
+			const float surf_y = 10;
+			const float r = 20;
+
+			glm::vec3 light_pos =  glm::vec3(
+				glm::cos(cur_time * freq) * r,
+				surf_y,
+				glm::sin(cur_time * freq) * r
+			);
+
+			auto& circ_light = lights_arr->get_point_light(circ_light_idx);
+			circ_light.m_position = light_pos;
+			circ_light.m_color    = glm::vec3(1, 1, 1);
+			lights_arr->update_device_buffers();
+		}
+
 		update_camera(dt, camera);
 
-		presenter.present(*render_list, *lights_arr, { .m_view = camera.get_view(), .m_projection = camera.get_projection() });
+		vren::camera cam_data{};
+		cam_data.m_position   = camera.m_position;
+		cam_data.m_view       = camera.get_view();
+		cam_data.m_projection = camera.get_projection();
+
+		presenter.present(*render_list, *lights_arr, cam_data);
 	}
 
 	return 0;

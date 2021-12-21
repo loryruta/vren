@@ -39,7 +39,7 @@ VkShaderModule create_shader_module(VkDevice device, char const* path)
 	}
 
 	auto file_size = f.tellg();
-	std::vector<char> buffer(file_size);
+	std::vector<char> buffer((size_t) glm::ceil(file_size / (float) sizeof(uint32_t)) * sizeof(uint32_t)); // Rounds to a multiple of 4 because codeSize requires it.
 
 	f.seekg(0);
 	f.read(buffer.data(), file_size);
@@ -50,7 +50,7 @@ VkShaderModule create_shader_module(VkDevice device, char const* path)
 	VkShaderModuleCreateInfo shader_info{};
 	shader_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shader_info.codeSize = buffer.size();
-	shader_info.pCode = reinterpret_cast<const uint32_t*>(buffer.data());
+	shader_info.pCode = reinterpret_cast<uint32_t const*>(buffer.data());
 
 	VkShaderModule shader_module;
 	vren::vk_utils::check(vkCreateShaderModule(device, &shader_info, nullptr, &shader_module));
@@ -153,7 +153,7 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	// Camera
 	VkPushConstantRange push_constant{};
 	push_constant.offset = 0;
-	push_constant.size = sizeof(float) * (16 + 16);
+	push_constant.size = sizeof(vren::camera);
 	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	push_constants.push_back(push_constant);
 

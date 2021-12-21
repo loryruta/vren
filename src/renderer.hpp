@@ -35,6 +35,8 @@ namespace vren
 
 	struct camera
 	{
+		glm::vec3 m_position;
+		float _pad;
 		glm::mat4 m_view;
 		glm::mat4 m_projection;
 	};

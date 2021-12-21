@@ -1,6 +1,6 @@
 #version 460
 
-#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_debug_printf : enable
 
 #define PI 3.1415926538
 
@@ -17,6 +17,7 @@ layout(set = 0, binding = 1) uniform MaterialBlock
 
 layout(push_constant) uniform PushConstants
 {
+    vec4 camera_pos;
     mat4 camera_view;
     mat4 camera_projection;
 } push_constants;
@@ -95,7 +96,12 @@ vec3 apply_light(
 {
     vec3 H = normalize(V + -L);
 
-    vec3 F0 = vec3(0.04);
+    debugPrintfEXT("V = %v3f\n", V);
+    debugPrintfEXT("N = %v3f\n", N);
+    debugPrintfEXT("L = %v3f\n", L);
+    debugPrintfEXT("H = %v3f\n", H);
+
+    vec3 F0 = vec3(0.04); // Base reflectivity
     F0 = mix(F0, surf_col, u_material.metallic);
 
     float NDF = DistributionGGX(N, H, u_material.roughness);
@@ -106,12 +112,12 @@ vec3 apply_light(
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - u_material.metallic;
 
-    vec3  num   = NDF * G * F;
+    float num   = NDF * G;
     float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, -L), 0.0) + 0.0001;
-    vec3 specular = num / denom;
+    float specular = num / denom;
 
     float NdotL = max(dot(N, -L), 0.0);
-    return (kD * surf_col / PI + specular) * radiance * NdotL;
+    return (kD * surf_col / PI + kS * specular) * radiance * NdotL;
 }
 
 vec3 apply_point_lights(
@@ -172,18 +178,17 @@ vec3 apply_directional_lights(
 
 void main()
 {
+    vec3 frag_pos = v_position;
     vec3 N = v_normal;
-    vec3 cam_pos = -push_constants.camera_view[3].xyz;
-    vec3 V = normalize(cam_pos - v_position);
+    vec3 V = normalize(push_constants.camera_pos.xyz - frag_pos);
 
     vec3 albedo = texture(u_albedo, v_tex_coords).rgb;
 
     vec3 Lo = vec3(0.0);
-    Lo += apply_point_lights(v_position, V, N, albedo);
-    Lo += apply_directional_lights(v_position, V, N, albedo);
+    Lo += apply_point_lights(frag_pos, V, N, albedo);
+    //Lo += apply_directional_lights(frag_pos, V, N, albedo);
 
     vec3 ambient = vec3(0.03) * albedo; // * ao
-
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0 / 2.2)); // Gamma correction

@@ -3,10 +3,10 @@ include_guard()
 function (compile_shader _SHADERS IN_PATH OUT_PATH)  # SHADER_0, SHADER_1 ...
     add_custom_command(
             OUTPUT ${OUT_PATH}
-            COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${IN_PATH} -o ${OUT_PATH}
+            COMMAND glslangValidator --target-env vulkan1.2 -o ${OUT_PATH} ${IN_PATH}  # TODO SPECIFY glslangValidator FULL PATH
             MAIN_DEPENDENCY ${IN_PATH}
             WORKING_DIRECTORY ${VREN_HOME}
-            COMMENT "Compiling shader ${IN_PATH} -> ${OUT_PATH}"
+            COMMENT "glslangValidator --target-env vulkan1.2 -o ${OUT_PATH} ${IN_PATH}"
     )
 
     set(SUPER_VAR ${${_SHADERS}})
