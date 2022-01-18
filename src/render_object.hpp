@@ -183,7 +183,7 @@ namespace vren
 		vren::gpu_buffer m_instances_buffer;
 		uint32_t m_instances_count;
 
-		vren::material* m_material;
+		vren::rc<vren::material> m_material;
 
 		explicit render_object(vren::renderer* renderer);
 		render_object(vren::render_object const& other) = delete;

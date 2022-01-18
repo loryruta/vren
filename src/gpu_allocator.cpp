@@ -48,6 +48,8 @@ vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
 
 vren::gpu_allocator::~gpu_allocator()
 {
+	// TODO FREE ALL MEMORY ALLOCATIONS (INCLUDING vren::rc<vren::vma_allocation>) THIS IMPLIES REF COUNTING REFERENCES' LIFETIME MUST BE WITHIN RENDERERS' LIFETIME
+
 	vmaDestroyAllocator(m_allocator);
 }
 

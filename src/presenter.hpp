@@ -33,12 +33,12 @@ namespace vren
 		};
 
 	private:
-		VkSwapchainKHR _create_swapchain(VkExtent2D extent);
+		VkSwapchainKHR create_swapchain(VkExtent2D extent);
 
 		void _create_frames();
-		void _create_depth_buffer();
-		void _destroy_depth_buffer();
-		void _destroy_swapchain();
+		void create_depth_buffer();
+		void destroy_depth_buffer();
+		void destroy_swapchain();
 
 	public:
 		std::shared_ptr<vren::renderer> m_renderer;
@@ -54,15 +54,15 @@ namespace vren
 
 		struct depth_buffer
 		{
-			vren::image m_image;
-			vren::image_view m_image_view;
+			vren::unq<vren::image> m_image;
+			vren::unq<vren::vk_image_view> m_image_view;
 
 			inline bool is_valid() const
 			{
-				return m_image.is_valid() && m_image_view.is_valid();
+				return m_image->is_valid() && m_image_view->is_valid();
 			}
 		};
-		depth_buffer m_depth_buffer;
+		vren::unq<vren::presenter::depth_buffer> m_depth_buffer;
 
 		std::vector<vren::frame> m_frames;
 

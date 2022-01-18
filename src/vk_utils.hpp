@@ -5,70 +5,78 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-namespace vren
-{
-	class renderer;
+#include "vk_wrappers.hpp"
 
-	//
+namespace vren // todo vren::vk_utils
+{
+	class renderer; // forward decl
+
+	namespace vk_utils
+	{
+		void check(VkResult result);
+	}
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Image
+	// --------------------------------------------------------------------------------------------------------------------------------
 
 	struct image
 	{
-		VkFormat m_format = VK_FORMAT_UNDEFINED;
-
-		VkImage m_handle = VK_NULL_HANDLE;
-		VmaAllocation m_allocation = VK_NULL_HANDLE;
+		vren::rc<vren::vk_image> m_image;
+		vren::rc<vren::vma_allocation> m_allocation;
 
 		inline bool is_valid() const
 		{
-			return m_handle != VK_NULL_HANDLE && m_allocation != VK_NULL_HANDLE;
-		}
-
-		inline bool operator==(vren::image const& other) const
-		{
-			return
-				m_handle == other.m_handle &&
-				m_format == other.m_format &&
-				m_allocation == other.m_allocation;
+			return m_image->is_valid() && m_allocation->is_valid();
 		}
 	};
 
-	void create_image(vren::renderer& renderer, uint32_t width, uint32_t height, void* image_data, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags memory_properties, vren::image& result);
-	void destroy_image(vren::renderer& renderer, vren::image& result);
+	void create_image(
+		vren::renderer& renderer,
+		uint32_t width,
+		uint32_t height,
+		void* image_data,
+		VkFormat format,
+		VkImageUsageFlags usage,
+		VkMemoryPropertyFlags memory_properties,
+		vren::image& result
+	);
 
-	struct image_view
-	{
-		VkImageView m_handle = VK_NULL_HANDLE;
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Image view
+	// --------------------------------------------------------------------------------------------------------------------------------
 
-		inline bool is_valid() const
-		{
-			return m_handle != VK_NULL_HANDLE;
-		}
+	vren::vk_image_view create_image_view(
+		vren::renderer& renderer,
+		VkImage image,
+		VkFormat format,
+		VkImageAspectFlagBits aspect
+	);
 
-		inline bool operator==(vren::image_view const& other) const
-		{
-			return m_handle == other.m_handle;
-		}
-	};
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Sampler
+	// --------------------------------------------------------------------------------------------------------------------------------
 
-	void create_image_view(vren::renderer& renderer, vren::image const& image, VkImageAspectFlagBits aspect, vren::image_view& result);
-	void destroy_image_view_if_any(vren::renderer& renderer, vren::image_view& result);
+	vren::vk_sampler create_sampler(
+		vren::renderer& renderer,
+		VkFilter mag_filter,
+		VkFilter min_filter,
+		VkSamplerMipmapMode mipmap_mode,
+		VkSamplerAddressMode address_mode_u,
+		VkSamplerAddressMode address_mode_v,
+		VkSamplerAddressMode address_mode_w
+	);
 
-	// ------------------------------------------------------------------------------------------------ Texture
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Texture
+	// --------------------------------------------------------------------------------------------------------------------------------
 
 	struct texture
 	{
-		vren::image m_image;
-		vren::image_view m_image_view;
-
-		VkSampler m_sampler_handle = VK_NULL_HANDLE;
-
-		inline bool operator==(vren::texture const& other) const
-		{
-			return
-				m_sampler_handle == other.m_sampler_handle &&
-				m_image_view == other.m_image_view &&
-				m_image == other.m_image;
-		}
+		vren::rc<vren::vk_image> m_image;
+		vren::rc<vren::vma_allocation> m_image_allocation;
+		vren::rc<vren::vk_image_view> m_image_view;
+		vren::rc<vren::vk_sampler> m_sampler;
 	};
 
 	void create_texture(
@@ -77,7 +85,21 @@ namespace vren
 		uint32_t height,
 		void* image_data,
 		VkFormat format,
+		VkFilter mag_filter,
+		VkFilter min_filter,
+		VkSamplerMipmapMode mipmap_mode,
+		VkSamplerAddressMode address_mode_u,
+		VkSamplerAddressMode address_mode_v,
+		VkSamplerAddressMode address_mode_w,
+		vren::texture& result
+	);
 
+	void create_color_texture(
+		vren::renderer& renderer,
+		float r,
+		float g,
+		float b,
+		float a,
 		vren::texture& result
 	);
 
@@ -87,9 +109,4 @@ namespace vren
 	);
 
 	//
-
-	namespace vk_utils
-	{
-		void check(VkResult result);
-	}
 }

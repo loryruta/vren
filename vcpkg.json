@@ -1,9 +1,8 @@
 {
     "name": "vren",
     "version": "1.0.0",
-    "description": "VRen (Vulkan RENderer) made for RGE.",
+    "description": "VRen (Vulkan RENderer)",
     "dependencies": [
-        "assimp",
         "glfw3",
         "glm",
         "vulkan-memory-allocator",

@@ -3,7 +3,7 @@
 #include "presenter.hpp"
 
 #include "camera.hpp"
-#include "ai_scene_loader.hpp"
+#include "tinygltf_loader.hpp"
 
 #include <iostream>
 #include <optional>
@@ -13,9 +13,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -27,7 +24,7 @@ void create_cube(
 	glm::vec3 position,
 	glm::vec3 rotation,
 	glm::vec3 scale,
-	vren::material* material
+	vren::rc<vren::material> const& material
 )
 {
 	std::vector<vren::vertex> vertices = {
@@ -117,10 +114,9 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 	{ // Surface
 		auto& surface = render_list->create_render_object();
 
-		auto mat = renderer.m_material_manager->create_material();
-		mat->m_albedo_texture = renderer.m_green_texture;
-		mat->m_metallic  = 0.5f;
-		mat->m_roughness = 0.8f;
+		auto mat = vren::make_rc<vren::material>(renderer);
+		mat->m_base_color_texture = renderer.m_green_texture;
+		mat->m_metallic_roughness_texture  = renderer.m_black_texture;
 		surface.m_material = mat;
 
 		create_cube(
@@ -140,10 +136,9 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = renderer.m_material_manager->create_material();
-		mat->m_albedo_texture = renderer.m_red_texture;
-		mat->m_metallic  = 1.0f;
-		mat->m_roughness = 0.2f; // TODO metallic = 1, roughness = 1 excluded
+		auto mat = vren::make_rc<vren::material>(renderer);
+		mat->m_base_color_texture = renderer.m_red_texture;
+		mat->m_metallic_roughness_texture  = renderer.m_black_texture;
 
 		create_cube(
 			cube,
@@ -257,10 +252,16 @@ int main(int argc, char* argv[])
 	auto render_list = renderer->create_render_list();
 	auto lights_arr  = renderer->create_light_array();
 
-	create_cube_scene(*renderer.get(), render_list, lights_arr);
+	//char const* model_path = "resources/models/sponza_cathedral/sponza.obj";
+	char const* model_path = "resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf";
+
+	vren::tinygltf_scene loaded_scene;
+	vren::tinygltf_loader gltf_loader(*renderer);
+	gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
+
+	//create_cube_scene(*renderer, render_list, lights_arr);
 
 	//render_list->update_device_buffers();
-	renderer->m_material_manager->upload_device_buffer();
 
 	{ // Static light
 		const float y = 10;

@@ -356,30 +356,6 @@ void vren::renderer::create_command_pools()
 	// Compute TODO
 }
 
-void vren::renderer::_create_single_color_textures()
-{
-	auto create_color_texture = [&](
-		uint8_t r, uint8_t g, uint8_t b,
-		vren::texture& tex
-	) {
-		uint8_t image_data[] = { r, g, b, 255, };
-
-		vren::create_texture(
-			*this,
-			1,
-			1,
-			image_data,
-			VK_FORMAT_R8G8B8A8_UNORM,
-			tex
-		);
-	};
-
-	create_color_texture(255, 255, 255, m_white_texture);
-	create_color_texture(255, 0, 0, m_red_texture);
-	create_color_texture(0, 255, 0, m_green_texture);
-	create_color_texture(0, 0, 255, m_blue_texture);
-}
-
 vren::render_list* vren::renderer::create_render_list()
 {
 	return m_render_lists.emplace_back(std::make_unique<vren::render_list>(*this)).get();
@@ -479,10 +455,23 @@ vren::renderer::renderer(renderer_info& info) :
 
 	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(*this);
 
-	_create_single_color_textures();
+	// Default textures
+	m_white_texture = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 1.0f, 1.0f, 1.0f, 1.0f, *m_white_texture);
+
+	m_black_texture = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 0.0f, 0.0f, 0.0f, 0.0f, *m_black_texture);
+
+	m_red_texture   = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 1.0f, 0.0f, 0.0f, 1.0f, *m_red_texture);
+
+	m_green_texture = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 0.0f, 1.0f, 0.0f, 1.0f, *m_green_texture);
+
+	m_blue_texture = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 0.0f, 0.0f, 1.0f, 1.0f, *m_blue_texture);
 
 	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
-	m_material_manager = std::make_unique<vren::material_manager>(*this);
 
 	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(*this);
 }
@@ -492,12 +481,6 @@ vren::renderer::~renderer()
 	m_light_arrays.clear();
 	m_render_lists.clear();
 
-	vren::destroy_texture_if_any(*this, m_white_texture);
-	vren::destroy_texture_if_any(*this, m_red_texture);
-	vren::destroy_texture_if_any(*this, m_green_texture);
-	vren::destroy_texture_if_any(*this, m_blue_texture);
-
-	m_material_manager.reset();
 	m_descriptor_set_pool.reset();
 
 	m_simple_draw_pass.reset();

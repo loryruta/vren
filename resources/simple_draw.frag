@@ -1,19 +1,14 @@
 #version 460
 
-#extension GL_EXT_debug_printf : enable
-
 #define PI 3.1415926538
 
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
 layout(location = 3) in vec2 v_tex_coords;
 
-layout(set = 0, binding = 0) uniform sampler2D u_albedo;
-layout(set = 0, binding = 1) uniform MaterialBlock
-{
-    float metallic;
-    float roughness;
-} u_material;
+// https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#reference-material-pbrmetallicroughness
+layout(set = 0, binding = 0) uniform sampler2D u_mat_base_color_tex;
+layout(set = 0, binding = 1) uniform sampler2D u_mat_metallic_roughness_tex;
 
 layout(push_constant) uniform PushConstants
 {
@@ -94,25 +89,23 @@ vec3 apply_light(
     vec3 surf_col
 )
 {
+    float roughness = texture(u_mat_metallic_roughness_tex, v_tex_coords).g;
+    float metallic = texture(u_mat_metallic_roughness_tex,  v_tex_coords).b;
+
     vec3 H = normalize(V + -L);
 
-    debugPrintfEXT("V = %v3f\n", V);
-    debugPrintfEXT("N = %v3f\n", N);
-    debugPrintfEXT("L = %v3f\n", L);
-    debugPrintfEXT("H = %v3f\n", H);
-
     vec3 F0 = vec3(0.04); // Base reflectivity
-    F0 = mix(F0, surf_col, u_material.metallic);
+    F0 = mix(F0, surf_col, metallic);
 
-    float NDF = DistributionGGX(N, H, u_material.roughness);
-    float G   = GeometrySmith(N, V, -L, u_material.roughness);
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, -L, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - u_material.metallic;
+    kD *= 1.0 - metallic;
 
-    float num   = NDF * G;
+    float num = NDF * G;
     float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, -L), 0.0) + 0.0001;
     float specular = num / denom;
 
@@ -182,7 +175,7 @@ void main()
     vec3 N = v_normal;
     vec3 V = normalize(push_constants.camera_pos.xyz - frag_pos);
 
-    vec3 albedo = texture(u_albedo, v_tex_coords).rgb;
+    vec3 albedo = texture(u_mat_base_color_tex, v_tex_coords).rgb;
 
     vec3 Lo = vec3(0.0);
     Lo += apply_point_lights(frag_pos, V, N, albedo);

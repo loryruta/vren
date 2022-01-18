@@ -13,13 +13,13 @@ namespace vren
 	class descriptor_set_pool
 	{
 	private:
-		void _create_material_layout();
-		void _create_lights_array_layout();
+		void create_material_layout();
+		void create_lights_array_layout();
 
-		void _decorate_material_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes);
-		void _decorate_lights_array_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes);
+		void decorate_material_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes);
+		void decorate_lights_array_descriptor_pool_sizes(std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes);
 
-		void _add_descriptor_pool();
+		void add_descriptor_pool();
 
 	public:
 		VkDescriptorSetLayout m_material_layout;
@@ -35,7 +35,7 @@ namespace vren
 		explicit descriptor_set_pool(vren::renderer& renderer);
 		~descriptor_set_pool();
 
-		void _acquire_descriptor_sets(size_t descriptor_sets_count, VkDescriptorSetLayout* descriptor_set_layouts, VkDescriptorSet* descriptor_sets);
+		void acquire_descriptor_sets(size_t descriptor_sets_count, VkDescriptorSetLayout* descriptor_set_layouts, VkDescriptorSet* descriptor_sets);
 
 		void acquire_material_descriptor_set(VkDescriptorSet* descriptor_set);
 		void acquire_lights_array_descriptor_set(VkDescriptorSet* descriptor_set);

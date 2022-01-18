@@ -267,13 +267,7 @@ void vren::simple_draw_pass::record_commands(
 		);
 
 		// Instances buffer
-		vkCmdBindVertexBuffers(
-			frame.m_command_buffer,
-			1,
-			1,
-			&render_obj.m_instances_buffer.m_buffer,
-			offsets
-		);
+		vkCmdBindVertexBuffers(frame.m_command_buffer, 1, 1, &render_obj.m_instances_buffer.m_buffer, offsets);
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();
@@ -287,18 +281,9 @@ void vren::simple_draw_pass::record_commands(
 			0,
 			nullptr
 		);
-		m_renderer.m_material_manager->update_material_descriptor_set(
-			render_obj.m_material,
-			descriptor_set
-		);
 
-		vkCmdDrawIndexed(
-			frame.m_command_buffer,
-			render_obj.m_indices_count,
-			render_obj.m_instances_count,
-			0,
-			0,
-			0
-		);
+		vren::material_manager::update_material_descriptor_set(m_renderer, *render_obj.m_material, descriptor_set);
+
+		vkCmdDrawIndexed(frame.m_command_buffer, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}
 }

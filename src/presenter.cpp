@@ -33,7 +33,7 @@ vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysical
 	return surface_details;
 }
 
-VkSwapchainKHR vren::presenter::_create_swapchain(VkExtent2D extent)
+VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 {
 	auto surface_details = vren::get_surface_details(m_surface, m_renderer->m_physical_device);
 
@@ -93,7 +93,7 @@ VkSwapchainKHR vren::presenter::_create_swapchain(VkExtent2D extent)
 	m_current_extent = extent;
 	vren::vk_utils::check(vkGetSwapchainImagesKHR(m_renderer->m_device, m_swapchain, &m_image_count, nullptr));
 
-	_create_depth_buffer();
+	create_depth_buffer();
 
 	_create_frames();
 }
@@ -127,7 +127,7 @@ void vren::presenter::_create_frames()
 		// Swapchain framebuffer
 		std::initializer_list<VkImageView> attachments = {
 			frame.m_swapchain_image_view,
-			m_depth_buffer.m_image_view.m_handle
+			m_depth_buffer->m_image_view->m_handle
 		};
 
 		VkFramebufferCreateInfo framebuffer_info{};
@@ -143,8 +143,11 @@ void vren::presenter::_create_frames()
 	}
 }
 
-void vren::presenter::_create_depth_buffer()
+void vren::presenter::create_depth_buffer()
 {
+	m_depth_buffer = vren::make_unq<vren::presenter::depth_buffer>();
+
+	m_depth_buffer->m_image = vren::make_unq<vren::image>();
 	vren::create_image(
 		*m_renderer,
 		m_current_extent.width,
@@ -153,35 +156,29 @@ void vren::presenter::_create_depth_buffer()
 		VK_FORMAT_D32_SFLOAT,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		m_depth_buffer.m_image
+		*m_depth_buffer->m_image
 	);
 
-	vren::create_image_view(
-		*m_renderer,
-		m_depth_buffer.m_image,
-		VK_IMAGE_ASPECT_DEPTH_BIT,
-		m_depth_buffer.m_image_view
+	m_depth_buffer->m_image_view = vren::make_unq<vren::vk_image_view>(
+		vren::create_image_view(
+			*m_renderer,
+			m_depth_buffer->m_image->m_image->m_handle,
+			VK_FORMAT_D32_SFLOAT,
+			VK_IMAGE_ASPECT_DEPTH_BIT
+		)
 	);
 }
 
-void vren::presenter::_destroy_depth_buffer()
+void vren::presenter::destroy_depth_buffer()
 {
-	vren::destroy_image(
-		*m_renderer,
-		m_depth_buffer.m_image
-	);
-
-	vren::destroy_image_view_if_any(
-		*m_renderer,
-		m_depth_buffer.m_image_view
-	);
+	m_depth_buffer = nullptr;
 }
 
-void vren::presenter::_destroy_swapchain()
+void vren::presenter::destroy_swapchain()
 {
 	m_frames.clear();
 
-	_destroy_depth_buffer();
+	destroy_depth_buffer();
 
 	if (m_swapchain != VK_NULL_HANDLE)
 	{
@@ -192,8 +189,8 @@ void vren::presenter::_destroy_swapchain()
 
 void vren::presenter::recreate_swapchain(VkExtent2D extent)
 {
-	_destroy_swapchain();
-	_create_swapchain(extent);
+	destroy_swapchain();
+	create_swapchain(extent);
 }
 
 vren::presenter::presenter(
@@ -218,7 +215,7 @@ vren::presenter::~presenter()
 
 	m_frames.clear();
 
-	_destroy_swapchain();
+	destroy_swapchain();
 
 	vkDestroySurfaceKHR(m_renderer->m_instance, m_surface, nullptr); // TODO should initialize the surface itself
 }

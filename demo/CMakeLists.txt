@@ -1,5 +1,15 @@
 set(VREN_HOME ".." CACHE PATH "The path to the vren project repository.")
 
+include(FetchContent)
+
+# tinygltfloader
+FetchContent_Declare(
+        tinygltfloader
+        GIT_REPOSITORY https://github.com/syoyo/tinygltf
+        GIT_TAG        v2.5.0
+)
+FetchContent_MakeAvailable(tinygltfloader)
+
 # ------------------------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------------------------
@@ -8,17 +18,16 @@ add_executable(vren_demo
         src/main.cpp
         src/camera.hpp
         src/camera.cpp
-        src/ai_scene_loader.hpp
-        src/ai_scene_loader.cpp
+        src/tinygltf_loader.hpp
+        src/tinygltf_loader.cpp
 )
 
 # vren
 target_include_directories(vren_demo PUBLIC "${CMAKE_SOURCE_DIR}/src")
 target_link_libraries(vren_demo PUBLIC vren)
 
-# assimp
-find_package(assimp CONFIG REQUIRED)
-target_link_libraries(vren_demo PUBLIC assimp::assimp)
+# tinygltfloader
+target_include_directories(vren_demo PUBLIC ${tinygltfloader_SOURCE_DIR})
 
 # glfw3
 find_package(glfw3 CONFIG REQUIRED)

@@ -2,6 +2,21 @@
 
 #include "renderer.hpp"
 
+void vren::vk_utils::check(VkResult result)
+{
+	if (result != VK_SUCCESS)
+	{
+		printf("Vulkan command failed with code: %d\n", result);
+		fflush(stdout);
+
+		throw std::runtime_error("Vulkan command failed");
+	}
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// Image
+// --------------------------------------------------------------------------------------------------------------------------------
+
 void vren::create_image(
 	vren::renderer& renderer,
 	uint32_t width,
@@ -13,8 +28,6 @@ void vren::create_image(
 	vren::image& result
 )
 {
-	result.m_format = format;
-
 	VkImageCreateInfo image_info{};
 	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_info.imageType = VK_IMAGE_TYPE_2D;
@@ -33,14 +46,19 @@ void vren::create_image(
 	VmaAllocationCreateInfo alloc_create_info{};
 	alloc_create_info.requiredFlags = memory_properties;
 
-	vren::vk_utils::check(vmaCreateImage(renderer.m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &result.m_handle, &result.m_allocation, nullptr));
+	VkImage image;
+	VmaAllocation allocation;
+	vren::vk_utils::check(vmaCreateImage(renderer.m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
+
+	result.m_image = vren::make_rc<vren::vk_image>(renderer, image);
+	result.m_allocation = vren::make_rc<vren::vma_allocation>(renderer, allocation);
 
 	if (image_data)
 	{
 		auto& allocator = renderer.m_gpu_allocator;
 
 		VkMemoryRequirements image_memory_requirements{};
-		vkGetImageMemoryRequirements(renderer.m_device, result.m_handle, &image_memory_requirements);
+		vkGetImageMemoryRequirements(renderer.m_device, result.m_image->m_handle, &image_memory_requirements);
 		VkDeviceSize image_size = image_memory_requirements.size;
 
 		vren::gpu_buffer staging_buffer;
@@ -75,7 +93,7 @@ void vren::create_image(
 		memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.image = result.m_handle;
+		memory_barrier.image = result.m_image->m_handle;
 		memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		memory_barrier.subresourceRange.baseMipLevel = 0;
 		memory_barrier.subresourceRange.levelCount = 1;
@@ -99,7 +117,7 @@ void vren::create_image(
 			1
 		};
 
-		vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer, result.m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 		memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -108,7 +126,7 @@ void vren::create_image(
 		memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.image = result.m_handle;
+		memory_barrier.image = result.m_image->m_handle;
 		memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		memory_barrier.subresourceRange.baseMipLevel = 0;
 		memory_barrier.subresourceRange.levelCount = 1;
@@ -134,45 +152,77 @@ void vren::create_image(
 	}
 }
 
-void vren::destroy_image(vren::renderer& renderer, vren::image& result)
-{
-	if (result.m_handle != VK_NULL_HANDLE)
-	{
-		vmaDestroyImage(renderer.m_gpu_allocator->m_allocator, result.m_handle, nullptr);
-	}
+// --------------------------------------------------------------------------------------------------------------------------------
+// Image view
+// --------------------------------------------------------------------------------------------------------------------------------
 
-	if (result.m_allocation != VK_NULL_HANDLE)
-	{
-		vmaFreeMemory(renderer.m_gpu_allocator->m_allocator, result.m_allocation);
-	}
-}
-
-void vren::create_image_view(vren::renderer& renderer, vren::image const& image, VkImageAspectFlagBits aspect, vren::image_view& result)
+vren::vk_image_view vren::create_image_view(
+	vren::renderer& renderer,
+	VkImage image,
+	VkFormat format,
+	VkImageAspectFlagBits aspect
+)
 {
 	VkImageViewCreateInfo image_view_info{};
 	image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	image_view_info.image = image.m_handle;
+	image_view_info.image = image;
 	image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	image_view_info.format = image.m_format;
+	image_view_info.format = format;
 	image_view_info.subresourceRange.aspectMask = aspect;
 	image_view_info.subresourceRange.baseMipLevel = 0;
 	image_view_info.subresourceRange.levelCount = 1;
 	image_view_info.subresourceRange.baseArrayLayer = 0;
 	image_view_info.subresourceRange.layerCount = 1;
 
-	vren::vk_utils::check(vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &result.m_handle));
+	VkImageView image_view;
+	vren::vk_utils::check(vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &image_view));
+
+	return vren::vk_image_view(renderer, image_view);
 }
 
-void vren::destroy_image_view_if_any(vren::renderer& renderer, vren::image_view& image_view)
+// --------------------------------------------------------------------------------------------------------------------------------
+// Sampler
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::vk_sampler vren::create_sampler(
+	vren::renderer& renderer,
+	VkFilter mag_filter,
+	VkFilter min_filter,
+	VkSamplerMipmapMode mipmap_mode,
+	VkSamplerAddressMode address_mode_u,
+	VkSamplerAddressMode address_mode_v,
+	VkSamplerAddressMode address_mode_w
+)
 {
-	// TODO destructor?
+	VkSamplerCreateInfo sampler_info{};
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.pNext = nullptr;
+	sampler_info.flags = NULL;
+	sampler_info.minFilter = min_filter;
+	sampler_info.magFilter = mag_filter;
+	sampler_info.mipmapMode = mipmap_mode;
+	sampler_info.addressModeU = address_mode_u;
+	sampler_info.addressModeV = address_mode_v;
+	sampler_info.addressModeW = address_mode_w;
+	sampler_info.mipLodBias = 0.0f;
+	sampler_info.anisotropyEnable = 0.0f;
+	sampler_info.maxAnisotropy = 1.0f;
+	sampler_info.compareEnable = VK_FALSE;
+	sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+	sampler_info.minLod = 0.0f;
+	sampler_info.maxLod = 0.0f;
+	sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
 
-	if (image_view.is_valid())
-	{
-		vkDestroyImageView(renderer.m_device, image_view.m_handle, nullptr);
-		image_view.m_handle = VK_NULL_HANDLE;
-	}
+	VkSampler sampler;
+	vren::vk_utils::check(vkCreateSampler(renderer.m_device, &sampler_info, nullptr, &sampler));
+
+	return vren::vk_sampler(renderer, sampler);
 }
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// Texture
+// --------------------------------------------------------------------------------------------------------------------------------
 
 void vren::create_texture(
 	vren::renderer& renderer,
@@ -180,9 +230,17 @@ void vren::create_texture(
 	uint32_t height,
 	void* image_data,
 	VkFormat format,
+	VkFilter mag_filter,
+	VkFilter min_filter,
+	VkSamplerMipmapMode mipmap_mode,
+	VkSamplerAddressMode address_mode_u,
+	VkSamplerAddressMode address_mode_v,
+	VkSamplerAddressMode address_mode_w,
 	vren::texture& result
 )
 {
+	// Image
+	vren::image image;
 	vren::create_image(
 		renderer,
 		width,
@@ -191,63 +249,59 @@ void vren::create_texture(
 		format,
 		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		result.m_image
+		image
+	);
+	result.m_image = image.m_image;
+	result.m_image_allocation = image.m_allocation;
+
+	// Image view
+	result.m_image_view = vren::make_rc<vren::vk_image_view>(
+		vren::create_image_view(
+			renderer,
+			result.m_image->m_handle,
+			format,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		)
 	);
 
-	vren::create_image_view(
-		renderer,
-		result.m_image,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		result.m_image_view
+	// Sampler
+	result.m_sampler = vren::make_rc<vren::vk_sampler>(
+		vren::create_sampler(
+			renderer,
+			mag_filter,
+			min_filter,
+			mipmap_mode,
+			address_mode_u,
+			address_mode_v,
+			address_mode_w
+		)
 	);
-
-	VkSamplerCreateInfo create_info{};
-	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	create_info.pNext = nullptr;
-	create_info.flags = NULL;
-	create_info.minFilter = VK_FILTER_LINEAR;
-	create_info.magFilter = VK_FILTER_LINEAR;
-	create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	create_info.mipLodBias = 0.0f;
-	create_info.anisotropyEnable = 0.0f;
-	create_info.maxAnisotropy = 1.0f;
-	create_info.compareEnable = VK_FALSE;
-	create_info.compareOp = VK_COMPARE_OP_ALWAYS;
-	create_info.minLod = 0.0f;
-	create_info.maxLod = 0.0f;
-	create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	create_info.unnormalizedCoordinates = VK_FALSE;
-
-	vren::vk_utils::check(vkCreateSampler(renderer.m_device, &create_info, nullptr, &result.m_sampler_handle));
 }
 
-void vren::destroy_texture_if_any(
+void vren::create_color_texture(
 	vren::renderer& renderer,
-	vren::texture& texture
+	float r,
+	float g,
+	float b,
+	float a,
+	vren::texture& result
 )
 {
-	if (texture.m_sampler_handle != VK_NULL_HANDLE)
-	{
-		vkDestroySampler(renderer.m_device, texture.m_sampler_handle, nullptr);
-	}
+	float col[4] = {r, g, b, a};
 
-	vren::destroy_image_view_if_any(renderer, texture.m_image_view);
-	vren::destroy_image(renderer, texture.m_image);
+	vren::create_texture(
+		renderer,
+		1,
+		1,
+		&col,
+		VK_FORMAT_R8G8B8A8_UNORM,
+		VK_FILTER_NEAREST,
+		VK_FILTER_NEAREST,
+		VK_SAMPLER_MIPMAP_MODE_NEAREST,
+		VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		result
+	);
 }
-
-void vren::vk_utils::check(VkResult result)
-{
-	if (result != VK_SUCCESS)
-	{
-		printf("Vulkan command failed with code: %d\n", result);
-		fflush(stdout);
-
-		throw std::runtime_error("Vulkan command failed");
-	}
-}
-
-
 
