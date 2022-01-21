@@ -36,12 +36,14 @@ layout(set = 1, binding = 0) buffer readonly PointLights
     PointLight data[];
 } b_point_lights;
 
+/*
 layout(set = 1, binding = 1) buffer readonly DirectionalLights
 {
     uint num;
     float _pad[3];
     DirectionalLight data[];
 } b_directional_lights;
+*/
 
 layout(location = 0) out vec4 f_color;
 
@@ -90,7 +92,7 @@ vec3 apply_light(
 )
 {
     float roughness = texture(u_mat_metallic_roughness_tex, v_tex_coords).g;
-    float metallic = texture(u_mat_metallic_roughness_tex,  v_tex_coords).b;
+    float metallic = texture(u_mat_metallic_roughness_tex, v_tex_coords).b;
 
     vec3 H = normalize(V + -L);
 
@@ -110,7 +112,7 @@ vec3 apply_light(
     float specular = num / denom;
 
     float NdotL = max(dot(N, -L), 0.0);
-    return (kD * surf_col / PI + kS * specular) * radiance * NdotL;
+    return max((kD * surf_col / PI + kS * specular) * radiance * NdotL, 0);
 }
 
 vec3 apply_point_lights(
@@ -141,6 +143,7 @@ vec3 apply_point_lights(
     return Lo;
 }
 
+/*
 vec3 apply_directional_lights(
     vec3 frag_pos,
     vec3 V,
@@ -168,6 +171,7 @@ vec3 apply_directional_lights(
 
     return Lo;
 }
+*/
 
 void main()
 {

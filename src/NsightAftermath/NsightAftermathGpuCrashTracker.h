@@ -26,6 +26,7 @@
 
 #include <map>
 #include <mutex>
+#include <filesystem>
 
 #include "NsightAftermathHelpers.h"
 #include "NsightAftermathShaderDatabase.h"
@@ -44,6 +45,7 @@ public:
     void Initialize();
 
 private:
+	std::filesystem::path m_crash_files_dir;
 
     //*********************************************************
     // Callback handlers for GPU crash dumps and related data.

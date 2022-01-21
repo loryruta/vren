@@ -141,14 +141,14 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 		buffers_info.push_back(buffer_info);
 	}
 
-	VkWriteDescriptorSet descriptor_set_write{};
-	descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptor_set_write.dstSet = descriptor_set;
-	descriptor_set_write.dstBinding = VREN_POINT_LIGHTS_BINDING; // VREN_DIRECTIONAL_LIGHTS_BINDING
-	descriptor_set_write.dstArrayElement = 0;
-	descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	descriptor_set_write.descriptorCount = buffers_info.size();
-	descriptor_set_write.pBufferInfo = buffers_info.data();
+	VkWriteDescriptorSet desc_set_write{};
+	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	desc_set_write.dstSet = descriptor_set;
+	desc_set_write.dstBinding = VREN_POINT_LIGHTS_BINDING; // VREN_DIRECTIONAL_LIGHTS_BINDING
+	desc_set_write.dstArrayElement = 0;
+	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	desc_set_write.descriptorCount = buffers_info.size();
+	desc_set_write.pBufferInfo = buffers_info.data();
 
-	vkUpdateDescriptorSets(m_renderer.m_device, 1, &descriptor_set_write, 0, nullptr);
+	vkUpdateDescriptorSets(m_renderer.m_device, 1, &desc_set_write, 0, nullptr);
 }

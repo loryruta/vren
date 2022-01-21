@@ -90,6 +90,7 @@ VkInstance vren::renderer::create_instance()
 	app_info.apiVersion = VK_API_VERSION_1_2;
 
 	VkInstanceCreateInfo instance_info{};
+	instance_info.pNext = nullptr;
 	instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instance_info.pApplicationInfo = &app_info;
 
@@ -150,17 +151,17 @@ vren::renderer::queue_families vren::renderer::get_queue_families(VkPhysicalDevi
 	vren::renderer::queue_families queue_families;
 	for (int i = 0; i < queue_families_properties.size(); i++) {
 		// Graphics
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT) { // todo possibly graphics only queue
 			queue_families.m_graphics_idx = i;
 		}
 
 		// Compute
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_COMPUTE_BIT) {
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_COMPUTE_BIT) { // todo possibly compute only queue
 			queue_families.m_compute_idx = i;
 		}
 
 		// Transfer
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_TRANSFER_BIT) {
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_TRANSFER_BIT) { // todo possibly transfer only queue
 			queue_families.m_transfer_idx = i;
 		}
 
@@ -457,19 +458,19 @@ vren::renderer::renderer(renderer_info& info) :
 
 	// Default textures
 	m_white_texture = vren::make_rc<vren::texture>();
-	vren::create_color_texture(*this, 1.0f, 1.0f, 1.0f, 1.0f, *m_white_texture);
+	vren::create_color_texture(*this, 255, 255, 255, 255, *m_white_texture);
 
 	m_black_texture = vren::make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0.0f, 0.0f, 0.0f, 0.0f, *m_black_texture);
+	vren::create_color_texture(*this, 0, 0, 0, 0, *m_black_texture);
 
-	m_red_texture   = vren::make_rc<vren::texture>();
-	vren::create_color_texture(*this, 1.0f, 0.0f, 0.0f, 1.0f, *m_red_texture);
+	m_red_texture = vren::make_rc<vren::texture>();
+	vren::create_color_texture(*this, 255, 0, 0, 255, *m_red_texture);
 
 	m_green_texture = vren::make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0.0f, 1.0f, 0.0f, 1.0f, *m_green_texture);
+	vren::create_color_texture(*this, 0, 255, 0, 255, *m_green_texture);
 
 	m_blue_texture = vren::make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0.0f, 0.0f, 1.0f, 1.0f, *m_blue_texture);
+	vren::create_color_texture(*this, 0, 0, 255, 255, *m_blue_texture);
 
 	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
 

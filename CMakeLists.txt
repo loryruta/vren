@@ -61,7 +61,7 @@ add_library(vren
 )
 
 # NsightAftermath
-if (NsightAftermath_FOUND)
+if (FALSE)
     target_sources(vren PUBLIC
             src/NsightAftermath/NsightAftermathGpuCrashTracker.cpp
             src/NsightAftermath/NsightAftermathGpuCrashTracker.h

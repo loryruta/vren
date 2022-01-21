@@ -1,12 +1,11 @@
 #pragma once
 
-
 #include <memory>
 #include <stdexcept>
+#include <iostream>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
-
 
 namespace vren
 {

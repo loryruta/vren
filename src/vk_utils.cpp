@@ -13,6 +13,41 @@ void vren::vk_utils::check(VkResult result)
 	}
 }
 
+VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::renderer& renderer, VkCommandPool cmd_pool)
+{
+	VkCommandBufferAllocateInfo cmd_buf_info{};
+	cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmd_buf_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmd_buf_info.commandPool = cmd_pool;
+	cmd_buf_info.commandBufferCount = 1;
+
+	VkCommandBuffer cmd_buf{};
+	vren::vk_utils::check(vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_info, &cmd_buf));
+
+	VkCommandBufferBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &begin_info));
+
+	return cmd_buf;
+}
+
+void vren::vk_utils::end_single_submit_command_buffer(vren::renderer& renderer, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf)
+{
+	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
+
+	VkSubmitInfo submit_info{};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &cmd_buf;
+	vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
+
+	vren::vk_utils::check(vkQueueWaitIdle(queue));
+
+	vkFreeCommandBuffers(renderer.m_device, cmd_pool, 1, &cmd_buf);
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -39,7 +74,7 @@ void vren::create_image(
 	image_info.format = format;
 	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 	image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	image_info.usage = usage;
+	image_info.usage = usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -69,86 +104,74 @@ void vren::create_image(
 			memcpy(mapped_image_data, image_data, static_cast<size_t>(image_size));
 		vmaUnmapMemory(allocator->m_allocator, staging_buffer.m_allocation);
 
-		VkCommandBufferAllocateInfo cmd_buf_info{};
-		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmd_buf_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		cmd_buf_info.commandPool = renderer.m_transfer_command_pool;
-		cmd_buf_info.commandBufferCount = 1;
+		VkCommandBuffer cmd_buf;
+		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(renderer, renderer.m_transfer_command_pool);
 
-		VkCommandBuffer cmd_buf{};
-		vren::vk_utils::check(vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_info, &cmd_buf));
+		// transition from undefined to transfer layout
+		{
+			VkImageMemoryBarrier memory_barrier{};
+			memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			memory_barrier.srcAccessMask = NULL;
+			memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memory_barrier.image = result.m_image->m_handle;
+			memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			memory_barrier.subresourceRange.baseMipLevel = 0;
+			memory_barrier.subresourceRange.levelCount = 1;
+			memory_barrier.subresourceRange.baseArrayLayer = 0;
+			memory_barrier.subresourceRange.layerCount = 1;
 
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
+		}
 
-		vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &begin_info));
+		// copies staging buffer to image
+		{
+			VkBufferImageCopy region{};
+			region.bufferOffset = 0;
+			region.bufferRowLength = 0;
+			region.bufferImageHeight = 0;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.mipLevel = 0;
+			region.imageSubresource.baseArrayLayer = 0;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset = {0, 0, 0};
+			region.imageExtent = {
+				width,
+				height,
+				1
+			};
 
-		VkImageMemoryBarrier memory_barrier{};
+			vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		}
 
-		memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		memory_barrier.srcAccessMask = NULL;
-		memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.image = result.m_image->m_handle;
-		memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		memory_barrier.subresourceRange.baseMipLevel = 0;
-		memory_barrier.subresourceRange.levelCount = 1;
-		memory_barrier.subresourceRange.baseArrayLayer = 0;
-		memory_barrier.subresourceRange.layerCount = 1;
+		// transition from transfer to shader readonly optimal layout
+		{
+			VkImageMemoryBarrier memory_barrier{};
+			memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memory_barrier.image = result.m_image->m_handle;
+			memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			memory_barrier.subresourceRange.baseMipLevel = 0;
+			memory_barrier.subresourceRange.levelCount = 1;
+			memory_barrier.subresourceRange.baseArrayLayer = 0;
+			memory_barrier.subresourceRange.layerCount = 1;
 
-		vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
+			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
+		}
 
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		region.imageOffset = {0, 0, 0};
-		region.imageExtent = {
-			width,
-			height,
-			1
-		};
+		//
 
-		vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		memory_barrier.image = result.m_image->m_handle;
-		memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		memory_barrier.subresourceRange.baseMipLevel = 0;
-		memory_barrier.subresourceRange.levelCount = 1;
-		memory_barrier.subresourceRange.baseArrayLayer = 0;
-		memory_barrier.subresourceRange.layerCount = 1;
-
-		vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
-
-		vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
-
-		VkSubmitInfo submit_info{};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &cmd_buf;
-
-		vren::vk_utils::check(vkQueueSubmit(renderer.m_transfer_queue, 1, &submit_info, VK_NULL_HANDLE));
-		vren::vk_utils::check(vkQueueWaitIdle(renderer.m_transfer_queue));
+		vren::vk_utils::end_single_submit_command_buffer(renderer, renderer.m_transfer_queue, renderer.m_transfer_command_pool, cmd_buf);
 
 		allocator->destroy_buffer_if_any(staging_buffer);
-
-		//vkFreeCommandBuffers(renderer.m_device, renderer.m_transfer_command_pool, 1, &cmd_buf);
-		vren::vk_utils::check(vkResetCommandPool(renderer.m_device, renderer.m_transfer_command_pool, NULL));
 	}
 }
 
@@ -247,7 +270,7 @@ void vren::create_texture(
 		height,
 		image_data,
 		format,
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		image
 	);
@@ -278,25 +301,18 @@ void vren::create_texture(
 	);
 }
 
-void vren::create_color_texture(
-	vren::renderer& renderer,
-	float r,
-	float g,
-	float b,
-	float a,
-	vren::texture& result
-)
+void vren::create_color_texture(vren::renderer& renderer, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vren::texture& result)
 {
-	float col[4] = {r, g, b, a};
+	std::vector<uint8_t> img_data = {r, g, b, a};
 
 	vren::create_texture(
 		renderer,
 		1,
 		1,
-		&col,
+		img_data.data(),
 		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_FILTER_NEAREST,
-		VK_FILTER_NEAREST,
+		VK_FILTER_NEAREST, // mag filter
+		VK_FILTER_NEAREST, // min filter
 		VK_SAMPLER_MIPMAP_MODE_NEAREST,
 		VK_SAMPLER_ADDRESS_MODE_REPEAT,
 		VK_SAMPLER_ADDRESS_MODE_REPEAT,

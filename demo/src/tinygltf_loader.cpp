@@ -174,11 +174,14 @@ void vren::tinygltf_loader::load_materials(
 		auto mat = vren::make_rc<vren::material>(m_renderer);
 
 		mat->m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor);
-		mat->m_metallic_factor   = (float) gltf_pbr.metallicFactor;
-		mat->m_roughness_factor  = (float) gltf_pbr.roughnessFactor;
+		mat->m_metallic_factor = (float) gltf_pbr.metallicFactor;
+		mat->m_roughness_factor = (float) gltf_pbr.roughnessFactor;
 
-		mat->m_base_color_texture = result.m_textures.at(gltf_pbr.baseColorTexture.index);
-		mat->m_metallic_roughness_texture = result.m_textures.at(gltf_pbr.metallicRoughnessTexture.index);
+		if (gltf_pbr.baseColorTexture.index >= 0)
+			mat->m_base_color_texture = result.m_textures.at(gltf_pbr.baseColorTexture.index);
+
+		if (gltf_pbr.metallicRoughnessTexture.index >= 0)
+			mat->m_metallic_roughness_texture = result.m_textures.at(gltf_pbr.metallicRoughnessTexture.index);
 
 		result.m_materials[i] = mat;
 	}
@@ -257,154 +260,150 @@ void vren::tinygltf_loader::load_model(
 	{
 		tinygltf::Mesh const& gltf_mesh = gltf_model.meshes.at(mesh_idx);
 
-		if (gltf_mesh.primitives.size() != 1)
+		for (tinygltf::Primitive const& gltf_primitive : gltf_mesh.primitives)
 		{
-			throw std::runtime_error("A mesh must have exactly one primitive");
-		}
-
-		tinygltf::Primitive const& gltf_primitive = gltf_mesh.primitives.at(0);
-
-		if (gltf_primitive.mode != TINYGLTF_MODE_TRIANGLES)
-		{
-			throw std::runtime_error("Primitive mode != TRIANGLES not supported");
-		}
-
-		auto& render_obj = render_list.create_render_object();
-
-		if (!gltf_primitive.attributes.count("POSITION"))
-		{
-			throw std::runtime_error("Mesh POSITION attribute must be present");
-		}
-
-		using opt_accessor_t = std::optional<std::reference_wrapper<tinygltf::Accessor const>>;
-
-		opt_accessor_t
-			pos_accessor,
-			norm_accessor,
-			tan_accessor,
-			texcoord_0_accessor;
-
-		{ // POSITION attribute accessor
-			pos_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("POSITION"));
-		}
-
-		// NORMAL attribute accessor
-		if (gltf_primitive.attributes.count("NORMAL"))
-		{
-			norm_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("NORMAL"));
-		}
-
-		// TANGENT attribute accessor
-		if (gltf_primitive.attributes.count("TANGENT"))
-		{
-			tan_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("TANGENT"));
-		}
-
-		// TEXCOORD_0 attribute accessor
-		if (gltf_primitive.attributes.count("TEXCOORD_0"))
-		{
-			texcoord_0_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("TEXCOORD_0"));
-		}
-
-		size_t vtx_count = pos_accessor->get().count;
-
-		if (
-			(norm_accessor.has_value()       && norm_accessor->get().count       != vtx_count) ||
-			(tan_accessor.has_value()        && tan_accessor->get().count        != vtx_count) ||
-			(texcoord_0_accessor.has_value() && texcoord_0_accessor->get().count != vtx_count)
-		)
-		{
-			throw std::runtime_error("POSITION vertices count mismatches with at least one of other attributes count");
-		}
-
-		{ // vertices
-			std::vector<vren::vertex> vertices(vtx_count);
-
-			for (int i = 0; i < vtx_count; i++)
+			if (gltf_primitive.mode != TINYGLTF_MODE_TRIANGLES)
 			{
-				auto& v = vertices[i];
-
-				// todo verify accessor type and component type match before reading them!
-
-				if (pos_accessor.has_value()) // position
-				{
-					v.m_position = *reinterpret_cast<glm::vec3 const*>(
-						get_accessor_element_at(gltf_model, pos_accessor.value(), i)
-					);
-				}
-
-				if (norm_accessor.has_value()) // normal
-				{
-					v.m_normal = *reinterpret_cast<glm::vec3 const*>(
-						get_accessor_element_at(gltf_model, norm_accessor.value(), i)
-					);
-				}
-
-				if (tan_accessor.has_value()) // tangent
-				{
-					v.m_tangent = *reinterpret_cast<glm::vec3 const*>(
-						get_accessor_element_at(gltf_model, tan_accessor.value(), i)
-					);
-				}
-
-				if (texcoord_0_accessor.has_value()) // texcoord 0
-				{
-					v.m_texcoord = *reinterpret_cast<glm::vec2 const*>(
-						get_accessor_element_at(gltf_model, texcoord_0_accessor.value(), i)
-					);
-				}
+				throw std::runtime_error("Primitive mode != TRIANGLES not supported");
 			}
 
-			render_obj.set_vertices_data(vertices.data(), vertices.size());
-		}
+			auto& render_obj = render_list.create_render_object();
 
-		{ // indices
-			tinygltf::Accessor const& indices_accessor = gltf_model.accessors.at(gltf_primitive.indices);
-
-			std::vector<uint32_t> indices(indices_accessor.count);
-
-			for (int i = 0; i < indices_accessor.count; i++)
+			if (!gltf_primitive.attributes.count("POSITION"))
 			{
-				uint32_t idx;
-
-				switch (indices_accessor.componentType)
-				{
-				case TINYGLTF_COMPONENT_TYPE_BYTE:
-					idx = *reinterpret_cast<uint8_t const*>(
-						get_accessor_element_at(gltf_model, indices_accessor, i)
-					);
-					break;
-				case TINYGLTF_COMPONENT_TYPE_SHORT:
-				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-					idx = *reinterpret_cast<uint16_t const*>(
-						get_accessor_element_at(gltf_model, indices_accessor, i)
-					);
-					break;
-				case TINYGLTF_COMPONENT_TYPE_INT:
-				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-					idx = *reinterpret_cast<uint32_t const*>(
-						get_accessor_element_at(gltf_model, indices_accessor, i)
-					);
-					break;
-				default:
-					// should never reach this point
-					throw std::invalid_argument("Unsupported indices component type");
-				}
-
-				indices[i] = idx;
+				throw std::runtime_error("Mesh POSITION attribute must be present");
 			}
 
-			render_obj.set_indices_data(indices.data(), indices.size());
+			using opt_accessor_t = std::optional<std::reference_wrapper<tinygltf::Accessor const>>;
+
+			opt_accessor_t
+				pos_accessor,
+				norm_accessor,
+				tan_accessor,
+				texcoord_0_accessor;
+
+			{ // POSITION attribute accessor
+				pos_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("POSITION"));
+			}
+
+			// NORMAL attribute accessor
+			if (gltf_primitive.attributes.count("NORMAL"))
+			{
+				norm_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("NORMAL"));
+			}
+
+			// TANGENT attribute accessor
+			if (gltf_primitive.attributes.count("TANGENT"))
+			{
+				tan_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("TANGENT"));
+			}
+
+			// TEXCOORD_0 attribute accessor
+			if (gltf_primitive.attributes.count("TEXCOORD_0"))
+			{
+				texcoord_0_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("TEXCOORD_0"));
+			}
+
+			size_t vtx_count = pos_accessor->get().count;
+
+			if (
+				(norm_accessor.has_value()       && norm_accessor->get().count       != vtx_count) ||
+					(tan_accessor.has_value()        && tan_accessor->get().count        != vtx_count) ||
+					(texcoord_0_accessor.has_value() && texcoord_0_accessor->get().count != vtx_count)
+				)
+			{
+				throw std::runtime_error("POSITION vertices count mismatches with at least one of other attributes count");
+			}
+
+			{ // vertices
+				std::vector<vren::vertex> vertices(vtx_count);
+
+				for (int i = 0; i < vtx_count; i++)
+				{
+					auto& v = vertices[i];
+
+					// todo verify accessor type and component type match before reading them!
+
+					if (pos_accessor.has_value()) // position
+					{
+						v.m_position = *reinterpret_cast<glm::vec3 const*>(
+							get_accessor_element_at(gltf_model, pos_accessor.value(), i)
+						);
+					}
+
+					if (norm_accessor.has_value()) // normal
+					{
+						v.m_normal = *reinterpret_cast<glm::vec3 const*>(
+							get_accessor_element_at(gltf_model, norm_accessor.value(), i)
+						);
+					}
+
+					if (tan_accessor.has_value()) // tangent
+					{
+						v.m_tangent = *reinterpret_cast<glm::vec3 const*>(
+							get_accessor_element_at(gltf_model, tan_accessor.value(), i)
+						);
+					}
+
+					if (texcoord_0_accessor.has_value()) // texcoord 0
+					{
+						v.m_texcoord = *reinterpret_cast<glm::vec2 const*>(
+							get_accessor_element_at(gltf_model, texcoord_0_accessor.value(), i)
+						);
+					}
+				}
+
+				render_obj.set_vertices_data(vertices.data(), vertices.size());
+			}
+
+			{ // indices
+				tinygltf::Accessor const& indices_accessor = gltf_model.accessors.at(gltf_primitive.indices);
+
+				std::vector<uint32_t> indices(indices_accessor.count);
+
+				for (int i = 0; i < indices_accessor.count; i++)
+				{
+					uint32_t idx;
+
+					switch (indices_accessor.componentType)
+					{
+					case TINYGLTF_COMPONENT_TYPE_BYTE:
+						idx = *reinterpret_cast<uint8_t const*>(
+							get_accessor_element_at(gltf_model, indices_accessor, i)
+						);
+						break;
+					case TINYGLTF_COMPONENT_TYPE_SHORT:
+					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+						idx = *reinterpret_cast<uint16_t const*>(
+							get_accessor_element_at(gltf_model, indices_accessor, i)
+						);
+						break;
+					case TINYGLTF_COMPONENT_TYPE_INT:
+					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+						idx = *reinterpret_cast<uint32_t const*>(
+							get_accessor_element_at(gltf_model, indices_accessor, i)
+						);
+						break;
+					default:
+						// should never reach this point
+						throw std::invalid_argument("Unsupported indices component type");
+					}
+
+					indices[i] = idx;
+				}
+
+				render_obj.set_indices_data(indices.data(), indices.size());
+			}
+
+			// instances
+			auto& instances_data = instance_data_by_mesh_idx.at(mesh_idx);
+			render_obj.set_instances_data(instances_data.data(), instances_data.size());
+
+			// material
+			render_obj.m_material = result.m_materials.at(gltf_primitive.material);
+
+			result.m_render_objects.push_back(render_obj.m_idx); // register the id of the render object for the loaded scene
 		}
-
-		// instances
-		auto& instances_data = instance_data_by_mesh_idx.at(mesh_idx);
-		render_obj.set_instances_data(instances_data.data(), instances_data.size());
-
-		// material
-		render_obj.m_material = result.m_materials.at(gltf_primitive.material);
-
-		result.m_render_objects.push_back(render_obj.m_idx); // register the id of the render object for the loaded scene
 	}
 }
 
@@ -438,4 +437,9 @@ void vren::tinygltf_loader::load_from_file(
 	}
 
 	load_model(model_file.parent_path(), gltf_model, render_list, result);
+
+	printf("Loaded %llu textures\n", result.m_textures.size());
+	printf("Loaded %llu materials\n", result.m_materials.size());
+	printf("Loaded %llu render objects\n", result.m_render_objects.size());
+	fflush(stdout);
 }

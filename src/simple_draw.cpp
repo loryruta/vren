@@ -138,29 +138,29 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	color_blend_info.attachmentCount = 1;
 	color_blend_info.pAttachments = &color_blend_attachment;
 
-	std::vector<VkDescriptorSetLayout> descriptor_set_layouts = {
+	std::vector<VkDescriptorSetLayout> desc_set_layouts = {
 		m_renderer.m_descriptor_set_pool->m_material_layout,
 		m_renderer.m_descriptor_set_pool->m_lights_array_layout
 	};
 
-	VkPipelineLayoutCreateInfo pipeline_layout_info{};
-	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipeline_layout_info.setLayoutCount = descriptor_set_layouts.size();
-	pipeline_layout_info.pSetLayouts = descriptor_set_layouts.data();
-
 	std::vector<VkPushConstantRange> push_constants;
 
-	// Camera
 	VkPushConstantRange push_constant{};
 	push_constant.offset = 0;
 	push_constant.size = sizeof(vren::camera);
 	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	push_constants.push_back(push_constant);
 
-	pipeline_layout_info.pPushConstantRanges = push_constants.data();
-	pipeline_layout_info.pushConstantRangeCount = (uint32_t) push_constants.size();
+	VkPipelineLayoutCreateInfo pipe_layout_info{};
+	pipe_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipe_layout_info.pNext = nullptr;
+	pipe_layout_info.flags = 0;
+	pipe_layout_info.setLayoutCount = desc_set_layouts.size();
+	pipe_layout_info.pSetLayouts = desc_set_layouts.data();
+	pipe_layout_info.pushConstantRangeCount = (uint32_t) push_constants.size();
+	pipe_layout_info.pPushConstantRanges = push_constants.data();
 
-	vren::vk_utils::check(vkCreatePipelineLayout(m_renderer.m_device, &pipeline_layout_info, nullptr, &m_pipeline_layout));
+	vren::vk_utils::check(vkCreatePipelineLayout(m_renderer.m_device, &pipe_layout_info, nullptr, &m_pipeline_layout));
 
 	// Viewport state
 	VkPipelineViewportStateCreateInfo viewport_state_info{};
@@ -225,6 +225,7 @@ void vren::simple_draw_pass::record_commands(
 
 	// Lights array
 	descriptor_set = frame.acquire_lights_array_descriptor_set();
+	lights_array.update_descriptor_set(descriptor_set);
 	vkCmdBindDescriptorSets(
 		frame.m_command_buffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -235,7 +236,6 @@ void vren::simple_draw_pass::record_commands(
 		0,
 		nullptr
 	);
-	lights_array.update_descriptor_set(descriptor_set);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
@@ -243,7 +243,9 @@ void vren::simple_draw_pass::record_commands(
 
 		if (!render_obj.is_valid())
 		{
-			printf("WARNING: Render object %d is invalid.\n", render_obj.m_idx);
+			fprintf(stderr, "WARNING: Render object %d is invalid", render_obj.m_idx);
+			fflush(stderr);
+
 			continue;
 		}
 
@@ -271,6 +273,7 @@ void vren::simple_draw_pass::record_commands(
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();
+		vren::material_manager::update_material_descriptor_set(m_renderer, *render_obj.m_material, descriptor_set);
 		vkCmdBindDescriptorSets(
 			frame.m_command_buffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -281,8 +284,6 @@ void vren::simple_draw_pass::record_commands(
 			0,
 			nullptr
 		);
-
-		vren::material_manager::update_material_descriptor_set(m_renderer, *render_obj.m_material, descriptor_set);
 
 		vkCmdDrawIndexed(frame.m_command_buffer, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}

@@ -14,6 +14,9 @@ namespace vren // todo vren::vk_utils
 	namespace vk_utils
 	{
 		void check(VkResult result);
+
+		VkCommandBuffer begin_single_submit_command_buffer(vren::renderer& renderer, VkCommandPool cmd_pool);
+		void end_single_submit_command_buffer(vren::renderer& renderer, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf);
 	}
 
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -77,6 +80,11 @@ namespace vren // todo vren::vk_utils
 		vren::rc<vren::vma_allocation> m_image_allocation;
 		vren::rc<vren::vk_image_view> m_image_view;
 		vren::rc<vren::vk_sampler> m_sampler;
+
+		inline bool is_valid()
+		{
+			return m_image->is_valid() && m_image_allocation->is_valid() && m_image_view->is_valid() && m_sampler->is_valid();
+		}
 	};
 
 	void create_texture(
@@ -94,14 +102,7 @@ namespace vren // todo vren::vk_utils
 		vren::texture& result
 	);
 
-	void create_color_texture(
-		vren::renderer& renderer,
-		float r,
-		float g,
-		float b,
-		float a,
-		vren::texture& result
-	);
+	void create_color_texture(vren::renderer& renderer, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vren::texture& result);
 
 	void destroy_texture_if_any(
 		vren::renderer& renderer,

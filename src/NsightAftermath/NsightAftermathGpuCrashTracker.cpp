@@ -70,6 +70,9 @@ void GpuCrashTracker::Initialize()
         CrashDumpDescriptionCallback,                                     // Register callback for GPU crash dump description.
         this));                                                           // Set the GpuCrashTracker object as user data for the above callbacks.
 
+	m_crash_files_dir = std::filesystem::current_path();
+	std::filesystem::create_directory(m_crash_files_dir);
+
     m_initialized = true;
 }
 
@@ -112,7 +115,7 @@ void GpuCrashTracker::OnDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescripti
     // Add some basic description about the crash. This is called after the GPU crash happens, but before
     // the actual GPU crash dump callback. The provided data is included in the crash dump and can be
     // retrieved using GFSDK_Aftermath_GpuCrashDump_GetDescription().
-    addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName, "VkHelloNsightAftermath");
+    addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName, "vren");
     addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion, "v1.0");
     addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined, "This is a GPU crash dump example.");
     addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined + 1, "Engine State: Rendering.");
@@ -166,7 +169,7 @@ void GpuCrashTracker::WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const u
     // Write the the crash dump data to a file using the .nv-gpudmp extension
     // registered with Nsight Graphics.
     const std::string crashDumpFileName = baseFileName + ".nv-gpudmp";
-    std::ofstream dumpFile(crashDumpFileName, std::ios::out | std::ios::binary);
+    std::ofstream dumpFile(m_crash_files_dir / crashDumpFileName, std::ios::out | std::ios::binary);
     if (dumpFile)
     {
         dumpFile.write((const char*)pGpuCrashDump, gpuCrashDumpSize);
@@ -195,7 +198,7 @@ void GpuCrashTracker::WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const u
 
     // Write the the crash dump data as JSON to a file.
     const std::string jsonFileName = crashDumpFileName + ".json";
-    std::ofstream jsonFile(jsonFileName, std::ios::out | std::ios::binary);
+    std::ofstream jsonFile(m_crash_files_dir / jsonFileName, std::ios::out | std::ios::binary);
     if (jsonFile)
     {
        jsonFile.write(json.data(), json.size());
@@ -214,8 +217,7 @@ void GpuCrashTracker::WriteShaderDebugInformationToFile(
 {
     // Create a unique file name.
     const std::string filePath = "shader-" + std::to_string(identifier) + ".nvdbg";
-
-    std::ofstream f(filePath, std::ios::out | std::ios::binary);
+    std::ofstream f(m_crash_files_dir / filePath, std::ios::out | std::ios::binary);
     if (f)
     {
         f.write((const char*)pShaderDebugInfo, shaderDebugInfoSize);

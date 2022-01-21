@@ -30,12 +30,14 @@ void vren::descriptor_set_pool::create_material_layout()
 		bindings.push_back(binding);
 	}
 
-	VkDescriptorSetLayoutCreateInfo create_info{};
-	create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	create_info.bindingCount = bindings.size();
-	create_info.pBindings = bindings.data();
+	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{};
+	desc_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	desc_set_layout_info.pNext = nullptr;
+	desc_set_layout_info.flags = 0;
+	desc_set_layout_info.bindingCount = bindings.size();
+	desc_set_layout_info.pBindings = bindings.data();
 
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer.m_device, &create_info, nullptr, &m_material_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer.m_device, &desc_set_layout_info, nullptr, &m_material_layout));
 }
 
 void vren::descriptor_set_pool::create_lights_array_layout()
@@ -64,12 +66,14 @@ void vren::descriptor_set_pool::create_lights_array_layout()
 		bindings.push_back(binding);
 	}
 
-	VkDescriptorSetLayoutCreateInfo create_info{};
-	create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	create_info.bindingCount = bindings.size();
-	create_info.pBindings = bindings.data();
+	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{};
+	desc_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	desc_set_layout_info.pNext = nullptr;
+	desc_set_layout_info.flags = 0;
+	desc_set_layout_info.bindingCount = bindings.size();
+	desc_set_layout_info.pBindings = bindings.data();
 
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer.m_device, &create_info, nullptr, &m_lights_array_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer.m_device, &desc_set_layout_info, nullptr, &m_lights_array_layout));
 }
 
 void vren::descriptor_set_pool::decorate_material_descriptor_pool_sizes(
@@ -95,39 +99,42 @@ void vren::descriptor_set_pool::decorate_lights_array_descriptor_pool_sizes(
 	std::vector<VkDescriptorPoolSize>& descriptor_pool_sizes
 )
 {
-	{ // Point lights
+	{ // point lights
 		VkDescriptorPoolSize descriptor_pool_size{};
 		descriptor_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		descriptor_pool_size.descriptorCount = 1;
-
 		descriptor_pool_sizes.push_back(descriptor_pool_size);
 	}
 
-	{ // Directional lights
+	{ // directional lights
 		VkDescriptorPoolSize descriptor_pool_size{};
 		descriptor_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		descriptor_pool_size.descriptorCount = 1;
-
 		descriptor_pool_sizes.push_back(descriptor_pool_size);
 	}
 }
 
 void vren::descriptor_set_pool::add_descriptor_pool()
 {
-	std::vector<VkDescriptorPoolSize> descriptor_pool_sizes{};
-	decorate_material_descriptor_pool_sizes(descriptor_pool_sizes);
-	decorate_lights_array_descriptor_pool_sizes(descriptor_pool_sizes);
+	std::vector<VkDescriptorPoolSize> desc_pool_sizes{};
+	decorate_material_descriptor_pool_sizes(desc_pool_sizes);
+	decorate_lights_array_descriptor_pool_sizes(desc_pool_sizes);
 
-	VkDescriptorPoolCreateInfo descriptor_pool_info{};
-	descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptor_pool_info.poolSizeCount = (uint32_t) descriptor_pool_sizes.size();
-	descriptor_pool_info.pPoolSizes = descriptor_pool_sizes.data();
-	descriptor_pool_info.maxSets = VREN_DESCRIPTOR_SET_POOL_SIZE;
+	VkDescriptorPoolCreateInfo desc_pool_info{};
+	desc_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	desc_pool_info.pNext = nullptr;
+	desc_pool_info.flags = 0;
+	desc_pool_info.poolSizeCount = (uint32_t) desc_pool_sizes.size();
+	desc_pool_info.pPoolSizes = desc_pool_sizes.data();
+	desc_pool_info.maxSets = VREN_DESCRIPTOR_SET_POOL_SIZE;
 
-	VkDescriptorPool descriptor_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(m_renderer.m_device, &descriptor_pool_info, nullptr, &descriptor_pool));
+	VkDescriptorPool desc_pool;
+	vren::vk_utils::check(vkCreateDescriptorPool(m_renderer.m_device, &desc_pool_info, nullptr, &desc_pool));
 
-	m_descriptor_pools.push_back(descriptor_pool);
+	m_descriptor_pools.push_back(desc_pool);
+
+	printf("INFO: Created descriptor pool %p (total of: %zu)\n", desc_pool, m_descriptor_pools.size());
+	fflush(stdout);
 
 	m_last_pool_allocated_count = 0;
 }
@@ -171,14 +178,16 @@ void vren::descriptor_set_pool::acquire_descriptor_sets(
 		if (m_last_pool_allocated_count >= VREN_DESCRIPTOR_SET_POOL_SIZE)
 		{
 			add_descriptor_pool();
-			m_last_pool_allocated_count = 0;
 		}
 
 		size_t alloc_count = std::min(descriptor_sets_count - i, VREN_DESCRIPTOR_SET_POOL_SIZE - m_last_pool_allocated_count);
 
+		VkDescriptorPool desc_pool = m_descriptor_pools.back();
+
 		VkDescriptorSetAllocateInfo alloc_info{};
 		alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		alloc_info.descriptorPool = m_descriptor_pools.back();
+		alloc_info.pNext = nullptr;
+		alloc_info.descriptorPool = desc_pool;
 		alloc_info.descriptorSetCount = alloc_count;
 		alloc_info.pSetLayouts = descriptor_set_layouts;
 
@@ -186,6 +195,11 @@ void vren::descriptor_set_pool::acquire_descriptor_sets(
 		m_last_pool_allocated_count += alloc_count;
 
 		vren::vk_utils::check(vkAllocateDescriptorSets(m_renderer.m_device, &alloc_info, descriptor_sets + i));
+
+		size_t tot_desc_sets = (m_descriptor_pools.size() - 1) * VREN_DESCRIPTOR_SET_POOL_SIZE + m_last_pool_allocated_count;
+
+		printf("INFO: Allocated %zu descriptor set(s) from descriptor pool %p (total of: %zu/%zu)\n", alloc_count, desc_pool, tot_desc_sets, VREN_DESCRIPTOR_SET_POOL_SIZE * m_descriptor_pools.size());
+		fflush(stdout);
 
 		i += alloc_count;
 	}

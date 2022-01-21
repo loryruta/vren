@@ -16,7 +16,7 @@ namespace vren
 	struct material
 	{
 		vren::rc<vren::texture> m_base_color_texture;
-		vren::rc<vren::texture> m_metallic_roughness_texture;
+		vren::rc<vren::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
 
 		glm::vec4 m_base_color_factor;
 		float m_metallic_factor;

@@ -3,49 +3,57 @@
 #include "renderer.hpp"
 
 vren::material::material(vren::renderer& renderer) :
-	m_base_color_factor(1.0f),
 	m_base_color_texture(renderer.m_white_texture),
+	m_metallic_roughness_texture(renderer.m_white_texture),
+	m_base_color_factor(1.0f),
 	m_metallic_factor(0.0f),
-	m_roughness_factor(0.0f),
-	m_metallic_roughness_texture(renderer.m_black_texture)
+	m_roughness_factor(0.0f)
 {
 }
 
 void vren::material_manager::update_material_descriptor_set(vren::renderer const& renderer, vren::material const& material, VkDescriptorSet descriptor_set)
 {
-	{ // base color texture
-		VkDescriptorImageInfo image_info{};
-		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		image_info.imageView = material.m_base_color_texture->m_image_view->m_handle;
-		image_info.sampler = material.m_base_color_texture->m_sampler->m_handle;
+	std::vector<VkWriteDescriptorSet> desc_set_writes;
+	VkWriteDescriptorSet desc_set_write{};
 
-		VkWriteDescriptorSet descriptor_set_write{};
-		descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptor_set_write.dstSet = descriptor_set;
-		descriptor_set_write.dstBinding = VREN_MATERIAL_BASE_COLOR_TEXTURE_BINDING;
-		descriptor_set_write.dstArrayElement = 0;
-		descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptor_set_write.descriptorCount = 1;
-		descriptor_set_write.pImageInfo = &image_info;
+	// Base color
+	VkDescriptorImageInfo base_col_tex_info{};
+	base_col_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	base_col_tex_info.imageView = material.m_base_color_texture->m_image_view->m_handle;
+	base_col_tex_info.sampler = material.m_base_color_texture->m_sampler->m_handle;
 
-		vkUpdateDescriptorSets(renderer.m_device, 1, &descriptor_set_write, 0, nullptr);
-	}
+	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	desc_set_write.pNext = nullptr;
+	desc_set_write.dstSet = descriptor_set;
+	desc_set_write.dstBinding = VREN_MATERIAL_BASE_COLOR_TEXTURE_BINDING;
+	desc_set_write.dstArrayElement = 0;
+	desc_set_write.descriptorCount = 1;
+	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	desc_set_write.pImageInfo = &base_col_tex_info;
+	desc_set_write.pBufferInfo = nullptr;
+	desc_set_write.pTexelBufferView = nullptr;
 
-	{ // metallic roughness texture
-		VkDescriptorImageInfo image_info{};
-		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		image_info.imageView = material.m_metallic_roughness_texture->m_image_view->m_handle;
-		image_info.sampler = material.m_metallic_roughness_texture->m_sampler->m_handle;
+	desc_set_writes.push_back(desc_set_write);
 
-		VkWriteDescriptorSet descriptor_set_write{};
-		descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptor_set_write.dstSet = descriptor_set;
-		descriptor_set_write.dstBinding = VREN_MATERIAL_METALLIC_ROUGHNESS_TEXTURE_BINDING;
-		descriptor_set_write.dstArrayElement = 0;
-		descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptor_set_write.descriptorCount = 1;
-		descriptor_set_write.pImageInfo = &image_info;
+	// Metallic/roughness texture
+	VkDescriptorImageInfo met_rough_tex_info{};
+	met_rough_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	met_rough_tex_info.imageView = material.m_metallic_roughness_texture->m_image_view->m_handle;
+	met_rough_tex_info.sampler = material.m_metallic_roughness_texture->m_sampler->m_handle;
 
-		vkUpdateDescriptorSets(renderer.m_device, 1, &descriptor_set_write, 0, nullptr);
-	}
+	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	desc_set_write.pNext = nullptr;
+	desc_set_write.dstSet = descriptor_set;
+	desc_set_write.dstBinding = VREN_MATERIAL_METALLIC_ROUGHNESS_TEXTURE_BINDING;
+	desc_set_write.dstArrayElement = 0;
+	desc_set_write.descriptorCount = 1;
+	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	desc_set_write.pImageInfo = &met_rough_tex_info;
+	desc_set_write.pBufferInfo = nullptr;
+	desc_set_write.pTexelBufferView = nullptr;
+
+	desc_set_writes.push_back(desc_set_write);
+
+	//
+	vkUpdateDescriptorSets(renderer.m_device, desc_set_writes.size(), desc_set_writes.data(), 0, nullptr);
 }

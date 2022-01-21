@@ -116,7 +116,7 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 
 		auto mat = vren::make_rc<vren::material>(renderer);
 		mat->m_base_color_texture = renderer.m_green_texture;
-		mat->m_metallic_roughness_texture  = renderer.m_black_texture;
+		mat->m_metallic_roughness_texture = renderer.m_green_texture;
 		surface.m_material = mat;
 
 		create_cube(
@@ -138,7 +138,7 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 
 		auto mat = vren::make_rc<vren::material>(renderer);
 		mat->m_base_color_texture = renderer.m_red_texture;
-		mat->m_metallic_roughness_texture  = renderer.m_black_texture;
+		mat->m_metallic_roughness_texture = renderer.m_green_texture;
 
 		create_cube(
 			cube,
@@ -252,16 +252,12 @@ int main(int argc, char* argv[])
 	auto render_list = renderer->create_render_list();
 	auto lights_arr  = renderer->create_light_array();
 
-	//char const* model_path = "resources/models/sponza_cathedral/sponza.obj";
-	char const* model_path = "resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf";
-
+	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
 	vren::tinygltf_loader gltf_loader(*renderer);
 	gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
 
 	//create_cube_scene(*renderer, render_list, lights_arr);
-
-	//render_list->update_device_buffers();
 
 	{ // Static light
 		const float y = 10;
@@ -274,6 +270,7 @@ int main(int argc, char* argv[])
 
 	// Circular light
 	auto circ_light_idx = lights_arr->create_point_light().second;
+	lights_arr->update_device_buffers();
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -296,18 +293,18 @@ int main(int argc, char* argv[])
 
 		{ // Circular light update
 			const float freq = 2;
-			const float surf_y = 10;
+			const float h = 20;
 			const float r = 20;
 
 			glm::vec3 light_pos =  glm::vec3(
 				glm::cos(cur_time * freq) * r,
-				surf_y,
+				h,
 				glm::sin(cur_time * freq) * r
 			);
 
 			auto& circ_light = lights_arr->get_point_light(circ_light_idx);
 			circ_light.m_position = light_pos;
-			circ_light.m_color    = glm::vec3(1, 1, 1);
+			circ_light.m_color = glm::vec3(1, 1, 1);
 			lights_arr->update_device_buffers();
 		}
 
