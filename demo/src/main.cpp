@@ -4,6 +4,7 @@
 
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
+#include "debug_gui.hpp"
 
 #include <iostream>
 #include <optional>
@@ -202,6 +203,28 @@ void update_camera(float dt, vren_demo::camera& camera)
 	last_cur_pos = cur_pos;
 }
 
+void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+	{
+		switch (key)
+		{
+		case GLFW_KEY_ESCAPE:
+			if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+				glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			} else {
+				glfwSetWindowShouldClose(g_window, true);
+			}
+			break;
+		case GLFW_KEY_ENTER:
+			if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL) {
+				glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			}
+			break;
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	if (glfwInit() != GLFW_TRUE)
@@ -238,6 +261,8 @@ int main(int argc, char* argv[])
 	renderer_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
 	auto renderer = std::make_shared<vren::renderer>(renderer_info);
+
+	renderer->m_debug_gui = std::make_unique<vren::debug_gui>(*renderer, g_window);
 
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
@@ -277,6 +302,8 @@ int main(int argc, char* argv[])
 	vren_demo::camera camera{};
 	camera.m_aspect_ratio = VREN_DEMO_WINDOW_WIDTH / (float) VREN_DEMO_WINDOW_HEIGHT;
 
+	glfwSetKeyCallback(g_window, on_key_press);
+
 	float last_time = -1.0;
 	while (!glfwWindowShouldClose(g_window))
 	{
@@ -285,11 +312,6 @@ int main(int argc, char* argv[])
 		auto cur_time = (float) glfwGetTime();
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
 		last_time = cur_time;
-
-		if (glfwGetKey(g_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		{
-			glfwSetWindowShouldClose(g_window, GLFW_TRUE);
-		}
 
 		{ // Circular light update
 			const float freq = 2;
@@ -308,11 +330,13 @@ int main(int argc, char* argv[])
 			lights_arr->update_device_buffers();
 		}
 
-		update_camera(dt, camera);
+		if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+			update_camera(dt, camera);
+		}
 
 		vren::camera cam_data{};
-		cam_data.m_position   = camera.m_position;
-		cam_data.m_view       = camera.get_view();
+		cam_data.m_position = camera.m_position;
+		cam_data.m_view = camera.get_view();
 		cam_data.m_projection = camera.get_projection();
 
 		presenter.present(*render_list, *lights_arr, cam_data);

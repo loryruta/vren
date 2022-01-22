@@ -58,6 +58,8 @@ add_library(vren
         src/descriptor_set_pool.cpp
         src/vk_wrappers.hpp
         src/vk_wrappers.cpp
+        src/debug_gui.hpp
+        src/debug_gui.cpp
 )
 
 # NsightAftermath

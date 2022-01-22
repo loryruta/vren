@@ -12,6 +12,7 @@
 #include "frame.hpp"
 #include "material.hpp"
 #include "descriptor_set_pool.hpp"
+#include "debug_gui.hpp"
 
 #include <glm/glm.hpp>
 
@@ -115,17 +116,20 @@ namespace vren
 
 		std::unique_ptr<vren::descriptor_set_pool> m_descriptor_set_pool;
 
+		// Textures
 		vren::rc<vren::texture> m_white_texture;
 		vren::rc<vren::texture> m_black_texture;
 		vren::rc<vren::texture> m_red_texture;
 		vren::rc<vren::texture> m_green_texture;
 		vren::rc<vren::texture> m_blue_texture;
 
-		std::vector<std::unique_ptr<vren::render_list>>  m_render_lists;
+		std::vector<std::unique_ptr<vren::render_list>> m_render_lists;
 		std::vector<std::unique_ptr<vren::lights_array>> m_light_arrays;
 
 		vren::render_list* create_render_list();
 		vren::lights_array* create_light_array();
+
+		std::unique_ptr<vren::debug_gui> m_debug_gui;
 
 		renderer(renderer_info& info);
 		~renderer();

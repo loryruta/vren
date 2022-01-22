@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -17,6 +18,7 @@ namespace vren // todo vren::vk_utils
 
 		VkCommandBuffer begin_single_submit_command_buffer(vren::renderer& renderer, VkCommandPool cmd_pool);
 		void end_single_submit_command_buffer(vren::renderer& renderer, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf);
+		void immediate_submit(vren::renderer& renderer, std::function<void(VkCommandBuffer)> submit_func);
 	}
 
 	// --------------------------------------------------------------------------------------------------------------------------------

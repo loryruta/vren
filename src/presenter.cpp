@@ -239,7 +239,7 @@ void vren::presenter::present(
 		vren::vk_utils::check(result);
 	}
 
-	frame._on_render();
+	frame.release_descriptor_sets();
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
 	uint32_t image_idx;

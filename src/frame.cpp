@@ -78,7 +78,7 @@ vren::frame::~frame()
 	if (m_render_finished_fence     != VK_NULL_HANDLE) vkDestroyFence(m_renderer.m_device, m_render_finished_fence, nullptr);
 }
 
-void vren::frame::_release_descriptor_sets()
+void vren::frame::release_descriptor_sets()
 {
 	if (!m_acquired_descriptor_sets.empty())
 	{
@@ -89,11 +89,6 @@ void vren::frame::_release_descriptor_sets()
 
 		m_acquired_descriptor_sets.clear();
 	}
-}
-
-void vren::frame::_on_render()
-{
-	_release_descriptor_sets();
 }
 
 VkDescriptorSet vren::frame::acquire_material_descriptor_set()

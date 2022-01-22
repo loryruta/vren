@@ -411,6 +411,11 @@ void vren::renderer::render(
 		camera
 	);
 
+	if (m_debug_gui) // Draw debug GUI above all
+	{
+		m_debug_gui->render(frame);
+	}
+
 	vkCmdEndRenderPass(cmd_buf);
 
 	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));

@@ -48,6 +48,15 @@ void vren::vk_utils::end_single_submit_command_buffer(vren::renderer& renderer, 
 	vkFreeCommandBuffers(renderer.m_device, cmd_pool, 1, &cmd_buf);
 }
 
+void vren::vk_utils::immediate_submit(vren::renderer& renderer, std::function<void(VkCommandBuffer)> submit_func)
+{
+	VkCommandBuffer cmd_buf = begin_single_submit_command_buffer(renderer, renderer.m_graphics_command_pool);
+
+	submit_func(cmd_buf);
+
+	end_single_submit_command_buffer(renderer, renderer.m_graphics_queue, renderer.m_graphics_command_pool, cmd_buf);
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image
 // --------------------------------------------------------------------------------------------------------------------------------
