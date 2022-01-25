@@ -94,8 +94,8 @@ void vren::create_image(
 	VmaAllocation allocation;
 	vren::vk_utils::check(vmaCreateImage(renderer.m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
 
-	result.m_image = vren::make_rc<vren::vk_image>(renderer, image);
-	result.m_allocation = vren::make_rc<vren::vma_allocation>(renderer, allocation);
+	result.m_image = renderer.make_rc<vren::vk_image>(renderer, image);
+	result.m_allocation = renderer.make_rc<vren::vma_allocation>(renderer, allocation);
 
 	if (image_data)
 	{
@@ -287,7 +287,7 @@ void vren::create_texture(
 	result.m_image_allocation = image.m_allocation;
 
 	// Image view
-	result.m_image_view = vren::make_rc<vren::vk_image_view>(
+	result.m_image_view = renderer.make_rc<vren::vk_image_view>(
 		vren::create_image_view(
 			renderer,
 			result.m_image->m_handle,
@@ -297,7 +297,7 @@ void vren::create_texture(
 	);
 
 	// Sampler
-	result.m_sampler = vren::make_rc<vren::vk_sampler>(
+	result.m_sampler = renderer.make_rc<vren::vk_sampler>(
 		vren::create_sampler(
 			renderer,
 			mag_filter,

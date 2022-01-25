@@ -15,6 +15,7 @@
             ]
         },
         "tinyfiledialogs",
-        "stb"
+        "stb",
+        "gtest"
     ]
 }

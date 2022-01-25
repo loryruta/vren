@@ -17,6 +17,8 @@ namespace vren
 		vren::renderer& m_renderer;
 		GLFWwindow* m_window; // for hooking events
 
+		VkDescriptorPool m_descriptor_pool;
+
 	public:
 		explicit debug_gui(vren::renderer& renderer, GLFWwindow* window);
 		~debug_gui();

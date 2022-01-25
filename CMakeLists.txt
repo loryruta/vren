@@ -60,6 +60,7 @@ add_library(vren
         src/vk_wrappers.cpp
         src/debug_gui.hpp
         src/debug_gui.cpp
+        src/ref_counting.hpp
 )
 
 # NsightAftermath
@@ -88,6 +89,8 @@ target_link_libraries(vren PUBLIC glm::glm)
 # VulkanMemoryAllocator
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
+
+add_subdirectory(test)
 
 if (${BUILD_DEMO})
     add_subdirectory(demo)

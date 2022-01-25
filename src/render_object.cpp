@@ -11,8 +11,6 @@ vren::render_object::render_object(vren::renderer* renderer) :
 	m_vertices_count  = 0;
 	m_indices_count   = 0;
 	m_instances_count = 0;
-
-	m_material = nullptr;
 }
 
 vren::render_object::render_object(vren::render_object&& other) noexcept

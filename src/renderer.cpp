@@ -462,19 +462,19 @@ vren::renderer::renderer(renderer_info& info) :
 	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(*this);
 
 	// Default textures
-	m_white_texture = vren::make_rc<vren::texture>();
+	m_white_texture = make_rc<vren::texture>();
 	vren::create_color_texture(*this, 255, 255, 255, 255, *m_white_texture);
 
-	m_black_texture = vren::make_rc<vren::texture>();
+	m_black_texture = make_rc<vren::texture>();
 	vren::create_color_texture(*this, 0, 0, 0, 0, *m_black_texture);
 
-	m_red_texture = vren::make_rc<vren::texture>();
+	m_red_texture = make_rc<vren::texture>();
 	vren::create_color_texture(*this, 255, 0, 0, 255, *m_red_texture);
 
-	m_green_texture = vren::make_rc<vren::texture>();
+	m_green_texture = make_rc<vren::texture>();
 	vren::create_color_texture(*this, 0, 255, 0, 255, *m_green_texture);
 
-	m_blue_texture = vren::make_rc<vren::texture>();
+	m_blue_texture = make_rc<vren::texture>();
 	vren::create_color_texture(*this, 0, 0, 255, 255, *m_blue_texture);
 
 	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
@@ -486,6 +486,10 @@ vren::renderer::~renderer()
 {
 	m_light_arrays.clear();
 	m_render_lists.clear();
+
+	m_resource_container.release();
+
+	m_debug_gui.reset();
 
 	m_descriptor_set_pool.reset();
 

@@ -7,6 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_wrappers.hpp"
+#include "ref_counting.hpp"
 
 namespace vren // todo vren::vk_utils
 {

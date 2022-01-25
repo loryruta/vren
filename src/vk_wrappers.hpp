@@ -65,30 +65,9 @@ namespace vren
 		}
 	};
 
-	// unique ref
-	template<typename _t>
-	using unq = std::unique_ptr<_t>;
-
-	template <class _t, class... _args_t>
-	vren::unq<_t> make_unq(_args_t&&... args)
-	{
-		return std::make_unique<_t>(std::forward<_args_t>(args)...); // todo why std::forward ?
-	}
-
-	// ref counting
-	template<typename _t>
-	using rc = std::shared_ptr<_t>;
-
-	template <class _t, class... _args_t>
-	vren::rc<_t> make_rc(_args_t&&... args)
-	{
-		return std::make_shared<_t>(std::forward<_args_t>(args)...);
-	}
-
 	// wrapped vulkan handles
-	using vk_image      = vren::vk_handle_wrapper<VkImage>;
-	using vk_image_view = vren::vk_handle_wrapper<VkImageView>;
-	using vk_sampler    = vren::vk_handle_wrapper<VkSampler>;
-
+	using vk_image       = vren::vk_handle_wrapper<VkImage>;
+	using vk_image_view  = vren::vk_handle_wrapper<VkImageView>;
+	using vk_sampler     = vren::vk_handle_wrapper<VkSampler>;
 	using vma_allocation = vren::vk_handle_wrapper<VmaAllocation>;
 }

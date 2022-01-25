@@ -37,8 +37,7 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	pool_info.poolSizeCount = std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
 
-	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(renderer.m_device, &pool_info, nullptr, &desc_pool));
+	vren::vk_utils::check(vkCreateDescriptorPool(renderer.m_device, &pool_info, nullptr, &m_descriptor_pool));
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -53,7 +52,7 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	init_info.QueueFamily = renderer.m_queue_families.m_graphics_idx;
 	init_info.Queue = renderer.m_graphics_queue;
 	init_info.PipelineCache = nullptr;
-	init_info.DescriptorPool = desc_pool;
+	init_info.DescriptorPool = m_descriptor_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = 3;
 	init_info.ImageCount = 3;
@@ -75,6 +74,8 @@ vren::debug_gui::~debug_gui()
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+
+	vkDestroyDescriptorPool(m_renderer.m_device, m_descriptor_pool, nullptr);
 }
 
 void vren::debug_gui::render(vren::frame& frame)

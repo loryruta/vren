@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "config.hpp"
+#include "ref_counting.hpp"
 #include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "gpu_allocator.hpp"
@@ -100,8 +101,8 @@ namespace vren
 		VkQueue m_transfer_queue;
 		VkQueue m_graphics_queue;
 		VkQueue m_compute_queue;
-		VkRenderPass m_render_pass;
 
+		VkRenderPass m_render_pass;
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 
 		// Allocator
@@ -131,8 +132,23 @@ namespace vren
 
 		std::unique_ptr<vren::debug_gui> m_debug_gui;
 
-		renderer(renderer_info& info);
+		vren::resource_container m_resource_container;
+
+		explicit renderer(renderer_info& info);
 		~renderer();
+
+		/*
+		template<class _t, class... _args_t>
+		vren::unq<_t> make_unq(_args_t&&... args)
+		{
+			return m_resource_container.make_unq<_t, _args_t...>(std::forward<_args_t>(args)...);
+		}*/
+
+		template<class _t, class... _args_t>
+		vren::rc<_t> make_rc(_args_t&&... args)
+		{
+			return m_resource_container.make_rc<_t, _args_t...>(std::forward<_args_t>(args)...);
+		}
 
 		void render(
 			vren::frame& frame,

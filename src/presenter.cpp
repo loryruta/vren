@@ -145,9 +145,9 @@ void vren::presenter::_create_frames()
 
 void vren::presenter::create_depth_buffer()
 {
-	m_depth_buffer = vren::make_unq<vren::presenter::depth_buffer>();
+	m_depth_buffer = m_renderer->make_rc<vren::presenter::depth_buffer>();
 
-	m_depth_buffer->m_image = vren::make_unq<vren::image>();
+	m_depth_buffer->m_image = m_renderer->make_rc<vren::image>();
 	vren::create_image(
 		*m_renderer,
 		m_current_extent.width,
@@ -159,7 +159,7 @@ void vren::presenter::create_depth_buffer()
 		*m_depth_buffer->m_image
 	);
 
-	m_depth_buffer->m_image_view = vren::make_unq<vren::vk_image_view>(
+	m_depth_buffer->m_image_view = m_renderer->make_rc<vren::vk_image_view>(
 		vren::create_image_view(
 			*m_renderer,
 			m_depth_buffer->m_image->m_image->m_handle,
@@ -171,7 +171,7 @@ void vren::presenter::create_depth_buffer()
 
 void vren::presenter::destroy_depth_buffer()
 {
-	m_depth_buffer = nullptr;
+	m_depth_buffer.reset();
 }
 
 void vren::presenter::destroy_swapchain()

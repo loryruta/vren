@@ -138,7 +138,7 @@ void vren::tinygltf_loader::load_textures(
 
 		tinygltf::Sampler const& gltf_sampler = gltf_model.samplers.at(gltf_tex.sampler);
 
-		auto tex = vren::make_rc<vren::texture>();
+		auto tex = m_renderer.make_rc<vren::texture>();
 		vren::create_texture(
 			m_renderer,
 			img_w,
@@ -171,7 +171,7 @@ void vren::tinygltf_loader::load_materials(
 		tinygltf::Material const& gltf_mat = gltf_model.materials.at(i);
 		tinygltf::PbrMetallicRoughness const& gltf_pbr = gltf_mat.pbrMetallicRoughness;
 
-		auto mat = vren::make_rc<vren::material>(m_renderer);
+		auto mat = m_renderer.make_rc<vren::material>(m_renderer);
 
 		mat->m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor);
 		mat->m_metallic_factor = (float) gltf_pbr.metallicFactor;

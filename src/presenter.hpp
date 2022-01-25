@@ -54,15 +54,15 @@ namespace vren
 
 		struct depth_buffer
 		{
-			vren::unq<vren::image> m_image;
-			vren::unq<vren::vk_image_view> m_image_view;
+			vren::rc<vren::image> m_image;
+			vren::rc<vren::vk_image_view> m_image_view;
 
 			inline bool is_valid() const
 			{
 				return m_image->is_valid() && m_image_view->is_valid();
 			}
 		};
-		vren::unq<vren::presenter::depth_buffer> m_depth_buffer;
+		vren::rc<vren::presenter::depth_buffer> m_depth_buffer;
 
 		std::vector<vren::frame> m_frames;
 

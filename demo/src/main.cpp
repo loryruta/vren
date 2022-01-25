@@ -115,7 +115,7 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 	{ // Surface
 		auto& surface = render_list->create_render_object();
 
-		auto mat = vren::make_rc<vren::material>(renderer);
+		auto mat = renderer.make_rc<vren::material>(renderer);
 		mat->m_base_color_texture = renderer.m_green_texture;
 		mat->m_metallic_roughness_texture = renderer.m_green_texture;
 		surface.m_material = mat;
@@ -137,7 +137,7 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = vren::make_rc<vren::material>(renderer);
+		auto mat = renderer.make_rc<vren::material>(renderer);
 		mat->m_base_color_texture = renderer.m_red_texture;
 		mat->m_metallic_roughness_texture = renderer.m_green_texture;
 
