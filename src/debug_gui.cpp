@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
+#include <implot.h>
 
 #include "renderer.hpp"
 #include "presenter.hpp"
@@ -43,6 +44,8 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void) io;
 
+	ImPlot::CreateContext();
+
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
 	ImGui_ImplVulkan_InitInfo init_info{};
@@ -73,6 +76,7 @@ vren::debug_gui::~debug_gui()
 {
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
 	vkDestroyDescriptorPool(m_renderer.m_device, m_descriptor_pool, nullptr);

@@ -33,10 +33,6 @@ target_include_directories(vren_demo PUBLIC ${tinygltfloader_SOURCE_DIR})
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(vren_demo PUBLIC glfw)
 
-# imgui
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(vren_demo PUBLIC imgui::imgui)
-
 # ------------------------------------------------------------------------------------------------
 
 include("${VREN_HOME}/VRen.cmake")

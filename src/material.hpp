@@ -15,14 +15,14 @@ namespace vren
 
 	struct material
 	{
-		vren::rc<vren::texture> m_base_color_texture;
-		vren::rc<vren::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
+		std::shared_ptr<vren::texture> m_base_color_texture;
+		std::shared_ptr<vren::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
 
 		glm::vec4 m_base_color_factor;
 		float m_metallic_factor;
 		float m_roughness_factor;
 
-		explicit material(vren::renderer& renderer);
+		explicit material(std::shared_ptr<vren::renderer> const& renderer);
 	};
 
 	namespace material_manager

@@ -1,13 +1,12 @@
-
 #pragma once
-
-#include "renderer.hpp"
-#include "vk_utils.hpp"
-#include "frame.hpp"
 
 #include <vector>
 
 #include <vulkan/vulkan.h>
+
+#include "renderer.hpp"
+#include "vk_utils.hpp"
+#include "frame.hpp"
 
 namespace vren
 {
@@ -54,15 +53,15 @@ namespace vren
 
 		struct depth_buffer
 		{
-			vren::rc<vren::image> m_image;
-			vren::rc<vren::vk_image_view> m_image_view;
+			std::shared_ptr<vren::image> m_image;
+			std::shared_ptr<vren::vk_image_view> m_image_view;
 
 			inline bool is_valid() const
 			{
 				return m_image->is_valid() && m_image_view->is_valid();
 			}
 		};
-		vren::rc<vren::presenter::depth_buffer> m_depth_buffer;
+		std::shared_ptr<vren::presenter::depth_buffer> m_depth_buffer;
 
 		std::vector<vren::frame> m_frames;
 

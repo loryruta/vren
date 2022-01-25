@@ -1,8 +1,7 @@
 set(VREN_HOME ".." CACHE PATH "The path to the vren project repository.")
 
 set(SRC
-        main.cpp
-        resource_container.cpp)
+        main.cpp)
 
 add_executable(vren_test ${SRC})
 

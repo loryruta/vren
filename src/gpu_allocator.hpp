@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
@@ -12,7 +14,7 @@ namespace vren
 
 	struct gpu_buffer
 	{
-		VkBuffer m_buffer          = VK_NULL_HANDLE;
+		VkBuffer m_buffer = VK_NULL_HANDLE;
 		VmaAllocation m_allocation = VK_NULL_HANDLE;
 
 		gpu_buffer() = default;
@@ -34,11 +36,11 @@ namespace vren
 	class gpu_allocator
 	{
 	public:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		VmaAllocator m_allocator;
 
-		gpu_allocator(vren::renderer& renderer);
+		gpu_allocator(std::shared_ptr<vren::renderer> const& renderer);
 		~gpu_allocator();
 
 		void destroy_buffer_if_any(vren::gpu_buffer& buffer);

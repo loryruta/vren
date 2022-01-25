@@ -62,7 +62,7 @@ void vren::vk_utils::immediate_submit(vren::renderer& renderer, std::function<vo
 // --------------------------------------------------------------------------------------------------------------------------------
 
 void vren::create_image(
-	vren::renderer& renderer,
+	std::shared_ptr<vren::renderer> const& renderer,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -92,17 +92,17 @@ void vren::create_image(
 
 	VkImage image;
 	VmaAllocation allocation;
-	vren::vk_utils::check(vmaCreateImage(renderer.m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
+	vren::vk_utils::check(vmaCreateImage(renderer->m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
 
-	result.m_image = renderer.make_rc<vren::vk_image>(renderer, image);
-	result.m_allocation = renderer.make_rc<vren::vma_allocation>(renderer, allocation);
+	result.m_image = std::make_shared<vren::vk_image>(renderer, image);
+	result.m_allocation = std::make_shared<vren::vma_allocation>(renderer, allocation);
 
 	if (image_data)
 	{
-		auto& allocator = renderer.m_gpu_allocator;
+		auto& allocator = renderer->m_gpu_allocator;
 
 		VkMemoryRequirements image_memory_requirements{};
-		vkGetImageMemoryRequirements(renderer.m_device, result.m_image->m_handle, &image_memory_requirements);
+		vkGetImageMemoryRequirements(renderer->m_device, result.m_image->m_handle, &image_memory_requirements);
 		VkDeviceSize image_size = image_memory_requirements.size;
 
 		vren::gpu_buffer staging_buffer;
@@ -114,7 +114,7 @@ void vren::create_image(
 		vmaUnmapMemory(allocator->m_allocator, staging_buffer.m_allocation);
 
 		VkCommandBuffer cmd_buf;
-		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(renderer, renderer.m_transfer_command_pool);
+		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(*renderer, renderer->m_transfer_command_pool);
 
 		// transition from undefined to transfer layout
 		{
@@ -178,7 +178,7 @@ void vren::create_image(
 
 		//
 
-		vren::vk_utils::end_single_submit_command_buffer(renderer, renderer.m_transfer_queue, renderer.m_transfer_command_pool, cmd_buf);
+		vren::vk_utils::end_single_submit_command_buffer(*renderer, renderer->m_transfer_queue, renderer->m_transfer_command_pool, cmd_buf);
 
 		allocator->destroy_buffer_if_any(staging_buffer);
 	}
@@ -189,7 +189,7 @@ void vren::create_image(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_image_view vren::create_image_view(
-	vren::renderer& renderer,
+	std::shared_ptr<vren::renderer> const& renderer,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlagBits aspect
@@ -207,7 +207,7 @@ vren::vk_image_view vren::create_image_view(
 	image_view_info.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	vren::vk_utils::check(vkCreateImageView(renderer.m_device, &image_view_info, nullptr, &image_view));
+	vren::vk_utils::check(vkCreateImageView(renderer->m_device, &image_view_info, nullptr, &image_view));
 
 	return vren::vk_image_view(renderer, image_view);
 }
@@ -217,7 +217,7 @@ vren::vk_image_view vren::create_image_view(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_sampler vren::create_sampler(
-	vren::renderer& renderer,
+	std::shared_ptr<vren::renderer> const& renderer,
 	VkFilter mag_filter,
 	VkFilter min_filter,
 	VkSamplerMipmapMode mipmap_mode,
@@ -247,7 +247,7 @@ vren::vk_sampler vren::create_sampler(
 	sampler_info.unnormalizedCoordinates = VK_FALSE;
 
 	VkSampler sampler;
-	vren::vk_utils::check(vkCreateSampler(renderer.m_device, &sampler_info, nullptr, &sampler));
+	vren::vk_utils::check(vkCreateSampler(renderer->m_device, &sampler_info, nullptr, &sampler));
 
 	return vren::vk_sampler(renderer, sampler);
 }
@@ -257,7 +257,7 @@ vren::vk_sampler vren::create_sampler(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 void vren::create_texture(
-	vren::renderer& renderer,
+	std::shared_ptr<vren::renderer> const& renderer,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -287,7 +287,7 @@ void vren::create_texture(
 	result.m_image_allocation = image.m_allocation;
 
 	// Image view
-	result.m_image_view = renderer.make_rc<vren::vk_image_view>(
+	result.m_image_view = std::make_shared<vren::vk_image_view>(
 		vren::create_image_view(
 			renderer,
 			result.m_image->m_handle,
@@ -297,7 +297,7 @@ void vren::create_texture(
 	);
 
 	// Sampler
-	result.m_sampler = renderer.make_rc<vren::vk_sampler>(
+	result.m_sampler = std::make_shared<vren::vk_sampler>(
 		vren::create_sampler(
 			renderer,
 			mag_filter,
@@ -310,7 +310,14 @@ void vren::create_texture(
 	);
 }
 
-void vren::create_color_texture(vren::renderer& renderer, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vren::texture& result)
+void vren::create_color_texture(
+	std::shared_ptr<vren::renderer> const& renderer,
+	uint8_t r,
+	uint8_t g,
+	uint8_t b,
+	uint8_t a,
+	vren::texture& result
+)
 {
 	std::vector<uint8_t> img_data = {r, g, b, a};
 

@@ -105,7 +105,7 @@ void vren::presenter::_create_frames()
 
 	for (int i = 0; i < m_image_count; i++)
 	{
-		auto& frame = m_frames.emplace_back(*m_renderer);
+		auto& frame = m_frames.emplace_back(m_renderer);
 
 		// Swapchain image
 		frame.m_swapchain_image = swapchain_images.at(i);
@@ -145,11 +145,11 @@ void vren::presenter::_create_frames()
 
 void vren::presenter::create_depth_buffer()
 {
-	m_depth_buffer = m_renderer->make_rc<vren::presenter::depth_buffer>();
+	m_depth_buffer = std::make_shared<vren::presenter::depth_buffer>();
 
-	m_depth_buffer->m_image = m_renderer->make_rc<vren::image>();
+	m_depth_buffer->m_image = std::make_shared<vren::image>();
 	vren::create_image(
-		*m_renderer,
+		m_renderer,
 		m_current_extent.width,
 		m_current_extent.height,
 		nullptr,
@@ -159,9 +159,9 @@ void vren::presenter::create_depth_buffer()
 		*m_depth_buffer->m_image
 	);
 
-	m_depth_buffer->m_image_view = m_renderer->make_rc<vren::vk_image_view>(
+	m_depth_buffer->m_image_view = std::make_shared<vren::vk_image_view>(
 		vren::create_image_view(
-			*m_renderer,
+			m_renderer,
 			m_depth_buffer->m_image->m_image->m_handle,
 			VK_FORMAT_D32_SFLOAT,
 			VK_IMAGE_ASPECT_DEPTH_BIT

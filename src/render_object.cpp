@@ -5,11 +5,11 @@
 #include <iostream>
 
 
-vren::render_object::render_object(vren::renderer* renderer) :
-	m_renderer(renderer)
+vren::render_object::render_object(std::shared_ptr<vren::render_list> const& render_list) :
+	m_render_list(render_list)
 {
-	m_vertices_count  = 0;
-	m_indices_count   = 0;
+	m_vertices_count = 0;
+	m_indices_count = 0;
 	m_instances_count = 0;
 }
 
@@ -20,23 +20,23 @@ vren::render_object::render_object(vren::render_object&& other) noexcept
 
 vren::render_object::~render_object()
 {
-	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_vertex_buffer);
-	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_indices_buffer);
-	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_instances_buffer);
+	m_render_list->m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_vertex_buffer);
+	m_render_list->m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_indices_buffer);
+	m_render_list->m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_instances_buffer);
 }
 
 vren::render_object& vren::render_object::operator=(vren::render_object&& other) noexcept
 {
-	m_renderer = other.m_renderer;
+	m_render_list = other.m_render_list;
 
-	m_vertex_buffer  = std::move(other.m_vertex_buffer);
+	m_vertex_buffer = std::move(other.m_vertex_buffer);
 	m_vertices_count = other.m_vertices_count;
 
 	m_indices_buffer = std::move(other.m_indices_buffer);
-	m_indices_count  = other.m_indices_count;
+	m_indices_count = other.m_indices_count;
 
 	m_instances_buffer = std::move(other.m_instances_buffer);
-	m_instances_count  = other.m_instances_count;
+	m_instances_count = other.m_instances_count;
 
 	m_material = other.m_material;
 
@@ -54,7 +54,7 @@ bool vren::render_object::is_valid() const
 
 void vren::render_object::set_vertices_data(vren::vertex const* vertices_data, size_t vertices_count)
 {
-	auto& allocator = m_renderer->m_gpu_allocator;
+	auto& allocator = m_render_list->m_renderer->m_gpu_allocator;
 
 	allocator->destroy_buffer_if_any(m_vertex_buffer);
 
@@ -69,7 +69,7 @@ void vren::render_object::set_vertices_data(vren::vertex const* vertices_data, s
 
 void vren::render_object::set_indices_data(uint32_t const* indices_data, size_t indices_count)
 {
-	auto& allocator = m_renderer->m_gpu_allocator;
+	auto& allocator = m_render_list->m_renderer->m_gpu_allocator;
 
 	allocator->destroy_buffer_if_any(m_indices_buffer);
 
@@ -84,7 +84,7 @@ void vren::render_object::set_indices_data(uint32_t const* indices_data, size_t 
 
 void vren::render_object::set_instances_data(vren::instance_data const* instances_data, size_t instances_count)
 {
-	auto& allocator = m_renderer->m_gpu_allocator;
+	auto& allocator = m_render_list->m_renderer->m_gpu_allocator;
 
 	allocator->destroy_buffer_if_any(m_instances_buffer);
 
@@ -96,4 +96,3 @@ void vren::render_object::set_instances_data(vren::instance_data const* instance
 
 	m_instances_count = instances_count;
 }
-

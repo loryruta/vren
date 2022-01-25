@@ -7,15 +7,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#define UBO_CAMERA_BINDING 0
-#define UBO_CAMERA_SIZE (sizeof(float) * (16 + 16))
-
-#define VREN_DRAW_MATERIAL_TEXTURES_BINDING 1
-
-
-// ------------------------------------------------------------------------------------------------ simple_draw_pass
-
-vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
+vren::simple_draw_pass::simple_draw_pass(std::shared_ptr<vren::renderer> const& renderer) :
 	m_renderer(renderer)
 {
 	_create_graphics_pipeline();
@@ -23,11 +15,11 @@ vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
 
 vren::simple_draw_pass::~simple_draw_pass()
 {
-	vkDestroyPipelineLayout(m_renderer.m_device, m_pipeline_layout, nullptr);
-	vkDestroyPipeline(m_renderer.m_device, m_graphics_pipeline, nullptr);
+	vkDestroyPipelineLayout(m_renderer->m_device, m_pipeline_layout, nullptr);
+	vkDestroyPipeline(m_renderer->m_device, m_graphics_pipeline, nullptr);
 
-	vkDestroyShaderModule(m_renderer.m_device, m_fragment_shader, nullptr);
-	vkDestroyShaderModule(m_renderer.m_device, m_vertex_shader, nullptr);
+	vkDestroyShaderModule(m_renderer->m_device, m_fragment_shader, nullptr);
+	vkDestroyShaderModule(m_renderer->m_device, m_vertex_shader, nullptr);
 }
 
 VkShaderModule create_shader_module(VkDevice device, char const* path)
@@ -67,13 +59,13 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 
 	shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	m_vertex_shader = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.vert.bin");
+	m_vertex_shader = create_shader_module(m_renderer->m_device, "./.vren/resources/simple_draw.vert.bin");
 	shader_stage_info.module = m_vertex_shader;
 	shader_stage_info.pName = "main";
 	shader_stage_infos.push_back(shader_stage_info);
 
 	shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	m_fragment_shader = create_shader_module(m_renderer.m_device, "./.vren/resources/simple_draw.frag.bin");
+	m_fragment_shader = create_shader_module(m_renderer->m_device, "./.vren/resources/simple_draw.frag.bin");
 	shader_stage_info.module = m_fragment_shader;
 	shader_stage_info.pName = "main";
 	shader_stage_infos.push_back(shader_stage_info);
@@ -139,8 +131,8 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	color_blend_info.pAttachments = &color_blend_attachment;
 
 	std::vector<VkDescriptorSetLayout> desc_set_layouts = {
-		m_renderer.m_descriptor_set_pool->m_material_layout,
-		m_renderer.m_descriptor_set_pool->m_lights_array_layout
+		m_renderer->m_descriptor_set_pool->m_material_layout,
+		m_renderer->m_descriptor_set_pool->m_lights_array_layout
 	};
 
 	std::vector<VkPushConstantRange> push_constants;
@@ -160,7 +152,7 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	pipe_layout_info.pushConstantRangeCount = (uint32_t) push_constants.size();
 	pipe_layout_info.pPushConstantRanges = push_constants.data();
 
-	vren::vk_utils::check(vkCreatePipelineLayout(m_renderer.m_device, &pipe_layout_info, nullptr, &m_pipeline_layout));
+	vren::vk_utils::check(vkCreatePipelineLayout(m_renderer->m_device, &pipe_layout_info, nullptr, &m_pipeline_layout));
 
 	// Viewport state
 	VkPipelineViewportStateCreateInfo viewport_state_info{};
@@ -192,14 +184,14 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
 	graphics_pipeline_info.pColorBlendState = &color_blend_info;
 	graphics_pipeline_info.layout = m_pipeline_layout;
-	graphics_pipeline_info.renderPass = m_renderer.m_render_pass;
+	graphics_pipeline_info.renderPass = m_renderer->m_render_pass;
 	graphics_pipeline_info.subpass = 0;
 	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	vren::vk_utils::check(vkCreateGraphicsPipelines(m_renderer.m_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_graphics_pipeline));
+	vren::vk_utils::check(vkCreateGraphicsPipelines(m_renderer->m_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_graphics_pipeline));
 
-	//vkDestroyShaderModule(m_renderer.m_device, vert_shader_mod, nullptr);
-	//vkDestroyShaderModule(m_renderer.m_device, frag_shader_mod, nullptr);
+	//vkDestroyShaderModule(m_renderer->m_device, vert_shader_mod, nullptr);
+	//vkDestroyShaderModule(m_renderer->m_device, frag_shader_mod, nullptr);
 }
 
 void vren::simple_draw_pass::record_commands(
@@ -273,7 +265,7 @@ void vren::simple_draw_pass::record_commands(
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();
-		vren::material_manager::update_material_descriptor_set(m_renderer, *render_obj.m_material, descriptor_set);
+		vren::material_manager::update_material_descriptor_set(*m_renderer, *render_obj.m_material, descriptor_set);
 		vkCmdBindDescriptorSets(
 			frame.m_command_buffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,

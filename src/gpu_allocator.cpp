@@ -34,23 +34,21 @@ vren::gpu_buffer& vren::gpu_buffer::operator=(vren::gpu_buffer&& other) noexcept
 
 // ------------------------------------------------------------------------------------------------ gpu_allocator
 
-vren::gpu_allocator::gpu_allocator(vren::renderer& renderer) :
+vren::gpu_allocator::gpu_allocator(std::shared_ptr<vren::renderer> const& renderer) :
 	m_renderer(renderer)
 {
 	VmaAllocatorCreateInfo create_info{};
 	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
-	create_info.instance = renderer.m_instance;
-	create_info.physicalDevice = renderer.m_physical_device;
-	create_info.device = renderer.m_device;
+	create_info.instance = renderer->m_instance;
+	create_info.physicalDevice = renderer->m_physical_device;
+	create_info.device = renderer->m_device;
 
 	vren::vk_utils::check(vmaCreateAllocator(&create_info, &m_allocator));
 }
 
 vren::gpu_allocator::~gpu_allocator()
 {
-	// TODO FREE ALL MEMORY ALLOCATIONS (INCLUDING vren::rc<vren::vma_allocation>) THIS IMPLIES REF COUNTING REFERENCES' LIFETIME MUST BE WITHIN RENDERERS' LIFETIME
-
-	vmaDestroyAllocator(m_allocator);
+	vmaDestroyAllocator(m_allocator); // todo vmaAllocator in renderer (or, better, in context)
 }
 
 void vren::gpu_allocator::destroy_buffer_if_any(vren::gpu_buffer& buffer)
@@ -151,11 +149,11 @@ void vren::gpu_allocator::update_device_only_buffer(
 	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
 	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_alloc_info.commandPool = m_renderer.m_transfer_command_pool;
+	cmd_buf_alloc_info.commandPool = m_renderer->m_transfer_command_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
-	vkAllocateCommandBuffers(m_renderer.m_device, &cmd_buf_alloc_info, &cmd_buf);
+	vkAllocateCommandBuffers(m_renderer->m_device, &cmd_buf_alloc_info, &cmd_buf);
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -175,11 +173,11 @@ void vren::gpu_allocator::update_device_only_buffer(
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-	vkQueueSubmit(m_renderer.m_queues.at(m_renderer.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(m_renderer->m_queues.at(m_renderer->m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
 
-	vkQueueWaitIdle(m_renderer.m_transfer_queue);
+	vkQueueWaitIdle(m_renderer->m_transfer_queue);
 
-	vkResetCommandPool(m_renderer.m_device, m_renderer.m_transfer_command_pool, NULL);
+	vkResetCommandPool(m_renderer->m_device, m_renderer->m_transfer_command_pool, NULL);
 
 	destroy_buffer_if_any(staging_buf);
 
@@ -213,11 +211,11 @@ void vren::gpu_allocator::copy_buffer(
 	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
 	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_alloc_info.commandPool = m_renderer.m_transfer_command_pool;
+	cmd_buf_alloc_info.commandPool = m_renderer->m_transfer_command_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
-	vkAllocateCommandBuffers(m_renderer.m_device, &cmd_buf_alloc_info, &cmd_buf);
+	vkAllocateCommandBuffers(m_renderer->m_device, &cmd_buf_alloc_info, &cmd_buf);
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -237,9 +235,9 @@ void vren::gpu_allocator::copy_buffer(
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-	vkQueueSubmit(m_renderer.m_queues.at(m_renderer.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(m_renderer->m_queues.at(m_renderer->m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
 
-	vkQueueWaitIdle(m_renderer.m_transfer_queue);
+	vkQueueWaitIdle(m_renderer->m_transfer_queue);
 
-	vkResetCommandPool(m_renderer.m_device, m_renderer.m_transfer_command_pool, NULL);
+	vkResetCommandPool(m_renderer->m_device, m_renderer->m_transfer_command_pool, NULL);
 }

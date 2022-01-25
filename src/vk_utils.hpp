@@ -7,7 +7,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_wrappers.hpp"
-#include "ref_counting.hpp"
 
 namespace vren // todo vren::vk_utils
 {
@@ -28,8 +27,8 @@ namespace vren // todo vren::vk_utils
 
 	struct image
 	{
-		vren::rc<vren::vk_image> m_image;
-		vren::rc<vren::vma_allocation> m_allocation;
+		std::shared_ptr<vren::vk_image> m_image;
+		std::shared_ptr<vren::vma_allocation> m_allocation;
 
 		inline bool is_valid() const
 		{
@@ -38,7 +37,7 @@ namespace vren // todo vren::vk_utils
 	};
 
 	void create_image(
-		vren::renderer& renderer,
+		std::shared_ptr<vren::renderer> const& renderer,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -53,7 +52,7 @@ namespace vren // todo vren::vk_utils
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_image_view create_image_view(
-		vren::renderer& renderer,
+		std::shared_ptr<vren::renderer> const& renderer,
 		VkImage image,
 		VkFormat format,
 		VkImageAspectFlagBits aspect
@@ -64,7 +63,7 @@ namespace vren // todo vren::vk_utils
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_sampler create_sampler(
-		vren::renderer& renderer,
+		std::shared_ptr<vren::renderer> const& renderer,
 		VkFilter mag_filter,
 		VkFilter min_filter,
 		VkSamplerMipmapMode mipmap_mode,
@@ -79,10 +78,10 @@ namespace vren // todo vren::vk_utils
 
 	struct texture
 	{
-		vren::rc<vren::vk_image> m_image;
-		vren::rc<vren::vma_allocation> m_image_allocation;
-		vren::rc<vren::vk_image_view> m_image_view;
-		vren::rc<vren::vk_sampler> m_sampler;
+		std::shared_ptr<vren::vk_image> m_image;
+		std::shared_ptr<vren::vma_allocation> m_image_allocation;
+		std::shared_ptr<vren::vk_image_view> m_image_view;
+		std::shared_ptr<vren::vk_sampler> m_sampler;
 
 		inline bool is_valid()
 		{
@@ -91,7 +90,7 @@ namespace vren // todo vren::vk_utils
 	};
 
 	void create_texture(
-		vren::renderer& renderer,
+		std::shared_ptr<vren::renderer> const& renderer,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -105,7 +104,14 @@ namespace vren // todo vren::vk_utils
 		vren::texture& result
 	);
 
-	void create_color_texture(vren::renderer& renderer, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vren::texture& result);
+	void create_color_texture(
+		std::shared_ptr<vren::renderer> const& renderer,
+		uint8_t r,
+		uint8_t g,
+		uint8_t b,
+		uint8_t a,
+		vren::texture& result
+	);
 
 	void destroy_texture_if_any(
 		vren::renderer& renderer,

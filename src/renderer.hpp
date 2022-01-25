@@ -1,12 +1,10 @@
 #pragma once
 
-#include <type_traits>
 #include <memory>
 #include <array>
 #include <filesystem>
 
 #include "config.hpp"
-#include "ref_counting.hpp"
 #include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "gpu_allocator.hpp"
@@ -43,7 +41,7 @@ namespace vren
 		glm::mat4 m_projection;
 	};
 
-	struct renderer
+	class renderer : public std::enable_shared_from_this<renderer>
 	{
 	public:
 		static VkFormat const m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
@@ -69,6 +67,10 @@ namespace vren
 		};
 
 	private:
+		explicit renderer(vren::renderer_info& info);
+
+		void _initialize();
+
 		VkInstance create_instance();
 		VkDebugUtilsMessengerEXT setup_debug_messenger();
 		vren::renderer::queue_families get_queue_families(VkPhysicalDevice physical_device);
@@ -77,6 +79,7 @@ namespace vren
 		std::vector<VkQueue> get_queues();
 		VkRenderPass create_render_pass();
 		void create_command_pools();
+
 
 	public:
 		vren::renderer_info m_info;
@@ -118,37 +121,15 @@ namespace vren
 		std::unique_ptr<vren::descriptor_set_pool> m_descriptor_set_pool;
 
 		// Textures
-		vren::rc<vren::texture> m_white_texture;
-		vren::rc<vren::texture> m_black_texture;
-		vren::rc<vren::texture> m_red_texture;
-		vren::rc<vren::texture> m_green_texture;
-		vren::rc<vren::texture> m_blue_texture;
-
-		std::vector<std::unique_ptr<vren::render_list>> m_render_lists;
-		std::vector<std::unique_ptr<vren::lights_array>> m_light_arrays;
-
-		vren::render_list* create_render_list();
-		vren::lights_array* create_light_array();
+		std::shared_ptr<vren::texture> m_white_texture;
+		std::shared_ptr<vren::texture> m_black_texture;
+		std::shared_ptr<vren::texture> m_red_texture;
+		std::shared_ptr<vren::texture> m_green_texture;
+		std::shared_ptr<vren::texture> m_blue_texture;
 
 		std::unique_ptr<vren::debug_gui> m_debug_gui;
 
-		vren::resource_container m_resource_container;
-
-		explicit renderer(renderer_info& info);
 		~renderer();
-
-		/*
-		template<class _t, class... _args_t>
-		vren::unq<_t> make_unq(_args_t&&... args)
-		{
-			return m_resource_container.make_unq<_t, _args_t...>(std::forward<_args_t>(args)...);
-		}*/
-
-		template<class _t, class... _args_t>
-		vren::rc<_t> make_rc(_args_t&&... args)
-		{
-			return m_resource_container.make_rc<_t, _args_t...>(std::forward<_args_t>(args)...);
-		}
 
 		void render(
 			vren::frame& frame,
@@ -159,6 +140,8 @@ namespace vren
 			std::vector<VkSemaphore> const& wait_semaphores = {},
 			VkFence signal_fence = VK_NULL_HANDLE
 		);
+
+		static std::shared_ptr<vren::renderer> create(vren::renderer_info& info); // renderer's initialization must be achieved in two steps because of shared_from_this()
 	};
 }
 

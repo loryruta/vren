@@ -357,16 +357,6 @@ void vren::renderer::create_command_pools()
 	// Compute TODO
 }
 
-vren::render_list* vren::renderer::create_render_list()
-{
-	return m_render_lists.emplace_back(std::make_unique<vren::render_list>(*this)).get();
-}
-
-vren::lights_array* vren::renderer::create_light_array()
-{
-	return m_light_arrays.emplace_back(std::make_unique<vren::lights_array>(*this)).get();
-}
-
 void vren::renderer::render(
 	vren::frame& frame,
 	vren::renderer::target const& target,
@@ -436,8 +426,11 @@ void vren::renderer::render(
 	vren::vk_utils::check(vkQueueSubmit(m_queues.at(m_queue_families.m_graphics_idx), 1, &submit_info, signal_fence));
 }
 
-vren::renderer::renderer(renderer_info& info) :
+vren::renderer::renderer(vren::renderer_info& info) :
 	m_info(info)
+{}
+
+void vren::renderer::_initialize()
 {
 	m_instance = create_instance();
 	m_debug_messenger = setup_debug_messenger();
@@ -459,36 +452,38 @@ vren::renderer::renderer(renderer_info& info) :
 
 	create_command_pools();
 
-	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(*this);
+	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(shared_from_this());
 
 	// Default textures
-	m_white_texture = make_rc<vren::texture>();
-	vren::create_color_texture(*this, 255, 255, 255, 255, *m_white_texture);
+	m_white_texture = std::make_shared<vren::texture>();
+	vren::create_color_texture(shared_from_this(), 255, 255, 255, 255, *m_white_texture);
 
-	m_black_texture = make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0, 0, 0, 0, *m_black_texture);
+	m_black_texture = std::make_shared<vren::texture>();
+	vren::create_color_texture(shared_from_this(), 0, 0, 0, 0, *m_black_texture);
 
-	m_red_texture = make_rc<vren::texture>();
-	vren::create_color_texture(*this, 255, 0, 0, 255, *m_red_texture);
+	m_red_texture = std::make_shared<vren::texture>();
+	vren::create_color_texture(shared_from_this(), 255, 0, 0, 255, *m_red_texture);
 
-	m_green_texture = make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0, 255, 0, 255, *m_green_texture);
+	m_green_texture = std::make_shared<vren::texture>();
+	vren::create_color_texture(shared_from_this(), 0, 255, 0, 255, *m_green_texture);
 
-	m_blue_texture = make_rc<vren::texture>();
-	vren::create_color_texture(*this, 0, 0, 255, 255, *m_blue_texture);
+	m_blue_texture = std::make_shared<vren::texture>();
+	vren::create_color_texture(shared_from_this(), 0, 0, 255, 255, *m_blue_texture);
 
-	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(*this);
+	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(shared_from_this());
 
-	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(*this);
+	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(shared_from_this());
+}
+
+std::shared_ptr<vren::renderer> vren::renderer::create(vren::renderer_info& info)
+{
+	auto renderer = std::shared_ptr<vren::renderer>(new vren::renderer(info)); // renderer's initialization must be achieved in two steps because of shared_from_this()
+	renderer->_initialize();
+	return renderer;
 }
 
 vren::renderer::~renderer()
-{
-	m_light_arrays.clear();
-	m_render_lists.clear();
-
-	m_resource_container.release();
-
+{;
 	m_debug_gui.reset();
 
 	m_descriptor_set_pool.reset();

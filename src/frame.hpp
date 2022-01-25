@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -14,7 +15,7 @@ namespace vren
 	public:
 		std::vector<VkDescriptorSet> m_acquired_descriptor_sets;
 
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		VkImage m_swapchain_image = VK_NULL_HANDLE;
 		VkImageView m_swapchain_image_view = VK_NULL_HANDLE;
@@ -26,7 +27,7 @@ namespace vren
 		VkSemaphore m_render_finished_semaphore = VK_NULL_HANDLE;
 		VkFence m_render_finished_fence = VK_NULL_HANDLE;
 
-		explicit frame(vren::renderer& renderer);
+		explicit frame(std::shared_ptr<vren::renderer> const& renderer);
 		frame(vren::frame&& other) noexcept;
 		~frame();
 

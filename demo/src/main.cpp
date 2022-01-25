@@ -25,7 +25,7 @@ void create_cube(
 	glm::vec3 position,
 	glm::vec3 rotation,
 	glm::vec3 scale,
-	vren::rc<vren::material> const& material
+	std::shared_ptr<vren::material> const& material
 )
 {
 	std::vector<vren::vertex> vertices = {
@@ -105,7 +105,7 @@ void create_cube(
 	render_obj.m_material = material;
 }
 
-void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list, vren::lights_array* lights_arr)
+void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::render_list* render_list, vren::lights_array* lights_arr)
 {
 	float const surface_y = 1;
 	float const surface_side = 30;
@@ -115,9 +115,9 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 	{ // Surface
 		auto& surface = render_list->create_render_object();
 
-		auto mat = renderer.make_rc<vren::material>(renderer);
-		mat->m_base_color_texture = renderer.m_green_texture;
-		mat->m_metallic_roughness_texture = renderer.m_green_texture;
+		auto mat = std::make_shared<vren::material>(renderer);
+		mat->m_base_color_texture = renderer->m_green_texture;
+		mat->m_metallic_roughness_texture = renderer->m_green_texture;
 		surface.m_material = mat;
 
 		create_cube(
@@ -137,9 +137,9 @@ void create_cube_scene(vren::renderer& renderer, vren::render_list* render_list,
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = renderer.make_rc<vren::material>(renderer);
-		mat->m_base_color_texture = renderer.m_red_texture;
-		mat->m_metallic_roughness_texture = renderer.m_green_texture;
+		auto mat = std::make_shared<vren::material>(renderer);
+		mat->m_base_color_texture = renderer->m_red_texture;
+		mat->m_metallic_roughness_texture = renderer->m_green_texture;
 
 		create_cube(
 			cube,
@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
 {
 	if (glfwInit() != GLFW_TRUE)
 	{
-		throw std::runtime_error("Couldn't initialize GLFW.");
+		throw std::runtime_error("Couldn't create GLFW.");
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
 	renderer_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	renderer_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
-	auto renderer = std::make_shared<vren::renderer>(renderer_info);
+	auto renderer = vren::renderer::create(renderer_info);
 
 	renderer->m_debug_gui = std::make_unique<vren::debug_gui>(*renderer, g_window);
 
@@ -274,28 +274,28 @@ int main(int argc, char* argv[])
 
 	vren::presenter presenter(renderer, presenter_info, surface, {VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT});
 
-	auto render_list = renderer->create_render_list();
-	auto lights_arr  = renderer->create_light_array();
+	auto render_list = vren::render_list::create(renderer);
+	vren::lights_array lights_arr(renderer);
 
 	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
-	vren::tinygltf_loader gltf_loader(*renderer);
+	vren::tinygltf_loader gltf_loader(renderer);
 	gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
 
-	//create_cube_scene(*renderer, render_list, lights_arr);
+	//create_cube_scene(renderer, render_list, lights_arr);
 
 	{ // Static light
 		const float y = 10;
 
-		auto& stat_light = lights_arr->create_point_light().first.get();
+		auto& stat_light = lights_arr.create_point_light().first.get();
 		stat_light.m_position = glm::vec3(0, y, 0);
 		stat_light.m_color    = glm::vec3(1, 1, 1);
-		lights_arr->update_device_buffers();
+		lights_arr.update_device_buffers();
 	}
 
 	// Circular light
-	auto circ_light_idx = lights_arr->create_point_light().second;
-	lights_arr->update_device_buffers();
+	auto circ_light_idx = lights_arr.create_point_light().second;
+	lights_arr.update_device_buffers();
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -324,10 +324,10 @@ int main(int argc, char* argv[])
 				glm::sin(cur_time * freq) * r
 			);
 
-			auto& circ_light = lights_arr->get_point_light(circ_light_idx);
+			auto& circ_light = lights_arr.get_point_light(circ_light_idx);
 			circ_light.m_position = light_pos;
 			circ_light.m_color = glm::vec3(1, 1, 1);
-			lights_arr->update_device_buffers();
+			lights_arr.update_device_buffers();
 		}
 
 		if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
@@ -339,7 +339,7 @@ int main(int argc, char* argv[])
 		cam_data.m_view = camera.get_view();
 		cam_data.m_projection = camera.get_projection();
 
-		presenter.present(*render_list, *lights_arr, cam_data);
+		presenter.present(*render_list, lights_arr, cam_data);
 	}
 
 	return 0;

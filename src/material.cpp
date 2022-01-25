@@ -2,9 +2,9 @@
 
 #include "renderer.hpp"
 
-vren::material::material(vren::renderer& renderer) :
-	m_base_color_texture(renderer.m_white_texture),
-	m_metallic_roughness_texture(renderer.m_white_texture),
+vren::material::material(std::shared_ptr<vren::renderer> const& renderer) :
+	m_base_color_texture(renderer->m_white_texture),
+	m_metallic_roughness_texture(renderer->m_white_texture),
 	m_base_color_factor(1.0f),
 	m_metallic_factor(0.0f),
 	m_roughness_factor(0.0f)

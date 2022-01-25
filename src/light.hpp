@@ -33,7 +33,7 @@ namespace vren
 	class lights_array
 	{
 	private:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		std::vector<point_light> m_point_lights;
 		std::vector<directional_light> m_directional_lights;
@@ -49,7 +49,7 @@ namespace vren
 		void _try_realloc_light_buffers();
 
 	public:
-		explicit lights_array(vren::renderer& renderer);
+		explicit lights_array(std::shared_ptr<vren::renderer> const& renderer);
 		~lights_array();
 
 		// todo index in point light like render_object

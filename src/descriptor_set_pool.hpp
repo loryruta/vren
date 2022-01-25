@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <queue>
 
@@ -22,6 +23,8 @@ namespace vren
 		void add_descriptor_pool();
 
 	public:
+		std::shared_ptr<vren::renderer> m_renderer;
+
 		VkDescriptorSetLayout m_material_layout;
 		VkDescriptorSetLayout m_lights_array_layout;
 
@@ -30,9 +33,7 @@ namespace vren
 
 		std::queue<VkDescriptorSet> m_descriptor_sets;
 
-		vren::renderer& m_renderer;
-
-		explicit descriptor_set_pool(vren::renderer& renderer);
+		explicit descriptor_set_pool(std::shared_ptr<vren::renderer> const& renderer);
 		~descriptor_set_pool();
 
 		void acquire_descriptor_sets(size_t descriptor_sets_count, VkDescriptorSetLayout* descriptor_set_layouts, VkDescriptorSet* descriptor_sets);

@@ -25,7 +25,7 @@ namespace vren
 	class simple_draw_pass
 	{
 	private:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		void _create_graphics_pipeline();
 
@@ -36,7 +36,7 @@ namespace vren
 		VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 		VkPipeline m_graphics_pipeline     = VK_NULL_HANDLE;
 
-		simple_draw_pass(renderer& renderer);
+		simple_draw_pass(std::shared_ptr<vren::renderer> const& renderer);
 		~simple_draw_pass();
 
 		void record_commands(

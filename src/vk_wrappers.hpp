@@ -12,22 +12,21 @@ namespace vren
 	class renderer; // forward decl
 
 	template<typename T>
-	void destroy_vk_handle(vren::renderer& renderer, T handle);
+	void destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, T handle);
 
 	template<typename T>
 	class vk_handle_wrapper
 	{
 	private:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 	public:
 		T m_handle;
 
-		explicit vk_handle_wrapper(vren::renderer& renderer, T handle) :
+		explicit vk_handle_wrapper(std::shared_ptr<vren::renderer> const& renderer, T handle) :
 			m_renderer(renderer),
 			m_handle(handle)
-		{
-		}
+		{}
 
 		vk_handle_wrapper(vren::vk_handle_wrapper<T> const& other) = delete;
 

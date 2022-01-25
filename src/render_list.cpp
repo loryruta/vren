@@ -3,17 +3,16 @@
 
 #include "renderer.hpp"
 
-vren::render_list::render_list(vren::renderer& renderer) :
+vren::render_list::render_list(std::shared_ptr<vren::renderer> const& renderer) :
 	m_renderer(renderer)
-{
-}
+{}
 
 vren::render_object& vren::render_list::create_render_object()
 {
 	size_t pos = m_render_objects.size();
 	m_position_by_idx.emplace_back(pos);
 
-	auto& render_obj = m_render_objects.emplace_back(&m_renderer);
+	auto& render_obj = m_render_objects.emplace_back(shared_from_this());
 	render_obj.m_idx = m_next_idx;
 	m_next_idx++;
 
@@ -44,4 +43,9 @@ void vren::render_list::delete_render_object(uint32_t idx)
 	cur_obj.m_idx = UINT32_MAX;
 
 	m_render_objects.pop_back();
+}
+
+std::shared_ptr<vren::render_list> vren::render_list::create(std::shared_ptr<vren::renderer> const& renderer)
+{
+	return std::shared_ptr<vren::render_list>(new vren::render_list(renderer));
 }

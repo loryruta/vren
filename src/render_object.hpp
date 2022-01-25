@@ -14,6 +14,7 @@ namespace vren
 {
 	// Forward decl
 	class renderer;
+	class render_list;
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 
@@ -168,10 +169,9 @@ namespace vren
 
 		static constexpr VkIndexType s_index_type = VK_INDEX_TYPE_UINT32;
 
-	private:
-		vren::renderer* m_renderer;
-
 	public:
+		std::shared_ptr<vren::render_list> m_render_list;
+
 		uint32_t m_idx = -1;
 
 		vren::gpu_buffer m_vertex_buffer;
@@ -183,9 +183,9 @@ namespace vren
 		vren::gpu_buffer m_instances_buffer;
 		uint32_t m_instances_count;
 
-		vren::rc<vren::material> m_material;
+		std::shared_ptr<vren::material> m_material;
 
-		explicit render_object(vren::renderer* renderer);
+		explicit render_object(std::shared_ptr<vren::render_list> const& render_list);
 		render_object(vren::render_object const& other) = delete;
 		render_object(vren::render_object&& other) noexcept;
 		~render_object();

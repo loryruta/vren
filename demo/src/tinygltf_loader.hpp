@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include <tiny_gltf.h>
 
 #include "renderer.hpp"
@@ -8,8 +11,8 @@ namespace vren
 {
 	struct tinygltf_scene
 	{
-		std::vector<vren::rc<vren::texture>>  m_textures;
-		std::vector<vren::rc<vren::material>> m_materials;
+		std::vector<std::shared_ptr<vren::texture>> m_textures;
+		std::vector<std::shared_ptr<vren::material>> m_materials;
 
 		std::vector<uint32_t> m_render_objects;
 	};
@@ -17,7 +20,7 @@ namespace vren
 	class tinygltf_loader
 	{
 	private:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 
 		void load_textures(
 			std::filesystem::path const& model_dir,
@@ -45,7 +48,7 @@ namespace vren
 		);
 
 	public:
-		tinygltf_loader(vren::renderer& renderer);
+		tinygltf_loader(std::shared_ptr<vren::renderer> const& renderer);
 
 		void load_from_file(
 			std::filesystem::path const& model_filename,

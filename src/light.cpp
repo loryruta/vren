@@ -2,17 +2,17 @@
 
 #include "renderer.hpp"
 
-vren::lights_array::lights_array(vren::renderer& renderer) :
+vren::lights_array::lights_array(std::shared_ptr<vren::renderer> const& renderer) :
 	m_renderer(renderer)
 {
-	m_point_lights_ssbo_alloc_size       = 0;
+	m_point_lights_ssbo_alloc_size = 0;
 	m_directional_lights_ssbo_alloc_size = 0;
 }
 
 vren::lights_array::~lights_array()
 {
-	m_renderer.m_gpu_allocator->destroy_buffer_if_any(m_point_lights_ssbo);
-	m_renderer.m_gpu_allocator->destroy_buffer_if_any(m_directional_lights_ssbo);
+	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_point_lights_ssbo);
+	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_directional_lights_ssbo);
 }
 
 template<typename _light_type>
@@ -23,9 +23,9 @@ void vren::lights_array::_try_realloc_light_buffer(vren::gpu_buffer& buf, size_t
 
 	if (buf_len < alloc_size)
 	{
-		m_renderer.m_gpu_allocator->destroy_buffer_if_any(buf);
+		m_renderer->m_gpu_allocator->destroy_buffer_if_any(buf);
 
-		m_renderer.m_gpu_allocator->alloc_host_visible_buffer(
+		m_renderer->m_gpu_allocator->alloc_host_visible_buffer(
 			buf,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			alloc_size
@@ -84,14 +84,14 @@ void vren::lights_array::update_device_buffers()
 	{
 		auto num = (uint32_t) m_point_lights.size();
 
-		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+		m_renderer->m_gpu_allocator->update_host_visible_buffer(
 			m_point_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
 			0
 		);
 
-		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+		m_renderer->m_gpu_allocator->update_host_visible_buffer(
 			m_point_lights_ssbo,
 			m_point_lights.data(),
 			m_point_lights.size() * sizeof(vren::point_light),
@@ -103,14 +103,14 @@ void vren::lights_array::update_device_buffers()
 	{
 		auto num = (uint32_t) m_directional_lights.size();
 
-		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+		m_renderer->m_gpu_allocator->update_host_visible_buffer(
 			m_directional_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
 			0
 		);
 
-		m_renderer.m_gpu_allocator->update_host_visible_buffer(
+		m_renderer->m_gpu_allocator->update_host_visible_buffer(
 			m_directional_lights_ssbo,
 			m_directional_lights.data(),
 			m_directional_lights.size() * sizeof(vren::directional_light),
@@ -150,5 +150,5 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 	desc_set_write.descriptorCount = buffers_info.size();
 	desc_set_write.pBufferInfo = buffers_info.data();
 
-	vkUpdateDescriptorSets(m_renderer.m_device, 1, &desc_set_write, 0, nullptr);
+	vkUpdateDescriptorSets(m_renderer->m_device, 1, &desc_set_write, 0, nullptr);
 }
