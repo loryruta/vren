@@ -2,89 +2,89 @@
 
 #include <memory>
 
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
+#include "vk_wrappers.hpp"
 
-namespace vren
+namespace vren // Forward decl
 {
-	// Forward decl
 	class renderer;
 
-	//
+	struct vertex;
+	struct instance_data;
+}
 
-	struct gpu_buffer
+namespace vren::vk_utils
+{
+	struct buffer
 	{
-		VkBuffer m_buffer = VK_NULL_HANDLE;
-		VmaAllocation m_allocation = VK_NULL_HANDLE;
+		std::shared_ptr<vren::vk_buffer> m_buffer;
+		std::shared_ptr<vren::vma_allocation> m_allocation;
 
-		gpu_buffer() = default;
-		gpu_buffer(vren::gpu_buffer const& other) = delete;
-		gpu_buffer(vren::gpu_buffer&& other);
-		~gpu_buffer();
-
-		vren::gpu_buffer& operator=(vren::gpu_buffer const& other) = delete;
-		vren::gpu_buffer& operator=(vren::gpu_buffer&& other) noexcept;
-
-		inline bool is_valid() const
-		{
-			return m_buffer != VK_NULL_HANDLE && m_allocation != VK_NULL_HANDLE;
-		}
+		buffer(
+			std::shared_ptr<vren::vk_buffer> const& buf,
+			std::shared_ptr<vren::vma_allocation> const& alloc
+		);
 	};
 
-	//
+	vren::vk_utils::buffer alloc_host_visible_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		VkBufferUsageFlagBits buffer_usage,
+		size_t size,
+		bool persistently_mapped = false
+	);
 
-	class gpu_allocator
-	{
-	public:
-		std::shared_ptr<vren::renderer> m_renderer;
+	vren::vk_utils::buffer alloc_device_only_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		VkBufferUsageFlagBits buffer_usage,
+		size_t size
+	);
 
-		VmaAllocator m_allocator;
+	void update_host_visible_buffer(
+		vren::renderer const& renderer,
+		vren::vk_utils::buffer& buf,
+		void const* data,
+		size_t size,
+		size_t dst_offset
+	);
 
-		gpu_allocator(std::shared_ptr<vren::renderer> const& renderer);
-		~gpu_allocator();
+	void update_device_only_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		vren::vk_utils::buffer& buf,
+		void const* data,
+		size_t size,
+		size_t dst_offset
+	);
 
-		void destroy_buffer_if_any(vren::gpu_buffer& buffer);
+	void copy_buffer(
+		vren::renderer const& renderer,
+		vren::vk_utils::buffer& src_buffer,
+		vren::vk_utils::buffer& dst_buffer,
+		size_t size,
+		size_t src_offset,
+		size_t dst_offset
+	);
 
-		void alloc_host_visible_buffer(
-			vren::gpu_buffer& buffer,
-			VkBufferUsageFlags buffer_usage,
-			size_t size,
-			bool persistently_mapped = false
-		);
+	vren::vk_utils::buffer create_device_only_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		VkBufferUsageFlagBits buffer_usage,
+		void const* data,
+		size_t size
+	);
 
-		void alloc_device_only_buffer(
-			vren::gpu_buffer& buffer,
-			VkBufferUsageFlags buffer_usage,
-			size_t size
-		);
+	vren::vk_utils::buffer create_vertex_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		vren::vertex const* vertices,
+		size_t vertices_count
+	);
 
-		void update_host_visible_buffer(
-			vren::gpu_buffer& buffer,
-			void const* data,
-			size_t size,
-			size_t dst_offset
-		);
+	vren::vk_utils::buffer create_indices_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		uint32_t const* indices,
+		size_t indices_count
+	);
 
-		void update_device_only_buffer(
-			vren::gpu_buffer& buffer,
-			void const* data,
-			size_t size,
-			size_t dst_offset
-		);
-
-		void update_buffer(
-			vren::gpu_buffer& buffer,
-			void const* data,
-			size_t size,
-			size_t dst_offset
-		);
-
-		void copy_buffer(
-			vren::gpu_buffer& src_buffer,
-			vren::gpu_buffer& dst_buffer,
-			size_t size,
-			size_t src_offset,
-			size_t dst_offset
-		);
-	};
+	vren::vk_utils::buffer create_instances_buffer(
+		std::shared_ptr<vren::renderer> const& renderer,
+		vren::instance_data const* instances,
+		size_t instances_count
+	);
 }

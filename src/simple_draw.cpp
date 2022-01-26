@@ -248,20 +248,20 @@ void vren::simple_draw_pass::record_commands(
 			frame.m_command_buffer,
 			0,
 			1,
-			&render_obj.m_vertex_buffer.m_buffer,
+			&render_obj.m_vertices_buffer->m_buffer->m_handle,
 			offsets
 		);
 
 		// Indices buffer
 		vkCmdBindIndexBuffer(
 			frame.m_command_buffer,
-			render_obj.m_indices_buffer.m_buffer,
+			render_obj.m_indices_buffer->m_buffer->m_handle,
 			0,
 			vren::render_object::s_index_type
 		);
 
 		// Instances buffer
-		vkCmdBindVertexBuffers(frame.m_command_buffer, 1, 1, &render_obj.m_instances_buffer.m_buffer, offsets);
+		vkCmdBindVertexBuffers(frame.m_command_buffer, 1, 1, &render_obj.m_instances_buffer->m_buffer->m_handle, offsets);
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();

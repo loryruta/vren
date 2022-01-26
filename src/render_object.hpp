@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <array>
 #include <stdexcept>
@@ -174,13 +175,13 @@ namespace vren
 
 		uint32_t m_idx = -1;
 
-		vren::gpu_buffer m_vertex_buffer;
+		std::shared_ptr<vren::vk_utils::buffer> m_vertices_buffer;
 		uint32_t m_vertices_count;
 
-		vren::gpu_buffer m_indices_buffer;
+		std::shared_ptr<vren::vk_utils::buffer> m_indices_buffer;
 		uint32_t m_indices_count;
 
-		vren::gpu_buffer m_instances_buffer;
+		std::shared_ptr<vren::vk_utils::buffer> m_instances_buffer;
 		uint32_t m_instances_count;
 
 		std::shared_ptr<vren::material> m_material;
@@ -188,15 +189,14 @@ namespace vren
 		explicit render_object(std::shared_ptr<vren::render_list> const& render_list);
 		render_object(vren::render_object const& other) = delete;
 		render_object(vren::render_object&& other) noexcept;
-		~render_object();
 
 		vren::render_object& operator=(vren::render_object const& other) = delete;
 		vren::render_object& operator=(vren::render_object&& other) noexcept;
 
 		bool is_valid() const;
 
-		void set_vertices_data(vren::vertex const* vertices_data, size_t vertices_count);
-		void set_indices_data(uint32_t const* indices, size_t indices_count);
-		void set_instances_data(vren::instance_data const* instances_data, size_t instances_count);
+		void set_vertices_buffer(std::shared_ptr<vren::vk_utils::buffer> const& vertices_buf, size_t vertices_count);
+		void set_indices_buffer(std::shared_ptr<vren::vk_utils::buffer> const& indices_buf, size_t indices_count);
+		void set_instances_buffer(std::shared_ptr<vren::vk_utils::buffer> const& instances_buf, size_t instances_count);
 	};
 }

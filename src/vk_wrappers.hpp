@@ -9,7 +9,8 @@
 
 namespace vren
 {
-	class renderer; // forward decl
+	// Forward decl
+	class renderer;
 
 	template<typename T>
 	void destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, T handle);
@@ -68,5 +69,6 @@ namespace vren
 	using vk_image       = vren::vk_handle_wrapper<VkImage>;
 	using vk_image_view  = vren::vk_handle_wrapper<VkImageView>;
 	using vk_sampler     = vren::vk_handle_wrapper<VkSampler>;
+	using vk_buffer      = vren::vk_handle_wrapper<VkBuffer>;
 	using vma_allocation = vren::vk_handle_wrapper<VmaAllocation>;
 }

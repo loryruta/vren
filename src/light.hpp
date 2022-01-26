@@ -38,19 +38,18 @@ namespace vren
 		std::vector<point_light> m_point_lights;
 		std::vector<directional_light> m_directional_lights;
 
-		vren::gpu_buffer m_point_lights_ssbo;
+		std::shared_ptr<vren::vk_utils::buffer> m_point_lights_ssbo;
 		size_t m_point_lights_ssbo_alloc_size;
 
-		vren::gpu_buffer m_directional_lights_ssbo;
+		std::shared_ptr<vren::vk_utils::buffer> m_directional_lights_ssbo;
 		size_t m_directional_lights_ssbo_alloc_size;
 
 		template<typename _light_type>
-		void _try_realloc_light_buffer(vren::gpu_buffer& buf, size_t& buf_len, size_t el_count);
+		void _try_realloc_light_buffer(std::shared_ptr<vren::vk_utils::buffer>& buf, size_t& buf_len, size_t el_count);
 		void _try_realloc_light_buffers();
 
 	public:
 		explicit lights_array(std::shared_ptr<vren::renderer> const& renderer);
-		~lights_array();
 
 		// todo index in point light like render_object
 		// todo index -> id

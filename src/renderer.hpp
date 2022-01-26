@@ -77,6 +77,7 @@ namespace vren
 		VkPhysicalDevice find_physical_device();
 		VkDevice create_logical_device();
 		std::vector<VkQueue> get_queues();
+		void create_vma_allocator();
 		VkRenderPass create_render_pass();
 		void create_command_pools();
 
@@ -105,11 +106,10 @@ namespace vren
 		VkQueue m_graphics_queue;
 		VkQueue m_compute_queue;
 
+		VmaAllocator m_vma_allocator;
+
 		VkRenderPass m_render_pass;
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
-
-		// Allocator
-		std::unique_ptr<vren::gpu_allocator> m_gpu_allocator;
 
 		// Command pools
 		VkCommandPool m_graphics_command_pool;

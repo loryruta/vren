@@ -260,6 +260,17 @@ std::vector<VkQueue> vren::renderer::get_queues()
 	return queues;
 }
 
+void vren::renderer::create_vma_allocator()
+{
+	VmaAllocatorCreateInfo allocator_info{};
+	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
+	allocator_info.instance = m_instance;
+	allocator_info.physicalDevice = m_physical_device;
+	allocator_info.device = m_device;
+
+	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
+}
+
 VkRenderPass vren::renderer::create_render_pass()
 {
 	// ---------------------------------------------------------------- Attachments
@@ -444,6 +455,9 @@ void vren::renderer::_initialize()
 	m_device = create_logical_device();
 
 	m_queues = get_queues();
+
+	create_vma_allocator();
+
 	m_render_pass = create_render_pass();
 
 	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
@@ -451,8 +465,6 @@ void vren::renderer::_initialize()
 	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
 
 	create_command_pools();
-
-	m_gpu_allocator = std::make_unique<vren::gpu_allocator>(shared_from_this());
 
 	// Default textures
 	m_white_texture = std::make_shared<vren::texture>();
@@ -493,9 +505,9 @@ vren::renderer::~renderer()
 	vkDestroyCommandPool(m_device, m_graphics_command_pool, nullptr);
 	vkDestroyCommandPool(m_device, m_transfer_command_pool, nullptr);
 
-	m_gpu_allocator.reset();
-
 	vkDestroyRenderPass(m_device, m_render_pass, nullptr);
+
+	vmaDestroyAllocator(m_vma_allocator);
 
 	//m_queues.clear();
 

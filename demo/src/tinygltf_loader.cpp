@@ -11,9 +11,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "vk_wrappers.hpp"
-
-
 glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> gltf_vec3)
 {
 	glm::vec3 r{};
@@ -314,7 +311,7 @@ void vren::tinygltf_loader::load_model(
 				throw std::runtime_error("POSITION vertices count mismatches with at least one of other attributes count");
 			}
 
-			{ // vertices
+			{ // Vertices
 				std::vector<vren::vertex> vertices(vtx_count);
 
 				for (int i = 0; i < vtx_count; i++)
@@ -352,10 +349,14 @@ void vren::tinygltf_loader::load_model(
 					}
 				}
 
-				render_obj.set_vertices_data(vertices.data(), vertices.size());
+				auto vertices_buf =
+					std::make_shared<vren::vk_utils::buffer>(
+						vren::vk_utils::create_vertex_buffer(m_renderer, vertices.data(), vertices.size())
+					);
+				render_obj.set_vertices_buffer(vertices_buf, vertices.size());
 			}
 
-			{ // indices
+			{ // Indices
 				tinygltf::Accessor const& indices_accessor = gltf_model.accessors.at(gltf_primitive.indices);
 
 				std::vector<uint32_t> indices(indices_accessor.count);
@@ -391,12 +392,22 @@ void vren::tinygltf_loader::load_model(
 					indices[i] = idx;
 				}
 
-				render_obj.set_indices_data(indices.data(), indices.size());
+				auto indices_buf =
+					std::make_shared<vren::vk_utils::buffer>(
+						vren::vk_utils::create_indices_buffer(m_renderer, indices.data(), indices.size())
+					);
+				render_obj.set_indices_buffer(indices_buf, indices.size());
 			}
 
-			// instances
-			auto& instances_data = instance_data_by_mesh_idx.at(mesh_idx);
-			render_obj.set_instances_data(instances_data.data(), instances_data.size());
+			// Instances
+			auto& instances = instance_data_by_mesh_idx.at(mesh_idx);
+
+			auto instances_buf =
+				std::make_shared<vren::vk_utils::buffer>(
+					vren::vk_utils::create_instances_buffer(m_renderer, instances.data(), instances.size())
+				);
+			render_obj.set_instances_buffer(instances_buf, instances.size());
+
 
 			// material
 			render_obj.m_material = result.m_materials.at(gltf_primitive.material);

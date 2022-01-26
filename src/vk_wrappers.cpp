@@ -9,12 +9,6 @@ void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, Vk
 }
 
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VmaAllocation handle)
-{
-	vmaFreeMemory(renderer->m_gpu_allocator->m_allocator, handle);
-}
-
-template<>
 void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkImageView handle)
 {
 	vkDestroyImageView(renderer->m_device, handle, nullptr);
@@ -26,3 +20,14 @@ void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, Vk
 	vkDestroySampler(renderer->m_device, handle, nullptr);
 }
 
+template<>
+void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkBuffer handle)
+{
+	vkDestroyBuffer(renderer->m_device, handle, nullptr);
+}
+
+template<>
+void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VmaAllocation handle)
+{
+	vmaFreeMemory(renderer->m_vma_allocator, handle);
+}

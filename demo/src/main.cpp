@@ -1,19 +1,19 @@
-
-#include "renderer.hpp"
-#include "presenter.hpp"
-
-#include "camera.hpp"
-#include "tinygltf_loader.hpp"
-#include "debug_gui.hpp"
-
+#include <memory>
 #include <iostream>
 #include <optional>
 #include <numeric>
 
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+
+#include "renderer.hpp"
+#include "presenter.hpp"
+#include "gpu_allocator.hpp"
+#include "camera.hpp"
+#include "tinygltf_loader.hpp"
+#include "debug_gui.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -21,6 +21,7 @@
 GLFWwindow* g_window;
 
 void create_cube(
+	std::shared_ptr<vren::renderer> const& renderer,
 	vren::render_object& render_obj,
 	glm::vec3 position,
 	glm::vec3 rotation,
@@ -77,35 +78,58 @@ void create_cube(
 		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 0, 0, 1 } },
 		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, 0, 1 } },
 	};
-	render_obj.set_vertices_data(vertices.data(), vertices.size());
 
+	auto vertices_buf =
+		std::make_shared<vren::vk_utils::buffer>(
+			vren::vk_utils::create_vertex_buffer(renderer, vertices.data(), vertices.size())
+		);
+	render_obj.set_vertices_buffer(vertices_buf, vertices.size());
+
+	// Indices
 	std::vector<uint32_t> indices(vertices.size());
 	std::iota(indices.begin(), indices.end(), 0);
-	render_obj.set_indices_data(indices.data(), indices.size());
 
-	auto transf = glm::identity<glm::mat4>();
+	auto indices_buf =
+		std::make_shared<vren::vk_utils::buffer>(
+			vren::vk_utils::create_indices_buffer(renderer, indices.data(), indices.size())
+		);
+	render_obj.set_indices_buffer(indices_buf, indices.size());
 
-	// Translation
-	transf = glm::translate(transf, position);
+	{ // Instances
+		auto transf = glm::identity<glm::mat4>();
 
-	// Rotation
-	transf = glm::translate(transf, glm::vec3(-0.5f));
+		// Translation
+		transf = glm::translate(transf, position);
+
+		// Rotation
+		transf = glm::translate(transf, glm::vec3(-0.5f));
 		transf = glm::rotate(transf, rotation.x, glm::vec3(1, 0, 0));
 		transf = glm::rotate(transf, rotation.y, glm::vec3(0, 1, 0));
 		transf = glm::rotate(transf, rotation.z, glm::vec3(0, 0, 1));
-	transf = glm::translate(transf, glm::vec3(0.5f));
+		transf = glm::translate(transf, glm::vec3(0.5f));
 
-	// Scaling
-	transf = glm::scale(transf, scale);
+		// Scaling
+		transf = glm::scale(transf, scale);
 
-	vren::instance_data inst_data{};
-	inst_data.m_transform = transf;
-	render_obj.set_instances_data(&inst_data, 1);
+		vren::instance_data inst{};
+		inst.m_transform = transf;
+
+		auto instances_buf =
+			std::make_shared<vren::vk_utils::buffer>(
+				vren::vk_utils::create_instances_buffer(renderer, &inst, 1)
+			);
+		render_obj.set_indices_buffer(instances_buf, 1);
+	}
+
 
 	render_obj.m_material = material;
 }
 
-void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::render_list* render_list, vren::lights_array* lights_arr)
+void create_cube_scene(
+	std::shared_ptr<vren::renderer> const& renderer,
+	vren::render_list& render_list,
+	vren::lights_array& lights_arr
+)
 {
 	float const surface_y = 1;
 	float const surface_side = 30;
@@ -113,7 +137,7 @@ void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::re
 	int const n = 50;
 
 	{ // Surface
-		auto& surface = render_list->create_render_object();
+		auto& surface = render_list.create_render_object();
 
 		auto mat = std::make_shared<vren::material>(renderer);
 		mat->m_base_color_texture = renderer->m_green_texture;
@@ -121,6 +145,7 @@ void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::re
 		surface.m_material = mat;
 
 		create_cube(
+			renderer,
 			surface,
 			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
 			glm::vec3(0),
@@ -132,7 +157,7 @@ void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::re
 	// Cubes
 	for (int i = 1; i <= n; i++)
 	{
-		auto& cube = render_list->create_render_object();
+		auto& cube = render_list.create_render_object();
 
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
@@ -142,6 +167,7 @@ void create_cube_scene(std::shared_ptr<vren::renderer> const& renderer, vren::re
 		mat->m_metallic_roughness_texture = renderer->m_green_texture;
 
 		create_cube(
+			renderer,
 			cube,
 			glm::vec3(
 				cos_i * r,
@@ -341,6 +367,8 @@ int main(int argc, char* argv[])
 
 		presenter.present(*render_list, lights_arr, cam_data);
 	}
+
+	vkDeviceWaitIdle(renderer->m_device);
 
 	return 0;
 }

@@ -92,26 +92,24 @@ void vren::create_image(
 
 	VkImage image;
 	VmaAllocation allocation;
-	vren::vk_utils::check(vmaCreateImage(renderer->m_gpu_allocator->m_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
+	vren::vk_utils::check(vmaCreateImage(renderer->m_vma_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
 
 	result.m_image = std::make_shared<vren::vk_image>(renderer, image);
 	result.m_allocation = std::make_shared<vren::vma_allocation>(renderer, allocation);
 
 	if (image_data)
 	{
-		auto& allocator = renderer->m_gpu_allocator;
-
 		VkMemoryRequirements image_memory_requirements{};
 		vkGetImageMemoryRequirements(renderer->m_device, result.m_image->m_handle, &image_memory_requirements);
 		VkDeviceSize image_size = image_memory_requirements.size;
 
-		vren::gpu_buffer staging_buffer;
-		allocator->alloc_host_visible_buffer(staging_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
+		vren::vk_utils::buffer staging_buffer =
+			vren::vk_utils::alloc_host_visible_buffer(renderer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
 
 		void* mapped_image_data;
-		vren::vk_utils::check(vmaMapMemory(allocator->m_allocator, staging_buffer.m_allocation, &mapped_image_data));
+		vren::vk_utils::check(vmaMapMemory(renderer->m_vma_allocator, staging_buffer.m_allocation->m_handle, &mapped_image_data));
 			memcpy(mapped_image_data, image_data, static_cast<size_t>(image_size));
-		vmaUnmapMemory(allocator->m_allocator, staging_buffer.m_allocation);
+		vmaUnmapMemory(renderer->m_vma_allocator, staging_buffer.m_allocation->m_handle);
 
 		VkCommandBuffer cmd_buf;
 		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(*renderer, renderer->m_transfer_command_pool);
@@ -153,7 +151,7 @@ void vren::create_image(
 				1
 			};
 
-			vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+			vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer->m_handle, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 		}
 
 		// transition from transfer to shader readonly optimal layout
@@ -179,8 +177,6 @@ void vren::create_image(
 		//
 
 		vren::vk_utils::end_single_submit_command_buffer(*renderer, renderer->m_transfer_queue, renderer->m_transfer_command_pool, cmd_buf);
-
-		allocator->destroy_buffer_if_any(staging_buffer);
 	}
 }
 

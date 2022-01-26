@@ -9,26 +9,16 @@ vren::lights_array::lights_array(std::shared_ptr<vren::renderer> const& renderer
 	m_directional_lights_ssbo_alloc_size = 0;
 }
 
-vren::lights_array::~lights_array()
-{
-	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_point_lights_ssbo);
-	m_renderer->m_gpu_allocator->destroy_buffer_if_any(m_directional_lights_ssbo);
-}
-
 template<typename _light_type>
-void vren::lights_array::_try_realloc_light_buffer(vren::gpu_buffer& buf, size_t& buf_len, size_t el_count)
+void vren::lights_array::_try_realloc_light_buffer(std::shared_ptr<vren::vk_utils::buffer>& buf, size_t& buf_len, size_t el_count)
 {
 	auto el_num = (size_t) glm::max<size_t>((size_t) glm::ceil((float) el_count / (float) 256) * 256, 256);
 	size_t alloc_size = sizeof(glm::vec4) + el_num * sizeof(_light_type);
 
 	if (buf_len < alloc_size)
 	{
-		m_renderer->m_gpu_allocator->destroy_buffer_if_any(buf);
-
-		m_renderer->m_gpu_allocator->alloc_host_visible_buffer(
-			buf,
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			alloc_size
+		buf = std::make_shared<vren::vk_utils::buffer>(
+			vren::vk_utils::alloc_host_visible_buffer(m_renderer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, alloc_size)
 		);
 
 		buf_len = alloc_size;
@@ -84,15 +74,17 @@ void vren::lights_array::update_device_buffers()
 	{
 		auto num = (uint32_t) m_point_lights.size();
 
-		m_renderer->m_gpu_allocator->update_host_visible_buffer(
-			m_point_lights_ssbo,
+		vren::vk_utils::update_host_visible_buffer(
+			*m_renderer,
+			*m_point_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
 			0
 		);
 
-		m_renderer->m_gpu_allocator->update_host_visible_buffer(
-			m_point_lights_ssbo,
+		vren::vk_utils::update_host_visible_buffer(
+			*m_renderer,
+			*m_point_lights_ssbo,
 			m_point_lights.data(),
 			m_point_lights.size() * sizeof(vren::point_light),
 			sizeof(glm::vec4)
@@ -103,15 +95,17 @@ void vren::lights_array::update_device_buffers()
 	{
 		auto num = (uint32_t) m_directional_lights.size();
 
-		m_renderer->m_gpu_allocator->update_host_visible_buffer(
-			m_directional_lights_ssbo,
+		vren::vk_utils::update_host_visible_buffer(
+			*m_renderer,
+			*m_directional_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
 			0
 		);
 
-		m_renderer->m_gpu_allocator->update_host_visible_buffer(
-			m_directional_lights_ssbo,
+		vren::vk_utils::update_host_visible_buffer(
+			*m_renderer,
+			*m_directional_lights_ssbo,
 			m_directional_lights.data(),
 			m_directional_lights.size() * sizeof(vren::directional_light),
 			sizeof(glm::vec4)
@@ -125,7 +119,7 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 
 	{ // Point lights
 		VkDescriptorBufferInfo buffer_info{};
-		buffer_info.buffer = m_point_lights_ssbo.m_buffer;
+		buffer_info.buffer = m_point_lights_ssbo->m_buffer->m_handle;
 		buffer_info.offset = 0;
 		buffer_info.range = m_point_lights_ssbo_alloc_size;
 
@@ -134,7 +128,7 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 
 	{ // Directional lights
 		VkDescriptorBufferInfo buffer_info{};
-		buffer_info.buffer = m_directional_lights_ssbo.m_buffer;
+		buffer_info.buffer = m_directional_lights_ssbo->m_buffer->m_handle;
 		buffer_info.offset = 0;
 		buffer_info.range  = m_directional_lights_ssbo_alloc_size;
 
