@@ -234,17 +234,6 @@ VkDevice vren::context::create_logical_device()
 	device_info.enabledLayerCount = 0; // Device layers
 	device_info.ppEnabledLayerNames = nullptr;
 
-#ifdef NSIGHT_AFTERMATH
-	VkDeviceDiagnosticsConfigCreateInfoNV device_diagnostics_config_info{};
-	device_diagnostics_config_info.sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV;
-	device_diagnostics_config_info.flags =
-		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV |    // Enables the generation of debug information for shaders.
-		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV |    // Enables driver side tracking of resources (images, buffers, etc.) used to augment the device fault information.
-		VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV; // Enables automatic insertion of diagnostic checkpoints for draw calls, dispatches, trace rays, and copies.
-
-	device_info.pNext = &device_diagnostics_config_info;
-#endif
-
 	VkDevice device;
 	vren::vk_utils::check(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
 	return device;
@@ -302,10 +291,6 @@ void vren::context::_initialize()
 	m_debug_messenger = setup_debug_messenger();
 	m_physical_device = find_physical_device();
 	m_queue_families = get_queue_families(m_physical_device);
-
-#ifdef NSIGHT_AFTERMATH
-	m_gpu_crash_tracker.Initialize();
-#endif
 
 	m_device = create_logical_device();
 

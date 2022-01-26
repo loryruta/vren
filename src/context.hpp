@@ -10,10 +10,6 @@
 
 #include "config.hpp"
 
-#ifdef NSIGHT_AFTERMATH
-	#include "NsightAftermath/NsightAftermathGpuCrashTracker.h"
-#endif
-
 namespace vren
 {
 	// forward decl
@@ -68,11 +64,6 @@ namespace vren
 
 		// Debug messenger
 		VkDebugUtilsMessengerEXT m_debug_messenger;
-
-		// Nvidia Nsight Aftermath
-#ifdef NSIGHT_AFTERMATH
-		GpuCrashTracker m_gpu_crash_tracker;
-#endif
 
 		VkPhysicalDevice m_physical_device;
 		VkPhysicalDeviceProperties m_physical_device_properties;

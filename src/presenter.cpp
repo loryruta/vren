@@ -229,14 +229,7 @@ void vren::presenter::present(
 
 	auto& frame = m_frames.at(m_current_frame_idx);
 
-	result = vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
-	if (result != VK_SUCCESS)
-	{
-#ifdef NSIGHT_AFTERMATH
-		std::this_thread::sleep_for(std::chrono::seconds(3));
-#endif
-		vren::vk_utils::check(result);
-	}
+	vren::vk_utils::check(vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX));
 
 	frame.release_descriptor_sets();
 
