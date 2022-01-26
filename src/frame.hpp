@@ -5,17 +5,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include "context.hpp"
+
 namespace vren
 {
-	// Forward decl
-	class renderer;
-
 	class frame
 	{
 	public:
 		std::vector<VkDescriptorSet> m_acquired_descriptor_sets;
 
-		std::shared_ptr<vren::renderer> m_renderer;
+		std::shared_ptr<vren::context> m_context;
 
 		VkImage m_swapchain_image = VK_NULL_HANDLE;
 		VkImageView m_swapchain_image_view = VK_NULL_HANDLE;
@@ -27,7 +26,7 @@ namespace vren
 		VkSemaphore m_render_finished_semaphore = VK_NULL_HANDLE;
 		VkFence m_render_finished_fence = VK_NULL_HANDLE;
 
-		explicit frame(std::shared_ptr<vren::renderer> const& renderer);
+		explicit frame(std::shared_ptr<vren::context> const& ctx);
 		frame(vren::frame&& other) noexcept;
 		~frame();
 

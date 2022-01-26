@@ -2,12 +2,12 @@
 
 #include <memory>
 
+#include "context.hpp"
 #include "vk_wrappers.hpp"
 
-namespace vren // Forward decl
+namespace vren
 {
-	class renderer;
-
+	// Forward decl
 	struct vertex;
 	struct instance_data;
 }
@@ -26,20 +26,20 @@ namespace vren::vk_utils
 	};
 
 	vren::vk_utils::buffer alloc_host_visible_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		VkBufferUsageFlagBits buffer_usage,
 		size_t size,
 		bool persistently_mapped = false
 	);
 
 	vren::vk_utils::buffer alloc_device_only_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		VkBufferUsageFlagBits buffer_usage,
 		size_t size
 	);
 
 	void update_host_visible_buffer(
-		vren::renderer const& renderer,
+		vren::context const& ctx,
 		vren::vk_utils::buffer& buf,
 		void const* data,
 		size_t size,
@@ -47,7 +47,7 @@ namespace vren::vk_utils
 	);
 
 	void update_device_only_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		vren::vk_utils::buffer& buf,
 		void const* data,
 		size_t size,
@@ -55,7 +55,7 @@ namespace vren::vk_utils
 	);
 
 	void copy_buffer(
-		vren::renderer const& renderer,
+		vren::context const& ctx,
 		vren::vk_utils::buffer& src_buffer,
 		vren::vk_utils::buffer& dst_buffer,
 		size_t size,
@@ -64,26 +64,26 @@ namespace vren::vk_utils
 	);
 
 	vren::vk_utils::buffer create_device_only_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		VkBufferUsageFlagBits buffer_usage,
 		void const* data,
 		size_t size
 	);
 
 	vren::vk_utils::buffer create_vertex_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		vren::vertex const* vertices,
 		size_t vertices_count
 	);
 
 	vren::vk_utils::buffer create_indices_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		uint32_t const* indices,
 		size_t indices_count
 	);
 
 	vren::vk_utils::buffer create_instances_buffer(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		vren::instance_data const* instances,
 		size_t instances_count
 	);

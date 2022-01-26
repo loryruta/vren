@@ -4,14 +4,11 @@
 
 #include <glm/glm.hpp>
 
-#include "config.hpp"
+#include "context.hpp"
 #include "gpu_allocator.hpp"
 
 namespace vren
 {
-	// Forward decl
-	class renderer;
-
 	struct point_light
 	{
 		glm::vec3 m_position;
@@ -33,7 +30,7 @@ namespace vren
 	class lights_array
 	{
 	private:
-		std::shared_ptr<vren::renderer> m_renderer;
+		std::shared_ptr<vren::context> m_context;
 
 		std::vector<point_light> m_point_lights;
 		std::vector<directional_light> m_directional_lights;
@@ -49,7 +46,7 @@ namespace vren
 		void _try_realloc_light_buffers();
 
 	public:
-		explicit lights_array(std::shared_ptr<vren::renderer> const& renderer);
+		explicit lights_array(std::shared_ptr<vren::context> const& ctx);
 
 		// todo index in point light like render_object
 		// todo index -> id

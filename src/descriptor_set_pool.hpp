@@ -6,11 +6,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include "context.hpp"
+
 namespace vren
 {
-	// Forward decl
-	class renderer;
-
 	class descriptor_set_pool
 	{
 	private:
@@ -23,7 +22,7 @@ namespace vren
 		void add_descriptor_pool();
 
 	public:
-		std::shared_ptr<vren::renderer> m_renderer;
+		std::shared_ptr<vren::context> m_context;
 
 		VkDescriptorSetLayout m_material_layout;
 		VkDescriptorSetLayout m_lights_array_layout;
@@ -33,7 +32,7 @@ namespace vren
 
 		std::queue<VkDescriptorSet> m_descriptor_sets;
 
-		explicit descriptor_set_pool(std::shared_ptr<vren::renderer> const& renderer);
+		explicit descriptor_set_pool(std::shared_ptr<vren::context> const& ctx);
 		~descriptor_set_pool();
 
 		void acquire_descriptor_sets(size_t descriptor_sets_count, VkDescriptorSetLayout* descriptor_set_layouts, VkDescriptorSet* descriptor_sets);

@@ -1,9 +1,9 @@
 #include "light.hpp"
 
-#include "renderer.hpp"
+#include "context.hpp"
 
-vren::lights_array::lights_array(std::shared_ptr<vren::renderer> const& renderer) :
-	m_renderer(renderer)
+vren::lights_array::lights_array(std::shared_ptr<vren::context> const& ctx) :
+	m_context(ctx)
 {
 	m_point_lights_ssbo_alloc_size = 0;
 	m_directional_lights_ssbo_alloc_size = 0;
@@ -18,7 +18,7 @@ void vren::lights_array::_try_realloc_light_buffer(std::shared_ptr<vren::vk_util
 	if (buf_len < alloc_size)
 	{
 		buf = std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::alloc_host_visible_buffer(m_renderer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, alloc_size)
+			vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, alloc_size)
 		);
 
 		buf_len = alloc_size;
@@ -75,7 +75,7 @@ void vren::lights_array::update_device_buffers()
 		auto num = (uint32_t) m_point_lights.size();
 
 		vren::vk_utils::update_host_visible_buffer(
-			*m_renderer,
+			*m_context,
 			*m_point_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
@@ -83,7 +83,7 @@ void vren::lights_array::update_device_buffers()
 		);
 
 		vren::vk_utils::update_host_visible_buffer(
-			*m_renderer,
+			*m_context,
 			*m_point_lights_ssbo,
 			m_point_lights.data(),
 			m_point_lights.size() * sizeof(vren::point_light),
@@ -96,7 +96,7 @@ void vren::lights_array::update_device_buffers()
 		auto num = (uint32_t) m_directional_lights.size();
 
 		vren::vk_utils::update_host_visible_buffer(
-			*m_renderer,
+			*m_context,
 			*m_directional_lights_ssbo,
 			&num,
 			sizeof(uint32_t),
@@ -104,7 +104,7 @@ void vren::lights_array::update_device_buffers()
 		);
 
 		vren::vk_utils::update_host_visible_buffer(
-			*m_renderer,
+			*m_context,
 			*m_directional_lights_ssbo,
 			m_directional_lights.data(),
 			m_directional_lights.size() * sizeof(vren::directional_light),
@@ -144,5 +144,5 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 	desc_set_write.descriptorCount = buffers_info.size();
 	desc_set_write.pBufferInfo = buffers_info.data();
 
-	vkUpdateDescriptorSets(m_renderer->m_device, 1, &desc_set_write, 0, nullptr);
+	vkUpdateDescriptorSets(m_context->m_device, 1, &desc_set_write, 0, nullptr);
 }

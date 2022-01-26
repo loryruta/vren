@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include "renderer.hpp"
+#include "context.hpp"
 #include "presenter.hpp"
 #include "gpu_allocator.hpp"
 #include "camera.hpp"
@@ -21,7 +21,7 @@
 GLFWwindow* g_window;
 
 void create_cube(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	vren::render_object& render_obj,
 	glm::vec3 position,
 	glm::vec3 rotation,
@@ -81,7 +81,7 @@ void create_cube(
 
 	auto vertices_buf =
 		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_vertex_buffer(renderer, vertices.data(), vertices.size())
+			vren::vk_utils::create_vertex_buffer(ctx, vertices.data(), vertices.size())
 		);
 	render_obj.set_vertices_buffer(vertices_buf, vertices.size());
 
@@ -91,7 +91,7 @@ void create_cube(
 
 	auto indices_buf =
 		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_indices_buffer(renderer, indices.data(), indices.size())
+			vren::vk_utils::create_indices_buffer(ctx, indices.data(), indices.size())
 		);
 	render_obj.set_indices_buffer(indices_buf, indices.size());
 
@@ -116,7 +116,7 @@ void create_cube(
 
 		auto instances_buf =
 			std::make_shared<vren::vk_utils::buffer>(
-				vren::vk_utils::create_instances_buffer(renderer, &inst, 1)
+				vren::vk_utils::create_instances_buffer(ctx, &inst, 1)
 			);
 		render_obj.set_indices_buffer(instances_buf, 1);
 	}
@@ -126,7 +126,7 @@ void create_cube(
 }
 
 void create_cube_scene(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	vren::render_list& render_list,
 	vren::lights_array& lights_arr
 )
@@ -139,13 +139,13 @@ void create_cube_scene(
 	{ // Surface
 		auto& surface = render_list.create_render_object();
 
-		auto mat = std::make_shared<vren::material>(renderer);
-		mat->m_base_color_texture = renderer->m_green_texture;
-		mat->m_metallic_roughness_texture = renderer->m_green_texture;
+		auto mat = std::make_shared<vren::material>(ctx);
+		mat->m_base_color_texture = ctx->m_green_texture;
+		mat->m_metallic_roughness_texture = ctx->m_green_texture;
 		surface.m_material = mat;
 
 		create_cube(
-			renderer,
+			ctx,
 			surface,
 			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
 			glm::vec3(0),
@@ -162,12 +162,12 @@ void create_cube_scene(
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = std::make_shared<vren::material>(renderer);
-		mat->m_base_color_texture = renderer->m_red_texture;
-		mat->m_metallic_roughness_texture = renderer->m_green_texture;
+		auto mat = std::make_shared<vren::material>(ctx);
+		mat->m_base_color_texture = ctx->m_red_texture;
+		mat->m_metallic_roughness_texture = ctx->m_green_texture;
 
 		create_cube(
-			renderer,
+			ctx,
 			cube,
 			glm::vec3(
 				cos_i * r,
@@ -270,42 +270,41 @@ int main(int argc, char* argv[])
 
 	// ---------------------------------------------------------------- Context initialization
 
-	vren::renderer_info renderer_info;
-	renderer_info.m_app_name = "vren_demo";
-	renderer_info.m_app_version = VK_MAKE_VERSION(1, 0, 0);
-	renderer_info.m_layers = {};
+	vren::context_info ctx_info;
+	ctx_info.m_app_name = "vren_demo";
+	ctx_info.m_app_version = VK_MAKE_VERSION(1, 0, 0);
+	ctx_info.m_layers = {};
 
 	uint32_t glfw_extensions_count = 0;
 	char const** glfw_extensions;
 	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
-	for (int i = 0; i < glfw_extensions_count; i++)
-	{
-		renderer_info.m_extensions.push_back(glfw_extensions[i]);
+	for (int i = 0; i < glfw_extensions_count; i++) {
+		ctx_info.m_extensions.push_back(glfw_extensions[i]);
 	}
 
-	renderer_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	renderer_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
+	ctx_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
-	auto renderer = vren::renderer::create(renderer_info);
+	auto ctx = vren::context::create(ctx_info);
 
-	renderer->m_debug_gui = std::make_unique<vren::debug_gui>(*renderer, g_window);
-
+	auto renderer = vren::renderer::create(ctx);
+	renderer->m_debug_gui = std::make_unique<vren::debug_gui>(renderer, g_window);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
 	VkSurfaceKHR surface;
-	vren::vk_utils::check(glfwCreateWindowSurface(renderer->m_instance, g_window, nullptr, &surface));
+	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
 
 	vren::presenter_info presenter_info{};
 	presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
 	vren::presenter presenter(renderer, presenter_info, surface, {VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT});
 
-	auto render_list = vren::render_list::create(renderer);
-	vren::lights_array lights_arr(renderer);
+	auto render_list = vren::render_list::create(ctx);
+	vren::lights_array lights_arr(ctx);
 
 	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
-	vren::tinygltf_loader gltf_loader(renderer);
+	vren::tinygltf_loader gltf_loader(ctx);
 	gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
 
 	//create_cube_scene(renderer, render_list, lights_arr);
@@ -368,7 +367,7 @@ int main(int argc, char* argv[])
 		presenter.present(*render_list, lights_arr, cam_data);
 	}
 
-	vkDeviceWaitIdle(renderer->m_device);
+	vkDeviceWaitIdle(ctx->m_device);
 
 	return 0;
 }

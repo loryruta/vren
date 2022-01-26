@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <optional>
-#include <thread>
 #include <chrono>
 
 vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device)
@@ -35,7 +34,7 @@ vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysical
 
 VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 {
-	auto surface_details = vren::get_surface_details(m_surface, m_renderer->m_physical_device);
+	auto surface_details = vren::get_surface_details(m_surface, m_renderer->m_context->m_physical_device);
 
 	uint32_t min_image_count = surface_details.m_capabilities.minImageCount + 1;
 	if (surface_details.m_capabilities.maxImageCount > 0 && min_image_count > surface_details.m_capabilities.maxImageCount)
@@ -75,9 +74,9 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 	swapchain_info.imageArrayLayers = 1;
 	swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	m_present_queue_family_idx = m_renderer->m_queue_families.m_graphics_idx;
+	m_present_queue_family_idx = m_renderer->m_context->m_queue_families.m_graphics_idx;
 	VkBool32 has_support;
-	vkGetPhysicalDeviceSurfaceSupportKHR(m_renderer->m_physical_device, m_present_queue_family_idx, m_surface, &has_support);
+	vkGetPhysicalDeviceSurfaceSupportKHR(m_renderer->m_context->m_physical_device, m_present_queue_family_idx, m_surface, &has_support);
 	if (!has_support)
 	{
 		throw std::runtime_error("Couldn't find a queue family with present support");
@@ -88,10 +87,10 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 	swapchain_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR; // todo is supported?
 	swapchain_info.clipped = VK_TRUE;
 
-	vren::vk_utils::check(vkCreateSwapchainKHR(m_renderer->m_device, &swapchain_info, nullptr, &m_swapchain));
+	vren::vk_utils::check(vkCreateSwapchainKHR(m_renderer->m_context->m_device, &swapchain_info, nullptr, &m_swapchain));
 
 	m_current_extent = extent;
-	vren::vk_utils::check(vkGetSwapchainImagesKHR(m_renderer->m_device, m_swapchain, &m_image_count, nullptr));
+	vren::vk_utils::check(vkGetSwapchainImagesKHR(m_renderer->m_context->m_device, m_swapchain, &m_image_count, nullptr));
 
 	create_depth_buffer();
 
@@ -101,11 +100,11 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 void vren::presenter::_create_frames()
 {
 	std::vector<VkImage> swapchain_images(m_image_count);
-	vren::vk_utils::check(vkGetSwapchainImagesKHR(m_renderer->m_device, m_swapchain, &m_image_count, swapchain_images.data()));
+	vren::vk_utils::check(vkGetSwapchainImagesKHR(m_renderer->m_context->m_device, m_swapchain, &m_image_count, swapchain_images.data()));
 
 	for (int i = 0; i < m_image_count; i++)
 	{
-		auto& frame = m_frames.emplace_back(m_renderer);
+		auto& frame = m_frames.emplace_back(m_renderer->m_context);
 
 		// Swapchain image
 		frame.m_swapchain_image = swapchain_images.at(i);
@@ -122,7 +121,7 @@ void vren::presenter::_create_frames()
 		image_view_info.subresourceRange.baseArrayLayer = 0;
 		image_view_info.subresourceRange.layerCount = 1;
 
-		vren::vk_utils::check(vkCreateImageView(m_renderer->m_device, &image_view_info, nullptr, &frame.m_swapchain_image_view));
+		vren::vk_utils::check(vkCreateImageView(m_renderer->m_context->m_device, &image_view_info, nullptr, &frame.m_swapchain_image_view));
 
 		// Swapchain framebuffer
 		std::initializer_list<VkImageView> attachments = {
@@ -139,7 +138,7 @@ void vren::presenter::_create_frames()
 		framebuffer_info.height = m_current_extent.height;
 		framebuffer_info.layers = 1;
 
-		vren::vk_utils::check(vkCreateFramebuffer(m_renderer->m_device, &framebuffer_info, nullptr, &frame.m_swapchain_framebuffer));
+		vren::vk_utils::check(vkCreateFramebuffer(m_renderer->m_context->m_device, &framebuffer_info, nullptr, &frame.m_swapchain_framebuffer));
 	}
 }
 
@@ -149,7 +148,7 @@ void vren::presenter::create_depth_buffer()
 
 	m_depth_buffer->m_image = std::make_shared<vren::image>();
 	vren::create_image(
-		m_renderer,
+		m_renderer->m_context,
 		m_current_extent.width,
 		m_current_extent.height,
 		nullptr,
@@ -161,7 +160,7 @@ void vren::presenter::create_depth_buffer()
 
 	m_depth_buffer->m_image_view = std::make_shared<vren::vk_image_view>(
 		vren::create_image_view(
-			m_renderer,
+			m_renderer->m_context,
 			m_depth_buffer->m_image->m_image->m_handle,
 			VK_FORMAT_D32_SFLOAT,
 			VK_IMAGE_ASPECT_DEPTH_BIT
@@ -182,7 +181,7 @@ void vren::presenter::destroy_swapchain()
 
 	if (m_swapchain != VK_NULL_HANDLE)
 	{
-		vkDestroySwapchainKHR(m_renderer->m_device, m_swapchain, nullptr);
+		vkDestroySwapchainKHR(m_renderer->m_context->m_device, m_swapchain, nullptr);
 		m_swapchain = VK_NULL_HANDLE;
 	}
 }
@@ -194,8 +193,8 @@ void vren::presenter::recreate_swapchain(VkExtent2D extent)
 }
 
 vren::presenter::presenter(
-	std::shared_ptr<vren::renderer>& renderer,
-	presenter_info& info,
+	std::shared_ptr<vren::renderer> const& renderer,
+	presenter_info const& info,
 	VkSurfaceKHR surface,
 	VkExtent2D initial_extent
 ) :
@@ -210,14 +209,14 @@ vren::presenter::~presenter()
 {
 	for (auto& frame : m_frames)
 	{
-		vkWaitForFences(m_renderer->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
 	}
 
 	m_frames.clear();
 
 	destroy_swapchain();
 
-	vkDestroySurfaceKHR(m_renderer->m_instance, m_surface, nullptr); // TODO should initialize the surface itself
+	vkDestroySurfaceKHR(m_renderer->m_context->m_instance, m_surface, nullptr); // TODO should initialize the surface itself
 }
 
 void vren::presenter::present(
@@ -230,7 +229,7 @@ void vren::presenter::present(
 
 	auto& frame = m_frames.at(m_current_frame_idx);
 
-	result = vkWaitForFences(m_renderer->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
+	result = vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
 	if (result != VK_SUCCESS)
 	{
 #ifdef NSIGHT_AFTERMATH
@@ -243,7 +242,7 @@ void vren::presenter::present(
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
 	uint32_t image_idx;
-	result = vkAcquireNextImageKHR(m_renderer->m_device, m_swapchain, UINT64_MAX, frame.m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
+	result = vkAcquireNextImageKHR(m_renderer->m_context->m_device, m_swapchain, UINT64_MAX, frame.m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreate_swapchain(m_current_extent); // The swapchain is invalid (due to surface change for example), it needs to be re-created.
 		return;
@@ -252,7 +251,7 @@ void vren::presenter::present(
 	}
 
 	// Render
-	vren::renderer::target target{};
+	vren::renderer_target target{};
 	target.m_framebuffer = frame.m_swapchain_framebuffer;
 	target.m_render_area.offset = {0, 0};
 	target.m_render_area.extent = m_current_extent;
@@ -265,7 +264,7 @@ void vren::presenter::present(
 		.maxDepth = 1.0f
 	};
 
-	vren::vk_utils::check(vkResetFences(m_renderer->m_device, 1, &frame.m_render_finished_fence));
+	vren::vk_utils::check(vkResetFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence));
 
 	m_renderer->render(
 		frame,
@@ -286,7 +285,7 @@ void vren::presenter::present(
 	present_info.pWaitSemaphores = &frame.m_render_finished_semaphore;
 	present_info.pImageIndices = &image_idx;
 
-	result = vkQueuePresentKHR(m_renderer->m_queues.at(m_present_queue_family_idx), &present_info);
+	result = vkQueuePresentKHR(m_renderer->m_context->m_queues.at(m_present_queue_family_idx), &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreate_swapchain(m_current_extent);
 		return;

@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include "renderer.hpp"
-
 vren::render_object::render_object(std::shared_ptr<vren::render_list> const& render_list) :
 	m_render_list(render_list)
 {

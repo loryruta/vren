@@ -1,33 +1,31 @@
 #include "vk_wrappers.hpp"
 
-#include "renderer.hpp"
-
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkImage handle)
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkImage handle)
 {
-	vkDestroyImage(renderer->m_device, handle, nullptr);
+	vkDestroyImage(ctx->m_device, handle, nullptr);
 }
 
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkImageView handle)
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkImageView handle)
 {
-	vkDestroyImageView(renderer->m_device, handle, nullptr);
+	vkDestroyImageView(ctx->m_device, handle, nullptr);
 }
 
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkSampler handle)
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkSampler handle)
 {
-	vkDestroySampler(renderer->m_device, handle, nullptr);
+	vkDestroySampler(ctx->m_device, handle, nullptr);
 }
 
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VkBuffer handle)
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkBuffer handle)
 {
-	vkDestroyBuffer(renderer->m_device, handle, nullptr);
+	vkDestroyBuffer(ctx->m_device, handle, nullptr);
 }
 
 template<>
-void vren::destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, VmaAllocation handle)
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VmaAllocation handle)
 {
-	vmaFreeMemory(renderer->m_vma_allocator, handle);
+	vmaFreeMemory(ctx->m_vma_allocator, handle);
 }

@@ -5,7 +5,7 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#include "renderer.hpp"
+#include "render_object.hpp"
 
 // References:
 // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html
@@ -19,7 +19,7 @@ vren::vk_utils::buffer::buffer(
 {}
 
 vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	VkBufferUsageFlagBits buffer_usage,
 	size_t size,
 	bool persistently_mapped
@@ -38,16 +38,16 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 
 	VkBuffer buffer;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateBuffer(renderer->m_vma_allocator, &buf_info, &alloc_info, &buffer, &alloc, nullptr));
+	vren::vk_utils::check(vmaCreateBuffer(ctx->m_vma_allocator, &buf_info, &alloc_info, &buffer, &alloc, nullptr));
 
 	return vren::vk_utils::buffer(
-		std::make_shared<vren::vk_buffer>(renderer, buffer),
-		std::make_shared<vren::vma_allocation>(renderer, alloc)
+		std::make_shared<vren::vk_buffer>(ctx, buffer),
+		std::make_shared<vren::vma_allocation>(ctx, alloc)
 	);
 }
 
 vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	VkBufferUsageFlagBits buffer_usage,
 	size_t size
 )
@@ -63,16 +63,16 @@ vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 
 	VkBuffer buffer;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateBuffer(renderer->m_vma_allocator, &buf_info, &alloc_info, &buffer, &alloc, nullptr));
+	vren::vk_utils::check(vmaCreateBuffer(ctx->m_vma_allocator, &buf_info, &alloc_info, &buffer, &alloc, nullptr));
 
 	return vren::vk_utils::buffer(
-		std::make_shared<vren::vk_buffer>(renderer, buffer),
-		std::make_shared<vren::vma_allocation>(renderer, alloc)
+		std::make_shared<vren::vk_buffer>(ctx, buffer),
+		std::make_shared<vren::vma_allocation>(ctx, alloc)
 	);
 }
 
 void vren::vk_utils::update_host_visible_buffer(
-	vren::renderer const& renderer,
+	vren::context const& ctx,
 	vren::vk_utils::buffer& buf,
 	void const* data,
 	size_t size,
@@ -84,7 +84,7 @@ void vren::vk_utils::update_host_visible_buffer(
 	VmaAllocation alloc = buf.m_allocation->m_handle;
 
 	if (!alloc->IsPersistentMap()) {
-		vmaMapMemory(renderer.m_vma_allocator, alloc, &mapped_data);
+		vmaMapMemory(ctx.m_vma_allocator, alloc, &mapped_data);
 	} else {
 		mapped_data = alloc->GetMappedData();
 	}
@@ -92,35 +92,35 @@ void vren::vk_utils::update_host_visible_buffer(
 	std::memcpy(static_cast<uint8_t*>(mapped_data) + dst_offset, data, size);
 
 	if (!alloc->IsPersistentMap()) {
-		vmaUnmapMemory(renderer.m_vma_allocator, alloc);
+		vmaUnmapMemory(ctx.m_vma_allocator, alloc);
 	}
 
 	VkMemoryPropertyFlags mem_flags;
-	vmaGetMemoryTypeProperties(renderer.m_vma_allocator, alloc->GetMemoryTypeIndex(), &mem_flags);
+	vmaGetMemoryTypeProperties(ctx.m_vma_allocator, alloc->GetMemoryTypeIndex(), &mem_flags);
 	if ((mem_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0) {
-		vmaFlushAllocation(renderer.m_vma_allocator, alloc, dst_offset, size);
+		vmaFlushAllocation(ctx.m_vma_allocator, alloc, dst_offset, size);
 	}
 }
 
 void vren::vk_utils::update_device_only_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	vren::vk_utils::buffer& buf,
 	void const* data,
 	size_t size,
 	size_t dst_offset
 )
 {
-	vren::vk_utils::buffer staging_buf = alloc_host_visible_buffer(renderer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
-	update_host_visible_buffer(*renderer, staging_buf, data, size, 0);
+	vren::vk_utils::buffer staging_buf = alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
+	update_host_visible_buffer(*ctx, staging_buf, data, size, 0);
 
 	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
 	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_alloc_info.commandPool = renderer->m_transfer_command_pool;
+	cmd_buf_alloc_info.commandPool = ctx->m_transfer_command_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
-	vkAllocateCommandBuffers(renderer->m_device, &cmd_buf_alloc_info, &cmd_buf);
+	vkAllocateCommandBuffers(ctx->m_device, &cmd_buf_alloc_info, &cmd_buf);
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -140,17 +140,17 @@ void vren::vk_utils::update_device_only_buffer(
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-	vkQueueSubmit(renderer->m_queues.at(renderer->m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(ctx->m_queues.at(ctx->m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
 
-	vkQueueWaitIdle(renderer->m_transfer_queue);
+	vkQueueWaitIdle(ctx->m_transfer_queue);
 
-	vkResetCommandPool(renderer->m_device, renderer->m_transfer_command_pool, NULL);
+	vkResetCommandPool(ctx->m_device, ctx->m_transfer_command_pool, NULL);
 
 	// TODO use copy_buffer(...)
 }
 
 void vren::vk_utils::copy_buffer(
-	vren::renderer const& renderer,
+	vren::context const& ctx,
 	vren::vk_utils::buffer& src_buffer,
 	vren::vk_utils::buffer& dst_buffer,
 	size_t size,
@@ -161,11 +161,11 @@ void vren::vk_utils::copy_buffer(
 	VkCommandBufferAllocateInfo cmd_buf_alloc_info{};
 	cmd_buf_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_buf_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_alloc_info.commandPool = renderer.m_transfer_command_pool;
+	cmd_buf_alloc_info.commandPool = ctx.m_transfer_command_pool;
 	cmd_buf_alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
-	vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_alloc_info, &cmd_buf);
+	vkAllocateCommandBuffers(ctx.m_device, &cmd_buf_alloc_info, &cmd_buf);
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -185,49 +185,49 @@ void vren::vk_utils::copy_buffer(
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf;
-	vkQueueSubmit(renderer.m_queues.at(renderer.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(ctx.m_queues.at(ctx.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
 
-	vkQueueWaitIdle(renderer.m_transfer_queue);
+	vkQueueWaitIdle(ctx.m_transfer_queue);
 
-	vkResetCommandPool(renderer.m_device, renderer.m_transfer_command_pool, NULL);
+	vkResetCommandPool(ctx.m_device, ctx.m_transfer_command_pool, NULL);
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	VkBufferUsageFlagBits buffer_usage,
 	void const* data,
 	size_t size
 )
 {
 	vren::vk_utils::buffer buf =
-		vren::vk_utils::alloc_device_only_buffer(renderer, buffer_usage, size);
-	vren::vk_utils::update_device_only_buffer(renderer, buf, data, size, 0);
+		vren::vk_utils::alloc_device_only_buffer(ctx, buffer_usage, size);
+	vren::vk_utils::update_device_only_buffer(ctx, buf, data, size, 0);
 	return buf;
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_vertex_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	vren::vertex const* vertices,
 	size_t vertices_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(renderer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof(vren::vertex) * vertices_count);
+	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof(vren::vertex) * vertices_count);
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_indices_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	uint32_t const* indices,
 	size_t indices_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(renderer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof(uint32_t) * indices_count);
+	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof(uint32_t) * indices_count);
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_instances_buffer(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	vren::instance_data const* instances,
 	size_t instances_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(renderer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
+	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
 }

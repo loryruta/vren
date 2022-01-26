@@ -1,17 +1,15 @@
 #include "material.hpp"
 
-#include "renderer.hpp"
-
-vren::material::material(std::shared_ptr<vren::renderer> const& renderer) :
-	m_base_color_texture(renderer->m_white_texture),
-	m_metallic_roughness_texture(renderer->m_white_texture),
+vren::material::material(std::shared_ptr<vren::context> const& ctx) :
+	m_base_color_texture(ctx->m_white_texture),
+	m_metallic_roughness_texture(ctx->m_white_texture),
 	m_base_color_factor(1.0f),
 	m_metallic_factor(0.0f),
 	m_roughness_factor(0.0f)
 {
 }
 
-void vren::material_manager::update_material_descriptor_set(vren::renderer const& renderer, vren::material const& material, VkDescriptorSet descriptor_set)
+void vren::material_manager::update_material_descriptor_set(vren::context const& ctx, vren::material const& material, VkDescriptorSet descriptor_set)
 {
 	std::vector<VkWriteDescriptorSet> desc_set_writes;
 	VkWriteDescriptorSet desc_set_write{};
@@ -55,5 +53,5 @@ void vren::material_manager::update_material_descriptor_set(vren::renderer const
 	desc_set_writes.push_back(desc_set_write);
 
 	//
-	vkUpdateDescriptorSets(renderer.m_device, desc_set_writes.size(), desc_set_writes.data(), 0, nullptr);
+	vkUpdateDescriptorSets(ctx.m_device, desc_set_writes.size(), desc_set_writes.data(), 0, nullptr);
 }

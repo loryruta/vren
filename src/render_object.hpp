@@ -5,18 +5,16 @@
 #include <array>
 #include <stdexcept>
 
-#include "gpu_allocator.hpp"
-#include "material.hpp"
-
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
+#include "render_list.hpp"
+#include "vk_utils.hpp"
+#include "gpu_allocator.hpp"
+#include "material.hpp"
+
 namespace vren
 {
-	// Forward decl
-	class renderer;
-	class render_list;
-
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	struct vertex

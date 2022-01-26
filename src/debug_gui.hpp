@@ -5,23 +5,20 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
-#include "frame.hpp"
+#include "renderer.hpp"
 
 namespace vren
 {
-	class renderer; // forward decl
-	class presenter;
-
 	class debug_gui
 	{
 	private:
-		vren::renderer& m_renderer;
+		std::shared_ptr<vren::renderer> m_renderer;
 		GLFWwindow* m_window; // for hooking events
 
 		VkDescriptorPool m_descriptor_pool;
 
 	public:
-		explicit debug_gui(vren::renderer& renderer, GLFWwindow* window);
+		explicit debug_gui(std::shared_ptr<vren::renderer> const& renderer, GLFWwindow* window);
 		~debug_gui();
 
 		void render(vren::frame& frame);

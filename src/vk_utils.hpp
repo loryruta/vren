@@ -1,24 +1,24 @@
 #pragma once
 
+#include <memory>
 #include <filesystem>
 #include <functional>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
+#include "context.hpp"
 #include "vk_wrappers.hpp"
 
 namespace vren // todo vren::vk_utils
 {
-	class renderer; // forward decl
-
 	namespace vk_utils
 	{
 		void check(VkResult result);
 
-		VkCommandBuffer begin_single_submit_command_buffer(vren::renderer& renderer, VkCommandPool cmd_pool);
-		void end_single_submit_command_buffer(vren::renderer& renderer, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf);
-		void immediate_submit(vren::renderer& renderer, std::function<void(VkCommandBuffer)> submit_func);
+		VkCommandBuffer begin_single_submit_command_buffer(vren::context const& ctx, VkCommandPool cmd_pool);
+		void end_single_submit_command_buffer(vren::context const& ctx, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf);
+		void immediate_submit(vren::context const& ctx, std::function<void(VkCommandBuffer)> submit_func);
 	}
 
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ namespace vren // todo vren::vk_utils
 	};
 
 	void create_image(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -52,7 +52,7 @@ namespace vren // todo vren::vk_utils
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_image_view create_image_view(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		VkImage image,
 		VkFormat format,
 		VkImageAspectFlagBits aspect
@@ -63,7 +63,7 @@ namespace vren // todo vren::vk_utils
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_sampler create_sampler(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		VkFilter mag_filter,
 		VkFilter min_filter,
 		VkSamplerMipmapMode mipmap_mode,
@@ -90,7 +90,7 @@ namespace vren // todo vren::vk_utils
 	};
 
 	void create_texture(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -105,18 +105,11 @@ namespace vren // todo vren::vk_utils
 	);
 
 	void create_color_texture(
-		std::shared_ptr<vren::renderer> const& renderer,
+		std::shared_ptr<vren::context> const& ctx,
 		uint8_t r,
 		uint8_t g,
 		uint8_t b,
 		uint8_t a,
 		vren::texture& result
 	);
-
-	void destroy_texture_if_any(
-		vren::renderer& renderer,
-		vren::texture& texture
-	);
-
-	//
 }

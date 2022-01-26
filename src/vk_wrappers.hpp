@@ -7,32 +7,31 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
+#include "context.hpp"
+
 namespace vren
 {
-	// Forward decl
-	class renderer;
-
 	template<typename T>
-	void destroy_vk_handle(std::shared_ptr<vren::renderer> const& renderer, T handle);
+	void destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, T handle);
 
 	template<typename T>
 	class vk_handle_wrapper
 	{
 	private:
-		std::shared_ptr<vren::renderer> m_renderer;
+		std::shared_ptr<vren::context> m_context;
 
 	public:
 		T m_handle;
 
-		explicit vk_handle_wrapper(std::shared_ptr<vren::renderer> const& renderer, T handle) :
-			m_renderer(renderer),
+		explicit vk_handle_wrapper(std::shared_ptr<vren::context> const& ctx, T handle) :
+			m_context(ctx),
 			m_handle(handle)
 		{}
 
 		vk_handle_wrapper(vren::vk_handle_wrapper<T> const& other) = delete;
 
 		vk_handle_wrapper(vren::vk_handle_wrapper<T>&& other) noexcept :
-			m_renderer(other.m_renderer)
+			m_context(other.m_context)
 		{
 			*this = std::move(other);
 		}
@@ -41,7 +40,7 @@ namespace vren
 		{
 			if (m_handle != VK_NULL_HANDLE)
 			{
-				vren::destroy_vk_handle<T>(m_renderer, m_handle);
+				vren::destroy_vk_handle<T>(m_context, m_handle);
 
 				m_handle = VK_NULL_HANDLE;
 			}

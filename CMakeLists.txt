@@ -39,6 +39,8 @@ add_library(vren
         src/render_list.hpp
         src/render_object.cpp
         src/render_object.hpp
+        src/context.hpp
+        src/context.cpp
         src/renderer.hpp
         src/renderer.cpp
         src/simple_draw.hpp

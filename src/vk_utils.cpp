@@ -1,6 +1,6 @@
 #include "vk_utils.hpp"
 
-#include "renderer.hpp"
+#include "gpu_allocator.hpp"
 
 void vren::vk_utils::check(VkResult result)
 {
@@ -13,7 +13,7 @@ void vren::vk_utils::check(VkResult result)
 	}
 }
 
-VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::renderer& renderer, VkCommandPool cmd_pool)
+VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::context const& ctx, VkCommandPool cmd_pool)
 {
 	VkCommandBufferAllocateInfo cmd_buf_info{};
 	cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -22,7 +22,7 @@ VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::rendere
 	cmd_buf_info.commandBufferCount = 1;
 
 	VkCommandBuffer cmd_buf{};
-	vren::vk_utils::check(vkAllocateCommandBuffers(renderer.m_device, &cmd_buf_info, &cmd_buf));
+	vren::vk_utils::check(vkAllocateCommandBuffers(ctx.m_device, &cmd_buf_info, &cmd_buf));
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -33,7 +33,7 @@ VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::rendere
 	return cmd_buf;
 }
 
-void vren::vk_utils::end_single_submit_command_buffer(vren::renderer& renderer, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf)
+void vren::vk_utils::end_single_submit_command_buffer(vren::context const& ctx, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf)
 {
 	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
 
@@ -45,16 +45,16 @@ void vren::vk_utils::end_single_submit_command_buffer(vren::renderer& renderer, 
 
 	vren::vk_utils::check(vkQueueWaitIdle(queue));
 
-	vkFreeCommandBuffers(renderer.m_device, cmd_pool, 1, &cmd_buf);
+	vkFreeCommandBuffers(ctx.m_device, cmd_pool, 1, &cmd_buf);
 }
 
-void vren::vk_utils::immediate_submit(vren::renderer& renderer, std::function<void(VkCommandBuffer)> submit_func)
+void vren::vk_utils::immediate_submit(vren::context const& ctx, std::function<void(VkCommandBuffer)> submit_func)
 {
-	VkCommandBuffer cmd_buf = begin_single_submit_command_buffer(renderer, renderer.m_graphics_command_pool);
+	VkCommandBuffer cmd_buf = begin_single_submit_command_buffer(ctx, ctx.m_graphics_command_pool);
 
 	submit_func(cmd_buf);
 
-	end_single_submit_command_buffer(renderer, renderer.m_graphics_queue, renderer.m_graphics_command_pool, cmd_buf);
+	end_single_submit_command_buffer(ctx, ctx.m_graphics_queue, ctx.m_graphics_command_pool, cmd_buf);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ void vren::vk_utils::immediate_submit(vren::renderer& renderer, std::function<vo
 // --------------------------------------------------------------------------------------------------------------------------------
 
 void vren::create_image(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -92,27 +92,27 @@ void vren::create_image(
 
 	VkImage image;
 	VmaAllocation allocation;
-	vren::vk_utils::check(vmaCreateImage(renderer->m_vma_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
+	vren::vk_utils::check(vmaCreateImage(ctx->m_vma_allocator, &image_info, &alloc_create_info, &image, &allocation, nullptr));
 
-	result.m_image = std::make_shared<vren::vk_image>(renderer, image);
-	result.m_allocation = std::make_shared<vren::vma_allocation>(renderer, allocation);
+	result.m_image = std::make_shared<vren::vk_image>(ctx, image);
+	result.m_allocation = std::make_shared<vren::vma_allocation>(ctx, allocation);
 
 	if (image_data)
 	{
 		VkMemoryRequirements image_memory_requirements{};
-		vkGetImageMemoryRequirements(renderer->m_device, result.m_image->m_handle, &image_memory_requirements);
+		vkGetImageMemoryRequirements(ctx->m_device, result.m_image->m_handle, &image_memory_requirements);
 		VkDeviceSize image_size = image_memory_requirements.size;
 
 		vren::vk_utils::buffer staging_buffer =
-			vren::vk_utils::alloc_host_visible_buffer(renderer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
+			vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
 
 		void* mapped_image_data;
-		vren::vk_utils::check(vmaMapMemory(renderer->m_vma_allocator, staging_buffer.m_allocation->m_handle, &mapped_image_data));
+		vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation->m_handle, &mapped_image_data));
 			memcpy(mapped_image_data, image_data, static_cast<size_t>(image_size));
-		vmaUnmapMemory(renderer->m_vma_allocator, staging_buffer.m_allocation->m_handle);
+		vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation->m_handle);
 
 		VkCommandBuffer cmd_buf;
-		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(*renderer, renderer->m_transfer_command_pool);
+		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(*ctx, ctx->m_transfer_command_pool);
 
 		// transition from undefined to transfer layout
 		{
@@ -176,7 +176,7 @@ void vren::create_image(
 
 		//
 
-		vren::vk_utils::end_single_submit_command_buffer(*renderer, renderer->m_transfer_queue, renderer->m_transfer_command_pool, cmd_buf);
+		vren::vk_utils::end_single_submit_command_buffer(*ctx, ctx->m_transfer_queue, ctx->m_transfer_command_pool, cmd_buf);
 	}
 }
 
@@ -185,7 +185,7 @@ void vren::create_image(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_image_view vren::create_image_view(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& renderer,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlagBits aspect
@@ -213,7 +213,7 @@ vren::vk_image_view vren::create_image_view(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_sampler vren::create_sampler(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	VkFilter mag_filter,
 	VkFilter min_filter,
 	VkSamplerMipmapMode mipmap_mode,
@@ -243,9 +243,9 @@ vren::vk_sampler vren::create_sampler(
 	sampler_info.unnormalizedCoordinates = VK_FALSE;
 
 	VkSampler sampler;
-	vren::vk_utils::check(vkCreateSampler(renderer->m_device, &sampler_info, nullptr, &sampler));
+	vren::vk_utils::check(vkCreateSampler(ctx->m_device, &sampler_info, nullptr, &sampler));
 
-	return vren::vk_sampler(renderer, sampler);
+	return vren::vk_sampler(ctx, sampler);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -253,7 +253,7 @@ vren::vk_sampler vren::create_sampler(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 void vren::create_texture(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -270,7 +270,7 @@ void vren::create_texture(
 	// Image
 	vren::image image;
 	vren::create_image(
-		renderer,
+		ctx,
 		width,
 		height,
 		image_data,
@@ -285,7 +285,7 @@ void vren::create_texture(
 	// Image view
 	result.m_image_view = std::make_shared<vren::vk_image_view>(
 		vren::create_image_view(
-			renderer,
+			ctx,
 			result.m_image->m_handle,
 			format,
 			VK_IMAGE_ASPECT_COLOR_BIT
@@ -295,7 +295,7 @@ void vren::create_texture(
 	// Sampler
 	result.m_sampler = std::make_shared<vren::vk_sampler>(
 		vren::create_sampler(
-			renderer,
+			ctx,
 			mag_filter,
 			min_filter,
 			mipmap_mode,
@@ -307,7 +307,7 @@ void vren::create_texture(
 }
 
 void vren::create_color_texture(
-	std::shared_ptr<vren::renderer> const& renderer,
+	std::shared_ptr<vren::context> const& ctx,
 	uint8_t r,
 	uint8_t g,
 	uint8_t b,
@@ -318,7 +318,7 @@ void vren::create_color_texture(
 	std::vector<uint8_t> img_data = {r, g, b, a};
 
 	vren::create_texture(
-		renderer,
+		ctx,
 		1,
 		1,
 		img_data.data(),

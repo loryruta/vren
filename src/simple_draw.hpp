@@ -1,27 +1,15 @@
-
 #pragma once
 
+#include <memory>
 #include <vector>
-#include <array>
-
-#include "config.hpp"
-#include "material.hpp"
-#include "frame.hpp"
-#include "light.hpp"
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
+#include "renderer.hpp"
+
 namespace vren
 {
-	// Forward decl
-
-	class renderer;
-	class render_list;
-	class camera;
-
-	//
-
 	class simple_draw_pass
 	{
 	private:

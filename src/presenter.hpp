@@ -7,6 +7,8 @@
 #include "renderer.hpp"
 #include "vk_utils.hpp"
 #include "frame.hpp"
+#include "render_list.hpp"
+#include "light.hpp"
 
 namespace vren
 {
@@ -69,7 +71,12 @@ namespace vren
 
 		void recreate_swapchain(VkExtent2D extent);
 
-		presenter(std::shared_ptr<vren::renderer>& renderer, vren::presenter_info& info, VkSurfaceKHR surface, VkExtent2D initial_extent);
+		presenter(
+			std::shared_ptr<vren::renderer> const& renderer,
+			vren::presenter_info const& info,
+			VkSurfaceKHR surface,
+			VkExtent2D initial_extent
+		);
 		~presenter();
 
 		void present(

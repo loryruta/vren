@@ -6,17 +6,19 @@
 #include <imgui_impl_vulkan.h>
 #include <implot.h>
 
-#include "renderer.hpp"
+#include "context.hpp"
 #include "presenter.hpp"
 #include "vk_utils.hpp"
 
 // Reference:
 // https://github.com/ocornut/imgui/blob/master/examples/example_glfw_vulkan/main.cpp
 
-vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
+vren::debug_gui::debug_gui(std::shared_ptr<vren::renderer> const& renderer, GLFWwindow* window) :
 	m_renderer(renderer),
 	m_window(window)
 {
+	auto& ctx = m_renderer->m_context;
+
 	VkDescriptorPoolSize pool_sizes[] = {
 		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -38,7 +40,7 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	pool_info.poolSizeCount = std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
 
-	vren::vk_utils::check(vkCreateDescriptorPool(renderer.m_device, &pool_info, nullptr, &m_descriptor_pool));
+	vren::vk_utils::check(vkCreateDescriptorPool(ctx->m_device, &pool_info, nullptr, &m_descriptor_pool));
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -49,11 +51,11 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
 	ImGui_ImplVulkan_InitInfo init_info{};
-	init_info.Instance = renderer.m_instance;
-	init_info.PhysicalDevice = renderer.m_physical_device;
-	init_info.Device = renderer.m_device;
-	init_info.QueueFamily = renderer.m_queue_families.m_graphics_idx;
-	init_info.Queue = renderer.m_graphics_queue;
+	init_info.Instance = ctx->m_instance;
+	init_info.PhysicalDevice = ctx->m_physical_device;
+	init_info.Device = ctx->m_device;
+	init_info.QueueFamily = ctx->m_queue_families.m_graphics_idx;
+	init_info.Queue = ctx->m_graphics_queue;
 	init_info.PipelineCache = nullptr;
 	init_info.DescriptorPool = m_descriptor_pool;
 	init_info.Subpass = 0;
@@ -62,10 +64,10 @@ vren::debug_gui::debug_gui(vren::renderer& renderer, GLFWwindow* window) :
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = vren::vk_utils::check;
-	ImGui_ImplVulkan_Init(&init_info, renderer.m_render_pass);
+	ImGui_ImplVulkan_Init(&init_info, renderer->m_render_pass);
 
 	// Font uploading
-	vren::vk_utils::immediate_submit(renderer, [&](VkCommandBuffer cmd_buf) {
+	vren::vk_utils::immediate_submit(*ctx, [&](VkCommandBuffer cmd_buf) {
 		ImGui_ImplVulkan_CreateFontsTexture(cmd_buf);
 	});
 
@@ -79,7 +81,7 @@ vren::debug_gui::~debug_gui()
 	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
-	vkDestroyDescriptorPool(m_renderer.m_device, m_descriptor_pool, nullptr);
+	vkDestroyDescriptorPool(m_renderer->m_context->m_device, m_descriptor_pool, nullptr);
 }
 
 void vren::debug_gui::render(vren::frame& frame)

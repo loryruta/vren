@@ -5,17 +5,17 @@
 
 #include <glm/glm.hpp>
 
-#include "render_object.hpp"
+#include "context.hpp"
 
 namespace vren
 {
 	// Forward decl
-	class renderer;
+	class render_object;
 
 	class render_list : public std::enable_shared_from_this<render_list>
 	{
 	public:
-		std::shared_ptr<vren::renderer> m_renderer;
+		std::shared_ptr<vren::context> m_context;
 
 		std::vector<uint32_t> m_position_by_idx;
 		uint32_t m_next_idx = 0;
@@ -23,7 +23,7 @@ namespace vren
 		std::vector<vren::render_object> m_render_objects;
 
 	private:
-		explicit render_list(std::shared_ptr<vren::renderer> const& renderer);
+		explicit render_list(std::shared_ptr<vren::context> const& ctx);
 
 	public:
 		~render_list() = default;
@@ -40,6 +40,6 @@ namespace vren
 			return m_render_objects.end();
 		}
 
-		static std::shared_ptr<vren::render_list> create(std::shared_ptr<vren::renderer> const& renderer);
+		static std::shared_ptr<vren::render_list> create(std::shared_ptr<vren::context> const& ctx);
 	};
 }

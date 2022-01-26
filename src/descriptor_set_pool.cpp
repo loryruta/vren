@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "renderer.hpp"
+#include "vk_utils.hpp"
 
 void vren::descriptor_set_pool::create_material_layout()
 {
@@ -37,7 +37,7 @@ void vren::descriptor_set_pool::create_material_layout()
 	desc_set_layout_info.bindingCount = bindings.size();
 	desc_set_layout_info.pBindings = bindings.data();
 
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer->m_device, &desc_set_layout_info, nullptr, &m_material_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_context->m_device, &desc_set_layout_info, nullptr, &m_material_layout));
 }
 
 void vren::descriptor_set_pool::create_lights_array_layout()
@@ -73,7 +73,7 @@ void vren::descriptor_set_pool::create_lights_array_layout()
 	desc_set_layout_info.bindingCount = bindings.size();
 	desc_set_layout_info.pBindings = bindings.data();
 
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_renderer->m_device, &desc_set_layout_info, nullptr, &m_lights_array_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(m_context->m_device, &desc_set_layout_info, nullptr, &m_lights_array_layout));
 }
 
 void vren::descriptor_set_pool::decorate_material_descriptor_pool_sizes(
@@ -129,7 +129,7 @@ void vren::descriptor_set_pool::add_descriptor_pool()
 	desc_pool_info.maxSets = VREN_DESCRIPTOR_SET_POOL_SIZE;
 
 	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(m_renderer->m_device, &desc_pool_info, nullptr, &desc_pool));
+	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &desc_pool_info, nullptr, &desc_pool));
 
 	m_descriptor_pools.push_back(desc_pool);
 
@@ -139,8 +139,8 @@ void vren::descriptor_set_pool::add_descriptor_pool()
 	m_last_pool_allocated_count = 0;
 }
 
-vren::descriptor_set_pool::descriptor_set_pool(std::shared_ptr<vren::renderer> const& renderer) :
-	m_renderer(renderer)
+vren::descriptor_set_pool::descriptor_set_pool(std::shared_ptr<vren::context> const& ctx) :
+	m_context(ctx)
 {
 	create_material_layout();
 	create_lights_array_layout();
@@ -152,11 +152,11 @@ vren::descriptor_set_pool::~descriptor_set_pool()
 {
 	for (VkDescriptorPool descriptor_pool : m_descriptor_pools)
 	{
-		vkDestroyDescriptorPool(m_renderer->m_device, descriptor_pool, nullptr);
+		vkDestroyDescriptorPool(m_context->m_device, descriptor_pool, nullptr);
 	}
 
-	vkDestroyDescriptorSetLayout(m_renderer->m_device, m_material_layout, nullptr);
-	vkDestroyDescriptorSetLayout(m_renderer->m_device, m_lights_array_layout, nullptr);
+	vkDestroyDescriptorSetLayout(m_context->m_device, m_material_layout, nullptr);
+	vkDestroyDescriptorSetLayout(m_context->m_device, m_lights_array_layout, nullptr);
 }
 
 void vren::descriptor_set_pool::acquire_descriptor_sets(
@@ -194,7 +194,7 @@ void vren::descriptor_set_pool::acquire_descriptor_sets(
 		descriptor_sets_count -= alloc_count;
 		m_last_pool_allocated_count += alloc_count;
 
-		vren::vk_utils::check(vkAllocateDescriptorSets(m_renderer->m_device, &alloc_info, descriptor_sets + i));
+		vren::vk_utils::check(vkAllocateDescriptorSets(m_context->m_device, &alloc_info, descriptor_sets + i));
 
 		size_t tot_desc_sets = (m_descriptor_pools.size() - 1) * VREN_DESCRIPTOR_SET_POOL_SIZE + m_last_pool_allocated_count;
 

@@ -1,10 +1,9 @@
-
 #include "render_list.hpp"
 
-#include "renderer.hpp"
+#include "render_object.hpp"
 
-vren::render_list::render_list(std::shared_ptr<vren::renderer> const& renderer) :
-	m_renderer(renderer)
+vren::render_list::render_list(std::shared_ptr<vren::context> const& ctx) :
+	m_context(ctx)
 {}
 
 vren::render_object& vren::render_list::create_render_object()
@@ -45,7 +44,7 @@ void vren::render_list::delete_render_object(uint32_t idx)
 	m_render_objects.pop_back();
 }
 
-std::shared_ptr<vren::render_list> vren::render_list::create(std::shared_ptr<vren::renderer> const& renderer)
+std::shared_ptr<vren::render_list> vren::render_list::create(std::shared_ptr<vren::context> const& ctx)
 {
-	return std::shared_ptr<vren::render_list>(new vren::render_list(renderer));
+	return std::shared_ptr<vren::render_list>(new vren::render_list(ctx));
 }
