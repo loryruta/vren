@@ -5,7 +5,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 #include "render_object.hpp"
 #include "descriptor_set_pool.hpp"
 #include "material.hpp"

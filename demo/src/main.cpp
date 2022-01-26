@@ -10,7 +10,7 @@
 
 #include "context.hpp"
 #include "presenter.hpp"
-#include "gpu_allocator.hpp"
+#include "utils/buffer.hpp"
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
 #include "debug_gui.hpp"

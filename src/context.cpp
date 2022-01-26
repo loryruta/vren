@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 #include "descriptor_set_pool.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)

@@ -5,8 +5,8 @@
 #include <glm/glm.hpp>
 
 #include "context.hpp"
-#include "vk_utils.hpp"
-#include "gpu_allocator.hpp"
+#include "utils/image.hpp"
+#include "utils/buffer.hpp"
 #include "light.hpp"
 
 namespace vren

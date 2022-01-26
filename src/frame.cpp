@@ -1,7 +1,7 @@
 #include "frame.hpp"
 
 #include "context.hpp"
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 #include "descriptor_set_pool.hpp"
 
 vren::frame::frame(std::shared_ptr<vren::context> const& ctx) :

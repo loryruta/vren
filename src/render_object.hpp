@@ -9,8 +9,8 @@
 #include <vulkan/vulkan.h>
 
 #include "render_list.hpp"
-#include "vk_utils.hpp"
-#include "gpu_allocator.hpp"
+#include "utils/image.hpp"
+#include "utils/buffer.hpp"
 #include "material.hpp"
 
 namespace vren

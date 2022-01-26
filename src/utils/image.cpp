@@ -1,6 +1,6 @@
-#include "vk_utils.hpp"
+#include "image.hpp"
 
-#include "gpu_allocator.hpp"
+#include "buffer.hpp"
 
 void vren::vk_utils::check(VkResult result)
 {

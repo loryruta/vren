@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 
 #include "context.hpp"
-#include "gpu_allocator.hpp"
+#include "utils/buffer.hpp"
 
 namespace vren
 {

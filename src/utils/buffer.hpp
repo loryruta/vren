@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "context.hpp"
-#include "vk_wrappers.hpp"
+#include "vk_raii.hpp"
 
 namespace vren
 {

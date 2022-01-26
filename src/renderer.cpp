@@ -2,7 +2,7 @@
 
 #include "simple_draw.hpp"
 #include "debug_gui.hpp"
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 
 vren::renderer::renderer(std::shared_ptr<vren::context> const& ctx) :
 	m_context(ctx)

@@ -33,8 +33,6 @@ include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
 # ------------------------------------------------------------------------------------------------
 
 add_library(vren
-        src/gpu_allocator.hpp
-        src/gpu_allocator.cpp
         src/render_list.cpp
         src/render_list.hpp
         src/render_object.cpp
@@ -48,8 +46,6 @@ add_library(vren
         src/config.hpp
         src/presenter.cpp
         src/presenter.hpp
-        src/vk_utils.hpp
-        src/vk_utils.cpp
         src/material.hpp
         src/material.cpp
         src/frame.cpp
@@ -58,8 +54,12 @@ add_library(vren
         src/light.hpp
         src/descriptor_set_pool.hpp
         src/descriptor_set_pool.cpp
-        src/vk_wrappers.hpp
-        src/vk_wrappers.cpp
+        src/utils/buffer.hpp
+        src/utils/buffer.cpp
+        src/utils/image.hpp
+        src/utils/image.cpp
+        src/utils/vk_raii.hpp
+        src/utils/vk_raii.cpp
         src/debug_gui.hpp
         src/debug_gui.cpp
 )
@@ -78,6 +78,8 @@ if (FALSE)
 
     target_link_libraries(vren PUBLIC NsightAftermath::NsightAftermath)
 endif()
+
+target_include_directories(vren PUBLIC src)
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})

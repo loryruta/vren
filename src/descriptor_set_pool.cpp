@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 
 void vren::descriptor_set_pool::create_material_layout()
 {

@@ -8,7 +8,7 @@
 #include <vk_mem_alloc.h>
 
 #include "context.hpp"
-#include "vk_wrappers.hpp"
+#include "vk_raii.hpp"
 
 namespace vren // todo vren::vk_utils
 {

@@ -8,7 +8,7 @@
 
 #include "context.hpp"
 #include "presenter.hpp"
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 
 // Reference:
 // https://github.com/ocornut/imgui/blob/master/examples/example_glfw_vulkan/main.cpp

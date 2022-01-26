@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.h>
 
 #include "renderer.hpp"
-#include "vk_utils.hpp"
+#include "utils/image.hpp"
 #include "frame.hpp"
 #include "render_list.hpp"
 #include "light.hpp"
