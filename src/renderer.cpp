@@ -276,7 +276,7 @@ VkRenderPass vren::renderer::create_render_pass()
 	// ---------------------------------------------------------------- Attachments
 
 	VkAttachmentDescription color_attachment{};
-	color_attachment.format = VK_FORMAT_B8G8R8A8_SRGB; // Should be the format of the final target image.
+	color_attachment.format = vren::renderer::k_color_output_format;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

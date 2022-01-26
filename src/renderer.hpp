@@ -44,7 +44,7 @@ namespace vren
 	class renderer : public std::enable_shared_from_this<renderer>
 	{
 	public:
-		static VkFormat const m_color_output_format = VK_FORMAT_B8G8R8A8_SRGB;
+		static VkFormat const k_color_output_format = VK_FORMAT_B8G8R8A8_UNORM;
 
 		struct queue_families
 		{

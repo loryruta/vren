@@ -51,9 +51,9 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 	// Image format & color space
 	{
 		std::optional<VkSurfaceFormatKHR> found;
-		for (auto surface_format : surface_details.m_surface_formats)
+		for (VkSurfaceFormatKHR surface_format : surface_details.m_surface_formats)
 		{
-			if (surface_format.format == vren::renderer::m_color_output_format && surface_format.colorSpace == m_info.m_color_space)
+			if (surface_format.format == vren::renderer::k_color_output_format/*&& surface_format.colorSpace == m_info.m_color_space*/)
 			{
 				found = surface_format;
 				break;
@@ -115,7 +115,7 @@ void vren::presenter::_create_frames()
 		image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		image_view_info.image = swapchain_images.at(i);
 		image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		image_view_info.format = vren::renderer::m_color_output_format;
+		image_view_info.format = vren::renderer::k_color_output_format;
 		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		image_view_info.subresourceRange.baseMipLevel = 0;
 		image_view_info.subresourceRange.levelCount = 1;
