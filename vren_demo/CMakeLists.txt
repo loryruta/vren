@@ -23,7 +23,7 @@ add_executable(vren_demo
 )
 
 # vren
-target_include_directories(vren_demo PUBLIC "${CMAKE_SOURCE_DIR}/src")
+target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren/src")
 target_link_libraries(vren_demo PUBLIC vren)
 
 # tinygltfloader

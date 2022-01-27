@@ -37,12 +37,11 @@ function (setup_resources TARGET_NAME)
     # Shaders
     set(SHADERS "")
 
-    compile_shader(SHADERS "${VREN_HOME}/resources/simple_draw.vert" "${RESOURCES_DIR}/simple_draw.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/resources/simple_draw.frag" "${RESOURCES_DIR}/simple_draw.frag.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/simple_draw.vert" "${RESOURCES_DIR}/simple_draw.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/simple_draw.frag" "${RESOURCES_DIR}/simple_draw.frag.bin")
 
     add_custom_target(${TARGET_NAME}_shaders DEPENDS ${SHADERS})
 
     #
     add_dependencies(${TARGET_NAME} create_dirs ${TARGET_NAME}_shaders)
-
 endfunction()
