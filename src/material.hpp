@@ -25,6 +25,11 @@ namespace vren
 
 	namespace material_manager
 	{
-		void update_material_descriptor_set(vren::context const& ctx, vren::material const& material, VkDescriptorSet descriptor_set);
+		void update_material_descriptor_set(
+			vren::context const& ctx,
+			vren::frame& frame,
+			std::shared_ptr<vren::material> const& material,
+			VkDescriptorSet descriptor_set
+		);
 	}
 }

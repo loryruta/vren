@@ -220,7 +220,8 @@ void vren::simple_draw_pass::record_commands(
 
 	// Lights array
 	descriptor_set = frame.acquire_lights_array_descriptor_set();
-	lights_array.update_descriptor_set(descriptor_set);
+	lights_array.update_descriptor_set(frame, descriptor_set);
+
 	vkCmdBindDescriptorSets(
 		frame.m_command_buffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -247,28 +248,20 @@ void vren::simple_draw_pass::record_commands(
 		VkDeviceSize offsets[] = { 0 };
 
 		// Vertex buffer
-		vkCmdBindVertexBuffers(
-			frame.m_command_buffer,
-			0,
-			1,
-			&render_obj.m_vertices_buffer->m_buffer->m_handle,
-			offsets
-		);
+		vkCmdBindVertexBuffers(frame.m_command_buffer, 0, 1, &render_obj.m_vertices_buffer->m_buffer->m_handle, offsets);
+		frame.track_resource(render_obj.m_vertices_buffer);
 
 		// Indices buffer
-		vkCmdBindIndexBuffer(
-			frame.m_command_buffer,
-			render_obj.m_indices_buffer->m_buffer->m_handle,
-			0,
-			vren::render_object::s_index_type
-		);
+		vkCmdBindIndexBuffer(frame.m_command_buffer, render_obj.m_indices_buffer->m_buffer->m_handle, 0, vren::render_object::s_index_type);
+		frame.track_resource(render_obj.m_indices_buffer);
 
 		// Instances buffer
 		vkCmdBindVertexBuffers(frame.m_command_buffer, 1, 1, &render_obj.m_instances_buffer->m_buffer->m_handle, offsets);
+		frame.track_resource(render_obj.m_instances_buffer);
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();
-		vren::material_manager::update_material_descriptor_set(*m_renderer->m_context, *render_obj.m_material, descriptor_set);
+		vren::material_manager::update_material_descriptor_set(*m_renderer->m_context, frame, render_obj.m_material, descriptor_set);
 		vkCmdBindDescriptorSets(
 			frame.m_command_buffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,

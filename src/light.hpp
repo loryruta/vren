@@ -6,6 +6,7 @@
 
 #include "context.hpp"
 #include "utils/buffer.hpp"
+#include "frame.hpp"
 
 namespace vren
 {
@@ -57,6 +58,6 @@ namespace vren
 		vren::directional_light& get_directional_light(uint32_t idx);
 
 		void update_device_buffers();
-		void update_descriptor_set(VkDescriptorSet descriptor_set) const;
+		void update_descriptor_set(vren::frame& frame, VkDescriptorSet descriptor_set) const;
 	};
 }

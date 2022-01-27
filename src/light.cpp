@@ -113,7 +113,7 @@ void vren::lights_array::update_device_buffers()
 	}
 }
 
-void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) const
+void vren::lights_array::update_descriptor_set(vren::frame& frame, VkDescriptorSet descriptor_set) const
 {
 	std::vector<VkDescriptorBufferInfo> buffers_info{};
 
@@ -145,4 +145,7 @@ void vren::lights_array::update_descriptor_set(VkDescriptorSet descriptor_set) c
 	desc_set_write.pBufferInfo = buffers_info.data();
 
 	vkUpdateDescriptorSets(m_context->m_device, 1, &desc_set_write, 0, nullptr);
+
+	frame.track_resource(m_point_lights_ssbo);
+	frame.track_resource(m_directional_lights_ssbo);
 }

@@ -9,7 +9,12 @@ vren::material::material(std::shared_ptr<vren::context> const& ctx) :
 {
 }
 
-void vren::material_manager::update_material_descriptor_set(vren::context const& ctx, vren::material const& material, VkDescriptorSet descriptor_set)
+void vren::material_manager::update_material_descriptor_set(
+	vren::context const& ctx,
+	vren::frame& frame,
+	std::shared_ptr<vren::material> const& material,
+	VkDescriptorSet descriptor_set
+)
 {
 	std::vector<VkWriteDescriptorSet> desc_set_writes;
 	VkWriteDescriptorSet desc_set_write{};
@@ -17,8 +22,8 @@ void vren::material_manager::update_material_descriptor_set(vren::context const&
 	// Base color
 	VkDescriptorImageInfo base_col_tex_info{};
 	base_col_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	base_col_tex_info.imageView = material.m_base_color_texture->m_image_view->m_handle;
-	base_col_tex_info.sampler = material.m_base_color_texture->m_sampler->m_handle;
+	base_col_tex_info.imageView = material->m_base_color_texture->m_image_view->m_handle;
+	base_col_tex_info.sampler = material->m_base_color_texture->m_sampler->m_handle;
 
 	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	desc_set_write.pNext = nullptr;
@@ -36,8 +41,8 @@ void vren::material_manager::update_material_descriptor_set(vren::context const&
 	// Metallic/roughness texture
 	VkDescriptorImageInfo met_rough_tex_info{};
 	met_rough_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	met_rough_tex_info.imageView = material.m_metallic_roughness_texture->m_image_view->m_handle;
-	met_rough_tex_info.sampler = material.m_metallic_roughness_texture->m_sampler->m_handle;
+	met_rough_tex_info.imageView = material->m_metallic_roughness_texture->m_image_view->m_handle;
+	met_rough_tex_info.sampler = material->m_metallic_roughness_texture->m_sampler->m_handle;
 
 	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	desc_set_write.pNext = nullptr;
@@ -52,6 +57,7 @@ void vren::material_manager::update_material_descriptor_set(vren::context const&
 
 	desc_set_writes.push_back(desc_set_write);
 
-	//
 	vkUpdateDescriptorSets(ctx.m_device, desc_set_writes.size(), desc_set_writes.data(), 0, nullptr);
+
+	frame.track_resource(material);
 }

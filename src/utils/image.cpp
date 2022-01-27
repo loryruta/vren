@@ -333,3 +333,27 @@ void vren::create_color_texture(
 	);
 }
 
+// --------------------------------------------------------------------------------------------------------------------------------
+// Framebuffer
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::vk_framebuffer vren::create_framebuffer(
+	std::shared_ptr<vren::context> const& ctx,
+	VkRenderPass render_pass,
+	std::vector<VkImageView> const& attachments,
+	VkExtent2D size
+)
+{
+	VkFramebufferCreateInfo fb_info{};
+	fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fb_info.renderPass = render_pass;
+	fb_info.attachmentCount = (uint32_t) attachments.size();
+	fb_info.pAttachments = attachments.data();
+	fb_info.width = size.width;
+	fb_info.height = size.height;
+	fb_info.layers = 1;
+
+	VkFramebuffer fb;
+	vren::vk_utils::check(vkCreateFramebuffer(ctx->m_device, &fb_info, nullptr, &fb));
+	return vren::vk_framebuffer(ctx, fb);
+}

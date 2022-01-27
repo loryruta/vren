@@ -21,6 +21,19 @@ namespace vren
 
 	surface_details get_surface_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
 
+	struct swapchain_framebuffer
+	{
+		VkImage m_image;
+		vren::vk_image_view m_image_view;
+		vren::vk_framebuffer m_framebuffer;
+
+		swapchain_framebuffer(
+			VkImage image,
+			vren::vk_image_view&& image_view,
+			vren::vk_framebuffer&& fb
+		);
+	};
+
 	struct presenter_info
 	{
 		VkColorSpaceKHR m_color_space;
@@ -65,7 +78,9 @@ namespace vren
 		};
 		std::shared_ptr<vren::presenter::depth_buffer> m_depth_buffer;
 
-		std::vector<vren::frame> m_frames;
+		std::vector<swapchain_framebuffer> m_swapchain_framebuffers;
+
+		std::vector<std::unique_ptr<vren::frame>> m_frames;
 
 		uint32_t m_current_frame_idx = 0;
 

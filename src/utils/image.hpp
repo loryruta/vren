@@ -112,4 +112,15 @@ namespace vren // todo vren::vk_utils
 		uint8_t a,
 		vren::texture& result
 	);
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Framebuffer
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	vren::vk_framebuffer create_framebuffer(
+		std::shared_ptr<vren::context> const& ctx,
+		VkRenderPass render_pass,
+		std::vector<VkImageView> const& attachments,
+		VkExtent2D size
+	);
 }

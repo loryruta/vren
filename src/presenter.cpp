@@ -32,6 +32,16 @@ vren::surface_details vren::get_surface_details(VkSurfaceKHR surface, VkPhysical
 	return surface_details;
 }
 
+vren::swapchain_framebuffer::swapchain_framebuffer(
+	VkImage image,
+	vren::vk_image_view&& image_view,
+	vren::vk_framebuffer&& fb
+) :
+	m_image(image),
+	m_image_view(std::move(image_view)),
+	m_framebuffer(std::move(fb))
+{}
+
 VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 {
 	auto surface_details = vren::get_surface_details(m_surface, m_renderer->m_context->m_physical_device);
@@ -95,6 +105,7 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 	create_depth_buffer();
 
 	_create_frames();
+	m_frames.resize(m_image_count);
 }
 
 void vren::presenter::_create_frames()
@@ -104,41 +115,28 @@ void vren::presenter::_create_frames()
 
 	for (int i = 0; i < m_image_count; i++)
 	{
-		auto& frame = m_frames.emplace_back(m_renderer->m_context);
+		VkImage img = swapchain_images.at(i);
 
-		// Swapchain image
-		frame.m_swapchain_image = swapchain_images.at(i);
+		auto img_view = vren::create_image_view(
+			m_renderer->m_context,
+			img,
+			vren::renderer::k_color_output_format,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
 
-		// Swapchain image view
-		VkImageViewCreateInfo image_view_info{};
-		image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_info.image = swapchain_images.at(i);
-		image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		image_view_info.format = vren::renderer::k_color_output_format;
-		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		image_view_info.subresourceRange.baseMipLevel = 0;
-		image_view_info.subresourceRange.levelCount = 1;
-		image_view_info.subresourceRange.baseArrayLayer = 0;
-		image_view_info.subresourceRange.layerCount = 1;
-
-		vren::vk_utils::check(vkCreateImageView(m_renderer->m_context->m_device, &image_view_info, nullptr, &frame.m_swapchain_image_view));
-
-		// Swapchain framebuffer
-		std::initializer_list<VkImageView> attachments = {
-			frame.m_swapchain_image_view,
+		std::vector<VkImageView> attachments = {
+			img_view.m_handle,
 			m_depth_buffer->m_image_view->m_handle
 		};
 
-		VkFramebufferCreateInfo framebuffer_info{};
-		framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebuffer_info.renderPass = m_renderer->m_render_pass;
-		framebuffer_info.attachmentCount = (uint32_t) attachments.size();
-		framebuffer_info.pAttachments = attachments.begin();
-		framebuffer_info.width = m_current_extent.width;
-		framebuffer_info.height = m_current_extent.height;
-		framebuffer_info.layers = 1;
+		auto fb = vren::create_framebuffer(
+			m_renderer->m_context,
+			m_renderer->m_render_pass,
+			attachments,
+			m_current_extent
+		);
 
-		vren::vk_utils::check(vkCreateFramebuffer(m_renderer->m_context->m_device, &framebuffer_info, nullptr, &frame.m_swapchain_framebuffer));
+		m_swapchain_framebuffers.emplace_back(img, std::move(img_view), std::move(fb));
 	}
 }
 
@@ -209,7 +207,7 @@ vren::presenter::~presenter()
 {
 	for (auto& frame : m_frames)
 	{
-		vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence, VK_TRUE, UINT64_MAX);
 	}
 
 	m_frames.clear();
@@ -229,13 +227,24 @@ void vren::presenter::present(
 
 	auto& frame = m_frames.at(m_current_frame_idx);
 
-	vren::vk_utils::check(vkWaitForFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence, VK_TRUE, UINT64_MAX));
+	if (frame) {
+		vren::vk_utils::check(vkWaitForFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence, VK_TRUE, UINT64_MAX));
+	}
 
-	frame.release_descriptor_sets();
+	// Creates a new frame that overlaps the old one at the same index, this will lead to *destroying*
+	// all the unused resources in-use for the old frame instance.
+
+	auto& swapchain_fb = m_swapchain_framebuffers.at(m_current_frame_idx);
+	m_frames[m_current_frame_idx] = std::make_unique<vren::frame>(
+		m_renderer->m_context,
+		swapchain_fb.m_image,
+		swapchain_fb.m_image_view.m_handle,
+		swapchain_fb.m_framebuffer.m_handle
+	);
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
 	uint32_t image_idx;
-	result = vkAcquireNextImageKHR(m_renderer->m_context->m_device, m_swapchain, UINT64_MAX, frame.m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
+	result = vkAcquireNextImageKHR(m_renderer->m_context->m_device, m_swapchain, UINT64_MAX, frame->m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreate_swapchain(m_current_extent); // The swapchain is invalid (due to surface change for example), it needs to be re-created.
 		return;
@@ -245,7 +254,7 @@ void vren::presenter::present(
 
 	// Render
 	vren::renderer_target target{};
-	target.m_framebuffer = frame.m_swapchain_framebuffer;
+	target.m_framebuffer = frame->m_framebuffer;
 	target.m_render_area.offset = {0, 0};
 	target.m_render_area.extent = m_current_extent;
 	target.m_viewport = { // todo leave freedom to set viewport outside
@@ -257,16 +266,16 @@ void vren::presenter::present(
 		.maxDepth = 1.0f
 	};
 
-	vren::vk_utils::check(vkResetFences(m_renderer->m_context->m_device, 1, &frame.m_render_finished_fence));
+	vren::vk_utils::check(vkResetFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence));
 
 	m_renderer->render(
-		frame,
+		*frame,
 		target,
 		render_list,
 		light_array,
 		camera,
-		{frame.m_image_available_semaphore},
-		frame.m_render_finished_fence
+		{frame->m_image_available_semaphore},
+		frame->m_render_finished_fence
 	);
 
 	// Present
@@ -275,7 +284,7 @@ void vren::presenter::present(
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &m_swapchain;
 	present_info.waitSemaphoreCount = 1; // Waits for the rendering to be finished before presenting
-	present_info.pWaitSemaphores = &frame.m_render_finished_semaphore;
+	present_info.pWaitSemaphores = &frame->m_render_finished_semaphore;
 	present_info.pImageIndices = &image_idx;
 
 	result = vkQueuePresentKHR(m_renderer->m_context->m_queues.at(m_present_queue_family_idx), &present_info);

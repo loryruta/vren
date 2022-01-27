@@ -19,6 +19,13 @@ void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkSample
 }
 
 template<>
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkFramebuffer handle)
+{
+	vkDestroyFramebuffer(ctx->m_device, handle, nullptr);
+}
+
+
+template<>
 void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkBuffer handle)
 {
 	vkDestroyBuffer(ctx->m_device, handle, nullptr);
