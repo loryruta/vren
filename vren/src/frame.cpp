@@ -14,38 +14,6 @@ vren::frame::frame(
 	m_image = image;
 	m_image_view = image_view;
 	m_framebuffer = framebuffer;
-
-	{ // Command buffer
-		VkCommandBufferAllocateInfo alloc_info{};
-		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		alloc_info.commandPool = m_context->m_graphics_command_pool;
-		alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		alloc_info.commandBufferCount = 1;
-
-		vren::vk_utils::check(vkAllocateCommandBuffers(m_context->m_device, &alloc_info, &m_command_buffer));
-	}
-
-	{ // Image available semaphore
-		VkSemaphoreCreateInfo create_info{};
-		create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		vren::vk_utils::check(vkCreateSemaphore(m_context->m_device, &create_info, nullptr, &m_image_available_semaphore));
-	}
-
-	{ // Render finished semaphore
-		VkSemaphoreCreateInfo create_info{};
-		create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		vren::vk_utils::check(vkCreateSemaphore(m_context->m_device, &create_info, nullptr, &m_render_finished_semaphore));
-	}
-
-	{ // Render finished fence
-		VkFenceCreateInfo create_info{};
-		create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-		vren::vk_utils::check(vkCreateFence(m_context->m_device, &create_info, nullptr, &m_render_finished_fence));
-	}
 }
 
 vren::frame::frame(vren::frame&& other) noexcept :
@@ -55,35 +23,33 @@ vren::frame::frame(vren::frame&& other) noexcept :
 	m_image_view  = other.m_image_view;
 	m_image       = other.m_image;
 
-	m_command_buffer = other.m_command_buffer;
-
-	m_image_available_semaphore = other.m_image_available_semaphore;
-	m_render_finished_semaphore = other.m_render_finished_semaphore;
-	m_render_finished_fence     = other.m_render_finished_fence;
-
 	other.m_framebuffer = VK_NULL_HANDLE;
 	other.m_image_view  = VK_NULL_HANDLE;
 	other.m_image       = VK_NULL_HANDLE;
-
-	other.m_command_buffer = VK_NULL_HANDLE;
-
-	other.m_image_available_semaphore = VK_NULL_HANDLE;
-	other.m_render_finished_semaphore = VK_NULL_HANDLE;
-	other.m_render_finished_fence     = VK_NULL_HANDLE;
 }
 
 vren::frame::~frame()
 {
-	_release_descriptor_sets();
+	_release_descriptor_sets(); // todo auto-release to pool using vren::vk_descriptor_set lifetime?
+}
 
-	if (m_command_buffer != VK_NULL_HANDLE)
-	{
-		vkFreeCommandBuffers(m_context->m_device, m_context->m_graphics_command_pool, 1, &m_command_buffer);
-	}
+void vren::frame::add_in_semaphore(std::shared_ptr<vren::vk_semaphore> const& semaphore)
+{
+	// The semaphore is added to a dedicated list for fast access and its lifetime is tracked like if it's any other resource.
+	m_in_semaphores.push_back(semaphore->m_handle);
+	track_resource(semaphore);
+}
 
-	if (m_image_available_semaphore != VK_NULL_HANDLE) vkDestroySemaphore(m_context->m_device, m_image_available_semaphore, nullptr);
-	if (m_render_finished_semaphore != VK_NULL_HANDLE) vkDestroySemaphore(m_context->m_device, m_render_finished_semaphore, nullptr);
-	if (m_render_finished_fence     != VK_NULL_HANDLE) vkDestroyFence(m_context->m_device, m_render_finished_fence, nullptr);
+void vren::frame::add_out_semaphore(std::shared_ptr<vren::vk_semaphore> const& semaphore)
+{
+	m_out_semaphores.push_back(semaphore->m_handle);
+	track_resource(semaphore);
+}
+
+void vren::frame::add_out_fence(std::shared_ptr<vren::vk_fence> const& fence)
+{
+	m_out_fences.push_back(fence->m_handle);
+	track_resource(fence);
 }
 
 VkDescriptorSet vren::frame::acquire_material_descriptor_set()

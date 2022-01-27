@@ -15,6 +15,7 @@ namespace vren
 	// forward decl
 	struct texture;
 	class descriptor_set_pool;
+	class command_pool;
 
 	void get_supported_layers(std::vector<VkLayerProperties>& layers);
 	bool does_support_layers(std::vector<char const*> const& layers);
@@ -55,7 +56,8 @@ namespace vren
 		VkDevice create_logical_device();
 		std::vector<VkQueue> get_queues();
 		void create_vma_allocator();
-		void create_command_pools();
+		void _init_graphics_command_pool();
+		void _init_transfer_command_pool();
 
 	public:
 		vren::context_info m_info;
@@ -79,8 +81,8 @@ namespace vren
 		VmaAllocator m_vma_allocator;
 
 		// Command pools
-		VkCommandPool m_graphics_command_pool;
-		VkCommandPool m_transfer_command_pool;
+		std::shared_ptr<vren::command_pool> m_graphics_command_pool;
+		std::shared_ptr<vren::command_pool> m_transfer_command_pool;
 
 		std::unique_ptr<vren::descriptor_set_pool> m_descriptor_set_pool;
 

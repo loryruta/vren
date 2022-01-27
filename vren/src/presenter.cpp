@@ -104,6 +104,15 @@ VkSwapchainKHR vren::presenter::create_swapchain(VkExtent2D extent)
 
 	create_depth_buffer();
 
+	for (int i = 0; i < m_image_count; i++)
+	{
+		m_image_available_semaphores.emplace_back(
+			std::make_shared<vren::vk_semaphore>(
+				vren::vk_utils::create_semaphore(m_renderer->m_context)
+			)
+		);
+	}
+
 	_create_frames();
 	m_frames.resize(m_image_count);
 }
@@ -207,7 +216,7 @@ vren::presenter::~presenter()
 {
 	for (auto& frame : m_frames)
 	{
-		vkWaitForFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence, VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_renderer->m_context->m_device, frame->m_out_fences.size(), frame->m_out_fences.data(), VK_TRUE, UINT64_MAX);
 	}
 
 	m_frames.clear();
@@ -217,25 +226,20 @@ vren::presenter::~presenter()
 	vkDestroySurfaceKHR(m_renderer->m_context->m_instance, m_surface, nullptr); // TODO should initialize the surface itself
 }
 
-void vren::presenter::present(
-	vren::render_list const& render_list,
-	vren::lights_array const& light_array,
-	vren::camera const& camera
-)
+void vren::presenter::present(std::function<void(std::unique_ptr<vren::frame>&)> const& frame_func)
 {
 	VkResult result;
 
-	auto& frame = m_frames.at(m_current_frame_idx);
-
-	if (frame) {
-		vren::vk_utils::check(vkWaitForFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence, VK_TRUE, UINT64_MAX));
+	if (m_frames.at(m_current_frame_idx))
+	{
+		vren::vk_utils::check(vkWaitForFences(m_renderer->m_context->m_device, m_frames[m_current_frame_idx]->m_out_fences.size(), m_frames[m_current_frame_idx]->m_out_fences.data(), VK_TRUE, UINT64_MAX));
 	}
 
 	// Creates a new frame that overlaps the old one at the same index, this will lead to *destroying*
 	// all the unused resources in-use for the old frame instance.
 
 	auto& swapchain_fb = m_swapchain_framebuffers.at(m_current_frame_idx);
-	m_frames[m_current_frame_idx] = std::make_unique<vren::frame>(
+	auto& frame = m_frames[m_current_frame_idx] = std::make_unique<vren::frame>(
 		m_renderer->m_context,
 		swapchain_fb.m_image,
 		swapchain_fb.m_image_view.m_handle,
@@ -244,7 +248,7 @@ void vren::presenter::present(
 
 	// Acquires the next image that has to be processed by the current frame in-flight.
 	uint32_t image_idx;
-	result = vkAcquireNextImageKHR(m_renderer->m_context->m_device, m_swapchain, UINT64_MAX, frame->m_image_available_semaphore, VK_NULL_HANDLE, &image_idx);
+	result = vkAcquireNextImageKHR(m_renderer->m_context->m_device, m_swapchain, UINT64_MAX, m_image_available_semaphores[m_current_frame_idx]->m_handle, VK_NULL_HANDLE, &image_idx);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreate_swapchain(m_current_extent); // The swapchain is invalid (due to surface change for example), it needs to be re-created.
 		return;
@@ -252,7 +256,11 @@ void vren::presenter::present(
 		throw std::runtime_error("Acquirement of the next swapchain image failed.");
 	}
 
+	frame->add_in_semaphore(m_image_available_semaphores[m_current_frame_idx]);
+
 	// Render
+	/*
+	//vren::vk_utils::check(vkResetFences(m_renderer->m_context->m_device, frame->m_wait_fences.size(), frame->m_wait_fences.data()));
 	vren::renderer_target target{};
 	target.m_framebuffer = frame->m_framebuffer;
 	target.m_render_area.offset = {0, 0};
@@ -261,12 +269,10 @@ void vren::presenter::present(
 		.x = 0,
 		.y = (float) m_current_extent.height,
 		.width = (float) m_current_extent.width,
-		.height = -float(m_current_extent.height),
+		.height = (float) -m_current_extent.height,
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f
 	};
-
-	vren::vk_utils::check(vkResetFences(m_renderer->m_context->m_device, 1, &frame->m_render_finished_fence));
 
 	m_renderer->render(
 		*frame,
@@ -277,15 +283,20 @@ void vren::presenter::present(
 		{frame->m_image_available_semaphore},
 		frame->m_render_finished_fence
 	);
+	 */
+
+	frame_func(frame);
 
 	// Present
 	VkPresentInfoKHR present_info{};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pNext = nullptr;
+	present_info.waitSemaphoreCount = frame->m_out_semaphores.size(); // Waits for the rendering to be finished before presenting
+	present_info.pWaitSemaphores = frame->m_out_semaphores.data();
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &m_swapchain;
-	present_info.waitSemaphoreCount = 1; // Waits for the rendering to be finished before presenting
-	present_info.pWaitSemaphores = &frame->m_render_finished_semaphore;
 	present_info.pImageIndices = &image_idx;
+	present_info.pResults = nullptr;
 
 	result = vkQueuePresentKHR(m_renderer->m_context->m_queues.at(m_present_queue_family_idx), &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {

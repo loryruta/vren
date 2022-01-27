@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <functional>
 
 #include <vulkan/vulkan.h>
 
@@ -78,6 +79,7 @@ namespace vren
 		};
 		std::shared_ptr<vren::presenter::depth_buffer> m_depth_buffer;
 
+		std::vector<std::shared_ptr<vren::vk_semaphore>> m_image_available_semaphores;
 		std::vector<swapchain_framebuffer> m_swapchain_framebuffers;
 
 		std::vector<std::unique_ptr<vren::frame>> m_frames;
@@ -94,11 +96,7 @@ namespace vren
 		);
 		~presenter();
 
-		void present(
-			vren::render_list const& render_list,
-			vren::lights_array const& light_array,
-			vren::camera const& camera
-		);
+		void present(std::function<void(std::unique_ptr<vren::frame>&)> const& frame_func);
 	};
 }
 

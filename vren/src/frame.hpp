@@ -7,23 +7,22 @@
 #include <vulkan/vulkan.h>
 
 #include "context.hpp"
+#include "utils/misc.hpp"
 
 namespace vren
 {
 	class frame
 	{
 	public:
+		std::shared_ptr<vren::context> m_context;
+
 		VkImage m_image; // Lifetime is externally managed
 		VkImageView m_image_view;
 		VkFramebuffer m_framebuffer;
 
-		VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
-
-		VkSemaphore m_image_available_semaphore = VK_NULL_HANDLE;
-		VkSemaphore m_render_finished_semaphore = VK_NULL_HANDLE;
-		VkFence m_render_finished_fence = VK_NULL_HANDLE;
-
-		std::shared_ptr<vren::context> m_context;
+		std::vector<VkSemaphore> m_in_semaphores;
+		std::vector<VkSemaphore> m_out_semaphores;
+		std::vector<VkFence> m_out_fences;
 
 		std::vector<VkDescriptorSet> m_acquired_descriptor_sets;
 
@@ -48,6 +47,17 @@ namespace vren
 		{
 			m_tracked_resources.push_back(std::shared_ptr<_t>(res, nullptr));
 		}
+
+		void acquire_command_buffer();
+
+		/** Adds a semaphore that has to be waited when entering the frame. */
+		void add_in_semaphore(std::shared_ptr<vren::vk_semaphore> const& semaphore);
+
+		/** Adds a semaphore that has to be waited when exiting the frame. */
+		void add_out_semaphore(std::shared_ptr<vren::vk_semaphore> const& semaphore);
+
+		/** Adds a fence that has to be waited when exiting the frame. */
+		void add_out_fence(std::shared_ptr<vren::vk_fence> const& fence);
 
 		VkDescriptorSet acquire_material_descriptor_set();
 		VkDescriptorSet acquire_lights_array_descriptor_set();

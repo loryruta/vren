@@ -3,7 +3,9 @@
 #include <iostream>
 
 #include "utils/image.hpp"
+#include "utils/misc.hpp"
 #include "descriptor_set_pool.hpp"
+#include "command_pool.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
 {
@@ -263,22 +265,32 @@ void vren::context::create_vma_allocator()
 	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
-void vren::context::create_command_pools()
+void vren::context::_init_graphics_command_pool()
 {
-	VkCommandPoolCreateInfo command_pool_info{};
-	command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	VkCommandPoolCreateInfo cmd_pool_info{};
+	cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	cmd_pool_info.pNext = nullptr;
+	cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	cmd_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx;
 
-	// Graphics
-	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	command_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx;
-	vren::vk_utils::check(vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_graphics_command_pool));
+	VkCommandPool cmd_pool;
+	vren::vk_utils::check(vkCreateCommandPool(m_device, &cmd_pool_info, nullptr, &cmd_pool));
 
-	// Transfer
-	command_pool_info.flags = NULL;
-	command_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx;
-	vren::vk_utils::check(vkCreateCommandPool(m_device, &command_pool_info, nullptr, &m_transfer_command_pool));
+	m_graphics_command_pool = std::make_shared<vren::command_pool>(shared_from_this(), cmd_pool);
+}
 
-	// Compute TODO
+void vren::context::_init_transfer_command_pool()
+{
+	VkCommandPoolCreateInfo cmd_pool_info{};
+	cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	cmd_pool_info.pNext = nullptr;
+	cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	cmd_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx;
+
+	VkCommandPool cmd_pool;
+	vren::vk_utils::check(vkCreateCommandPool(m_device, &cmd_pool_info, nullptr, &cmd_pool));
+
+	m_transfer_command_pool = std::make_shared<vren::command_pool>(shared_from_this(), cmd_pool);
 }
 
 vren::context::context(vren::context_info& info) :
@@ -302,7 +314,8 @@ void vren::context::_initialize()
 	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
 	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
 
-	create_command_pools();
+	_init_graphics_command_pool();
+	_init_transfer_command_pool();
 
 	// Default textures
 	m_white_texture = std::make_shared<vren::texture>();
@@ -332,11 +345,6 @@ std::shared_ptr<vren::context> vren::context::create(vren::context_info& info)
 
 vren::context::~context()
 {;
-	m_descriptor_set_pool.reset();
-
-	vkDestroyCommandPool(m_device, m_graphics_command_pool, nullptr);
-	vkDestroyCommandPool(m_device, m_transfer_command_pool, nullptr);
-
 	vmaDestroyAllocator(m_vma_allocator);
 
 	//m_queues.clear();

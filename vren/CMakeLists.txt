@@ -25,10 +25,14 @@ set(SRC
         src/utils/buffer.cpp
         src/utils/image.hpp
         src/utils/image.cpp
+        src/utils/misc.hpp
+        src/utils/misc.cpp
         src/utils/vk_raii.hpp
         src/utils/vk_raii.cpp
-        src/debug_gui.hpp
-        src/debug_gui.cpp
+        src/imgui_renderer.hpp
+        src/imgui_renderer.cpp
+        src/command_pool.hpp
+        src/command_pool.cpp
 )
 
 add_library(vren ${SRC})

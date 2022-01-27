@@ -1,8 +1,9 @@
 #include "renderer.hpp"
 
 #include "simple_draw.hpp"
-#include "debug_gui.hpp"
+#include "imgui_renderer.hpp"
 #include "utils/image.hpp"
+#include "utils/misc.hpp"
 
 vren::renderer::renderer(std::shared_ptr<vren::context> const& ctx) :
 	m_context(ctx)
@@ -17,7 +18,6 @@ void vren::renderer::_init()
 {
 	_init_render_pass();
 
-	//m_debug_gui = std::make_unique<vren::debug_gui>(shared_from_this());
 	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(shared_from_this());
 }
 
@@ -97,25 +97,15 @@ void vren::renderer::_init_render_pass()
 	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &m_render_pass));
 }
 
-void vren::renderer::render(
+void vren::renderer::record_commands(
 	vren::frame& frame,
+	vren::vk_command_buffer const& cmd_buf,
 	vren::renderer_target const& target,
 	vren::render_list const& render_list,
 	vren::lights_array const& lights_array,
-	vren::camera const& camera,
-	std::vector<VkSemaphore> const& wait_semaphores,
-	VkFence signal_fence
+	vren::camera const& camera
 )
 {
-	// Commands re-recording
-	VkCommandBuffer cmd_buf = frame.m_command_buffer;
-	vren::vk_utils::check(vkResetCommandBuffer(cmd_buf, NULL));
-
-	VkCommandBufferBeginInfo cmd_buffer_begin_info{};
-	cmd_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &cmd_buffer_begin_info));
-
 	VkRenderPassBeginInfo render_pass_begin_info{};
 	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	render_pass_begin_info.renderPass = m_render_pass;
@@ -129,41 +119,14 @@ void vren::renderer::render(
 	render_pass_begin_info.clearValueCount = (uint32_t) clear_values.size();
 	render_pass_begin_info.pClearValues = clear_values.begin();
 
-	vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(cmd_buf.m_handle, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+	vkCmdSetViewport(cmd_buf.m_handle, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf.m_handle, 0, 1, &target.m_render_area);
 
-	m_simple_draw_pass->record_commands(
-		frame,
-		render_list,
-		lights_array,
-		camera
-	);
+	m_simple_draw_pass->record_commands(frame, cmd_buf, render_list, lights_array, camera);
 
-	if (m_debug_gui) // Draw debug GUI above all
-	{
-		m_debug_gui->render(frame);
-	}
-
-	vkCmdEndRenderPass(cmd_buf);
-
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
-
-	// Submission
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf;
-	submit_info.waitSemaphoreCount = wait_semaphores.size(); // The semaphores to wait before submitting
-	submit_info.pWaitSemaphores = wait_semaphores.data();
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = &frame.m_render_finished_semaphore;
-
-	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	submit_info.pWaitDstStageMask = wait_stages;
-
-	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, signal_fence));
+	vkCmdEndRenderPass(cmd_buf.m_handle);
 }
 
 std::shared_ptr<vren::renderer> vren::renderer::create(std::shared_ptr<context> const& ctx)

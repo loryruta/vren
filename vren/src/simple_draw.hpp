@@ -7,6 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "renderer.hpp"
+#include "command_pool.hpp"
 
 namespace vren
 {
@@ -29,6 +30,7 @@ namespace vren
 
 		void record_commands(
 			vren::frame& frame,
+			vren::vk_command_buffer const& cmd_buffer,
 			vren::render_list const& render_list,
 			vren::lights_array const& lights_array,
 			vren::camera const& camera

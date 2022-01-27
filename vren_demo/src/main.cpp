@@ -13,7 +13,8 @@
 #include "utils/buffer.hpp"
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
-#include "debug_gui.hpp"
+#include "imgui_renderer.hpp"
+#include "command_pool.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -288,8 +289,9 @@ int main(int argc, char* argv[])
 	auto ctx = vren::context::create(ctx_info);
 
 	auto renderer = vren::renderer::create(ctx);
-	renderer->m_debug_gui = std::make_unique<vren::debug_gui>(renderer, g_window);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
+
+	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(ctx, g_window);
 
 	VkSurfaceKHR surface;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
@@ -359,12 +361,69 @@ int main(int argc, char* argv[])
 			update_camera(dt, camera);
 		}
 
+		int win_width, win_height;
+		glfwGetWindowSize(g_window, &win_width, &win_height);
+
 		vren::camera cam_data{};
 		cam_data.m_position = camera.m_position;
 		cam_data.m_view = camera.get_view();
 		cam_data.m_projection = camera.get_projection();
 
-		presenter.present(*render_list, lights_arr, cam_data);
+		// *render_list, lights_arr, cam_data
+
+		presenter.present([&](std::unique_ptr<vren::frame> const& frame)
+		{
+			auto cmd_buf = std::make_shared<vren::vk_command_buffer>(
+				ctx->m_graphics_command_pool->acquire_command_buffer()
+			);
+			frame->track_resource(cmd_buf); // todo (design) the user shouldn't do this
+
+			VkCommandBufferBeginInfo cmd_buf_begin_info{};
+			cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmd_buf_begin_info.pNext = nullptr;
+			cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT ;
+			cmd_buf_begin_info.pInheritanceInfo = nullptr;
+			vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info); // todo (design) the user shouldn't begin the render pass himself
+
+			vren::renderer_target target{};
+			target.m_framebuffer = frame->m_framebuffer;
+			target.m_render_area.offset = {0, 0};
+			target.m_render_area.extent = {(uint32_t) win_width, (uint32_t) win_height};
+			target.m_viewport = {
+				.x = 0,
+				.y = (float) win_height,
+				.width = (float) win_width,
+				.height = (float) -win_height,
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
+
+			// Scene
+			renderer->record_commands(*frame, *cmd_buf, target, *render_list, lights_arr, cam_data);
+
+			// GUI
+			imgui_renderer->record_commands(*frame, *cmd_buf, target, [&]()
+			{
+				ImGui::ShowDemoWindow(nullptr);
+			});
+
+			vkEndCommandBuffer(cmd_buf->m_handle);
+
+			auto signal_sem = std::make_shared<vren::vk_semaphore>(vren::vk_utils::create_semaphore(ctx));
+			auto signal_fence = std::make_shared<vren::vk_fence>(vren::vk_utils::create_fence(ctx));
+
+			vren::vk_utils::submit_command_buffer(
+				ctx->m_graphics_queue,
+				frame->m_in_semaphores,
+				{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
+				*cmd_buf,
+				{ signal_sem->m_handle },
+				signal_fence->m_handle
+			);
+
+			frame->add_out_semaphore(signal_sem);
+			frame->add_out_fence(signal_fence);
+		});
 	}
 
 	vkDeviceWaitIdle(ctx->m_device);

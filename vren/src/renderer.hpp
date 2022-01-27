@@ -9,12 +9,12 @@
 #include "render_list.hpp"
 #include "light.hpp"
 #include "frame.hpp"
+#include "command_pool.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class simple_draw_pass;
-	class debug_gui;
 
 	struct camera
 	{
@@ -42,7 +42,6 @@ namespace vren
 		VkRenderPass m_render_pass;
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 
-		std::unique_ptr<vren::debug_gui> m_debug_gui;
 		std::unique_ptr<vren::simple_draw_pass> m_simple_draw_pass;
 
 	private:
@@ -54,14 +53,13 @@ namespace vren
 	public:
 		~renderer();
 
-		void render(
+		void record_commands(
 			vren::frame& frame,
+			vren::vk_command_buffer const& cmd_buf,
 			vren::renderer_target const& target,
 			vren::render_list const& render_list,
 			vren::lights_array const& lights_array,
-			vren::camera const& camera,
-			std::vector<VkSemaphore> const& wait_semaphores = {},
-			VkFence signal_fence = VK_NULL_HANDLE
+			vren::camera const& camera
 		);
 
 		static std::shared_ptr<vren::renderer> create(std::shared_ptr<context> const& ctx);

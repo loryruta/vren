@@ -9,16 +9,26 @@
 
 #include "context.hpp"
 #include "vk_raii.hpp"
+#include "command_pool.hpp"
 
 namespace vren // todo vren::vk_utils
 {
 	namespace vk_utils
 	{
-		void check(VkResult result);
+		void begin_single_submit_command_buffer(
+			vren::vk_command_buffer const& cmd_buf
+		);
 
-		VkCommandBuffer begin_single_submit_command_buffer(vren::context const& ctx, VkCommandPool cmd_pool);
-		void end_single_submit_command_buffer(vren::context const& ctx, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf);
-		void immediate_submit(vren::context const& ctx, std::function<void(VkCommandBuffer)> submit_func);
+		void end_single_submit_command_buffer(
+			vren::vk_command_buffer const&& cmd_buf,
+			VkQueue queue
+		);
+
+		/** Immediately submits a command buffer on the graphics queue. */
+		void immediate_submit(
+			vren::context const& ctx,
+			std::function<void(vren::vk_command_buffer const&)> submit_func
+		);
 	}
 
 	// --------------------------------------------------------------------------------------------------------------------------------

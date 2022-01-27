@@ -1,60 +1,47 @@
 #include "image.hpp"
 
 #include "buffer.hpp"
+#include "utils/misc.hpp"
 
-void vren::vk_utils::check(VkResult result)
+void vren::vk_utils::begin_single_submit_command_buffer(
+	vren::vk_command_buffer const& cmd_buf
+)
 {
-	if (result != VK_SUCCESS)
-	{
-		printf("Vulkan command failed with code: %d\n", result);
-		fflush(stdout);
-
-		throw std::runtime_error("Vulkan command failed");
-	}
+	VkCommandBufferBeginInfo cmd_buf_begin_info{};
+	cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmd_buf_begin_info.pNext = nullptr;
+	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	cmd_buf_begin_info.pInheritanceInfo = nullptr;
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &cmd_buf_begin_info));
 }
 
-VkCommandBuffer vren::vk_utils::begin_single_submit_command_buffer(vren::context const& ctx, VkCommandPool cmd_pool)
+void vren::vk_utils::end_single_submit_command_buffer(
+	vren::vk_command_buffer const&& cmd_buf,
+	VkQueue queue
+)
 {
-	VkCommandBufferAllocateInfo cmd_buf_info{};
-	cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmd_buf_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_buf_info.commandPool = cmd_pool;
-	cmd_buf_info.commandBufferCount = 1;
-
-	VkCommandBuffer cmd_buf{};
-	vren::vk_utils::check(vkAllocateCommandBuffers(ctx.m_device, &cmd_buf_info, &cmd_buf));
-
-	VkCommandBufferBeginInfo begin_info{};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &begin_info));
-
-	return cmd_buf;
-}
-
-void vren::vk_utils::end_single_submit_command_buffer(vren::context const& ctx, VkQueue queue, VkCommandPool cmd_pool, VkCommandBuffer cmd_buf)
-{
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
+	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
 
 	VkSubmitInfo submit_info{};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf;
+	submit_info.pCommandBuffers = &cmd_buf.m_handle;
 	vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	vren::vk_utils::check(vkQueueWaitIdle(queue));
-
-	vkFreeCommandBuffers(ctx.m_device, cmd_pool, 1, &cmd_buf);
+	vren::vk_utils::check(vkQueueWaitIdle(queue)); // todo wait just on the current transmission through a fence
 }
 
-void vren::vk_utils::immediate_submit(vren::context const& ctx, std::function<void(VkCommandBuffer)> submit_func)
+void vren::vk_utils::immediate_submit(
+	vren::context const& ctx,
+	std::function<void(vren::vk_command_buffer const&)> submit_func
+)
 {
-	VkCommandBuffer cmd_buf = begin_single_submit_command_buffer(ctx, ctx.m_graphics_command_pool);
+	auto cmd_buf = ctx.m_graphics_command_pool->acquire_command_buffer();
+	vren::vk_utils::begin_single_submit_command_buffer(cmd_buf);
 
 	submit_func(cmd_buf);
 
-	end_single_submit_command_buffer(ctx, ctx.m_graphics_queue, ctx.m_graphics_command_pool, cmd_buf);
+	vren::vk_utils::end_single_submit_command_buffer(std::move(cmd_buf), ctx.m_graphics_queue);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -111,8 +98,8 @@ void vren::create_image(
 			memcpy(mapped_image_data, image_data, static_cast<size_t>(image_size));
 		vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation->m_handle);
 
-		VkCommandBuffer cmd_buf;
-		cmd_buf = vren::vk_utils::begin_single_submit_command_buffer(*ctx, ctx->m_transfer_command_pool);
+		auto cmd_buf = ctx->m_graphics_command_pool->acquire_command_buffer();
+		vren::vk_utils::begin_single_submit_command_buffer(cmd_buf);
 
 		// transition from undefined to transfer layout
 		{
@@ -131,7 +118,7 @@ void vren::create_image(
 			memory_barrier.subresourceRange.baseArrayLayer = 0;
 			memory_barrier.subresourceRange.layerCount = 1;
 
-			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
+			vkCmdPipelineBarrier(cmd_buf.m_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
 		}
 
 		// copies staging buffer to image
@@ -151,7 +138,7 @@ void vren::create_image(
 				1
 			};
 
-			vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer->m_handle, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+			vkCmdCopyBufferToImage(cmd_buf.m_handle, staging_buffer.m_buffer->m_handle, result.m_image->m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 		}
 
 		// transition from transfer to shader readonly optimal layout
@@ -171,12 +158,10 @@ void vren::create_image(
 			memory_barrier.subresourceRange.baseArrayLayer = 0;
 			memory_barrier.subresourceRange.layerCount = 1;
 
-			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
+			vkCmdPipelineBarrier(cmd_buf.m_handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &memory_barrier);
 		}
 
-		//
-
-		vren::vk_utils::end_single_submit_command_buffer(*ctx, ctx->m_transfer_queue, ctx->m_transfer_command_pool, cmd_buf);
+		vren::vk_utils::end_single_submit_command_buffer(std::move(cmd_buf), ctx->m_transfer_queue);
 	}
 }
 

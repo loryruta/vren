@@ -199,18 +199,19 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 
 void vren::simple_draw_pass::record_commands(
 	vren::frame& frame,
+	vren::vk_command_buffer const& cmd_buffer,
 	vren::render_list const& render_list,
 	vren::lights_array const& lights_array,
 	vren::camera const& camera
 )
 {
-	vkCmdBindPipeline(frame.m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+	vkCmdBindPipeline(cmd_buffer.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
 
 	VkDescriptorSet descriptor_set;
 
 	// Camera
 	vkCmdPushConstants(
-		frame.m_command_buffer,
+		cmd_buffer.m_handle,
 		m_pipeline_layout,
 		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 		0,
@@ -223,7 +224,7 @@ void vren::simple_draw_pass::record_commands(
 	lights_array.update_descriptor_set(frame, descriptor_set);
 
 	vkCmdBindDescriptorSets(
-		frame.m_command_buffer,
+		cmd_buffer.m_handle,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		m_pipeline_layout,
 		VREN_LIGHTS_ARRAY_DESCRIPTOR_SET,
@@ -248,22 +249,22 @@ void vren::simple_draw_pass::record_commands(
 		VkDeviceSize offsets[] = { 0 };
 
 		// Vertex buffer
-		vkCmdBindVertexBuffers(frame.m_command_buffer, 0, 1, &render_obj.m_vertices_buffer->m_buffer->m_handle, offsets);
-		frame.track_resource(render_obj.m_vertices_buffer);
+		vkCmdBindVertexBuffers(cmd_buffer.m_handle, 0, 1, &render_obj.m_vertices_buffer->m_buffer->m_handle, offsets);
+		frame.track_resource(render_obj.m_vertices_buffer); // todo (design) cleaner way to track resource usage for command buffers (bind resource usage to command list instead of frame)
 
 		// Indices buffer
-		vkCmdBindIndexBuffer(frame.m_command_buffer, render_obj.m_indices_buffer->m_buffer->m_handle, 0, vren::render_object::s_index_type);
+		vkCmdBindIndexBuffer(cmd_buffer.m_handle, render_obj.m_indices_buffer->m_buffer->m_handle, 0, vren::render_object::s_index_type);
 		frame.track_resource(render_obj.m_indices_buffer);
 
 		// Instances buffer
-		vkCmdBindVertexBuffers(frame.m_command_buffer, 1, 1, &render_obj.m_instances_buffer->m_buffer->m_handle, offsets);
+		vkCmdBindVertexBuffers(cmd_buffer.m_handle, 1, 1, &render_obj.m_instances_buffer->m_buffer->m_handle, offsets);
 		frame.track_resource(render_obj.m_instances_buffer);
 
 		// Material
 		descriptor_set = frame.acquire_material_descriptor_set();
 		vren::material_manager::update_material_descriptor_set(*m_renderer->m_context, frame, render_obj.m_material, descriptor_set);
 		vkCmdBindDescriptorSets(
-			frame.m_command_buffer,
+			cmd_buffer.m_handle,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			m_pipeline_layout,
 			VREN_MATERIAL_DESCRIPTOR_SET,
@@ -273,6 +274,6 @@ void vren::simple_draw_pass::record_commands(
 			nullptr
 		);
 
-		vkCmdDrawIndexed(frame.m_command_buffer, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
+		vkCmdDrawIndexed(cmd_buffer.m_handle, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}
 }

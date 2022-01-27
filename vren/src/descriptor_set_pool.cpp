@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "utils/image.hpp"
+#include "utils/misc.hpp"
 
 void vren::descriptor_set_pool::create_material_layout()
 {
