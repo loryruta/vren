@@ -11,50 +11,79 @@
 #include "vk_raii.hpp"
 #include "command_pool.hpp"
 
-namespace vren // todo vren::vk_utils
+namespace vren::vk_utils
 {
-	namespace vk_utils
-	{
-		void begin_single_submit_command_buffer(
-			vren::vk_command_buffer const& cmd_buf
-		);
-
-		void end_single_submit_command_buffer(
-			vren::vk_command_buffer const&& cmd_buf,
-			VkQueue queue
-		);
-
-		/** Immediately submits a command buffer on the graphics queue. */
-		void immediate_submit(
-			vren::context const& ctx,
-			std::function<void(vren::vk_command_buffer const&)> submit_func
-		);
-	}
-
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// Image
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	struct image
 	{
-		std::shared_ptr<vren::vk_image> m_image;
-		std::shared_ptr<vren::vma_allocation> m_allocation;
-
-		inline bool is_valid() const
-		{
-			return m_image->is_valid() && m_allocation->is_valid();
-		}
+		vren::vk_image m_image;
+		vren::vma_allocation m_allocation;
 	};
 
-	void create_image(
+	vren::vk_utils::image create_image(
 		std::shared_ptr<vren::context> const& ctx,
 		uint32_t width,
 		uint32_t height,
-		void* image_data,
 		VkFormat format,
-		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags memory_properties,
-		vren::image& result
+		VkImageUsageFlags usage,
+		VkImageLayout image_layout
+	);
+
+	void upload_image_data(
+		std::shared_ptr<vren::context> const& ctx,
+		VkImage img,
+		uint32_t img_width,
+		uint32_t img_height,
+		void* img_data
+	);
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// Image layout transitioning
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	/** Transitions an image from an undefined layout to a transfer dst layout.
+	 * The transition won't wait for any memory operation to happen, but will ensure transfer writes
+	 * will happen only after the transition is completed. */
+	void transition_image_layout_undefined_to_transfer_dst(
+		std::shared_ptr<vren::context> const& ctx,
+		VkCommandBuffer cmd_buf,
+		VkImage img
+	);
+
+	/** Transitions an image from a transfer dst layout to a shader readonly layout.
+	 * The transition will wait for transfer writes to happen and will ensure shader reads (at fragment shader stage),
+	 * will wait for the transition. */
+	void transition_image_layout_transfer_dst_to_shader_readonly(
+		std::shared_ptr<vren::context> const& ctx,
+		VkCommandBuffer cmd_buf,
+		VkImage img
+	);
+
+	/** Transitions an image from an undefined layout to a color attachment layout.
+	 * The transition won't wait for any memory operation to happen, but will ensure */
+	void transition_image_layout_undefined_to_color_attachment(
+		std::shared_ptr<vren::context> const& ctx,
+		VkCommandBuffer cmd_buf,
+		VkImage img
+	);
+
+	/** Transitions an image from a color attachment layout to a present layout. */
+	void transition_image_layout_color_attachment_to_present(
+		std::shared_ptr<vren::context> const& ctx,
+		VkCommandBuffer cmd_buf,
+		VkImage img
+	);
+
+	/** Transitions an image from a color attachment layout to a shader render-only layout.
+	 * The output image is supposed to be used *only* in (and after) the next fragment shader. */
+	void transition_color_attachment_to_shader_readonly(
+		std::shared_ptr<vren::context> const& ctx,
+		VkCommandBuffer cmd_buf,
+		VkImage image
 	);
 
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -88,18 +117,22 @@ namespace vren // todo vren::vk_utils
 
 	struct texture
 	{
-		std::shared_ptr<vren::vk_image> m_image;
-		std::shared_ptr<vren::vma_allocation> m_image_allocation;
-		std::shared_ptr<vren::vk_image_view> m_image_view;
-		std::shared_ptr<vren::vk_sampler> m_sampler;
+		vren::vk_utils::image m_image;
+		vren::vk_image_view m_image_view;
+		vren::vk_sampler m_sampler;
 
-		inline bool is_valid()
-		{
-			return m_image->is_valid() && m_image_allocation->is_valid() && m_image_view->is_valid() && m_sampler->is_valid();
-		}
+		texture(
+			vren::vk_utils::image&& image,
+			vren::vk_image_view&& image_view,
+			vren::vk_sampler&& sampler
+		) :
+			m_image(std::move(image)),
+			m_image_view(std::move(image_view)),
+			m_sampler(std::move(sampler))
+		{}
 	};
 
-	void create_texture(
+	vren::vk_utils::texture create_texture(
 		std::shared_ptr<vren::context> const& ctx,
 		uint32_t width,
 		uint32_t height,
@@ -110,27 +143,82 @@ namespace vren // todo vren::vk_utils
 		VkSamplerMipmapMode mipmap_mode,
 		VkSamplerAddressMode address_mode_u,
 		VkSamplerAddressMode address_mode_v,
-		VkSamplerAddressMode address_mode_w,
-		vren::texture& result
+		VkSamplerAddressMode address_mode_w
 	);
 
-	void create_color_texture(
+	vren::vk_utils::texture create_color_texture(
 		std::shared_ptr<vren::context> const& ctx,
 		uint8_t r,
 		uint8_t g,
 		uint8_t b,
-		uint8_t a,
-		vren::texture& result
+		uint8_t a
 	);
 
 	// --------------------------------------------------------------------------------------------------------------------------------
-	// Framebuffer
+	// Custom framebuffer
 	// --------------------------------------------------------------------------------------------------------------------------------
 
-	vren::vk_framebuffer create_framebuffer(
-		std::shared_ptr<vren::context> const& ctx,
-		VkRenderPass render_pass,
-		std::vector<VkImageView> const& attachments,
-		VkExtent2D size
-	);
+	class custom_framebuffer
+	{
+	public:
+		struct color_buffer
+		{
+			vren::vk_utils::image m_image;
+			vren::vk_image_view m_image_view;
+
+			color_buffer(vren::vk_utils::image&& image, vren::vk_image_view&& image_view) :
+				m_image(std::move(image)),
+				m_image_view(std::move(image_view))
+			{}
+		};
+
+		struct depth_buffer
+		{
+			vren::vk_utils::image m_image;
+			vren::vk_image_view m_image_view;
+
+			depth_buffer(
+				vren::vk_utils::image&& image,
+				vren::vk_image_view&& image_view
+			) :
+				m_image(std::move(image)),
+				m_image_view(std::move(image_view))
+			{}
+		};
+
+		static color_buffer create_color_buffer(
+			std::shared_ptr<vren::context> const& ctx,
+			uint32_t width,
+			uint32_t height
+		);
+
+		static depth_buffer create_depth_buffer(
+			std::shared_ptr<vren::context> const& ctx,
+			uint32_t width,
+			uint32_t height
+		);
+
+	private:
+		vren::vk_framebuffer _create_framebuffer(
+			std::shared_ptr<vren::context> const& ctx,
+			uint32_t width,
+			uint32_t height
+		);
+
+	public:
+		std::shared_ptr<vren::vk_render_pass> m_render_pass;
+
+		color_buffer m_color_buffer;
+		depth_buffer m_depth_buffer;
+		vren::vk_framebuffer m_framebuffer;
+
+		custom_framebuffer(
+			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_render_pass> const& render_pass,
+			uint32_t width,
+			uint32_t height
+		);
+	};
+
+
 }

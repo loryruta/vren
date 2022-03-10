@@ -29,21 +29,30 @@ struct DirectionalLight
     vec4 color;
 };
 
-layout(set = 1, binding = 0) buffer readonly PointLights
+struct SpotLight
 {
-    uint num;
-    float _pad[3];
+    vec4 direction;
+    vec3 color;
+    float radius;
+};
+
+layout(set = 1, binding = 0) buffer readonly LightArray_PointLights
+{
+    uint num; float _pad[3];
     PointLight data[];
 } b_point_lights;
 
-/*
-layout(set = 1, binding = 1) buffer readonly DirectionalLights
+layout(set = 1, binding = 1) buffer readonly LightArray_DirectionalLights
 {
-    uint num;
-    float _pad[3];
+    uint num; float _pad[3];
     DirectionalLight data[];
-} b_directional_lights;
-*/
+} b_dir_lights;
+
+layout(set = 1, binding = 2) buffer readonly LightArray_SpotLights
+{
+    uint num; float _pad[3];
+    PointLight data[];
+} b_spot_lights;
 
 layout(location = 0) out vec4 f_color;
 

@@ -5,10 +5,11 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "utils/image.hpp"
 #include "render_object.hpp"
-#include "descriptor_set_pool.hpp"
+#include "descriptor_pool.hpp"
 #include "material.hpp"
+#include "utils/image.hpp"
+#include "utils/misc.hpp"
 
 vren::simple_draw_pass::simple_draw_pass(std::shared_ptr<vren::renderer> const& renderer) :
 	m_renderer(renderer)
@@ -134,8 +135,8 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	color_blend_info.pAttachments = &color_blend_attachment;
 
 	std::vector<VkDescriptorSetLayout> desc_set_layouts = {
-		m_renderer->m_context->m_descriptor_set_pool->m_material_layout,
-		m_renderer->m_context->m_descriptor_set_pool->m_lights_array_layout
+		m_renderer->m_material_descriptor_set_layout.m_handle,
+		m_renderer->m_light_array_descriptor_set_layout.m_handle
 	};
 
 	std::vector<VkPushConstantRange> push_constants;
@@ -187,7 +188,7 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
 	graphics_pipeline_info.pColorBlendState = &color_blend_info;
 	graphics_pipeline_info.layout = m_pipeline_layout;
-	graphics_pipeline_info.renderPass = m_renderer->m_render_pass;
+	graphics_pipeline_info.renderPass = m_renderer->m_render_pass.m_handle;
 	graphics_pipeline_info.subpass = 0;
 	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -198,20 +199,20 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 }
 
 void vren::simple_draw_pass::record_commands(
-	vren::frame& frame,
-	vren::vk_command_buffer const& cmd_buffer,
+	vren::resource_container& res_container,
+	vren::vk_command_buffer const& cmd_buf,
 	vren::render_list const& render_list,
-	vren::lights_array const& lights_array,
+	vren::light_array const& light_arr,
 	vren::camera const& camera
 )
 {
-	vkCmdBindPipeline(cmd_buffer.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+	vkCmdBindPipeline(cmd_buf.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
 
 	VkDescriptorSet descriptor_set;
 
 	// Camera
 	vkCmdPushConstants(
-		cmd_buffer.m_handle,
+		cmd_buf.m_handle,
 		m_pipeline_layout,
 		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 		0,
@@ -220,18 +221,15 @@ void vren::simple_draw_pass::record_commands(
 	);
 
 	// Lights array
-	descriptor_set = frame.acquire_lights_array_descriptor_set();
-	lights_array.update_descriptor_set(frame, descriptor_set);
-
-	vkCmdBindDescriptorSets(
-		cmd_buffer.m_handle,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		m_pipeline_layout,
-		VREN_LIGHTS_ARRAY_DESCRIPTOR_SET,
-		1,
-		&descriptor_set,
-		0,
-		nullptr
+	auto light_arr_desc_set = m_renderer->m_light_array_descriptor_pool->acquire_descriptor_set(
+		m_renderer->m_light_array_descriptor_set_layout.m_handle
+	);
+	vren::update_light_array_descriptor_set(*m_renderer->m_context, light_arr, light_arr_desc_set.m_handle);
+	vkCmdBindDescriptorSets(cmd_buf.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_LIGHT_ARRAY_DESCRIPTOR_SET, 1, &light_arr_desc_set.m_handle, 0, nullptr);
+	res_container.add_resources(
+		light_arr.m_point_lights_buffer,
+		light_arr.m_directional_lights_buffer,
+		light_arr.m_spot_lights_buffer
 	);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
@@ -249,31 +247,27 @@ void vren::simple_draw_pass::record_commands(
 		VkDeviceSize offsets[] = { 0 };
 
 		// Vertex buffer
-		vkCmdBindVertexBuffers(cmd_buffer.m_handle, 0, 1, &render_obj.m_vertices_buffer->m_buffer->m_handle, offsets);
-		frame.track_resource(render_obj.m_vertices_buffer); // todo (design) cleaner way to track resource usage for command buffers (bind resource usage to command list instead of frame)
+		vkCmdBindVertexBuffers(cmd_buf.m_handle, 0, 1, &render_obj.m_vertices_buffer->m_buffer.m_handle, offsets);
+		res_container.add_resource(render_obj.m_vertices_buffer); // todo (design) cleaner way to track resource usage for command buffers (bind resource usage to command list instead of frame)
 
 		// Indices buffer
-		vkCmdBindIndexBuffer(cmd_buffer.m_handle, render_obj.m_indices_buffer->m_buffer->m_handle, 0, vren::render_object::s_index_type);
-		frame.track_resource(render_obj.m_indices_buffer);
+		vkCmdBindIndexBuffer(cmd_buf.m_handle, render_obj.m_indices_buffer->m_buffer.m_handle, 0, vren::render_object::s_index_type);
+		res_container.add_resource(render_obj.m_indices_buffer);
 
 		// Instances buffer
-		vkCmdBindVertexBuffers(cmd_buffer.m_handle, 1, 1, &render_obj.m_instances_buffer->m_buffer->m_handle, offsets);
-		frame.track_resource(render_obj.m_instances_buffer);
+		vkCmdBindVertexBuffers(cmd_buf.m_handle, 1, 1, &render_obj.m_instances_buffer->m_buffer.m_handle, offsets);
+		res_container.add_resource(render_obj.m_instances_buffer);
 
 		// Material
-		descriptor_set = frame.acquire_material_descriptor_set();
-		vren::material_manager::update_material_descriptor_set(*m_renderer->m_context, frame, render_obj.m_material, descriptor_set);
-		vkCmdBindDescriptorSets(
-			cmd_buffer.m_handle,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_pipeline_layout,
-			VREN_MATERIAL_DESCRIPTOR_SET,
-			1,
-			&descriptor_set,
-			0,
-			nullptr
+		auto mat_desc_set = std::make_shared<vren::vk_descriptor_set>(
+			m_renderer->m_material_descriptor_pool->acquire_descriptor_set(
+				m_renderer->m_material_descriptor_set_layout.m_handle
+			)
 		);
+		vren::update_material_descriptor_set(*m_renderer->m_context, *render_obj.m_material, mat_desc_set->m_handle);
+		vkCmdBindDescriptorSets(cmd_buf.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &descriptor_set, 0, nullptr);
+		res_container.add_resource(mat_desc_set);
 
-		vkCmdDrawIndexed(cmd_buffer.m_handle, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
+		vkCmdDrawIndexed(cmd_buf.m_handle, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}
 }

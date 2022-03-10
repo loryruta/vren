@@ -4,8 +4,9 @@
 
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
-#include "descriptor_set_pool.hpp"
+#include "descriptor_pool.hpp"
 #include "command_pool.hpp"
+#include "material.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
 {
@@ -318,22 +319,25 @@ void vren::context::_initialize()
 	_init_transfer_command_pool();
 
 	// Default textures
-	m_white_texture = std::make_shared<vren::texture>();
-	vren::create_color_texture(shared_from_this(), 255, 255, 255, 255, *m_white_texture);
+	m_white_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(shared_from_this(), 255, 255, 255, 255)
+	);
 
-	m_black_texture = std::make_shared<vren::texture>();
-	vren::create_color_texture(shared_from_this(), 0, 0, 0, 0, *m_black_texture);
+	m_black_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(shared_from_this(), 0, 0, 0, 0)
+	);
 
-	m_red_texture = std::make_shared<vren::texture>();
-	vren::create_color_texture(shared_from_this(), 255, 0, 0, 255, *m_red_texture);
+	m_red_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(shared_from_this(), 255, 0, 0, 255)
+	);
 
-	m_green_texture = std::make_shared<vren::texture>();
-	vren::create_color_texture(shared_from_this(), 0, 255, 0, 255, *m_green_texture);
+	m_green_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(shared_from_this(), 0, 255, 0, 255)
+	);
 
-	m_blue_texture = std::make_shared<vren::texture>();
-	vren::create_color_texture(shared_from_this(), 0, 0, 255, 255, *m_blue_texture);
-
-	m_descriptor_set_pool = std::make_unique<vren::descriptor_set_pool>(shared_from_this());
+	m_blue_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(shared_from_this(), 0, 0, 255, 255)
+	);
 }
 
 std::shared_ptr<vren::context> vren::context::create(vren::context_info& info)

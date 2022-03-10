@@ -7,38 +7,121 @@
 
 #include "renderer.hpp"
 #include "utils/image.hpp"
-#include "frame.hpp"
+#include "utils/misc.hpp"
 #include "render_list.hpp"
-#include "light.hpp"
+#include "light_array.hpp"
+#include "resource_container.hpp"
 
 namespace vren
 {
-	struct surface_details
-	{
-		VkSurfaceCapabilitiesKHR m_capabilities;
-		std::vector<VkPresentModeKHR> m_present_modes;
-		std::vector<VkSurfaceFormatKHR> m_surface_formats;
-	};
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// swapchain_frame
+	// --------------------------------------------------------------------------------------------------------------------------------
 
-	surface_details get_surface_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
-
-	struct swapchain_framebuffer
+	class swapchain_frame
 	{
-		VkImage m_image;
-		vren::vk_image_view m_image_view;
+	public:
+		struct color_buffer
+		{
+			VkImage m_image; // The image lifetime is managed by the swapchain.
+			vren::vk_image_view m_image_view;
+
+			color_buffer(
+				VkImage img,
+				vren::vk_image_view&& img_view
+			) :
+				m_image(img),
+				m_image_view(std::move(img_view))
+			{}
+		};
+
+		color_buffer m_color_buffer;
 		vren::vk_framebuffer m_framebuffer;
 
-		swapchain_framebuffer(
-			VkImage image,
-			vren::vk_image_view&& image_view,
+		/* Sync objects */
+
+		vren::vk_semaphore m_image_available_semaphore;
+		vren::vk_semaphore m_transited_to_color_attachment_image_layout_semaphore;
+		vren::vk_semaphore m_render_finished_semaphore;
+		vren::vk_semaphore m_transited_to_present_image_layout_semaphore;
+
+		vren::vk_fence m_frame_fence;
+
+		/** The resource container holds the resources that are in-use by the current frame and
+		 * ensures they live enough. */
+		vren::resource_container m_resource_container;
+
+		swapchain_frame(
+			std::shared_ptr<vren::context> const& ctx,
+			color_buffer&& color_buf,
 			vren::vk_framebuffer&& fb
 		);
 	};
 
-	struct presenter_info
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// swapchain
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	class swapchain
 	{
-		VkColorSpaceKHR m_color_space;
+	public:
+		struct depth_buffer
+		{
+			vren::vk_utils::image m_image;
+			vren::vk_image_view m_image_view;
+
+			depth_buffer(
+				vren::vk_utils::image&& img,
+				vren::vk_image_view&& img_view
+			) :
+				m_image(std::move(img)),
+				m_image_view(std::move(img_view))
+			{}
+		};
+
+	private:
+		void _swap(swapchain& other); // Copy-swap idiom
+
+		depth_buffer _create_depth_buffer(uint32_t width, uint32_t height);
+
+		vren::swapchain_frame::color_buffer _create_color_buffer_for_frame(VkImage swapchain_img);
+		vren::vk_framebuffer _create_framebuffer_for_frame(
+			vren::swapchain_frame::color_buffer const& color_buf,
+			uint32_t width,
+			uint32_t height,
+			VkRenderPass render_pass
+		);
+
+	public:
+		std::shared_ptr<vren::context> m_context;
+		VkSwapchainKHR m_handle;
+
+		depth_buffer m_depth_buffer;
+
+		uint32_t m_image_width, m_image_height;
+		std::shared_ptr<vren::vk_render_pass> m_render_pass;
+
+		std::vector<vren::swapchain_frame> m_frames;
+
+		swapchain(
+			std::shared_ptr<vren::context> const& ctx,
+			VkSwapchainKHR handle,
+			uint32_t img_width,
+			uint32_t img_height,
+			uint32_t img_count,
+			std::shared_ptr<vren::vk_render_pass> const& render_pass
+		);
+		swapchain(swapchain const& other) = delete;
+		swapchain(swapchain&& other);
+		~swapchain();
+
+		swapchain& operator=(swapchain const& other) = delete;
+		swapchain& operator=(swapchain&& other);
 	};
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// presenter
+	// --------------------------------------------------------------------------------------------------------------------------------
 
 	class presenter
 	{
@@ -47,56 +130,45 @@ namespace vren
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		};
 
-	private:
-		VkSwapchainKHR create_swapchain(VkExtent2D extent);
+		using render_func = std::function<void(
+			vren::resource_container& resource_container, // A storage for all the resources occurred in this rendering operation that shouldn't be destroyed until it completes.
+			vren::render_target const& renderer_target,   // The target of the rendering operation (framebuffer, area, scissors and viewport).
+			VkSemaphore src_semaphore,                    // The semaphore that has to be waited before starting the rendering operation.
+			VkSemaphore dst_semaphore                     // The semaphore that has to be signaled after finishing the rendering operation (restricted to 1).
+		)>;
 
-		void _create_frames();
-		void create_depth_buffer();
-		void destroy_depth_buffer();
-		void destroy_swapchain();
+	private:
+		uint32_t _pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
+		VkSurfaceFormatKHR _pick_surface_format(vren::vk_utils::surface_details const& surf_details);
+
+		VkResult _acquire_swapchain_image(vren::swapchain_frame const& frame, uint32_t* image_idx);
+		void _transition_to_color_attachment_image_layout(vren::swapchain_frame const& frame);
+		void _transition_to_present_image_layout(vren::swapchain_frame const& frame);
+		VkResult _present(vren::swapchain_frame const& frame, uint32_t image_idx);
 
 	public:
-		std::shared_ptr<vren::renderer> m_renderer;
-
-		presenter_info m_info;
+		std::shared_ptr<vren::context> m_context;
 		VkSurfaceKHR m_surface;
+
+		std::unique_ptr<vren::swapchain> m_swapchain;
+
 		uint32_t m_present_queue_family_idx = -1;
-
-		VkExtent2D m_current_extent{};
-		uint32_t m_image_count;
-
-		VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-
-		struct depth_buffer
-		{
-			std::shared_ptr<vren::image> m_image;
-			std::shared_ptr<vren::vk_image_view> m_image_view;
-
-			inline bool is_valid() const
-			{
-				return m_image->is_valid() && m_image_view->is_valid();
-			}
-		};
-		std::shared_ptr<vren::presenter::depth_buffer> m_depth_buffer;
-
-		std::vector<std::shared_ptr<vren::vk_semaphore>> m_image_available_semaphores;
-		std::vector<swapchain_framebuffer> m_swapchain_framebuffers;
-
-		std::vector<std::unique_ptr<vren::frame>> m_frames;
 
 		uint32_t m_current_frame_idx = 0;
 
-		void recreate_swapchain(VkExtent2D extent);
-
 		presenter(
-			std::shared_ptr<vren::renderer> const& renderer,
-			vren::presenter_info const& info,
-			VkSurfaceKHR surface,
-			VkExtent2D initial_extent
+			std::shared_ptr<vren::context> const& ctx,
+			VkSurfaceKHR surface // The surface ownership is transferred to the presenter!
 		);
 		~presenter();
 
-		void present(std::function<void(std::unique_ptr<vren::frame>&)> const& frame_func);
+		void recreate_swapchain(
+			uint32_t width,
+			uint32_t height,
+			std::shared_ptr<vren::vk_render_pass> const& render_pass
+		);
+
+		void present(render_func const& render_func);
 	};
 }
 

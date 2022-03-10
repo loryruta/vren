@@ -22,7 +22,12 @@ add_executable(vren_demo
         src/tinygltf_loader.cpp
         src/perf_gui/gui.cpp
         src/perf_gui/gui.hpp
+        src/utils/screen.hpp
+        src/utils/screen.cpp
 )
+
+# vren_demo
+target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren_demo/src")
 
 # vren
 target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren/src")

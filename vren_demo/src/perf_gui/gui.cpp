@@ -6,20 +6,35 @@ void vren_demo::perf_gui::_show_screen()
 {
 	ImGui::SetNextWindowDockID(m_screen_dock_id);
 
-	if (ImGui::Begin("##perf_gui-screen", nullptr, ImGuiWindowFlags_NoTitleBar))
+	if (ImGui::Begin("##perf_gui-screen", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
 	{
-		ImGui::End();
+		ImVec2 size = ImGui::GetWindowSize();
+
+		m_screen->show(size, [&](vren::render_target const& target) {
+
+		});
 	}
+
+	ImGui::End();
 }
 
 void vren_demo::perf_gui::_show_sidebar()
 {
 	ImGui::SetNextWindowDockID(m_sidebar_dock_id);
 
-	if (ImGui::Begin("##perf_gui-sidebar", nullptr, ImGuiWindowFlags_NoTitleBar))
+	if (ImGui::Begin("##perf_gui-sidebar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
 	{
-		ImGui::End();
+		ImGui::Text("Lights count");
+		ImGui::SliderInt("##lights_count", &m_lights_count, 0, 1000, "%d", ImGuiSliderFlags_Logarithmic);
+
+		ImGui::Text("Light velocity");
+		ImGui::SliderFloat("##light_vel", &m_light_velocity, 0.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+
+		ImGui::Text("Scene repetition");
+		ImGui::SliderInt("##scene_rep", &m_scene_rep, 0, 1'000'000, "%d", ImGuiSliderFlags_Logarithmic);
 	}
+
+	ImGui::End();
 }
 
 void vren_demo::perf_gui::show()
@@ -48,7 +63,7 @@ void vren_demo::perf_gui::show()
 		ImGui::DockBuilderAddNode(m_dock_id, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
 		ImGui::DockBuilderSetNodeSize(m_dock_id, viewport->Size);
 
-		ImGui::DockBuilderSplitNode(m_dock_id, ImGuiDir_Right, 0.2f, &m_sidebar_dock_id, &m_screen_dock_id);
+		ImGui::DockBuilderSplitNode(m_dock_id, ImGuiDir_Right, 0.25f, &m_sidebar_dock_id, &m_screen_dock_id);
 
 		ImGui::DockBuilderFinish(m_dock_id);
 	}

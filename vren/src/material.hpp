@@ -5,16 +5,19 @@
 #include <glm/glm.hpp>
 
 #include "context.hpp"
+#include "descriptor_pool.hpp"
 #include "utils/image.hpp"
-#include "utils/buffer.hpp"
-#include "light.hpp"
 
 namespace vren
 {
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// material
+	// --------------------------------------------------------------------------------------------------------------------------------
+
 	struct material
 	{
-		std::shared_ptr<vren::texture> m_base_color_texture;
-		std::shared_ptr<vren::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
+		std::shared_ptr<vren::vk_utils::texture> m_base_color_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
 
 		glm::vec4 m_base_color_factor;
 		float m_metallic_factor;
@@ -23,13 +26,20 @@ namespace vren
 		explicit material(std::shared_ptr<vren::context> const& ctx);
 	};
 
-	namespace material_manager
+	// --------------------------------------------------------------------------------------------------------------------------------
+	// material_descriptor_pool
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	class material_descriptor_pool : public vren::descriptor_pool
 	{
-		void update_material_descriptor_set(
-			vren::context const& ctx,
-			vren::frame& frame,
-			std::shared_ptr<vren::material> const& material,
-			VkDescriptorSet descriptor_set
-		);
-	}
+	public:
+		material_descriptor_pool(std::shared_ptr<vren::context> const& ctx);
+
+		VkDescriptorPool create_descriptor_pool(int max_sets);
+	};
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	vren::vk_descriptor_set_layout create_material_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
+	void update_material_descriptor_set(vren::context const& ctx, vren::material const& mat, VkDescriptorSet desc_set);
 }

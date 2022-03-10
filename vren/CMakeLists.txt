@@ -15,12 +15,16 @@ set(SRC
         src/presenter.hpp
         src/material.hpp
         src/material.cpp
-        src/frame.cpp
-        src/frame.hpp
-        src/light.cpp
-        src/light.hpp
-        src/descriptor_set_pool.hpp
-        src/descriptor_set_pool.cpp
+        src/light_array.cpp
+        src/light_array.hpp
+        src/descriptor_pool.hpp
+        src/descriptor_pool.cpp
+        src/imgui_renderer.hpp
+        src/imgui_renderer.cpp
+        src/command_pool.hpp
+        src/command_pool.cpp
+        src/resource_container.hpp
+        src/double_buffer.hpp
         src/utils/buffer.hpp
         src/utils/buffer.cpp
         src/utils/image.hpp
@@ -29,10 +33,8 @@ set(SRC
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
         src/utils/vk_raii.cpp
-        src/imgui_renderer.hpp
-        src/imgui_renderer.cpp
-        src/command_pool.hpp
-        src/command_pool.cpp
+        src/utils/var_len_storage_buffer.hpp
+        src/utils/var_len_storage_buffer.cpp
 )
 
 add_library(vren ${SRC})

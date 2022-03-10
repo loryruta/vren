@@ -69,8 +69,10 @@ namespace vren
 	using vk_image_view  = vren::vk_handle_wrapper<VkImageView>;
 	using vk_sampler     = vren::vk_handle_wrapper<VkSampler>;
 	using vk_framebuffer = vren::vk_handle_wrapper<VkFramebuffer>;
+	using vk_render_pass = vren::vk_handle_wrapper<VkRenderPass>;
 	using vk_buffer      = vren::vk_handle_wrapper<VkBuffer>;
 	using vk_semaphore   = vren::vk_handle_wrapper<VkSemaphore>;
 	using vk_fence       = vren::vk_handle_wrapper<VkFence>;
+	using vk_descriptor_set_layout = vren::vk_handle_wrapper<VkDescriptorSetLayout>;
 	using vma_allocation = vren::vk_handle_wrapper<VmaAllocation>;
 }

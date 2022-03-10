@@ -10,14 +10,25 @@
 
 #include "config.hpp"
 
+// --------------------------------------------------------------------------------------------------------------------------------
+// Forward decl
+// --------------------------------------------------------------------------------------------------------------------------------
+
 namespace vren
 {
-	// forward decl
-	struct texture;
-	class descriptor_set_pool;
 	class command_pool;
+}
 
-	void get_supported_layers(std::vector<VkLayerProperties>& layers);
+namespace vren::vk_utils
+{
+	struct texture;
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
+
+namespace vren
+{
+	void get_supported_layers(std::vector<VkLayerProperties>& layers); // todo in utils/misc ?
 	bool does_support_layers(std::vector<char const*> const& layers);
 
 	struct context_info
@@ -37,6 +48,7 @@ namespace vren
 			uint32_t m_graphics_idx = -1;
 			uint32_t m_compute_idx  = -1;
 			uint32_t m_transfer_idx = -1;
+			uint32_t m_present_idx  = -1;
 
 			inline bool is_valid() const
 			{
@@ -84,14 +96,12 @@ namespace vren
 		std::shared_ptr<vren::command_pool> m_graphics_command_pool;
 		std::shared_ptr<vren::command_pool> m_transfer_command_pool;
 
-		std::unique_ptr<vren::descriptor_set_pool> m_descriptor_set_pool;
-
 		// Textures
-		std::shared_ptr<vren::texture> m_white_texture;
-		std::shared_ptr<vren::texture> m_black_texture;
-		std::shared_ptr<vren::texture> m_red_texture;
-		std::shared_ptr<vren::texture> m_green_texture;
-		std::shared_ptr<vren::texture> m_blue_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_white_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_black_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_red_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_green_texture;
+		std::shared_ptr<vren::vk_utils::texture> m_blue_texture;
 
 		~context();
 

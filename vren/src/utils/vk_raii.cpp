@@ -43,6 +43,12 @@ void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkFence 
 }
 
 template<>
+void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkDescriptorSetLayout handle)
+{
+	vkDestroyDescriptorSetLayout(ctx->m_device, handle, nullptr);
+}
+
+template<>
 void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VmaAllocation handle)
 {
 	vmaFreeMemory(ctx->m_vma_allocator, handle);

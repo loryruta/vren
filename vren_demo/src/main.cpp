@@ -15,6 +15,7 @@
 #include "tinygltf_loader.hpp"
 #include "imgui_renderer.hpp"
 #include "command_pool.hpp"
+#include "perf_gui/gui.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -129,7 +130,7 @@ void create_cube(
 void create_cube_scene(
 	std::shared_ptr<vren::context> const& ctx,
 	vren::render_list& render_list,
-	vren::lights_array& lights_arr
+	vren::light_array& lights_arr
 )
 {
 	float const surface_y = 1;
@@ -260,6 +261,7 @@ int main(int argc, char* argv[])
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	g_window = glfwCreateWindow(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, "VRen", nullptr, nullptr);
 	if (g_window == nullptr)
@@ -293,6 +295,8 @@ int main(int argc, char* argv[])
 
 	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(ctx, g_window);
 
+	vren_demo::perf_gui perf_gui;
+
 	VkSurfaceKHR surface;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
 
@@ -302,12 +306,12 @@ int main(int argc, char* argv[])
 	vren::presenter presenter(renderer, presenter_info, surface, {VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT});
 
 	auto render_list = vren::render_list::create(ctx);
-	vren::lights_array lights_arr(ctx);
+	vren::light_array lights_arr(ctx);
 
 	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
 	vren::tinygltf_loader gltf_loader(ctx);
-	gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
+	//gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
 
 	//create_cube_scene(renderer, render_list, lights_arr);
 
@@ -373,11 +377,6 @@ int main(int argc, char* argv[])
 
 		presenter.present([&](std::unique_ptr<vren::frame> const& frame)
 		{
-			auto cmd_buf = std::make_shared<vren::vk_command_buffer>(
-				ctx->m_graphics_command_pool->acquire_command_buffer()
-			);
-			frame->track_resource(cmd_buf); // todo (design) the user shouldn't do this
-
 			VkCommandBufferBeginInfo cmd_buf_begin_info{};
 			cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmd_buf_begin_info.pNext = nullptr;
@@ -385,7 +384,7 @@ int main(int argc, char* argv[])
 			cmd_buf_begin_info.pInheritanceInfo = nullptr;
 			vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info); // todo (design) the user shouldn't begin the render pass himself
 
-			vren::renderer_target target{};
+			vren::render_target target{};
 			target.m_framebuffer = frame->m_framebuffer;
 			target.m_render_area.offset = {0, 0};
 			target.m_render_area.extent = {(uint32_t) win_width, (uint32_t) win_height};
@@ -404,7 +403,9 @@ int main(int argc, char* argv[])
 			// GUI
 			imgui_renderer->record_commands(*frame, *cmd_buf, target, [&]()
 			{
-				ImGui::ShowDemoWindow(nullptr);
+				perf_gui.show();
+
+				ImGui::ShowDemoWindow();
 			});
 
 			vkEndCommandBuffer(cmd_buf->m_handle);
