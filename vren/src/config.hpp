@@ -2,12 +2,14 @@
 
 #define VREN_NAME ("vren")
 #define VREN_VERSION VK_MAKE_VERSION(1, 0, 0)
-#define VREN_MAX_FRAME_COUNT 4
 
 #define VREN_DESCRIPTOR_POOL_SIZE 32
 
 #define VREN_MAX_FRAMES_IN_FLIGHT 4
-#define VREN_MAX_LIGHTS_COUNT 1024 * 32
+
+#define VREN_POINT_LIGHTS_BUFFER_SIZE       (2 * 1024 * 1024)
+#define VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE (1 * 1024 * 1024)
+#define VREN_SPOT_LIGHTS_BUFFER_SIZE        (1 * 1024 * 1024)
 
 // ------------------------------------------------------------------------------------------------
 // Descriptor sets

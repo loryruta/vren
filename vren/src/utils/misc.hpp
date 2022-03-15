@@ -28,9 +28,7 @@ namespace vren::vk_utils
 		VkFence signal_fence
 	);
 
-	void begin_single_submit_command_buffer(
-		vren::vk_command_buffer const& cmd_buf
-	);
+	void begin_single_submit_command_buffer(VkCommandBuffer cmd_buf);
 
 	void end_single_submit_command_buffer(
 		vren::vk_command_buffer const&& cmd_buf,

@@ -55,5 +55,4 @@ namespace vren
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_descriptor_set_layout create_light_array_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
-	void update_light_array_descriptor_set(vren::context const& ctx, vren::light_array const& light_arr, VkDescriptorSet desc_set);
 }

@@ -1,5 +1,7 @@
 #include "image.hpp"
 
+#include <cstring>
+
 #include "buffer.hpp"
 #include "utils/misc.hpp"
 
@@ -14,8 +16,7 @@ vren::vk_utils::create_image(
 	uint32_t height,
 	VkFormat format,
 	VkMemoryPropertyFlags memory_properties,
-	VkImageUsageFlags usage,
-	VkImageLayout image_layout
+	VkImageUsageFlags usage
 )
 {
 	VkImageCreateInfo image_info{};
@@ -28,7 +29,7 @@ vren::vk_utils::create_image(
 	image_info.arrayLayers = 1;
 	image_info.format = format;
 	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image_info.initialLayout = image_layout;
+	image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	image_info.usage = usage;
 	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -48,6 +49,7 @@ vren::vk_utils::create_image(
 
 void vren::vk_utils::upload_image_data(
 	std::shared_ptr<vren::context> const& ctx,
+    VkCommandBuffer cmd_buf,
 	VkImage img,
 	uint32_t img_width,
 	uint32_t img_height,
@@ -56,20 +58,15 @@ void vren::vk_utils::upload_image_data(
 {
 	VkMemoryRequirements img_mem_req{};
 	vkGetImageMemoryRequirements(ctx->m_device, img, &img_mem_req);
-	VkDeviceSize image_size = img_mem_req.size;
+	VkDeviceSize img_size = img_mem_req.size;
 
 	vren::vk_utils::buffer staging_buffer =
-		vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, image_size, false);
+		vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, img_size, false);
 
 	void* mapped_img_data;
 	vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation.m_handle, &mapped_img_data));
-		memcpy(mapped_img_data, img_data, static_cast<size_t>(image_size));
+		std::memcpy(mapped_img_data, img_data, static_cast<size_t>(img_size));
 	vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation.m_handle);
-
-	auto cmd_buf = ctx->m_graphics_command_pool->acquire_command_buffer();
-	vren::vk_utils::begin_single_submit_command_buffer(cmd_buf);
-
-	transition_image_layout_undefined_to_transfer_dst(ctx, cmd_buf.m_handle, img);
 
 	VkBufferImageCopy img_copy_region{};
 	img_copy_region.bufferOffset = 0;
@@ -85,18 +82,10 @@ void vren::vk_utils::upload_image_data(
 		img_height,
 		1
 	};
-	vkCmdCopyBufferToImage(cmd_buf.m_handle, staging_buffer.m_buffer.m_handle, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &img_copy_region);
-
-	transition_image_layout_transfer_dst_to_shader_readonly(ctx, cmd_buf.m_handle, img);
-
-	vren::vk_utils::end_single_submit_command_buffer(std::move(cmd_buf), ctx->m_transfer_queue);
+	vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer.m_handle, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &img_copy_region);
 }
 
-void vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(
-	std::shared_ptr<vren::context> const& ctx,
-	VkCommandBuffer cmd_buf,
-	VkImage img
-)
+void vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(VkCommandBuffer cmd_buf, VkImage img)
 {
 	VkImageMemoryBarrier mem_barrier{};
 	mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -116,11 +105,7 @@ void vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(
 	vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
 }
 
-void vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(
-	std::shared_ptr<vren::context> const& ctx,
-	VkCommandBuffer cmd_buf,
-	VkImage img
-)
+void vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(VkCommandBuffer cmd_buf, VkImage img)
 {
 	VkImageMemoryBarrier mem_barrier{};
 	mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -140,11 +125,7 @@ void vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(
 	vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
 }
 
-void vren::vk_utils::transition_image_layout_undefined_to_color_attachment(
-	std::shared_ptr<vren::context> const& ctx,
-	VkCommandBuffer cmd_buf,
-	VkImage img
-)
+void vren::vk_utils::transition_image_layout_undefined_to_color_attachment(VkCommandBuffer cmd_buf, VkImage img)
 {
 	VkImageMemoryBarrier mem_barrier{};
 	mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -168,11 +149,31 @@ void vren::vk_utils::transition_image_layout_undefined_to_color_attachment(
 	vkCmdPipelineBarrier(cmd_buf, src_stage, dst_stage, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
 }
 
-void vren::vk_utils::transition_color_attachment_to_shader_readonly(
-	std::shared_ptr<vren::context> const& ctx,
-	VkCommandBuffer cmd_buf,
-	VkImage image
-)
+void vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(VkCommandBuffer cmd_buf, VkImage img)
+{
+    VkImageMemoryBarrier mem_barrier{};
+    mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    mem_barrier.pNext = nullptr;
+    mem_barrier.srcAccessMask = NULL;
+    mem_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    mem_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    mem_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    mem_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    mem_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    mem_barrier.image = img;
+    mem_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    mem_barrier.subresourceRange.baseMipLevel = 0;
+    mem_barrier.subresourceRange.levelCount = 1;
+    mem_barrier.subresourceRange.baseArrayLayer = 0;
+    mem_barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    vkCmdPipelineBarrier(cmd_buf, src_stage, dst_stage, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
+}
+
+void vren::vk_utils::transition_color_attachment_to_shader_readonly(VkCommandBuffer cmd_buf, VkImage image)
 {
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -196,11 +197,7 @@ void vren::vk_utils::transition_color_attachment_to_shader_readonly(
 	vkCmdPipelineBarrier(cmd_buf, src_stage, dst_stage, NULL, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
-void vren::vk_utils::transition_image_layout_color_attachment_to_present(
-	std::shared_ptr<vren::context> const& ctx,
-	VkCommandBuffer cmd_buf,
-	VkImage img
-)
+void vren::vk_utils::transition_image_layout_color_attachment_to_present(VkCommandBuffer cmd_buf, VkImage img)
 {
 	VkImageMemoryBarrier mem_barrier{};
 	mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -310,15 +307,13 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 	VkSamplerAddressMode address_mode_w
 )
 {
-	auto img = vren::vk_utils::create_image(
-		ctx,
-		width, height,
-		format,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-	);
-	vren::vk_utils::upload_image_data(ctx, img.m_image.m_handle, width, height, image_data);
+	auto img = vren::vk_utils::create_image(ctx, width, height, format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
+        vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf.m_handle, img.m_image.m_handle);
+        vren::vk_utils::upload_image_data(ctx, cmd_buf.m_handle, img.m_image.m_handle, width, height, image_data);
+        vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(cmd_buf.m_handle, img.m_image.m_handle);
+    });
 
 	auto img_view = vren::vk_image_view(
 		vren::vk_utils::create_image_view(
@@ -356,10 +351,7 @@ vren::vk_utils::texture vren::vk_utils::create_color_texture(
 	uint8_t a
 )
 {
-	uint8_t img_data[]{
-		r, g, b, a
-	};
-
+	uint8_t img_data[]{ r, g, b, a };
 	return vren::vk_utils::create_texture(
 		ctx,
 		1,
@@ -391,9 +383,12 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 		width, height,
 		VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
 	);
+
+    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
+        vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    });
 
 	auto img_view = vren::vk_utils::create_image_view(
 		ctx,
@@ -420,15 +415,18 @@ vren::vk_utils::custom_framebuffer::create_depth_buffer(
 		width, height,
 		VK_FORMAT_D32_SFLOAT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
+
+    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
+        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    });
 
 	auto img_view = vren::vk_utils::create_image_view(
 		ctx,
 		img.m_image.m_handle,
 		VK_FORMAT_D32_SFLOAT,
-		VK_IMAGE_ASPECT_DEPTH_BIT
+		VK_IMAGE_ASPECT_DEPTH_BIT // | VK_IMAGE_ASPECT_STENCIL_BIT
 	);
 
 	return depth_buffer(

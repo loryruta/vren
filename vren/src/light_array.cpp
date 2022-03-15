@@ -74,38 +74,3 @@ vren::vk_descriptor_set_layout vren::create_light_array_descriptor_set_layout(st
 	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
 	return vren::vk_descriptor_set_layout(ctx, desc_set_layout);
 }
-
-void vren::update_light_array_descriptor_set(vren::context const& ctx, vren::light_array const& light_arr, VkDescriptorSet desc_set)
-{
-	VkDescriptorBufferInfo buffers_info[]{
-		{ /* Point lights */
-			.buffer = light_arr.m_point_lights_buffer.get_buffer()->m_buffer.m_handle,
-			.offset = 0,
-			.range = light_arr.m_point_lights_buffer.get_buffer_length()
-		},
-		{ /* Directional lights */
-			.buffer = light_arr.m_directional_lights_buffer.get_buffer()->m_buffer.m_handle,
-			.offset = 0,
-			.range = light_arr.m_directional_lights_buffer.get_buffer_length()
-		},
-		{ /* Spot lights */
-			.buffer = light_arr.m_spot_lights_buffer.get_buffer()->m_buffer.m_handle,
-			.offset = 0,
-			.range = light_arr.m_spot_lights_buffer.get_buffer_length()
-		}
-	};
-
-	VkWriteDescriptorSet desc_set_write{};
-	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	desc_set_write.pNext = nullptr;
-	desc_set_write.dstSet = desc_set;
-	desc_set_write.dstBinding = VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING;
-	desc_set_write.dstArrayElement = 0;
-	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	desc_set_write.descriptorCount = std::size(buffers_info);
-	desc_set_write.pImageInfo = nullptr;
-	desc_set_write.pBufferInfo = buffers_info;
-	desc_set_write.pTexelBufferView = nullptr;
-
-	vkUpdateDescriptorSets(ctx.m_device, 1, &desc_set_write, 0, nullptr);
-}

@@ -29,6 +29,7 @@ namespace vren
 		~simple_draw_pass();
 
 		void record_commands(
+            int frame_idx,
 			vren::resource_container& resource_container,
 			vren::vk_command_buffer const& cmd_buf,
 			vren::render_list const& render_list,

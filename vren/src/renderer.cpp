@@ -1,29 +1,70 @@
 #include "renderer.hpp"
 
 #include "simple_draw.hpp"
-#include "imgui_renderer.hpp"
 #include "material.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
 
-std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> vren::renderer::_create_point_lights_buffers()
+template<typename _t, size_t... _is> // TODO put in utilities?
+auto create_array_impl(std::function<_t()> const& create_entry_fn, std::index_sequence<_is...> _)
 {
-	return std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>{
-		vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_MAX_LIGHTS_COUNT * sizeof(vren::point_light), true)...
-	};
+    return std::array{ (_is, create_entry_fn())... };
+}
+
+template<typename _t, size_t _size>
+auto create_array(std::function<_t()> const& create_entry_fn)
+{
+    return create_array_impl(create_entry_fn, std::make_index_sequence<_size>());
+}
+
+std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>
+vren::renderer::_create_point_lights_buffers()
+{
+    return create_array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>(
+        [&]() { return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_POINT_LIGHTS_BUFFER_SIZE, true); }
+    );
+}
+
+std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>
+vren::renderer::_create_directional_lights_buffers()
+{
+    return create_array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>(
+        [&]() { return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE, true); }
+    );
+}
+
+std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>
+vren::renderer::_create_spot_lights_buffers()
+{
+    return create_array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>(
+        [&]() { return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_SPOT_LIGHTS_BUFFER_SIZE, true); }
+    );
+}
+
+std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>
+vren::renderer::_acquire_light_array_descriptor_sets()
+{
+    return create_array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>(
+        [&]() { return m_light_array_descriptor_pool->acquire_descriptor_set(m_light_array_descriptor_set_layout.m_handle); }
+    );
 }
 
 vren::renderer::renderer(std::shared_ptr<vren::context> const& ctx) :
-	m_context(ctx),
-	m_render_pass(_create_render_pass(ctx)),
+        m_context(ctx),
 
-	m_material_descriptor_set_layout(vren::create_material_descriptor_set_layout(ctx)),
-	m_light_array_descriptor_set_layout(vren::create_light_array_descriptor_set_layout(ctx)),
+        m_render_pass(std::make_shared<vren::vk_render_pass>(_create_render_pass())),
 
-	m_material_descriptor_pool(std::make_shared<vren::material_descriptor_pool>(ctx))
+        m_material_descriptor_set_layout(vren::create_material_descriptor_set_layout(ctx)),
+        m_material_descriptor_pool(std::make_shared<vren::material_descriptor_pool>(ctx)),
 
-{
-}
+        m_light_array_descriptor_set_layout(vren::create_light_array_descriptor_set_layout(ctx)),
+        m_light_array_descriptor_pool(std::make_shared<vren::light_array_descriptor_pool>(ctx)),
+
+        m_point_lights_buffers(_create_point_lights_buffers()),
+        m_directional_lights_buffers(_create_directional_lights_buffers()),
+        m_spot_lights_buffers(_create_spot_lights_buffers()),
+        m_lights_array_descriptor_sets(_acquire_light_array_descriptor_sets())
+{}
 
 vren::renderer::~renderer()
 {}
@@ -31,9 +72,48 @@ vren::renderer::~renderer()
 void vren::renderer::_init()
 {
 	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(shared_from_this());
+
+    _init_light_array_descriptor_sets();
 }
 
-vren::vk_render_pass vren::renderer::_create_render_pass(std::shared_ptr<vren::context> const& ctx)
+void vren::renderer::_init_light_array_descriptor_sets()
+{
+    for (int frame_idx = 0; frame_idx < VREN_MAX_FRAMES_IN_FLIGHT; frame_idx++)
+    {
+        VkDescriptorBufferInfo buffers_info[]{
+            { /* Point lights */
+                .buffer = m_point_lights_buffers[frame_idx].m_buffer.m_handle,
+                .offset = 0,
+                .range = VREN_POINT_LIGHTS_BUFFER_SIZE
+            },
+            { /* Directional lights */
+                .buffer = m_directional_lights_buffers[frame_idx].m_buffer.m_handle,
+                .offset = 0,
+                .range = VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE
+            },
+            { /* Spotlights */
+                .buffer = m_spot_lights_buffers[frame_idx].m_buffer.m_handle,
+                .offset = 0,
+                .range = VREN_SPOT_LIGHTS_BUFFER_SIZE
+            }
+        };
+
+        VkWriteDescriptorSet desc_set_write{};
+        desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        desc_set_write.pNext = nullptr;
+        desc_set_write.dstSet = m_lights_array_descriptor_sets[frame_idx].m_handle;
+        desc_set_write.dstBinding = VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING;
+        desc_set_write.dstArrayElement = 0;
+        desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        desc_set_write.descriptorCount = std::size(buffers_info);
+        desc_set_write.pImageInfo = nullptr;
+        desc_set_write.pBufferInfo = buffers_info;
+        desc_set_write.pTexelBufferView = nullptr;
+        vkUpdateDescriptorSets(m_context->m_device, 1, &desc_set_write, 0, nullptr);
+    }
+}
+
+vren::vk_render_pass vren::renderer::_create_render_pass()
 {
 	VkAttachmentDescription color_attachment{};
 	color_attachment.format = vren::renderer::k_color_output_format;
@@ -105,18 +185,45 @@ vren::vk_render_pass vren::renderer::_create_render_pass(std::shared_ptr<vren::c
 	render_pass_info.pDependencies = dependencies.data();
 
 	VkRenderPass render_pass;
-	vren::vk_utils::check(vkCreateRenderPass(ctx->m_device, &render_pass_info, nullptr, &render_pass));
-	return vren::vk_render_pass(ctx, render_pass);
+	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass));
+	return vren::vk_render_pass(m_context, render_pass);
+}
+
+void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const& lights_arr)
+{
+    /* Upload point lights */
+    uint32_t point_lights_count = lights_arr.m_point_lights.size();
+    if (point_lights_count > k_max_point_lights_count) {
+        throw std::runtime_error("Too many point lights");
+    }
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_point_lights_buffers[frame_idx], &point_lights_count, sizeof(uint32_t), 0);
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_point_lights_buffers[frame_idx], lights_arr.m_point_lights.data(), point_lights_count * sizeof(vren::point_light), sizeof(uint32_t));
+
+    /* Upload directional lights */
+    uint32_t dir_lights_count = lights_arr.m_directional_lights.size();
+    if (dir_lights_count > k_max_directional_lights_count) {
+        throw std::runtime_error("Too many directional lights");
+    }
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_directional_lights_buffers[frame_idx], &dir_lights_count, sizeof(uint32_t), 0);
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_directional_lights_buffers[frame_idx], lights_arr.m_directional_lights.data(), dir_lights_count * sizeof(vren::directional_light), sizeof(uint32_t));
+
+    /* Upload spotlights */
+    uint32_t spot_lights_count = lights_arr.m_spot_lights.size();
+    if (lights_arr.m_spot_lights.size() > k_max_spot_lights_count) {
+        throw std::runtime_error("Too many spot lights");
+    }
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], &spot_lights_count, sizeof(uint32_t), 0);
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], lights_arr.m_spot_lights.data(), spot_lights_count * sizeof(vren::spot_light), 0);
 }
 
 void vren::renderer::render(
-	uint32_t frame_idx,
+	int frame_idx,
 	vren::resource_container& resource_container,
 	vren::render_target const& target,
 	VkSemaphore src_semaphore,
 	VkSemaphore dst_semaphore,
 	vren::render_list const& render_list,
-	vren::light_array const& lights_array,
+	vren::light_array const& lights_arr,
 	vren::camera const& camera
 )
 {
@@ -138,7 +245,7 @@ void vren::renderer::render(
 	};
 	VkRenderPassBeginInfo render_pass_begin_info{};
 	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_begin_info.renderPass = m_render_pass.m_handle;
+	render_pass_begin_info.renderPass = m_render_pass->m_handle;
 	render_pass_begin_info.framebuffer = target.m_framebuffer;
 	render_pass_begin_info.renderArea = target.m_render_area;
 	render_pass_begin_info.clearValueCount = std::size(clear_values);
@@ -150,12 +257,10 @@ void vren::renderer::render(
 	vkCmdSetScissor(cmd_buf.m_handle, 0, 1, &target.m_render_area);
 
 	/* Write light buffers */
-	vren::vk_utils::update_host_visible_buffer(*m_context, m_light_buffers[frame_idx], lights_array.m_point_lights.data(), lights_array.m_point_lights.size() * sizeof(vren::point_light), 0);
-	vren::vk_utils::update_host_visible_buffer(*m_context, m_light_buffers[frame_idx], lights_array.m_directional_lights.data(), lights_array.m_directional_lights.size() * sizeof(vren::directional_light), 0);
-	vren::vk_utils::update_host_visible_buffer(*m_context, m_light_buffers[frame_idx], lights_array.m.data(), lights_array.m_point_lights.size() * sizeof(vren::light_array), 0);
+    _upload_lights_array(frame_idx, lights_arr);
 
 	/* Subpass recording */
-	m_simple_draw_pass->record_commands(frame, cmd_buf, render_list, lights_array, camera);
+	m_simple_draw_pass->record_commands(frame_idx, resource_container, cmd_buf, render_list, lights_arr, camera);
 
 	/* Render pass end */
 	vkCmdEndRenderPass(cmd_buf.m_handle);

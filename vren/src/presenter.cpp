@@ -91,9 +91,12 @@ vren::swapchain::_create_depth_buffer(uint32_t width, uint32_t height)
 		width, height,
 		VK_FORMAT_D32_SFLOAT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
+
+    vren::vk_utils::immediate_submit(*m_context, [&](vren::vk_command_buffer const& cmd_buf) {
+        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    });
 
 	auto img_view = vren::vk_utils::create_image_view(
 		m_context,
@@ -200,12 +203,10 @@ void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapcha
 {
 	auto cmd_buf = m_context->m_graphics_command_pool->acquire_command_buffer();
 
-	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(
-		m_context,
-		cmd_buf.m_handle,
-		frame.m_color_buffer.m_image
-	);
+    vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
+	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf.m_handle, frame.m_color_buffer.m_image);
 
+    /* Submission */
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
 	VkSubmitInfo submit_info{};
@@ -226,11 +227,8 @@ void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame 
 {
 	auto cmd_buf = m_context->m_graphics_command_pool->acquire_command_buffer();
 
-	vren::vk_utils::transition_image_layout_color_attachment_to_present(
-		m_context,
-		cmd_buf.m_handle,
-		frame.m_color_buffer.m_image
-	);
+    vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
+	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf.m_handle, frame.m_color_buffer.m_image);
 
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
@@ -299,7 +297,7 @@ void vren::presenter::recreate_swapchain(
 	m_swapchain = std::make_unique<vren::swapchain>(m_context, swapchain, width, height, img_count, render_pass);
 }
 
-void vren::presenter::present(render_func const& render_func)
+void vren::presenter::present(render_func const& render_fn)
 {
 	if (!m_swapchain) {
 		return;
@@ -348,7 +346,8 @@ void vren::presenter::present(render_func const& render_func)
 		}
 	};
 
-	render_func(
+    render_fn(
+        m_current_frame_idx,
 		frame.m_resource_container,
 		render_target,
 		frame.m_transited_to_color_attachment_image_layout_semaphore.m_handle,

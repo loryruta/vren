@@ -57,7 +57,7 @@ namespace vren
 		~imgui_renderer();
 
 		void record_commands(
-			vren::frame& frame,
+            vren::resource_container& res_container,
 			vren::vk_command_buffer const& cmd_buf,
 			vren::render_target const& target,
 			std::function<void()> const& show_guis_func

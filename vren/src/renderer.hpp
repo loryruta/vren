@@ -44,13 +44,13 @@ namespace vren
 
 		std::shared_ptr<context> m_context;
 
-		vren::vk_render_pass m_render_pass;
+		std::shared_ptr<vren::vk_render_pass> m_render_pass;
 
-		vren::vk_descriptor_set_layout m_material_descriptor_set_layout;
-		vren::vk_descriptor_set_layout m_light_array_descriptor_set_layout;
+        vren::vk_descriptor_set_layout m_material_descriptor_set_layout;
+        std::shared_ptr<vren::descriptor_pool> m_material_descriptor_pool;
 
-		std::shared_ptr<vren::descriptor_pool> m_material_descriptor_pool;
-		std::shared_ptr<vren::descriptor_pool> m_light_array_descriptor_pool;
+        vren::vk_descriptor_set_layout m_light_array_descriptor_set_layout;
+        std::shared_ptr<vren::descriptor_pool> m_light_array_descriptor_pool;
 
 		//vren::vk_descriptor_set_layout m_material_descriptor_set_layout;
 		//std::shared_ptr<vren::descriptor_set_pool> m_lights_descriptor_set_pool;
@@ -59,35 +59,44 @@ namespace vren
 
 		std::unique_ptr<vren::simple_draw_pass> m_simple_draw_pass;
 
-		/* Light buffers */
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_point_lights_buffers;
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
+        static constexpr size_t k_max_point_lights_count = VREN_POINT_LIGHTS_BUFFER_SIZE / sizeof(vren::point_light);
+        static constexpr size_t k_max_directional_lights_count = VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE / sizeof(vren::directional_light);
+        static constexpr size_t k_max_spot_lights_count = VREN_SPOT_LIGHTS_BUFFER_SIZE / sizeof(vren::spot_light);
+
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_point_lights_buffers;
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
+
+        std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> m_lights_array_descriptor_sets;
 
 	private:
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_point_lights_buffers();
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_directional_lights_buffer();
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_spot_lights_buffers();
+        vren::vk_render_pass _create_render_pass();
+
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_point_lights_buffers();
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_directional_lights_buffers();
+        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_spot_lights_buffers();
+
+        std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> _acquire_light_array_descriptor_sets();
 
 		renderer(std::shared_ptr<context> const& ctx);
 
 		void _init();
+        void _init_light_array_descriptor_sets();
 
-		static vren::vk_render_pass _create_render_pass(
-			std::shared_ptr<vren::context> const& ctx
-		);
+        void _upload_lights_array(int frame_idx, vren::light_array const& lights_arr);
+
 
 	public:
 		~renderer();
 
 		void render(
-			uint32_t frame_idx,
+			int frame_idx,
 			vren::resource_container& resource_container,
 			vren::render_target const& target,
 			VkSemaphore src_semaphore,
 			VkSemaphore dst_semaphore,
 			vren::render_list const& render_list,
-			vren::light_array const& lights_array,
+			vren::light_array const& lights_arr,
 			vren::camera const& camera
 		);
 

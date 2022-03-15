@@ -131,6 +131,7 @@ namespace vren
 		};
 
 		using render_func = std::function<void(
+			int frame_idx,
 			vren::resource_container& resource_container, // A storage for all the resources occurred in this rendering operation that shouldn't be destroyed until it completes.
 			vren::render_target const& renderer_target,   // The target of the rendering operation (framebuffer, area, scissors and viewport).
 			VkSemaphore src_semaphore,                    // The semaphore that has to be waited before starting the rendering operation.

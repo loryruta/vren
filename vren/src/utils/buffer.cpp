@@ -153,7 +153,7 @@ void vren::vk_utils::copy_buffer(
 	copy_region.srcOffset = src_offset;
 	copy_region.dstOffset = dst_offset;
 	copy_region.size = size;
-	vkCmdCopyBuffer(cmd_buf.m_handle, src_buffer.m_buffer->m_handle, dst_buffer.m_buffer->m_handle, 1, &copy_region);
+	vkCmdCopyBuffer(cmd_buf.m_handle, src_buffer.m_buffer.m_handle, dst_buffer.m_buffer.m_handle, 1, &copy_region);
 
 	vkEndCommandBuffer(cmd_buf.m_handle);
 

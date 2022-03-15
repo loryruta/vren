@@ -14,8 +14,6 @@
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
 #include "imgui_renderer.hpp"
-#include "command_pool.hpp"
-#include "perf_gui/gui.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -295,38 +293,22 @@ int main(int argc, char* argv[])
 
 	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(ctx, g_window);
 
-	vren_demo::perf_gui perf_gui;
-
 	VkSurfaceKHR surface;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
 
-	vren::presenter_info presenter_info{};
-	presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+	//vren::presenter_info presenter_info{};
+	//presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
-	vren::presenter presenter(renderer, presenter_info, surface, {VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT});
+	vren::presenter presenter(ctx, surface);
+    presenter.recreate_swapchain(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, renderer->m_render_pass);
 
 	auto render_list = vren::render_list::create(ctx);
-	vren::light_array lights_arr(ctx);
+	vren::light_array lights_arr{};
 
 	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
 	vren::tinygltf_loader gltf_loader(ctx);
 	//gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
-
-	//create_cube_scene(renderer, render_list, lights_arr);
-
-	{ // Static light
-		const float y = 10;
-
-		auto& stat_light = lights_arr.create_point_light().first.get();
-		stat_light.m_position = glm::vec3(0, y, 0);
-		stat_light.m_color    = glm::vec3(1, 1, 1);
-		lights_arr.update_device_buffers();
-	}
-
-	// Circular light
-	auto circ_light_idx = lights_arr.create_point_light().second;
-	lights_arr.update_device_buffers();
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -344,23 +326,6 @@ int main(int argc, char* argv[])
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
 		last_time = cur_time;
 
-		{ // Circular light update
-			const float freq = 2;
-			const float h = 20;
-			const float r = 20;
-
-			glm::vec3 light_pos =  glm::vec3(
-				glm::cos(cur_time * freq) * r,
-				h,
-				glm::sin(cur_time * freq) * r
-			);
-
-			auto& circ_light = lights_arr.get_point_light(circ_light_idx);
-			circ_light.m_position = light_pos;
-			circ_light.m_color = glm::vec3(1, 1, 1);
-			lights_arr.update_device_buffers();
-		}
-
 		if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
 			update_camera(dt, camera);
 		}
@@ -368,63 +333,15 @@ int main(int argc, char* argv[])
 		int win_width, win_height;
 		glfwGetWindowSize(g_window, &win_width, &win_height);
 
-		vren::camera cam_data{};
-		cam_data.m_position = camera.m_position;
-		cam_data.m_view = camera.get_view();
-		cam_data.m_projection = camera.get_projection();
-
-		// *render_list, lights_arr, cam_data
-
-		presenter.present([&](std::unique_ptr<vren::frame> const& frame)
-		{
-			VkCommandBufferBeginInfo cmd_buf_begin_info{};
-			cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			cmd_buf_begin_info.pNext = nullptr;
-			cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT ;
-			cmd_buf_begin_info.pInheritanceInfo = nullptr;
-			vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info); // todo (design) the user shouldn't begin the render pass himself
-
-			vren::render_target target{};
-			target.m_framebuffer = frame->m_framebuffer;
-			target.m_render_area.offset = {0, 0};
-			target.m_render_area.extent = {(uint32_t) win_width, (uint32_t) win_height};
-			target.m_viewport = {
-				.x = 0,
-				.y = (float) win_height,
-				.width = (float) win_width,
-				.height = (float) -win_height,
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
-
-			// Scene
-			renderer->record_commands(*frame, *cmd_buf, target, *render_list, lights_arr, cam_data);
-
-			// GUI
-			imgui_renderer->record_commands(*frame, *cmd_buf, target, [&]()
-			{
-				perf_gui.show();
-
-				ImGui::ShowDemoWindow();
-			});
-
-			vkEndCommandBuffer(cmd_buf->m_handle);
-
-			auto signal_sem = std::make_shared<vren::vk_semaphore>(vren::vk_utils::create_semaphore(ctx));
-			auto signal_fence = std::make_shared<vren::vk_fence>(vren::vk_utils::create_fence(ctx));
-
-			vren::vk_utils::submit_command_buffer(
-				ctx->m_graphics_queue,
-				frame->m_in_semaphores,
-				{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
-				*cmd_buf,
-				{ signal_sem->m_handle },
-				signal_fence->m_handle
-			);
-
-			frame->add_out_semaphore(signal_sem);
-			frame->add_out_fence(signal_fence);
-		});
+		presenter.present([&](int frame_idx, vren::resource_container& res_container, vren::render_target const& renderer_target, VkSemaphore src_sem, VkSemaphore dst_sem)
+        {
+            auto cam_data = vren::camera{
+                .m_position = camera.m_position,
+                .m_view = camera.get_view(),
+                .m_projection = camera.get_projection()
+            };
+            renderer->render(frame_idx, res_container, renderer_target, src_sem, dst_sem, *render_list, lights_arr, cam_data);
+        });
 	}
 
 	vkDeviceWaitIdle(ctx->m_device);

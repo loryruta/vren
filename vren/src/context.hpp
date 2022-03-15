@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <array>
+#include <vector>
 #include <filesystem>
 
 #include <vulkan/vulkan.h>
@@ -59,7 +60,7 @@ namespace vren
 	private:
 		explicit context(vren::context_info& info);
 
-		void _initialize();
+		void _init();
 
 		VkInstance create_instance();
 		VkDebugUtilsMessengerEXT setup_debug_messenger();

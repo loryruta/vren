@@ -1,6 +1,7 @@
 #include "context.hpp"
 
 #include <iostream>
+#include <cstring>
 
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
@@ -298,7 +299,7 @@ vren::context::context(vren::context_info& info) :
 	m_info(info)
 {}
 
-void vren::context::_initialize()
+void vren::context::_init()
 {
 	m_instance = create_instance();
 	m_debug_messenger = setup_debug_messenger();
@@ -342,9 +343,9 @@ void vren::context::_initialize()
 
 std::shared_ptr<vren::context> vren::context::create(vren::context_info& info)
 {
-	auto renderer = std::shared_ptr<vren::context>(new vren::context(info)); // renderer's initialization must be achieved in two steps because of shared_from_this()
-	renderer->_initialize();
-	return renderer;
+	auto ctx = std::shared_ptr<vren::context>(new vren::context(info)); // renderer's initialization must be achieved in two steps because of shared_from_this()
+    ctx->_init();
+	return ctx;
 }
 
 vren::context::~context()

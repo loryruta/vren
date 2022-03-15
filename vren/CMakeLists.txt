@@ -24,7 +24,6 @@ set(SRC
         src/command_pool.hpp
         src/command_pool.cpp
         src/resource_container.hpp
-        src/double_buffer.hpp
         src/utils/buffer.hpp
         src/utils/buffer.cpp
         src/utils/image.hpp
@@ -33,8 +32,6 @@ set(SRC
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
         src/utils/vk_raii.cpp
-        src/utils/var_len_storage_buffer.hpp
-        src/utils/var_len_storage_buffer.cpp
 )
 
 add_library(vren ${SRC})

@@ -58,9 +58,7 @@ void vren::vk_utils::submit_command_buffer(
 	vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, signal_fence));
 }
 
-void vren::vk_utils::begin_single_submit_command_buffer(
-	vren::vk_command_buffer const& cmd_buf
-)
+void vren::vk_utils::begin_single_submit_command_buffer(VkCommandBuffer cmd_buf)
 {
 	VkCommandBufferBeginInfo cmd_buf_begin_info{};
 	cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -68,7 +66,7 @@ void vren::vk_utils::begin_single_submit_command_buffer(
 	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	cmd_buf_begin_info.pInheritanceInfo = nullptr;
 
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &cmd_buf_begin_info));
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &cmd_buf_begin_info));
 }
 
 void vren::vk_utils::end_single_submit_command_buffer(
@@ -100,7 +98,7 @@ void vren::vk_utils::immediate_submit(
 )
 {
 	auto cmd_buf = ctx.m_graphics_command_pool->acquire_command_buffer();
-	vren::vk_utils::begin_single_submit_command_buffer(cmd_buf);
+	vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
 
 	submit_func(cmd_buf);
 

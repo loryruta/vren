@@ -188,7 +188,7 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
 	graphics_pipeline_info.pColorBlendState = &color_blend_info;
 	graphics_pipeline_info.layout = m_pipeline_layout;
-	graphics_pipeline_info.renderPass = m_renderer->m_render_pass.m_handle;
+	graphics_pipeline_info.renderPass = m_renderer->m_render_pass->m_handle;
 	graphics_pipeline_info.subpass = 0;
 	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -199,6 +199,7 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 }
 
 void vren::simple_draw_pass::record_commands(
+    int frame_idx,
 	vren::resource_container& res_container,
 	vren::vk_command_buffer const& cmd_buf,
 	vren::render_list const& render_list,
@@ -221,16 +222,7 @@ void vren::simple_draw_pass::record_commands(
 	);
 
 	// Lights array
-	auto light_arr_desc_set = m_renderer->m_light_array_descriptor_pool->acquire_descriptor_set(
-		m_renderer->m_light_array_descriptor_set_layout.m_handle
-	);
-	vren::update_light_array_descriptor_set(*m_renderer->m_context, light_arr, light_arr_desc_set.m_handle);
-	vkCmdBindDescriptorSets(cmd_buf.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_LIGHT_ARRAY_DESCRIPTOR_SET, 1, &light_arr_desc_set.m_handle, 0, nullptr);
-	res_container.add_resources(
-		light_arr.m_point_lights_buffer,
-		light_arr.m_directional_lights_buffer,
-		light_arr.m_spot_lights_buffer
-	);
+	vkCmdBindDescriptorSets(cmd_buf.m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_LIGHT_ARRAY_DESCRIPTOR_SET, 1, &m_renderer->m_lights_array_descriptor_sets[frame_idx].m_handle, 0, nullptr);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
