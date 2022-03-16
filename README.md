@@ -5,6 +5,7 @@ my Vulkan RENderer
 ## Useful references
 
 **C++ patterns:**
+- RAII: https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization
 - Model-concept idiom: https://gracicot.github.io/conceptmodel/2017/09/13/concept-model-part1.html
 - Copy-swap idiom: https://stackoverflow.com/questions/3279543/what-is-the-copy-and-swap-idiom
 
