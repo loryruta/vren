@@ -108,28 +108,7 @@ void vren::vk_utils::update_device_only_buffer(
 	vren::vk_utils::buffer staging_buf = alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
 	update_host_visible_buffer(*ctx, staging_buf, data, size, 0);
 
-	auto cmd_buf = ctx->m_transfer_command_pool->acquire_command_buffer();
-
-	VkCommandBufferBeginInfo begin_info{};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info);
-
-	VkBufferCopy copy_region{};
-	copy_region.srcOffset = 0;
-	copy_region.dstOffset = dst_offset;
-	copy_region.size = size;
-	vkCmdCopyBuffer(cmd_buf.m_handle, staging_buf.m_buffer.m_handle, buf.m_buffer.m_handle, 1, &copy_region);
-
-	vkEndCommandBuffer(cmd_buf.m_handle);
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
-	vkQueueSubmit(ctx->m_queues.at(ctx->m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
-
-	vkQueueWaitIdle(ctx->m_transfer_queue);
+    copy_buffer(*ctx, staging_buf, buf, size, 0, dst_offset);
 }
 
 void vren::vk_utils::copy_buffer(
@@ -141,29 +120,14 @@ void vren::vk_utils::copy_buffer(
 	size_t dst_offset
 )
 {
-	auto cmd_buf = ctx.m_transfer_command_pool->acquire_command_buffer();
-
-	VkCommandBufferBeginInfo begin_info{};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info);
-
-	VkBufferCopy copy_region{};
-	copy_region.srcOffset = src_offset;
-	copy_region.dstOffset = dst_offset;
-	copy_region.size = size;
-	vkCmdCopyBuffer(cmd_buf.m_handle, src_buffer.m_buffer.m_handle, dst_buffer.m_buffer.m_handle, 1, &copy_region);
-
-	vkEndCommandBuffer(cmd_buf.m_handle);
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
-	vkQueueSubmit(ctx.m_queues.at(ctx.m_queue_families.m_transfer_idx), 1, &submit_info, VK_NULL_HANDLE);
-
-	vkQueueWaitIdle(ctx.m_transfer_queue);
+    vren::vk_utils::immediate_transfer_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    {
+        VkBufferCopy copy_region{};
+        copy_region.srcOffset = src_offset;
+        copy_region.dstOffset = dst_offset;
+        copy_region.size = size;
+        vkCmdCopyBuffer(cmd_buf, src_buffer.m_buffer.m_handle, dst_buffer.m_buffer.m_handle, 1, &copy_region);
+    });
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(

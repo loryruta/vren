@@ -218,7 +218,7 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
 
 void vren::renderer::render(
 	int frame_idx,
-	vren::resource_container& resource_container,
+	vren::resource_container& res_container,
 	vren::render_target const& target,
 	VkSemaphore src_semaphore,
 	VkSemaphore dst_semaphore,
@@ -227,7 +227,10 @@ void vren::renderer::render(
 	vren::camera const& camera
 )
 {
-	auto cmd_buf = m_context->m_graphics_command_pool->acquire_command_buffer();
+	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
+        m_context->m_graphics_command_pool->acquire()
+    );
+    res_container.add_resource(cmd_buf);
 
 	/* Command buffer begin */
 	VkCommandBufferBeginInfo cmd_buf_begin_info{};
@@ -236,7 +239,7 @@ void vren::renderer::render(
 	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	cmd_buf_begin_info.pInheritanceInfo = nullptr;
 
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &cmd_buf_begin_info));
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info));
 
 	/* Render pass begin */
 	VkClearValue clear_values[] = {
@@ -251,20 +254,20 @@ void vren::renderer::render(
 	render_pass_begin_info.clearValueCount = std::size(clear_values);
 	render_pass_begin_info.pClearValues = clear_values;
 
-	vkCmdBeginRenderPass(cmd_buf.m_handle, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(cmd_buf->m_handle, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(cmd_buf.m_handle, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf.m_handle, 0, 1, &target.m_render_area);
+	vkCmdSetViewport(cmd_buf->m_handle, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf->m_handle, 0, 1, &target.m_render_area);
 
 	/* Write light buffers */
     _upload_lights_array(frame_idx, lights_arr);
 
 	/* Subpass recording */
-	m_simple_draw_pass->record_commands(frame_idx, resource_container, cmd_buf, render_list, lights_arr, camera);
+	m_simple_draw_pass->record_commands(frame_idx, cmd_buf->m_handle, res_container, render_list, lights_arr, camera);
 
 	/* Render pass end */
-	vkCmdEndRenderPass(cmd_buf.m_handle);
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
+	vkCmdEndRenderPass(cmd_buf->m_handle);
+	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf->m_handle));
 
 	/* Submission */
 	VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -276,7 +279,7 @@ void vren::renderer::render(
 	submit_info.pWaitSemaphores = &src_semaphore;
 	submit_info.pWaitDstStageMask = &wait_stage;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
+	submit_info.pCommandBuffers = &cmd_buf->m_handle;
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = &dst_semaphore;
 

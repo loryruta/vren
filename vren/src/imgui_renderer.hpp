@@ -9,8 +9,8 @@
 #include <imgui_impl_vulkan.h>
 
 #include "renderer.hpp"
-#include "command_pool.hpp"
-#include "descriptor_pool.hpp"
+#include "pooling/command_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
 
 namespace vren
 {
@@ -57,8 +57,8 @@ namespace vren
 		~imgui_renderer();
 
 		void record_commands(
+            VkCommandBuffer cmd_buf,
             vren::resource_container& res_container,
-			vren::vk_command_buffer const& cmd_buf,
 			vren::render_target const& target,
 			std::function<void()> const& show_guis_func
 		);

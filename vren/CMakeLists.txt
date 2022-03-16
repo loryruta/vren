@@ -17,12 +17,12 @@ set(SRC
         src/material.cpp
         src/light_array.cpp
         src/light_array.hpp
-        src/descriptor_pool.hpp
-        src/descriptor_pool.cpp
+        src/pooling/descriptor_pool.hpp
+        src/pooling/descriptor_pool.cpp
         src/imgui_renderer.hpp
         src/imgui_renderer.cpp
-        src/command_pool.hpp
-        src/command_pool.cpp
+        src/pooling/command_pool.hpp
+        src/pooling/command_pool.cpp
         src/resource_container.hpp
         src/utils/buffer.hpp
         src/utils/buffer.cpp
@@ -32,7 +32,9 @@ set(SRC
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
         src/utils/vk_raii.cpp
-)
+        src/command_list.hpp
+        src/command_list.cpp
+        src/pooling/object_pool.hpp src/pooling/semaphore_pool.hpp src/pooling/fence_pool.hpp)
 
 add_library(vren ${SRC})
 

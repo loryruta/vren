@@ -8,7 +8,7 @@
 
 #include "context.hpp"
 
-namespace vren
+namespace vren // TODO convert to object_pool
 {
 	// Forward decl
 	class vk_descriptor_set;

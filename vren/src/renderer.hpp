@@ -6,10 +6,10 @@
 #include <vulkan/vulkan.h>
 
 #include "context.hpp"
-#include "descriptor_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
-#include "command_pool.hpp"
+#include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
 
 namespace vren
@@ -91,7 +91,7 @@ namespace vren
 
 		void render(
 			int frame_idx,
-			vren::resource_container& resource_container,
+			vren::resource_container& res_container,
 			vren::render_target const& target,
 			VkSemaphore src_semaphore,
 			VkSemaphore dst_semaphore,

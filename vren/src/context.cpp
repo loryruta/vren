@@ -5,8 +5,10 @@
 
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
-#include "descriptor_pool.hpp"
-#include "command_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
+#include "pooling/fence_pool.hpp"
+#include "pooling/semaphore_pool.hpp"
+#include "pooling/command_pool.hpp"
 #include "material.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
@@ -316,8 +318,12 @@ void vren::context::_init()
 	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
 	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
 
+    // Pools initialization
 	_init_graphics_command_pool();
 	_init_transfer_command_pool();
+
+    m_fence_pool = std::make_shared<vren::fence_pool>(shared_from_this());
+    m_semaphore_pool = std::make_shared<vren::semaphore_pool>(shared_from_this());
 
 	// Default textures
 	m_white_texture = std::make_shared<vren::vk_utils::texture>(

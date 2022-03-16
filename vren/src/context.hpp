@@ -18,6 +18,8 @@
 namespace vren
 {
 	class command_pool;
+    class fence_pool;
+    class semaphore_pool;
 }
 
 namespace vren::vk_utils
@@ -96,6 +98,9 @@ namespace vren
 		// Command pools
 		std::shared_ptr<vren::command_pool> m_graphics_command_pool;
 		std::shared_ptr<vren::command_pool> m_transfer_command_pool;
+
+        std::shared_ptr<vren::fence_pool> m_fence_pool;
+        std::shared_ptr<vren::semaphore_pool> m_semaphore_pool;
 
 		// Textures
 		std::shared_ptr<vren::vk_utils::texture> m_white_texture;

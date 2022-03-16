@@ -94,8 +94,9 @@ vren::swapchain::_create_depth_buffer(uint32_t width, uint32_t height)
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
 
-    vren::vk_utils::immediate_submit(*m_context, [&](vren::vk_command_buffer const& cmd_buf) {
-        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    vren::vk_utils::immediate_graphics_queue_submit(*m_context, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    {
+        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
     });
 
 	auto img_view = vren::vk_utils::create_image_view(
@@ -201,9 +202,16 @@ VkResult vren::presenter::_acquire_swapchain_image(vren::swapchain_frame const& 
 
 void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame const& frame)
 {
-	auto cmd_buf = m_context->m_graphics_command_pool->acquire_command_buffer();
+	auto cmd_buf = m_context->m_graphics_command_pool->acquire();
 
-    vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
+    /* Command buffer begin */
+    VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
+
+    /* Recording */
 	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf.m_handle, frame.m_color_buffer.m_image);
 
     /* Submission */
@@ -225,11 +233,19 @@ void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapcha
 
 void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame const& frame)
 {
-	auto cmd_buf = m_context->m_graphics_command_pool->acquire_command_buffer();
+	auto cmd_buf = m_context->m_graphics_command_pool->acquire();
 
-    vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
+    /* Command buffer begin */
+    VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
+
+    /* Recording */
 	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf.m_handle, frame.m_color_buffer.m_image);
 
+    /* Submission */
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
 	VkSubmitInfo submit_info{};
@@ -308,6 +324,7 @@ void vren::presenter::present(render_func const& render_fn)
 
 	vren::vk_utils::check(vkWaitForFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle, VK_TRUE, UINT64_MAX));
 	frame.m_resource_container.clear();
+    vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle));
 
 	/* Image acquirement */
 	uint32_t image_idx;

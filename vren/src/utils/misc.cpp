@@ -1,5 +1,8 @@
 #include "misc.hpp"
 
+#include "pooling/command_pool.hpp"
+#include "pooling/fence_pool.hpp"
+
 void vren::vk_utils::check(VkResult result)
 {
 	if (result != VK_SUCCESS)
@@ -35,74 +38,50 @@ vren::vk_fence vren::vk_utils::create_fence(
 	return vren::vk_fence(ctx, fence);
 }
 
-void vren::vk_utils::submit_command_buffer(
-	VkQueue queue,
-	std::vector<VkSemaphore> const& wait_semaphores,
-	std::vector<VkPipelineStageFlags> const& wait_stages,
-	vren::vk_command_buffer const& cmd_buf,
-	std::vector<VkSemaphore> const& signal_semaphores,
-	VkFence signal_fence
-)
+void vren::vk_utils::immediate_submit(vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func)
 {
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = wait_semaphores.size();
-	submit_info.pWaitSemaphores = wait_semaphores.data();
-	submit_info.pWaitDstStageMask = wait_stages.data();
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
-	submit_info.signalSemaphoreCount = signal_semaphores.size();
-	submit_info.pSignalSemaphores = signal_semaphores.data();
+	auto cmd_buf = cmd_pool.acquire();
 
-	vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, signal_fence));
+    vren::resource_container res_container;
+
+    VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
+
+	record_func(cmd_buf.m_handle, res_container);
+
+    vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
+
+    VkSubmitInfo submit_info{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = nullptr,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &cmd_buf.m_handle,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = nullptr
+    };
+
+    auto fence = ctx.m_fence_pool->acquire();
+    vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, fence.m_handle));
+
+    vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.m_handle, VK_TRUE, UINT64_MAX));
 }
 
-void vren::vk_utils::begin_single_submit_command_buffer(VkCommandBuffer cmd_buf)
+void vren::vk_utils::immediate_graphics_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func)
 {
-	VkCommandBufferBeginInfo cmd_buf_begin_info{};
-	cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmd_buf_begin_info.pNext = nullptr;
-	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	cmd_buf_begin_info.pInheritanceInfo = nullptr;
-
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &cmd_buf_begin_info));
+    vren::vk_utils::immediate_submit(ctx, *ctx.m_graphics_command_pool, ctx.m_graphics_queue, record_func);
 }
 
-void vren::vk_utils::end_single_submit_command_buffer(
-	vren::vk_command_buffer const&& cmd_buf,
-	VkQueue queue
-)
+void vren::vk_utils::immediate_transfer_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func)
 {
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = 0;
-	submit_info.pWaitSemaphores = nullptr;
-	submit_info.pWaitDstStageMask = nullptr;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
-	submit_info.signalSemaphoreCount = 0;
-	submit_info.pSignalSemaphores = nullptr;
-
-	vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
-
-	vren::vk_utils::check(vkQueueWaitIdle(queue)); // todo wait just on the current transmission through a fence
-}
-
-void vren::vk_utils::immediate_submit(
-	vren::context const& ctx,
-	std::function<void(vren::vk_command_buffer const&)> submit_func
-)
-{
-	auto cmd_buf = ctx.m_graphics_command_pool->acquire_command_buffer();
-	vren::vk_utils::begin_single_submit_command_buffer(cmd_buf.m_handle);
-
-	submit_func(cmd_buf);
-
-	vren::vk_utils::end_single_submit_command_buffer(std::move(cmd_buf), ctx.m_graphics_queue);
+    vren::vk_utils::immediate_submit(ctx, *ctx.m_transfer_command_pool, ctx.m_transfer_queue, record_func);
 }
 
 vren::vk_utils::surface_details vren::vk_utils::get_surface_details(

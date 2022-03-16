@@ -9,7 +9,8 @@
 
 #include "context.hpp"
 #include "vk_raii.hpp"
-#include "command_pool.hpp"
+#include "resource_container.hpp"
+#include "pooling/command_pool.hpp"
 
 namespace vren::vk_utils
 {
@@ -34,13 +35,14 @@ namespace vren::vk_utils
 
     /** Expects the image to be in VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL */
 	void upload_image_data(
-		std::shared_ptr<vren::context> const& ctx,
+        std::shared_ptr<vren::context> const& ctx,
         VkCommandBuffer cmd_buf,
-		VkImage img,
-		uint32_t img_width,
-		uint32_t img_height,
-		void* img_data
-	);
+        vren::resource_container& res_container,
+        VkImage img,
+        uint32_t img_width,
+        uint32_t img_height,
+        void* img_data
+    );
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// Image layout transitioning

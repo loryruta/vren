@@ -48,25 +48,28 @@ vren::vk_utils::create_image(
 }
 
 void vren::vk_utils::upload_image_data(
-	std::shared_ptr<vren::context> const& ctx,
+    std::shared_ptr<vren::context> const& ctx,
     VkCommandBuffer cmd_buf,
-	VkImage img,
-	uint32_t img_width,
-	uint32_t img_height,
-	void* img_data
+    vren::resource_container& res_container,
+    VkImage img,
+    uint32_t img_width,
+    uint32_t img_height,
+    void* img_data
 )
 {
 	VkMemoryRequirements img_mem_req{};
 	vkGetImageMemoryRequirements(ctx->m_device, img, &img_mem_req);
 	VkDeviceSize img_size = img_mem_req.size;
 
-	vren::vk_utils::buffer staging_buffer =
-		vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, img_size, false);
+	auto staging_buffer = std::make_shared<vren::vk_utils::buffer>(
+        vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, img_size, false)
+    );
+    res_container.add_resource(staging_buffer);
 
 	void* mapped_img_data;
-	vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation.m_handle, &mapped_img_data));
+	vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data));
 		std::memcpy(mapped_img_data, img_data, static_cast<size_t>(img_size));
-	vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer.m_allocation.m_handle);
+	vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle);
 
 	VkBufferImageCopy img_copy_region{};
 	img_copy_region.bufferOffset = 0;
@@ -82,7 +85,7 @@ void vren::vk_utils::upload_image_data(
 		img_height,
 		1
 	};
-	vkCmdCopyBufferToImage(cmd_buf, staging_buffer.m_buffer.m_handle, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &img_copy_region);
+	vkCmdCopyBufferToImage(cmd_buf, staging_buffer->m_buffer.m_handle, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &img_copy_region);
 }
 
 void vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(VkCommandBuffer cmd_buf, VkImage img)
@@ -309,10 +312,13 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 {
 	auto img = vren::vk_utils::create_image(ctx, width, height, format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
-        vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf.m_handle, img.m_image.m_handle);
-        vren::vk_utils::upload_image_data(ctx, cmd_buf.m_handle, img.m_image.m_handle, width, height, image_data);
-        vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(cmd_buf.m_handle, img.m_image.m_handle);
+    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    {
+        vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf, img.m_image.m_handle);
+
+        vren::vk_utils::upload_image_data(ctx, cmd_buf, res_container, img.m_image.m_handle, width, height, image_data);
+
+        vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(cmd_buf, img.m_image.m_handle);
     });
 
 	auto img_view = vren::vk_image_view(
@@ -386,8 +392,9 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
 	);
 
-    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
-        vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    {
+        vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, img.m_image.m_handle);
     });
 
 	auto img_view = vren::vk_utils::create_image_view(
@@ -418,8 +425,9 @@ vren::vk_utils::custom_framebuffer::create_depth_buffer(
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
 
-    vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
-        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf.m_handle, img.m_image.m_handle);
+    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    {
+        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
     });
 
 	auto img_view = vren::vk_utils::create_image_view(

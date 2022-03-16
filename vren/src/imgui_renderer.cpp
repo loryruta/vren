@@ -173,8 +173,8 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 	init_info.CheckVkResultFn = vren::vk_utils::check;
 	ImGui_ImplVulkan_Init(&init_info, m_render_pass);
 
-	vren::vk_utils::immediate_submit(*ctx, [&](vren::vk_command_buffer const& cmd_buf) {
-		ImGui_ImplVulkan_CreateFontsTexture(cmd_buf.m_handle);
+	vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container) {
+		ImGui_ImplVulkan_CreateFontsTexture(cmd_buf);
 	});
 
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
@@ -253,8 +253,8 @@ void vren::imgui_renderer::_init_render_pass()
 }
 
 void vren::imgui_renderer::record_commands(
+    VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
-	vren::vk_command_buffer const& cmd_buf,
 	vren::render_target const& target,
 	std::function<void()> const& show_guis_func
 )
@@ -278,15 +278,15 @@ void vren::imgui_renderer::record_commands(
 	begin_info.renderArea = target.m_render_area;
 	begin_info.clearValueCount = 2;
 	begin_info.pClearValues = clear_values;
-	vkCmdBeginRenderPass(cmd_buf.m_handle, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(cmd_buf.m_handle, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf.m_handle, 0, 1, &target.m_render_area);
+	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
 	ImGui::Render();
 	ImDrawData* draw_data = ImGui::GetDrawData();
-	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf.m_handle);
+	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf);
 
-	vkCmdEndRenderPass(cmd_buf.m_handle);
+	vkCmdEndRenderPass(cmd_buf);
 }
 

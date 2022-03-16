@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 
 #include "context.hpp"
-#include "descriptor_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
 #include "utils/image.hpp"
 
 namespace vren

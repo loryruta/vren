@@ -5,7 +5,7 @@
 
 #include "context.hpp"
 #include "vk_raii.hpp"
-#include "command_pool.hpp"
+#include "resource_container.hpp"
 
 namespace vren::vk_utils
 {
@@ -19,27 +19,14 @@ namespace vren::vk_utils
 		std::shared_ptr<vren::context> const& ctx
 	);
 
-	void submit_command_buffer(
-		VkQueue queue,
-		std::vector<VkSemaphore> const& wait_semaphores,
-		std::vector<VkPipelineStageFlags> const& wait_stages,
-		vren::vk_command_buffer const& cmd_buf,
-		std::vector<VkSemaphore> const& signal_semaphores,
-		VkFence signal_fence
-	);
+    using record_commands_func_t =
+        std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
 
-	void begin_single_submit_command_buffer(VkCommandBuffer cmd_buf);
+	void immediate_submit(vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func);
 
-	void end_single_submit_command_buffer(
-		vren::vk_command_buffer const&& cmd_buf,
-		VkQueue queue
-	);
-
-	/** Immediately submits a command buffer on the graphics queue. */
-	void immediate_submit(
-		vren::context const& ctx,
-		std::function<void(vren::vk_command_buffer const&)> submit_func
-	);
+    void immediate_graphics_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
+    //void immediate_compute_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
+    void immediate_transfer_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// Surface details

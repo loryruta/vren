@@ -1,6 +1,6 @@
 #include "screen.hpp"
 
-#include "descriptor_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
 #include "utils/image.hpp"
 
 vren_demo::screen::screen(
