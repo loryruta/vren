@@ -1,1 +1,11 @@
-theme: jekyll-theme-leap-day
+theme: minima
+
+minima:
+  skin: dark
+
+author:
+  name: loryruta
+  link: "https://github.com/loryruta"
+
+include:
+  - _pages
