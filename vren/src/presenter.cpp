@@ -16,7 +16,7 @@ vren::swapchain_frame::swapchain_frame(
 	m_transited_to_color_attachment_image_layout_semaphore(vren::vk_utils::create_semaphore(ctx)),
 	m_render_finished_semaphore(vren::vk_utils::create_semaphore(ctx)),
 	m_transited_to_present_image_layout_semaphore(vren::vk_utils::create_semaphore(ctx)),
-	m_frame_fence(vren::vk_utils::create_fence(ctx))
+	m_frame_fence(vren::vk_utils::create_fence(ctx, true))
 {}
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -330,8 +330,6 @@ void vren::presenter::present(render_func const& render_fn)
 
 	vren::vk_utils::check(vkWaitForFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle, VK_TRUE, UINT64_MAX));
 	frame.m_resource_container.clear();
-
-    vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle));
 
 	/* Image acquirement */
 	uint32_t image_idx;

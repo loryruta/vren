@@ -15,9 +15,7 @@ namespace vren::vk_utils
 		std::shared_ptr<vren::context> const& ctx
 	);
 
-	vren::vk_fence create_fence(
-		std::shared_ptr<vren::context> const& ctx
-	);
+	vren::vk_fence create_fence(std::shared_ptr<vren::context> const& ctx, bool signaled = false);
 
     using record_commands_func_t =
         std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;

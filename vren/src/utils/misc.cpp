@@ -26,12 +26,13 @@ vren::vk_semaphore vren::vk_utils::create_semaphore(
 	return vren::vk_semaphore(ctx, sem);
 }
 
-vren::vk_fence vren::vk_utils::create_fence(
-	std::shared_ptr<vren::context> const& ctx
-)
+vren::vk_fence vren::vk_utils::create_fence(std::shared_ptr<vren::context> const& ctx, bool signaled)
 {
-	VkFenceCreateInfo fence_info{};
-	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	VkFenceCreateInfo fence_info{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : (VkFenceCreateFlags) 0
+    };
 
 	VkFence fence;
 	vren::vk_utils::check(vkCreateFence(ctx->m_device, &fence_info, nullptr, &fence));
