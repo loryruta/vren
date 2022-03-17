@@ -40,8 +40,6 @@ namespace vren
 	class renderer : public std::enable_shared_from_this<renderer>
 	{
 	public:
-		static VkFormat const k_color_output_format = VK_FORMAT_B8G8R8A8_UNORM;
-
 		std::shared_ptr<context> m_context;
 
 		std::shared_ptr<vren::vk_render_pass> m_render_pass;

@@ -99,6 +99,10 @@ namespace vren
 		depth_buffer m_depth_buffer;
 
 		uint32_t m_image_width, m_image_height;
+        uint32_t m_image_count;
+        VkSurfaceFormatKHR m_surface_format;
+        VkPresentModeKHR m_present_mode;
+
 		std::shared_ptr<vren::vk_render_pass> m_render_pass;
 
 		std::vector<vren::swapchain_frame> m_frames;
@@ -109,6 +113,8 @@ namespace vren
 			uint32_t img_width,
 			uint32_t img_height,
 			uint32_t img_count,
+            VkSurfaceFormatKHR surface_format,
+            VkPresentModeKHR present_mode,
 			std::shared_ptr<vren::vk_render_pass> const& render_pass
 		);
 		swapchain(swapchain const& other) = delete;
@@ -141,6 +147,7 @@ namespace vren
 	private:
 		uint32_t _pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
 		VkSurfaceFormatKHR _pick_surface_format(vren::vk_utils::surface_details const& surf_details);
+        VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
 
 		VkResult _acquire_swapchain_image(vren::swapchain_frame const& frame, uint32_t* image_idx);
 		void _transition_to_color_attachment_image_layout(vren::swapchain_frame const& frame);
@@ -151,10 +158,12 @@ namespace vren
 		std::shared_ptr<vren::context> m_context;
 		VkSurfaceKHR m_surface;
 
+        uint32_t m_image_count;
+
+
 		std::unique_ptr<vren::swapchain> m_swapchain;
 
 		uint32_t m_present_queue_family_idx = -1;
-
 		uint32_t m_current_frame_idx = 0;
 
 		presenter(

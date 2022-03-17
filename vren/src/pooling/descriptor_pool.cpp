@@ -11,9 +11,7 @@
 
 vren::descriptor_pool::descriptor_pool(std::shared_ptr<vren::context> const& ctx) :
 	m_context(ctx)
-{
-	_alloc_descriptor_pool(); // TODO do not allocate as soon as initialized (could be an unused descriptor_pool)
-}
+{}
 
 vren::descriptor_pool::~descriptor_pool()
 {
@@ -38,7 +36,7 @@ void vren::descriptor_pool::_alloc_descriptor_pool()
 
 vren::vk_descriptor_set vren::descriptor_pool::acquire_descriptor_set(VkDescriptorSetLayout desc_set_layout)
 {
-	if (m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)
+	if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)
 	{
 		_alloc_descriptor_pool();
 	}

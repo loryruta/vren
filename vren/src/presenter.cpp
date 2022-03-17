@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "utils/image_layout_transitions.hpp"
+
 vren::swapchain_frame::swapchain_frame(
 	std::shared_ptr<vren::context> const& ctx,
 	color_buffer&& color_buf,
@@ -27,6 +29,8 @@ vren::swapchain::swapchain(
 	uint32_t img_width,
 	uint32_t img_height,
 	uint32_t img_count,
+    VkSurfaceFormatKHR surface_format,
+    VkPresentModeKHR present_mode,
 	std::shared_ptr<vren::vk_render_pass> const& render_pass
 ) :
 	m_context(ctx),
@@ -34,6 +38,9 @@ vren::swapchain::swapchain(
 	m_depth_buffer(_create_depth_buffer(img_width, img_height)),
 	m_image_width(img_width),
 	m_image_height(img_height),
+    m_image_count(img_count),
+    m_surface_format(surface_format),
+    m_present_mode(present_mode),
 	m_render_pass(render_pass)
 {
 	std::vector<VkImage> swapchain_images(img_count);
@@ -44,11 +51,7 @@ vren::swapchain::swapchain(
 		auto color_buf = _create_color_buffer_for_frame(swapchain_img);
 		auto fb = _create_framebuffer_for_frame(color_buf, img_width, img_height, render_pass->m_handle);
 
-		m_frames.emplace_back(
-			m_context,
-			std::move(color_buf),
-			std::move(fb)
-		);
+		m_frames.emplace_back(m_context, std::move(color_buf), std::move(fb));
 	}
 }
 
@@ -89,7 +92,7 @@ vren::swapchain::_create_depth_buffer(uint32_t width, uint32_t height)
 	auto img = vren::vk_utils::create_image(
 		m_context,
 		width, height,
-		VK_FORMAT_D32_SFLOAT,
+        VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
@@ -99,33 +102,19 @@ vren::swapchain::_create_depth_buffer(uint32_t width, uint32_t height)
         vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
     });
 
-	auto img_view = vren::vk_utils::create_image_view(
-		m_context,
-		img.m_image.m_handle,
-		VK_FORMAT_D32_SFLOAT,
-		VK_IMAGE_ASPECT_DEPTH_BIT
-	);
-
 	return vren::swapchain::depth_buffer(
 		std::move(img),
-		std::move(img_view)
+        vren::vk_utils::create_image_view(m_context, img.m_image.m_handle, VREN_DEPTH_BUFFER_OUTPUT_FORMAT, VK_IMAGE_ASPECT_DEPTH_BIT)
 	);
 }
 
 vren::swapchain_frame::color_buffer
 vren::swapchain::_create_color_buffer_for_frame(VkImage swapchain_img)
 {
-	auto img_view = vren::vk_utils::create_image_view(
-		m_context,
-		swapchain_img,
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
 	return vren::swapchain_frame::color_buffer(
-		swapchain_img,
-		std::move(img_view)
-	);
+        swapchain_img,
+        vren::vk_utils::create_image_view(m_context, swapchain_img, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT)
+    );
 }
 
 vren::vk_framebuffer vren::swapchain::_create_framebuffer_for_frame(
@@ -187,12 +176,27 @@ uint32_t vren::presenter::_pick_min_image_count(vren::vk_utils::surface_details 
 VkSurfaceFormatKHR vren::presenter::_pick_surface_format(vren::vk_utils::surface_details const& surf_details)
 {
 	for (VkSurfaceFormatKHR surf_format : surf_details.m_surface_formats) {
-		if (surf_format.format == VK_FORMAT_R8G8B8A8_UNORM/* && surf_format.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR*/) {
+		if (surf_format.format == VK_FORMAT_B8G8R8A8_UNORM/* && surf_format.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR*/) {
 			return surf_format;
 		}
 	}
 
-	throw std::runtime_error("Couldn't find a compatible surface format");
+	throw std::runtime_error("Unsupported format");
+}
+
+VkPresentModeKHR vren::presenter::_pick_present_mode(vren::vk_utils::surface_details const& surf_details)
+{
+    auto& present_modes = surf_details.m_present_modes;
+
+    if (std::find(present_modes.begin(), present_modes.end(), VK_PRESENT_MODE_MAILBOX_KHR) != present_modes.end()) {
+        return VK_PRESENT_MODE_MAILBOX_KHR;
+    }
+
+    if (std::find(present_modes.begin(), present_modes.end(), VK_PRESENT_MODE_FIFO_KHR) != present_modes.end()) {
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    throw std::runtime_error("Unsupported present modes");
 }
 
 VkResult vren::presenter::_acquire_swapchain_image(vren::swapchain_frame const& frame, uint32_t* image_idx)
@@ -287,6 +291,7 @@ void vren::presenter::recreate_swapchain(
 
 	uint32_t img_count = _pick_min_image_count(surf_details);
 	VkSurfaceFormatKHR surf_format = _pick_surface_format(surf_details);
+    VkPresentModeKHR present_mode = _pick_present_mode(surf_details);
 
 	VkSwapchainCreateInfoKHR swapchain_info{};
 	swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -304,13 +309,14 @@ void vren::presenter::recreate_swapchain(
 	swapchain_info.pQueueFamilyIndices = nullptr;
 	swapchain_info.preTransform = surf_details.m_capabilities.currentTransform;
 	swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchain_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+	swapchain_info.presentMode = present_mode;
 	swapchain_info.clipped = VK_TRUE;
 	swapchain_info.oldSwapchain = m_swapchain ? m_swapchain->m_handle : VK_NULL_HANDLE;
 
 	VkSwapchainKHR swapchain;
 	vren::vk_utils::check(vkCreateSwapchainKHR(m_context->m_device, &swapchain_info, nullptr, &swapchain));
-	m_swapchain = std::make_unique<vren::swapchain>(m_context, swapchain, width, height, img_count, render_pass);
+
+	m_swapchain = std::make_unique<vren::swapchain>(m_context, swapchain, width, height, img_count, surf_format, present_mode, render_pass);
 }
 
 void vren::presenter::present(render_func const& render_fn)
@@ -324,6 +330,7 @@ void vren::presenter::present(render_func const& render_fn)
 
 	vren::vk_utils::check(vkWaitForFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle, VK_TRUE, UINT64_MAX));
 	frame.m_resource_container.clear();
+
     vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle));
 
 	/* Image acquirement */
