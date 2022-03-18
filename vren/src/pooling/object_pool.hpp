@@ -19,8 +19,6 @@ namespace vren
     private:
         std::shared_ptr<object_pool<_t>> m_pool;
 
-        explicit pooled_object() = default;
-
     public:
         _t m_handle;
 
@@ -29,9 +27,9 @@ namespace vren
             m_handle(handle)
         {}
         pooled_object(pooled_object<_t> const& other) = delete;
-        pooled_object(pooled_object<_t>&& other) noexcept : pooled_object()
+        pooled_object(pooled_object<_t>&& other) noexcept
         {
-            std::swap(*this, other);
+			*this = std::move(other);
         }
 
         ~pooled_object()
@@ -44,9 +42,12 @@ namespace vren
         pooled_object<_t>& operator=(pooled_object<_t> const& other) = delete;
         pooled_object<_t>& operator=(pooled_object<_t>&& other) noexcept
         {
-            auto tmp(std::move(other));
-            std::swap(*this, tmp);
-            return *this;
+			m_pool = other.m_pool;
+			m_handle = other.m_handle;
+
+			other.m_pool = nullptr;
+
+			return *this;
         }
     };
 
