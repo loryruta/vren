@@ -209,8 +209,6 @@ void vren::simple_draw_pass::record_commands(
 {
 	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
 
-	VkDescriptorSet descriptor_set;
-
 	// Camera
 	vkCmdPushConstants(cmd_buf, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vren::camera), &camera);
 
@@ -250,7 +248,7 @@ void vren::simple_draw_pass::record_commands(
 			)
 		);
 		vren::update_material_descriptor_set(*m_renderer->m_context, *render_obj.m_material, mat_desc_set->m_handle);
-		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &descriptor_set, 0, nullptr);
+		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->m_handle, 0, nullptr);
 		res_container.add_resource(mat_desc_set);
 
 		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);

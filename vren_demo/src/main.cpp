@@ -303,12 +303,12 @@ int main(int argc, char* argv[])
     presenter.recreate_swapchain(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, renderer->m_render_pass);
 
 	auto render_list = vren::render_list::create(ctx);
+
 	vren::light_array lights_arr{};
 
-	char const* model_path = "resources/models/Sponza/glTF/Sponza.gltf";
 	vren::tinygltf_scene loaded_scene;
 	vren::tinygltf_loader gltf_loader(ctx);
-	//gltf_loader.load_from_file(model_path, *render_list, loaded_scene);
+	gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", *render_list, loaded_scene);
 
 	// ---------------------------------------------------------------- Game loop
 

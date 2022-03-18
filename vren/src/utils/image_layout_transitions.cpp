@@ -70,7 +70,7 @@ void vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachme
     mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     mem_barrier.pNext = nullptr;
     mem_barrier.srcAccessMask = NULL;
-    mem_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    mem_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     mem_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     mem_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     mem_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -83,7 +83,7 @@ void vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachme
     mem_barrier.subresourceRange.layerCount = 1;
 
     VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
     vkCmdPipelineBarrier(cmd_buf, src_stage, dst_stage, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
 }

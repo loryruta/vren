@@ -204,8 +204,7 @@ VkResult vren::presenter::_acquire_swapchain_image(vren::swapchain_frame const& 
 	return vkAcquireNextImageKHR(m_context->m_device, m_swapchain->m_handle, UINT64_MAX, frame.m_image_available_semaphore.m_handle, VK_NULL_HANDLE, image_idx);
 }
 
-void
-vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame& frame)
+void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame& frame)
 {
 	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
 		m_context->m_graphics_command_pool->acquire()
@@ -242,8 +241,7 @@ vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_fr
 	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
 
-void
-vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame& frame)
+void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame& frame)
 {
 	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
 		m_context->m_graphics_command_pool->acquire()
