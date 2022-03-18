@@ -204,19 +204,26 @@ VkResult vren::presenter::_acquire_swapchain_image(vren::swapchain_frame const& 
 	return vkAcquireNextImageKHR(m_context->m_device, m_swapchain->m_handle, UINT64_MAX, frame.m_image_available_semaphore.m_handle, VK_NULL_HANDLE, image_idx);
 }
 
-void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame const& frame)
+void
+vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame& frame)
 {
-	auto cmd_buf = m_context->m_graphics_command_pool->acquire();
+	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
+		m_context->m_graphics_command_pool->acquire()
+	);
+	frame.m_resource_container.add_resource(cmd_buf);
 
     /* Command buffer begin */
     VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &begin_info));
 
     /* Recording */
-	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf.m_handle, frame.m_color_buffer.m_image);
+	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf->m_handle, frame.m_color_buffer.m_image);
+
+	/* Command buffer end */
+	vkEndCommandBuffer(cmd_buf->m_handle);
 
     /* Submission */
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -228,26 +235,33 @@ void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapcha
 	submit_info.pWaitSemaphores = &frame.m_image_available_semaphore.m_handle;
 	submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
+	submit_info.pCommandBuffers = &cmd_buf->m_handle;
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = &frame.m_transited_to_color_attachment_image_layout_semaphore.m_handle;
 
 	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
 
-void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame const& frame)
+void
+vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame& frame)
 {
-	auto cmd_buf = m_context->m_graphics_command_pool->acquire();
+	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
+		m_context->m_graphics_command_pool->acquire()
+	);
+	frame.m_resource_container.add_resource(cmd_buf);
 
     /* Command buffer begin */
     VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &begin_info));
 
     /* Recording */
-	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf.m_handle, frame.m_color_buffer.m_image);
+	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf->m_handle, frame.m_color_buffer.m_image);
+
+	/* Command buffer end */
+	vkEndCommandBuffer(cmd_buf->m_handle);
 
     /* Submission */
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
@@ -259,7 +273,7 @@ void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame 
 	submit_info.pWaitSemaphores = &frame.m_render_finished_semaphore.m_handle;
 	submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf.m_handle;
+	submit_info.pCommandBuffers = &cmd_buf->m_handle;
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = &frame.m_transited_to_present_image_layout_semaphore.m_handle;
 
@@ -331,6 +345,8 @@ void vren::presenter::present(render_func const& render_fn)
 	vren::vk_utils::check(vkWaitForFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle, VK_TRUE, UINT64_MAX));
 	frame.m_resource_container.clear();
 
+	vkResetFences(m_context->m_device, 1, &frame.m_frame_fence.m_handle);
+
 	/* Image acquirement */
 	uint32_t image_idx;
 	result = _acquire_swapchain_image(frame, &image_idx);
@@ -362,7 +378,7 @@ void vren::presenter::present(render_func const& render_fn)
 			.x = 0,
 			.y = (float) m_swapchain->m_image_height,
 			.width = (float) m_swapchain->m_image_width,
-			.height = (float) -m_swapchain->m_image_height,
+			.height = -((float) m_swapchain->m_image_height),
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		}

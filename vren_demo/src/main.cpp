@@ -346,5 +346,9 @@ int main(int argc, char* argv[])
 
 	vkDeviceWaitIdle(ctx->m_device);
 
+	glfwDestroyWindow(g_window);
+
+	glfwTerminate();
+
 	return 0;
 }

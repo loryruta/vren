@@ -150,8 +150,8 @@ namespace vren
         VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
 
 		VkResult _acquire_swapchain_image(vren::swapchain_frame const& frame, uint32_t* image_idx);
-		void _transition_to_color_attachment_image_layout(vren::swapchain_frame const& frame);
-		void _transition_to_present_image_layout(vren::swapchain_frame const& frame);
+		void _transition_to_color_attachment_image_layout(vren::swapchain_frame& frame);
+		void _transition_to_present_image_layout(vren::swapchain_frame& frame);
 		VkResult _present(vren::swapchain_frame const& frame, uint32_t image_idx);
 
 	public:

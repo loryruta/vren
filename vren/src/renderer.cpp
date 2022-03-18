@@ -214,7 +214,8 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
     vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], lights_arr.m_spot_lights.data(), spot_lights_count * sizeof(vren::spot_light), 0);
 }
 
-void vren::renderer::render(
+void
+vren::renderer::render(
 	int frame_idx,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
@@ -284,7 +285,8 @@ void vren::renderer::render(
 	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
 
-std::shared_ptr<vren::renderer> vren::renderer::create(std::shared_ptr<context> const& ctx)
+std::shared_ptr<vren::renderer>
+vren::renderer::create(std::shared_ptr<context> const& ctx)
 {
 	auto renderer = std::shared_ptr<vren::renderer>(new vren::renderer(ctx));
 	renderer->_init();
