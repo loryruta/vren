@@ -1,8 +1,5 @@
 theme: minima
 
-minima:
-  skin: dark
-
 author:
   name: loryruta
   link: "https://github.com/loryruta"
