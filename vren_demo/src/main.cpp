@@ -14,6 +14,8 @@
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
 #include "imgui_renderer.hpp"
+#include "pooling/semaphore_pool.hpp"
+#include "ui.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -300,6 +302,8 @@ int main(int argc, char* argv[])
 
 	auto render_list = vren::render_list::create(ctx);
 
+	auto ui = vren_demo::ui::main_ui(ctx, renderer);
+
 	vren::light_array lights_arr{};
 	lights_arr.m_point_lights.push_back({
 		.m_position = {0, 100, 0},
@@ -313,8 +317,6 @@ int main(int argc, char* argv[])
 	// ---------------------------------------------------------------- Game loop
 
 	vren_demo::camera camera{};
-	camera.m_aspect_ratio = VREN_DEMO_WINDOW_WIDTH / (float) VREN_DEMO_WINDOW_HEIGHT;
-
 	glfwSetKeyCallback(g_window, on_key_press);
 
 	int fb_width = -1, fb_height = -1;
@@ -348,14 +350,27 @@ int main(int argc, char* argv[])
 		int win_width, win_height;
 		glfwGetWindowSize(g_window, &win_width, &win_height);
 
-		presenter.present([&](int frame_idx, vren::resource_container& res_container, vren::render_target const& renderer_target, VkSemaphore src_sem, VkSemaphore dst_sem)
+		presenter.present([&](int frame_idx, vren::resource_container& res_container, vren::render_target const& target, VkSemaphore src_sem, VkSemaphore dst_sem)
         {
+			auto sem = std::make_shared<vren::pooled_vk_semaphore>(
+				ctx->m_semaphore_pool->acquire()
+			);
+			res_container.add_resource(sem);
+
+			/* Renders the scene */
 			auto cam_data = vren::camera{
 				.m_position = camera.m_position,
 				.m_view = camera.get_view(),
 				.m_projection = camera.get_projection()
 			};
-			renderer->render(frame_idx, res_container, renderer_target, src_sem, dst_sem, *render_list, lights_arr, cam_data);
+			renderer->render(frame_idx, res_container, target, *render_list, lights_arr, cam_data, 1, &src_sem, 1, &sem->m_handle);
+
+			/* Renders the UI */
+			ui_renderer.render(frame_idx, res_container, target, [&]()
+			{
+				ui.show();
+
+			}, 1, &sem->m_handle, 1, &dst_sem);
 		});
 	}
 

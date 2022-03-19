@@ -61,10 +61,10 @@ namespace vren
             vren::resource_container& res_container,
 			vren::render_target const& target,
 			std::function<void()> const& show_guis_func,
-			uint32_t dst_semaphore_count = 0,
-			VkSemaphore* dst_semaphores = nullptr,
 			uint32_t src_semaphores_count = 0,
-			VkSemaphore* src_semaphores = nullptr
+			VkSemaphore* src_semaphores = nullptr,
+			uint32_t dst_semaphore_count = 0,
+			VkSemaphore* dst_semaphores = nullptr
 		);
 	};
 }

@@ -60,19 +60,37 @@ namespace vren
     {
         friend pooled_object<_t>;
 
+	private:
+		int m_acquired_count = 0;
+
     protected:
+		std::vector<_t> m_unused_objects;
+
         virtual _t create_object() = 0;
 
         virtual void release(_t const& obj)
-        {
+		{
             m_unused_objects.push_back(obj);
+			m_acquired_count--;
         }
 
     public:
-        std::vector<_t> m_unused_objects;
+		int get_acquired_objects_count() const {
+			return m_acquired_count;
+		}
+
+		int get_pooled_objects_count() const {
+			return m_unused_objects.size();
+		}
+
+		int get_created_objects_count() const {
+			return get_acquired_objects_count() + get_pooled_objects_count();
+		}
 
         virtual vren::pooled_object<_t> acquire()
         {
+			m_acquired_count++;
+
             if (m_unused_objects.empty()) {
                 return vren::pooled_object(
                     std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),

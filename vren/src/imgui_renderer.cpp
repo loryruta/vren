@@ -257,10 +257,10 @@ void vren::imgui_renderer::render(
 	vren::resource_container& res_container,
 	vren::render_target const& target,
 	std::function<void()> const& show_guis_func,
-	uint32_t dst_semaphore_count,
-	VkSemaphore* dst_semaphores,
 	uint32_t src_semaphores_count,
-	VkSemaphore* src_semaphores
+	VkSemaphore* src_semaphores,
+	uint32_t dst_semaphore_count,
+	VkSemaphore* dst_semaphores
 )
 {
 	ImGui_ImplVulkan_NewFrame();

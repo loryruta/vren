@@ -91,11 +91,13 @@ namespace vren
 			int frame_idx,
 			vren::resource_container& res_container,
 			vren::render_target const& target,
-			VkSemaphore src_semaphore, // todo many src semaphores
-			VkSemaphore dst_semaphore,
 			vren::render_list const& render_list,
 			vren::light_array const& lights_arr,
-			vren::camera const& camera
+			vren::camera const& camera,
+			uint32_t src_semaphores_count = 0,
+			VkSemaphore* src_semaphores = nullptr,
+			uint32_t dst_semaphores_count = 0,
+			VkSemaphore* dst_semaphores = nullptr
 		);
 
 		static std::shared_ptr<vren::renderer> create(std::shared_ptr<context> const& ctx);

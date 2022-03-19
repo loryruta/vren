@@ -218,11 +218,13 @@ void vren::renderer::render(
 	int frame_idx,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
-	VkSemaphore src_semaphore,
-	VkSemaphore dst_semaphore,
 	vren::render_list const& render_list,
 	vren::light_array const& lights_arr,
-	vren::camera const& camera
+	vren::camera const& camera,
+	uint32_t src_semaphores_count,
+	VkSemaphore* src_semaphores,
+	uint32_t dst_semaphores_count,
+	VkSemaphore* dst_semaphores
 )
 {
 	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
@@ -276,13 +278,13 @@ void vren::renderer::render(
 	VkSubmitInfo submit_info{};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = &src_semaphore;
+	submit_info.waitSemaphoreCount = src_semaphores_count;
+	submit_info.pWaitSemaphores = src_semaphores;
 	submit_info.pWaitDstStageMask = &wait_stage;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &cmd_buf->m_handle;
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = &dst_semaphore;
+	submit_info.signalSemaphoreCount = dst_semaphores_count;
+	submit_info.pSignalSemaphores = dst_semaphores;
 
 	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
