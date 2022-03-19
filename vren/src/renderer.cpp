@@ -195,7 +195,7 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
         throw std::runtime_error("Too many point lights");
     }
     vren::vk_utils::update_host_visible_buffer(*m_context, m_point_lights_buffers[frame_idx], &point_lights_count, sizeof(uint32_t), 0);
-    vren::vk_utils::update_host_visible_buffer(*m_context, m_point_lights_buffers[frame_idx], lights_arr.m_point_lights.data(), point_lights_count * sizeof(vren::point_light), sizeof(uint32_t));
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_point_lights_buffers[frame_idx], lights_arr.m_point_lights.data(), point_lights_count * sizeof(vren::point_light), sizeof(uint32_t)  + (sizeof(float) * 3));
 
     /* Upload directional lights */
     uint32_t dir_lights_count = lights_arr.m_directional_lights.size();
@@ -203,7 +203,7 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
         throw std::runtime_error("Too many directional lights");
     }
     vren::vk_utils::update_host_visible_buffer(*m_context, m_directional_lights_buffers[frame_idx], &dir_lights_count, sizeof(uint32_t), 0);
-    vren::vk_utils::update_host_visible_buffer(*m_context, m_directional_lights_buffers[frame_idx], lights_arr.m_directional_lights.data(), dir_lights_count * sizeof(vren::directional_light), sizeof(uint32_t));
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_directional_lights_buffers[frame_idx], lights_arr.m_directional_lights.data(), dir_lights_count * sizeof(vren::directional_light), sizeof(uint32_t)  + (sizeof(float) * 3));
 
     /* Upload spotlights */
     uint32_t spot_lights_count = lights_arr.m_spot_lights.size();
@@ -211,11 +211,10 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
         throw std::runtime_error("Too many spot lights");
     }
     vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], &spot_lights_count, sizeof(uint32_t), 0);
-    vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], lights_arr.m_spot_lights.data(), spot_lights_count * sizeof(vren::spot_light), 0);
+    vren::vk_utils::update_host_visible_buffer(*m_context, m_spot_lights_buffers[frame_idx], lights_arr.m_spot_lights.data(), spot_lights_count * sizeof(vren::spot_light), sizeof(uint32_t)  + (sizeof(float) * 3));
 }
 
-void
-vren::renderer::render(
+void vren::renderer::render(
 	int frame_idx,
 	vren::resource_container& res_container,
 	vren::render_target const& target,

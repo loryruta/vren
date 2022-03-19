@@ -252,11 +252,15 @@ void vren::imgui_renderer::_init_render_pass()
 	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &m_render_pass));
 }
 
-void vren::imgui_renderer::record_commands(
-    VkCommandBuffer cmd_buf,
+void vren::imgui_renderer::render(
+	int frame_idx,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
-	std::function<void()> const& show_guis_func
+	std::function<void()> const& show_guis_func,
+	uint32_t dst_semaphore_count,
+	VkSemaphore* dst_semaphores,
+	uint32_t src_semaphores_count,
+	VkSemaphore* src_semaphores
 )
 {
 	ImGui_ImplVulkan_NewFrame();
@@ -265,6 +269,21 @@ void vren::imgui_renderer::record_commands(
 
 	show_guis_func();
 
+	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
+		m_context->m_graphics_command_pool->acquire()
+	);
+	res_container.add_resource(cmd_buf);
+
+	/* Command buffer begin */
+	VkCommandBufferBeginInfo cmd_buf_begin_info{};
+	cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmd_buf_begin_info.pNext = nullptr;
+	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	cmd_buf_begin_info.pInheritanceInfo = nullptr;
+
+	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info));
+
+	/* Recording */
 	VkClearValue clear_values[] = {
 		{},
 		{ .depthStencil = { 1.0f, 0 } }
@@ -278,15 +297,34 @@ void vren::imgui_renderer::record_commands(
 	begin_info.renderArea = target.m_render_area;
 	begin_info.clearValueCount = 2;
 	begin_info.pClearValues = clear_values;
-	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+	vkCmdBeginRenderPass(cmd_buf->m_handle, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdSetViewport(cmd_buf->m_handle, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf->m_handle, 0, 1, &target.m_render_area);
 
 	ImGui::Render();
 	ImDrawData* draw_data = ImGui::GetDrawData();
-	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf);
+	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf->m_handle);
 
-	vkCmdEndRenderPass(cmd_buf);
+	vkCmdEndRenderPass(cmd_buf->m_handle);
+
+	/* Command buffer end */
+	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf->m_handle));
+
+	/* Submission */
+	std::vector<VkPipelineStageFlags> wait_stages(src_semaphores_count, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+	VkSubmitInfo submit_info{};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.pNext = nullptr;
+	submit_info.waitSemaphoreCount = src_semaphores_count;
+	submit_info.pWaitSemaphores = src_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages.data();
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &cmd_buf->m_handle;
+	submit_info.signalSemaphoreCount = dst_semaphore_count;
+	submit_info.pSignalSemaphores = dst_semaphores;
+
+	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
-

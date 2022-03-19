@@ -20,6 +20,10 @@ add_executable(vren_demo
         src/camera.cpp
         src/tinygltf_loader.hpp
         src/tinygltf_loader.cpp
+        src/ui/gui.hpp
+        src/ui/gui.cpp
+        src/ui/screen.hpp
+        src/ui/screen.cpp
 )
 
 # vren_demo

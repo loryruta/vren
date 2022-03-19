@@ -4,31 +4,19 @@
 #include "utils/image.hpp"
 
 vren_demo::screen::screen(
-	std::shared_ptr<vren::imgui_renderer> const& imgui_renderer,
-	VkRenderPass render_pass
+	std::shared_ptr<vren::context> const& ctx,
+	std::shared_ptr<vren::vk_render_pass> const& render_pass,
+	ImVec2 const& init_size
 ) :
-	m_imgui_renderer(imgui_renderer),
-	m_render_pass(render_pass)
+	m_context(ctx),
+	m_framebuffer(vren::vk_utils::custom_framebuffer(ctx, render_pass, init_size.x, init_size.y))
 {}
 
 vren_demo::screen::~screen()
-{
-}
+{}
 
 void vren_demo::screen::_recreate_framebuffer(ImVec2 const& size)
 {
-	m_color_buffer = std::make_shared<color_buffer>(
-		vren::vk_utils::create_
-	);
-
-	m_framebuffer = std::make_shared<vren::vk_framebuffer>(
-		vren::create_framebuffer(
-			m_imgui_renderer->m_context,
-			m_render_pass,
-			{  },
-			size
-		)
-	);
 }
 
 void vren_demo::screen::show(
@@ -46,8 +34,6 @@ void vren_demo::screen::show(
 
 		m_current_size = size;
 	}
-
-
 }
 
 

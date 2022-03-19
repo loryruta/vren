@@ -15,31 +15,12 @@
 namespace vren
 {
 	// --------------------------------------------------------------------------------------------------------------------------------
-	// swapchain_frame
+	// Swapchain frame data
 	// --------------------------------------------------------------------------------------------------------------------------------
 
-	class swapchain_frame
+	struct swapchain_frame_data
 	{
-	public:
-		struct color_buffer
-		{
-			VkImage m_image; // The image lifetime is managed by the swapchain.
-			vren::vk_image_view m_image_view;
-
-			color_buffer(
-				VkImage img,
-				vren::vk_image_view&& img_view
-			) :
-				m_image(img),
-				m_image_view(std::move(img_view))
-			{}
-		};
-
-		color_buffer m_color_buffer;
-		vren::vk_framebuffer m_framebuffer;
-
 		/* Sync objects */
-
 		vren::vk_semaphore m_image_available_semaphore;
 		vren::vk_semaphore m_transited_to_color_attachment_image_layout_semaphore;
 		vren::vk_semaphore m_render_finished_semaphore;
@@ -51,20 +32,30 @@ namespace vren
 		 * ensures they live enough. */
 		vren::resource_container m_resource_container;
 
-		swapchain_frame(
-			std::shared_ptr<vren::context> const& ctx,
-			color_buffer&& color_buf,
-			vren::vk_framebuffer&& fb
-		);
+		swapchain_frame_data(std::shared_ptr<vren::context> const& ctx);
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------
-	// swapchain
+	// Swapchain
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	class swapchain
 	{
 	public:
+		struct color_buffer
+		{
+			VkImage m_image; // The image lifetime is bound to the swapchain lifetime
+			vren::vk_image_view m_image_view;
+
+			color_buffer(
+				VkImage img,
+				vren::vk_image_view&& img_view
+			) :
+				m_image(img),
+				m_image_view(std::move(img_view))
+			{}
+		};
+
 		struct depth_buffer
 		{
 			vren::vk_utils::image m_image;
@@ -80,32 +71,28 @@ namespace vren
 		};
 
 	private:
-		void _swap(swapchain& other); // Copy-swap idiom
+		void _swap(swapchain& other);
 
-		depth_buffer _create_depth_buffer(uint32_t width, uint32_t height);
-
-		vren::swapchain_frame::color_buffer _create_color_buffer_for_frame(VkImage swapchain_img);
-		vren::vk_framebuffer _create_framebuffer_for_frame(
-			vren::swapchain_frame::color_buffer const& color_buf,
-			uint32_t width,
-			uint32_t height,
-			VkRenderPass render_pass
-		);
+		std::vector<VkImage> _get_swapchain_images();
+		depth_buffer _create_depth_buffer();
 
 	public:
 		std::shared_ptr<vren::context> m_context;
 		VkSwapchainKHR m_handle;
 
-		depth_buffer m_depth_buffer;
-
 		uint32_t m_image_width, m_image_height;
-        uint32_t m_image_count;
-        VkSurfaceFormatKHR m_surface_format;
-        VkPresentModeKHR m_present_mode;
+		uint32_t m_image_count;
+		VkSurfaceFormatKHR m_surface_format;
+		VkPresentModeKHR m_present_mode;
+
+		std::vector<VkImage> m_images;
+		std::vector<color_buffer> m_color_buffers;
+		std::vector<vren::vk_framebuffer> m_framebuffers;
+		depth_buffer m_depth_buffer;
 
 		std::shared_ptr<vren::vk_render_pass> m_render_pass;
 
-		std::vector<vren::swapchain_frame> m_frames;
+		std::vector<vren::swapchain_frame_data> m_frame_data;
 
 		swapchain(
 			std::shared_ptr<vren::context> const& ctx,
@@ -126,7 +113,7 @@ namespace vren
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------
-	// presenter
+	// Presenter
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	class presenter
@@ -149,10 +136,10 @@ namespace vren
 		VkSurfaceFormatKHR _pick_surface_format(vren::vk_utils::surface_details const& surf_details);
         VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
 
-		VkResult _acquire_swapchain_image(vren::swapchain_frame const& frame, uint32_t* image_idx);
-		void _transition_to_color_attachment_image_layout(vren::swapchain_frame& frame);
-		void _transition_to_present_image_layout(vren::swapchain_frame& frame);
-		VkResult _present(vren::swapchain_frame const& frame, uint32_t image_idx);
+		VkResult _acquire_swapchain_image(vren::swapchain_frame_data const& frame, uint32_t* img_idx);
+		void _transition_to_color_attachment_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img);
+		void _transition_to_present_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img);
+		VkResult _present(vren::swapchain_frame_data const& frame_data, uint32_t img_idx);
 
 	public:
 		std::shared_ptr<vren::context> m_context;
@@ -160,8 +147,7 @@ namespace vren
 
         uint32_t m_image_count;
 
-
-		std::unique_ptr<vren::swapchain> m_swapchain;
+		std::shared_ptr<vren::swapchain> m_swapchain;
 
 		uint32_t m_present_queue_family_idx = -1;
 		uint32_t m_current_frame_idx = 0;

@@ -91,7 +91,7 @@ namespace vren
 			int frame_idx,
 			vren::resource_container& res_container,
 			vren::render_target const& target,
-			VkSemaphore src_semaphore,
+			VkSemaphore src_semaphore, // todo many src semaphores
 			VkSemaphore dst_semaphore,
 			vren::render_list const& render_list,
 			vren::light_array const& lights_arr,

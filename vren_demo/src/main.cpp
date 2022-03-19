@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	g_window = glfwCreateWindow(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, "VRen", nullptr, nullptr);
 	if (g_window == nullptr)
@@ -291,20 +291,20 @@ int main(int argc, char* argv[])
 	auto renderer = vren::renderer::create(ctx);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
-	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(ctx, g_window);
+	auto ui_renderer = vren::imgui_renderer(ctx, g_window);
 
 	VkSurfaceKHR surface;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
 
-	//vren::presenter_info presenter_info{};
-	//presenter_info.m_color_space = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-
 	vren::presenter presenter(ctx, surface);
-    presenter.recreate_swapchain(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, renderer->m_render_pass);
 
 	auto render_list = vren::render_list::create(ctx);
 
 	vren::light_array lights_arr{};
+	lights_arr.m_point_lights.push_back({
+		.m_position = {0, 100, 0},
+		.m_color = {1.0f, 1.0f, 1.0f}
+	});
 
 	vren::tinygltf_scene loaded_scene;
 	vren::tinygltf_loader gltf_loader(ctx);
@@ -317,10 +317,25 @@ int main(int argc, char* argv[])
 
 	glfwSetKeyCallback(g_window, on_key_press);
 
+	int fb_width = -1, fb_height = -1;
+
 	float last_time = -1.0;
 	while (!glfwWindowShouldClose(g_window))
 	{
 		glfwPollEvents();
+
+		int cur_fb_width, cur_fb_height;
+		glfwGetFramebufferSize(g_window, &cur_fb_width, &cur_fb_height);
+
+		camera.m_aspect_ratio = float(cur_fb_width) / float(cur_fb_height);
+
+		if (cur_fb_width != fb_width || cur_fb_height != fb_height)
+		{
+			presenter.recreate_swapchain(cur_fb_width, cur_fb_height, renderer->m_render_pass);
+
+			fb_width = cur_fb_width;
+			fb_height = cur_fb_height;
+		}
 
 		auto cur_time = (float) glfwGetTime();
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
@@ -335,13 +350,13 @@ int main(int argc, char* argv[])
 
 		presenter.present([&](int frame_idx, vren::resource_container& res_container, vren::render_target const& renderer_target, VkSemaphore src_sem, VkSemaphore dst_sem)
         {
-            auto cam_data = vren::camera{
-                .m_position = camera.m_position,
-                .m_view = camera.get_view(),
-                .m_projection = camera.get_projection()
-            };
-            renderer->render(frame_idx, res_container, renderer_target, src_sem, dst_sem, *render_list, lights_arr, cam_data);
-        });
+			auto cam_data = vren::camera{
+				.m_position = camera.m_position,
+				.m_view = camera.get_view(),
+				.m_projection = camera.get_projection()
+			};
+			renderer->render(frame_idx, res_container, renderer_target, src_sem, dst_sem, *render_list, lights_arr, cam_data);
+		});
 	}
 
 	vkDeviceWaitIdle(ctx->m_device);
