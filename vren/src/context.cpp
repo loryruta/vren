@@ -260,12 +260,19 @@ std::vector<VkQueue> vren::context::get_queues()
 
 void vren::context::create_vma_allocator()
 {
-	VmaAllocatorCreateInfo allocator_info{};
-	//create_info.vulkanApiVersion = VK_API_VERSION_1_2;
-	allocator_info.instance = m_instance;
-	allocator_info.physicalDevice = m_physical_device;
-	allocator_info.device = m_device;
-
+	VmaAllocatorCreateInfo allocator_info{
+		.flags = NULL,
+		.physicalDevice = m_physical_device,
+		.device = m_device,
+		.preferredLargeHeapBlockSize = 0, // default: 256MB
+		.pAllocationCallbacks = nullptr,
+		.pDeviceMemoryCallbacks = nullptr,
+		.pHeapSizeLimit = nullptr,
+		.pVulkanFunctions = nullptr,
+		.instance = m_instance,
+		.vulkanApiVersion = VK_API_VERSION_1_2,
+		.pTypeExternalMemoryHandleTypes = nullptr,
+	};
 	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
