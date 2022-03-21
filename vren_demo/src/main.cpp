@@ -363,11 +363,13 @@ int main(int argc, char* argv[])
 			{ /* Print frame timestamps */
 				uint64_t start_t, end_t;
 
-				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &start_t, &end_t))
-					printf("Frame %d - Main pass: %llu ns -> %llu ns\n", frame_idx, start_t, end_t);
+				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &start_t, &end_t)) {
+					printf("Frame %d - Main pass: %.2f us\n", frame_idx, float(end_t - start_t) / 1000.0f);
+				}
 
-				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &start_t, &end_t))
-					printf("Frame %d - UI pass: %llu ns -> %llu ns\n", frame_idx, start_t, end_t);
+				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &start_t, &end_t)) {
+					printf("Frame %d - UI pass: %.2f us\n", frame_idx,  float(end_t - start_t) / 1000.0f);
+				}
 
 				fflush(stdout);
 			}

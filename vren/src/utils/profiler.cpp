@@ -23,7 +23,11 @@ void vren::profiler::profile(
 		vren::vk_utils::record_one_time_submit_commands(begin_node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf)
 		{
 			vkCmdResetQueryPool(cmd_buf, m_query_pool.m_handle, slot_idx * 2, 2);
-			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2);
+
+			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr);
+
+			auto query_idx = slot_idx * 2;
+			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, query_idx);
 		});
 	}
 
@@ -34,7 +38,8 @@ void vren::profiler::profile(
 		auto& end_node = cmd_graph.create_tail_node();
 		vren::vk_utils::record_one_time_submit_commands(end_node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf)
 		{
-			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
+			auto query_idx = slot_idx * 2 + 1;
+			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, query_idx);
 		});
 	}
 }
@@ -42,9 +47,10 @@ void vren::profiler::profile(
 bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t)
 {
 	uint64_t buf[2];
-	VkResult res = vkGetQueryPoolResults(m_context->m_device, m_query_pool.m_handle, slot_idx * 2, 2, sizeof(uint64_t) * 2, buf, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+	VkResult res = vkGetQueryPoolResults(m_context->m_device, m_query_pool.m_handle, slot_idx * 2, 2, sizeof(uint64_t) * 2, &buf[0], sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 
-	auto timestamp_period = m_context->m_physical_device_properties.limits.timestampPeriod;
+	// TODO USE IT (assumed 1): auto t_period = m_context->m_physical_device_properties.limits.timestampPeriod;
+	// TODO USE IT (assumed 64): auto t_valid_bits = vren::vk_utils::get_queue_families_properties(m_context->m_physical_device).at(m_context->m_queue_families.m_graphics_idx).timestampValidBits;
 
 	if (res == VK_NOT_READY)
 	{
@@ -52,8 +58,8 @@ bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* e
 	}
 	else if (res == VK_SUCCESS)
 	{
-		*start_t = buf[0] * timestamp_period;
-		*end_t   = buf[1] * timestamp_period;
+		*start_t = buf[0];
+		*end_t   = buf[1];
 		return true;
 	}
 	else

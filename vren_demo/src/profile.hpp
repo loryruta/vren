@@ -8,10 +8,10 @@ namespace vren_demo
 	public:
 		enum
 		{
-			MainPass,
-			UiPass,
+			MainPass = 0,
+			UiPass = 1,
 
-			count
+			count = 2
 		};
 	};
 }
