@@ -203,6 +203,10 @@ VkPhysicalDevice vren::context::find_physical_device()
 	}
 	vkGetPhysicalDeviceProperties(found, &m_physical_device_properties);
 
+	if (!m_physical_device_properties.limits.timestampComputeAndGraphics) {
+		throw std::runtime_error("Unsupported timestamp queries for compute and graphics queue families");
+	}
+
 	std::cout << "Physical device found:" << std::endl;
 	std::cout << "- Type:           " << m_physical_device_properties.deviceType << std::endl;
 	std::cout << "- Vendor ID:      " << m_physical_device_properties.vendorID << std::endl;

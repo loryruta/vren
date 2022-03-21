@@ -17,6 +17,8 @@
 #include "ui.hpp"
 #include "utils/profiler.hpp"
 
+#include "profile.hpp"
+
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
 
@@ -304,7 +306,7 @@ int main(int argc, char* argv[])
 
 	auto ui = vren_demo::ui::main_ui(ctx, renderer);
 
-	vren::profiler profiler(ctx, 100 * VREN_MAX_FRAMES_IN_FLIGHT);
+	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
 
 	vren::light_array lights_arr{};
 	lights_arr.m_point_lights.push_back({
@@ -356,17 +358,38 @@ int main(int argc, char* argv[])
 
 		presenter.present([&](int frame_idx, vren::command_graph& cmd_graph, vren::resource_container& res_container, vren::render_target const& target)
         {
-			auto cam_data = vren::camera{
-				.m_position = camera.m_position,
-				.m_view = camera.get_view(),
-				.m_projection = camera.get_projection()
-			};
-			renderer->render(frame_idx, cmd_graph, res_container, target, *render_list, lights_arr, cam_data);
+			int prof_slot = frame_idx * vren_demo::profile_slot::count;
+
+			{ /* Print frame timestamps */
+				uint64_t start_t, end_t;
+
+				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &start_t, &end_t))
+					printf("Frame %d - Main pass: %llu ns -> %llu ns\n", frame_idx, start_t, end_t);
+
+				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &start_t, &end_t))
+					printf("Frame %d - UI pass: %llu ns -> %llu ns\n", frame_idx, start_t, end_t);
+
+				fflush(stdout);
+			}
+
+			/* Renders the scene */
+			profiler.profile(prof_slot + vren_demo::profile_slot::MainPass, cmd_graph, res_container, [&]()
+			{
+				auto cam_data = vren::camera{
+					.m_position = camera.m_position,
+					.m_view = camera.get_view(),
+					.m_projection = camera.get_projection()
+				};
+				renderer->render(frame_idx, cmd_graph, res_container, target, *render_list, lights_arr, cam_data);
+			});
 
 			/* Renders the UI */
-			ui_renderer.render(frame_idx, cmd_graph, res_container, target, [&]()
+			profiler.profile(prof_slot + vren_demo::profile_slot::UiPass, cmd_graph, res_container, [&]()
 			{
-				ui.show();
+				ui_renderer.render(frame_idx, cmd_graph, res_container, target, [&]()
+				{
+					ui.show();
+				});
 			});
 		});
 	}

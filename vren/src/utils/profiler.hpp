@@ -21,16 +21,12 @@ namespace vren
 
 		void profile(
 			int slot_idx,
-			vren::resource_container& res_container,
 			vren::command_graph& cmd_graph,
+			vren::resource_container& res_container,
 			std::function<void()> const& sample_func
 		);
 
-		bool get_timestamps(
-			int slot_idx,
-			uint64_t* starting_timestamp,
-			uint64_t* ending_timestamp
-		);
+		bool get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t);
 	};
 
 }

@@ -184,6 +184,9 @@ vec3 apply_directional_lights(
 
 void main()
 {
+    for (int i = 0; i < 1000; i++) {
+    }
+
     vec3 frag_pos = v_position;
     vec3 N = v_normal;
     vec3 V = normalize(push_constants.camera_pos.xyz - frag_pos);
