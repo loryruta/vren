@@ -1,11 +1,43 @@
 #include "ui.hpp"
 
-#include <imgui_internal.h>
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <implot.h>
 
 #include "pooling/command_pool.hpp"
-#include "pooling/descriptor_pool.hpp"
-#include "pooling/semaphore_pool.hpp"
 #include "pooling/fence_pool.hpp"
+
+vren_demo::ui::fps_ui::fps_ui()
+{}
+
+void vren_demo::ui::fps_ui::update(float dt)
+{
+	double cur_time = glfwGetTime();
+
+	m_fps_counter++;
+
+	if (m_last_fps_time < 0 || (cur_time - m_last_fps_time) >= 1.)
+	{
+		m_fps = m_fps_counter;
+		m_fps_counter = 0;
+		m_last_fps_time = cur_time;
+	}
+}
+
+void vren_demo::ui::fps_ui::show()
+{
+	float t = glfwGetTime();
+
+	if (ImGui::Begin("Frame profiling"))
+	{
+		if (ImGui::BeginTable("##frame_profiling", 2))
+		{
+			ImGui::EndTable();
+		}
+	}
+
+	ImGui::End();
+}
 
 vren_demo::ui::main_ui::main_ui(
 	std::shared_ptr<vren::context> const& ctx,
@@ -39,7 +71,6 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 
 			add_row("Graphics command pool", *m_context->m_graphics_command_pool);
 			add_row("Transfer command pool", *m_context->m_transfer_command_pool);
-			add_row("Semaphore pool", *m_context->m_semaphore_pool);
 			add_row("Fence pool", *m_context->m_fence_pool);
 
 			/**/
@@ -51,9 +82,18 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 	ImGui::End();
 }
 
+void vren_demo::ui::main_ui::update(float dt)
+{
+	m_fps_ui.update(dt);
+}
+
 void vren_demo::ui::main_ui::show()
 {
 	show_vk_pool_info_ui();
+	m_fps_ui.show();
+
+	ImPlot::ShowDemoWindow();
 }
+
 
 

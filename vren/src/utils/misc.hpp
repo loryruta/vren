@@ -17,8 +17,11 @@ namespace vren::vk_utils
 
 	vren::vk_fence create_fence(std::shared_ptr<vren::context> const& ctx, bool signaled = false);
 
+
     using record_commands_func_t =
         std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
+
+	void record_one_time_submit_commands(VkCommandBuffer cmd_buf, std::function<void(VkCommandBuffer cmd_buf)> const& record_func); // TODO use it below
 
 	void immediate_submit(vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func);
 
@@ -41,4 +44,8 @@ namespace vren::vk_utils
 		VkPhysicalDevice physical_device,
 		VkSurfaceKHR surface
 	);
+
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	vren::vk_query_pool create_timestamp_query_pool(std::shared_ptr<vren::context> const& ctx, uint32_t query_count);
 }

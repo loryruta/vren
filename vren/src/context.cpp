@@ -7,7 +7,6 @@
 #include "utils/misc.hpp"
 #include "pooling/descriptor_pool.hpp"
 #include "pooling/fence_pool.hpp"
-#include "pooling/semaphore_pool.hpp"
 #include "pooling/command_pool.hpp"
 #include "material.hpp"
 
@@ -330,7 +329,6 @@ void vren::context::_init()
 	_init_transfer_command_pool();
 
     m_fence_pool = std::make_shared<vren::fence_pool>(shared_from_this());
-    m_semaphore_pool = std::make_shared<vren::semaphore_pool>(shared_from_this());
 
 	// Default textures
 	m_white_texture = std::make_shared<vren::vk_utils::texture>(

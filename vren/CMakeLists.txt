@@ -32,9 +32,15 @@ set(SRC
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
         src/utils/vk_raii.cpp
-        src/command_list.hpp
-        src/command_list.cpp
-        src/pooling/object_pool.hpp src/pooling/semaphore_pool.hpp src/pooling/fence_pool.hpp src/utils/image_layout_transitions.hpp src/utils/image_layout_transitions.cpp)
+        src/command_graph.hpp
+        src/command_graph.cpp
+        src/pooling/object_pool.hpp
+        src/pooling/fence_pool.hpp
+        src/utils/image_layout_transitions.hpp
+        src/utils/image_layout_transitions.cpp
+        src/utils/profiler.hpp
+        src/utils/profiler.cpp
+)
 
 add_library(vren ${SRC})
 

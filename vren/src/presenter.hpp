@@ -125,21 +125,15 @@ namespace vren
 
 		using render_func = std::function<void(
 			int frame_idx,
-			vren::resource_container& resource_container, // A storage for all the resources occurred in this rendering operation that shouldn't be destroyed until it completes.
-			vren::render_target const& renderer_target,   // The target of the rendering operation (framebuffer, area, scissors and viewport).
-			VkSemaphore src_semaphore,                    // The semaphore that has to be waited before starting the rendering operation.
-			VkSemaphore dst_semaphore                     // The semaphore that has to be signaled after finishing the rendering operation (restricted to 1).
+			vren::command_graph& cmd_graph,
+			vren::resource_container& res_container,
+			vren::render_target const& target
 		)>;
 
 	private:
 		uint32_t _pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
 		VkSurfaceFormatKHR _pick_surface_format(vren::vk_utils::surface_details const& surf_details);
         VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
-
-		VkResult _acquire_swapchain_image(vren::swapchain_frame_data const& frame, uint32_t* img_idx);
-		void _transition_to_color_attachment_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img);
-		void _transition_to_present_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img);
-		VkResult _present(vren::swapchain_frame_data const& frame_data, uint32_t img_idx);
 
 	public:
 		std::shared_ptr<vren::context> m_context;

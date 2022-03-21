@@ -55,7 +55,15 @@ void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkDescri
 }
 
 template<>
+void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkQueryPool handle)
+{
+	vkDestroyQueryPool(ctx->m_device, handle, nullptr);
+}
+
+template<>
 void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VmaAllocation handle)
 {
 	vmaFreeMemory(ctx->m_vma_allocator, handle);
 }
+
+

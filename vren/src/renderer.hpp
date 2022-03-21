@@ -11,6 +11,7 @@
 #include "light_array.hpp"
 #include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
+#include "command_graph.hpp"
 
 namespace vren
 {
@@ -89,15 +90,12 @@ namespace vren
 
 		void render(
 			int frame_idx,
+			vren::command_graph& cmd_graph,
 			vren::resource_container& res_container,
 			vren::render_target const& target,
 			vren::render_list const& render_list,
 			vren::light_array const& lights_arr,
-			vren::camera const& camera,
-			uint32_t src_semaphores_count = 0,
-			VkSemaphore* src_semaphores = nullptr,
-			uint32_t dst_semaphores_count = 0,
-			VkSemaphore* dst_semaphores = nullptr
+			vren::camera const& camera
 		);
 
 		static std::shared_ptr<vren::renderer> create(std::shared_ptr<context> const& ctx);

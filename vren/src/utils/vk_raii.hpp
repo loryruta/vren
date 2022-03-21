@@ -74,5 +74,7 @@ namespace vren
 	using vk_semaphore   = vren::vk_handle_wrapper<VkSemaphore>;
 	using vk_fence       = vren::vk_handle_wrapper<VkFence>;
 	using vk_descriptor_set_layout = vren::vk_handle_wrapper<VkDescriptorSetLayout>;
+	using vk_query_pool  = vren::vk_handle_wrapper<VkQueryPool>;
+
 	using vma_allocation = vren::vk_handle_wrapper<VmaAllocation>;
 }

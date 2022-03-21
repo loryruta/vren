@@ -216,77 +216,49 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
 
 void vren::renderer::render(
 	int frame_idx,
+	vren::command_graph& cmd_graph,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
 	vren::render_list const& render_list,
 	vren::light_array const& lights_arr,
-	vren::camera const& camera,
-	uint32_t src_semaphores_count,
-	VkSemaphore* src_semaphores,
-	uint32_t dst_semaphores_count,
-	VkSemaphore* dst_semaphores
+	vren::camera const& camera
 )
 {
-	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
-        m_context->m_graphics_command_pool->acquire()
-    );
-    res_container.add_resource(cmd_buf);
+	auto& node = cmd_graph.create_tail_node();
+	auto& cmd_buf = node.m_command_buffer;
 
-	/* Command buffer begin */
-	VkCommandBufferBeginInfo cmd_buf_begin_info{};
-	cmd_buf_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmd_buf_begin_info.pNext = nullptr;
-	cmd_buf_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	cmd_buf_begin_info.pInheritanceInfo = nullptr;
+	vren::vk_utils::record_one_time_submit_commands(cmd_buf.m_handle, [&](VkCommandBuffer cmd_buf)
+	{
+		/* Render pass begin */
+		VkClearValue clear_values[] = {
+			{ .color = m_clear_color },
+			{ .depthStencil = {
+				.depth = 1.0f,
+				.stencil = 0
+			}}
+		};
+		VkRenderPassBeginInfo render_pass_begin_info{};
+		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_begin_info.renderPass = m_render_pass->m_handle;
+		render_pass_begin_info.framebuffer = target.m_framebuffer;
+		render_pass_begin_info.renderArea = target.m_render_area;
+		render_pass_begin_info.clearValueCount = std::size(clear_values);
+		render_pass_begin_info.pClearValues = clear_values;
 
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &cmd_buf_begin_info));
+		vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	/* Render pass begin */
-	VkClearValue clear_values[] = {
-		{ .color = m_clear_color },
-		{ .depthStencil = {
-			.depth = 1.0f,
-			.stencil = 0
-		}}
-	};
-	VkRenderPassBeginInfo render_pass_begin_info{};
-	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_begin_info.renderPass = m_render_pass->m_handle;
-	render_pass_begin_info.framebuffer = target.m_framebuffer;
-	render_pass_begin_info.renderArea = target.m_render_area;
-	render_pass_begin_info.clearValueCount = std::size(clear_values);
-	render_pass_begin_info.pClearValues = clear_values;
+		vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+		vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
-	vkCmdBeginRenderPass(cmd_buf->m_handle, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		/* Write light buffers */
+		_upload_lights_array(frame_idx, lights_arr);
 
-	vkCmdSetViewport(cmd_buf->m_handle, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf->m_handle, 0, 1, &target.m_render_area);
+		/* Subpass recording */
+		m_simple_draw_pass->record_commands(frame_idx, cmd_buf, res_container, render_list, lights_arr, camera);
 
-	/* Write light buffers */
-    _upload_lights_array(frame_idx, lights_arr);
-
-	/* Subpass recording */
-	m_simple_draw_pass->record_commands(frame_idx, cmd_buf->m_handle, res_container, render_list, lights_arr, camera);
-
-	/* Render pass end */
-	vkCmdEndRenderPass(cmd_buf->m_handle);
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf->m_handle));
-
-	/* Submission */
-	VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = src_semaphores_count;
-	submit_info.pWaitSemaphores = src_semaphores;
-	submit_info.pWaitDstStageMask = &wait_stage;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf->m_handle;
-	submit_info.signalSemaphoreCount = dst_semaphores_count;
-	submit_info.pSignalSemaphores = dst_semaphores;
-
-	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+		/* Render pass end */
+		vkCmdEndRenderPass(cmd_buf);
+	});
 }
 
 std::shared_ptr<vren::renderer>

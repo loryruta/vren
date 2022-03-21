@@ -225,101 +225,6 @@ VkPresentModeKHR vren::presenter::_pick_present_mode(vren::vk_utils::surface_det
     throw std::runtime_error("Unsupported present modes");
 }
 
-VkResult vren::presenter::_acquire_swapchain_image(vren::swapchain_frame_data const& frame, uint32_t* img_idx)
-{
-	return vkAcquireNextImageKHR(m_context->m_device, m_swapchain->m_handle, UINT64_MAX, frame.m_image_available_semaphore.m_handle, VK_NULL_HANDLE, img_idx);
-}
-
-
-void vren::presenter::_transition_to_color_attachment_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img)
-{
-	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
-		m_context->m_graphics_command_pool->acquire()
-	);
-	frame_data.m_resource_container.add_resource(cmd_buf);
-
-    /* Command buffer begin */
-    VkCommandBufferBeginInfo begin_info{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &begin_info));
-
-    /* Recording */
-	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf->m_handle, swapchain_img);
-
-	/* Command buffer end */
-	vkEndCommandBuffer(cmd_buf->m_handle);
-
-    /* Submission */
-	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = &frame_data.m_image_available_semaphore.m_handle;
-	submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf->m_handle;
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = &frame_data.m_transited_to_color_attachment_image_layout_semaphore.m_handle;
-
-	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
-}
-
-void vren::presenter::_transition_to_present_image_layout(vren::swapchain_frame_data& frame_data, VkImage swapchain_img)
-{
-	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
-		m_context->m_graphics_command_pool->acquire()
-	);
-	frame_data.m_resource_container.add_resource(cmd_buf);
-
-    /* Command buffer begin */
-    VkCommandBufferBeginInfo begin_info{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf->m_handle, &begin_info));
-
-    /* Recording */
-	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf->m_handle, swapchain_img);
-
-	/* Command buffer end */
-	vkEndCommandBuffer(cmd_buf->m_handle);
-
-    /* Submission */
-	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-
-	VkSubmitInfo submit_info{};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = &frame_data.m_render_finished_semaphore.m_handle;
-	submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &cmd_buf->m_handle;
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = &frame_data.m_transited_to_present_image_layout_semaphore.m_handle;
-
-	vren::vk_utils::check(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, frame_data.m_frame_fence.m_handle));
-}
-
-VkResult vren::presenter::_present(vren::swapchain_frame_data const& frame_data, uint32_t img_idx)
-{
-	VkPresentInfoKHR present_info{};
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.pNext = nullptr;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = &frame_data.m_transited_to_present_image_layout_semaphore.m_handle;
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains = &m_swapchain->m_handle;
-	present_info.pImageIndices = &img_idx;
-	present_info.pResults = nullptr;
-
-	return vkQueuePresentKHR(m_context->m_queues.at(m_present_queue_family_idx), &present_info);
-}
-
 void vren::presenter::recreate_swapchain(
 	uint32_t width,
 	uint32_t height,
@@ -365,7 +270,7 @@ void vren::presenter::recreate_swapchain(
 	m_swapchain = std::make_shared<vren::swapchain>(m_context, swapchain, width, height, img_count, surf_format, present_mode, render_pass);
 }
 
-void vren::presenter::present(render_func const& render_fn)
+void vren::presenter::present(render_func const& render_func)
 {
 	if (!m_swapchain) {
 		return;
@@ -378,9 +283,20 @@ void vren::presenter::present(render_func const& render_fn)
 	frame_data.m_resource_container.clear();
 	vkResetFences(m_context->m_device, 1, &frame_data.m_frame_fence.m_handle);
 
+	auto cmd_graph = std::make_shared<vren::command_graph>(
+		m_context,
+		m_context->m_graphics_command_pool
+	);
+	frame_data.m_resource_container.add_resource(cmd_graph);
+
 	/* Image acquirement */
+	auto img_acquired_sem = std::make_shared<vren::vk_semaphore>(
+		vren::vk_utils::create_semaphore(m_context)
+	);
+	frame_data.m_resource_container.add_resource(img_acquired_sem);
+
 	uint32_t img_idx;
-	result = _acquire_swapchain_image(frame_data, &img_idx);
+	result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain->m_handle, UINT64_MAX, img_acquired_sem->m_handle, VK_NULL_HANDLE, &img_idx);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		recreate_swapchain(
@@ -395,8 +311,12 @@ void vren::presenter::present(render_func const& render_fn)
 		throw std::runtime_error("Acquirement of the next swapchain image failed");
 	}
 
-	/* Image layout transition undefined to color attachment */
-	_transition_to_color_attachment_image_layout(frame_data, m_swapchain->m_images.at(img_idx));
+	{ /* Image layout transition from undefined image layout to color attachment */
+		auto& node = cmd_graph->create_tail_node();
+		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf) {
+			vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, m_swapchain->m_images.at(img_idx));
+		});
+	}
 
 	/* Render pass */
 	vren::render_target render_target{
@@ -414,20 +334,45 @@ void vren::presenter::present(render_func const& render_fn)
 			.maxDepth = 1.0f
 		}
 	};
-
-    render_fn(
+	render_func(
         m_current_frame_idx,
+		*cmd_graph,
 		frame_data.m_resource_container,
-		render_target,
-		frame_data.m_transited_to_color_attachment_image_layout_semaphore.m_handle,
-		frame_data.m_render_finished_semaphore.m_handle
+		render_target
 	);
 
-	/* Image layout transition color attachment to present */
-	_transition_to_present_image_layout(frame_data, m_swapchain->m_images.at(img_idx));
+	{ /* Image layout transition from color attachment to present */
+		auto& node = cmd_graph->create_tail_node();
+		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf) {
+			vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf, m_swapchain->m_images.at(img_idx));
+		});
+	}
+
+	auto present_sem = std::make_shared<vren::vk_semaphore>(
+		vren::vk_utils::create_semaphore(m_context)
+	);
+	frame_data.m_resource_container.add_resource(present_sem);
+
+	/* Command graph submission */
+	cmd_graph->submit(
+		m_context->m_graphics_queue,
+		frame_data.m_frame_fence.m_handle,
+		1, &img_acquired_sem->m_handle,
+		1, &present_sem->m_handle
+	);
 
 	/* Present */
-	result = _present(frame_data, img_idx);
+	VkPresentInfoKHR present_info{
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &present_sem->m_handle,
+		.swapchainCount = 1,
+		.pSwapchains = &m_swapchain->m_handle,
+		.pImageIndices = &img_idx,
+		.pResults = nullptr
+	};
+	result = vkQueuePresentKHR(m_context->m_queues.at(m_present_queue_family_idx), &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		recreate_swapchain(
@@ -439,7 +384,7 @@ void vren::presenter::present(render_func const& render_fn)
 	}
 	else if (result != VK_SUCCESS)
 	{
-		throw std::runtime_error("Presentation of the image to swapchain failed");
+		throw std::runtime_error("Failed to present the swapchain image");
 	}
 
 	m_current_frame_idx = (m_current_frame_idx + 1) % m_swapchain->m_frame_data.size();
