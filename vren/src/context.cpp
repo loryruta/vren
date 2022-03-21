@@ -150,11 +150,7 @@ VkDebugUtilsMessengerEXT vren::context::setup_debug_messenger()
 
 vren::context::queue_families vren::context::get_queue_families(VkPhysicalDevice physical_device)
 {
-	uint32_t count;
-	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, nullptr);
-
-	std::vector<VkQueueFamilyProperties> queue_families_properties(count);
-	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, queue_families_properties.data());
+	auto queue_families_properties = vren::vk_utils::get_queue_families_properties(physical_device);
 
 	vren::context::queue_families queue_families;
 	for (int i = 0; i < queue_families_properties.size(); i++) {
@@ -233,8 +229,15 @@ VkDevice vren::context::create_logical_device()
 		queue_infos[i].pQueuePriorities = &priority;
 	}
 
+	VkPhysicalDeviceHostQueryResetFeatures host_query_reset_feature{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES,
+		.pNext = nullptr,
+		.hostQueryReset = VK_TRUE,
+	};
+
 	VkDeviceCreateInfo device_info{};
 	device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	device_info.pNext = &host_query_reset_feature,
 	device_info.queueCreateInfoCount = (uint32_t) queue_infos.size();
 	device_info.pQueueCreateInfos = queue_infos.data();
 	device_info.pEnabledFeatures = nullptr;

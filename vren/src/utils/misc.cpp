@@ -148,3 +148,14 @@ vren::vk_query_pool vren::vk_utils::create_timestamp_query_pool(std::shared_ptr<
 	vren::vk_utils::check(vkCreateQueryPool(ctx->m_device, &pool_info, nullptr, &handle));
 	return vren::vk_query_pool(ctx, handle);
 }
+
+std::vector<VkQueueFamilyProperties> vren::vk_utils::get_queue_families_properties(VkPhysicalDevice phy_dev)
+{
+	uint32_t queue_fam_props_cnt;
+	vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_fam_props_cnt, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queue_fam_props(queue_fam_props_cnt);
+	vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_fam_props_cnt, queue_fam_props.data());
+
+	return queue_fam_props;
+}

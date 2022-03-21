@@ -48,4 +48,6 @@ namespace vren::vk_utils
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_query_pool create_timestamp_query_pool(std::shared_ptr<vren::context> const& ctx, uint32_t query_count);
+
+	std::vector<VkQueueFamilyProperties> get_queue_families_properties(VkPhysicalDevice phy_dev);
 }
