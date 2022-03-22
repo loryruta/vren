@@ -363,12 +363,19 @@ int main(int argc, char* argv[])
 
 			vren_demo::profile_info prof_info{};
 
+			prof_info.m_frame_idx = frame_idx;
+			prof_info.m_frame_in_flight_count = presenter.m_swapchain->m_frame_data.size();
+
 			{ /* Print frame timestamps */
 				prof_info.m_main_pass_profiled =
 					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &prof_info.m_main_pass_start_t, &prof_info.m_main_pass_end_t);
 
 				prof_info.m_ui_pass_profiled =
 					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &prof_info.m_ui_pass_start_t, &prof_info.m_ui_pass_end_t);
+
+				prof_info.m_frame_profiled = prof_info.m_main_pass_profiled && prof_info.m_ui_pass_profiled;
+				prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
+				prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 			}
 
 			/* Renders the scene */

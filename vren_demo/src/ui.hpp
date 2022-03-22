@@ -9,14 +9,14 @@
 #include "renderer.hpp"
 #include "profile.hpp"
 
-#define VREN_DEMO_PLOT_SAMPLE_COUNT 512
+#define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
 namespace vren_demo::ui
 {
 	struct plot
 	{
-		float m_val[VREN_DEMO_PLOT_SAMPLE_COUNT];
-		float m_val_avg[VREN_DEMO_PLOT_SAMPLE_COUNT];
+		float m_val[VREN_DEMO_PLOT_SAMPLES_COUNT];
+		float m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT];
 		float m_val_sum = 0;
 		float m_val_min = std::numeric_limits<float>::infinity();
 		float m_val_max = -std::numeric_limits<float>::infinity();
@@ -33,6 +33,12 @@ namespace vren_demo::ui
 		uint32_t m_fps;
 		double m_last_fps_time = -1.;
 
+		uint64_t m_frame_start_t[VREN_MAX_FRAMES_IN_FLIGHT];
+		uint64_t m_frame_end_t[VREN_MAX_FRAMES_IN_FLIGHT];
+
+		bool m_paused = false;
+
+		plot m_frame_parallelism_plot;
 		plot m_main_pass_plot;
 		plot m_ui_pass_plot;
 
