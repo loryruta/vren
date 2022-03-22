@@ -6,8 +6,8 @@ It's being written mainly for learning puposes.
 
 ## Directory structure
 - `docs`: github-pages website 
-- `vren`: the renderer's library
-- `vren_demo`: a demonstration executable that shows off the features of vren 
+- `vren`: the renderer's library code
+- `vren_demo`: the demonstration executable code meant to show off the features of vren
 - `vren_test`: unit tests
 
 ## How to build
