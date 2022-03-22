@@ -264,6 +264,7 @@ int main(int argc, char* argv[])
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
 	g_window = glfwCreateWindow(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, "VRen", nullptr, nullptr);
 	if (g_window == nullptr)
@@ -360,18 +361,14 @@ int main(int argc, char* argv[])
         {
 			int prof_slot = frame_idx * vren_demo::profile_slot::count;
 
+			vren_demo::profile_info prof_info{};
+
 			{ /* Print frame timestamps */
-				uint64_t start_t, end_t;
+				prof_info.m_main_pass_profiled =
+					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &prof_info.m_main_pass_start_t, &prof_info.m_main_pass_end_t);
 
-				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &start_t, &end_t)) {
-					printf("Frame %d - Main pass: %.2f us\n", frame_idx, float(end_t - start_t) / 1000.0f);
-				}
-
-				if (profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &start_t, &end_t)) {
-					printf("Frame %d - UI pass: %.2f us\n", frame_idx,  float(end_t - start_t) / 1000.0f);
-				}
-
-				fflush(stdout);
+				prof_info.m_ui_pass_profiled =
+					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &prof_info.m_ui_pass_start_t, &prof_info.m_ui_pass_end_t);
 			}
 
 			/* Renders the scene */
@@ -390,6 +387,8 @@ int main(int argc, char* argv[])
 			{
 				ui_renderer.render(frame_idx, cmd_graph, res_container, target, [&]()
 				{
+					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
+
 					ui.show();
 				});
 			});
