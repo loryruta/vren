@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <implot.h>
 
 #include "pooling/command_pool.hpp"
@@ -81,6 +82,9 @@ void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 
 	if (prof_info.m_frame_profiled)
 	{
+		float frame_dt = (float) (prof_info.m_frame_end_t - prof_info.m_frame_start_t) / (1000.0f * 1000.0f);;
+		m_frame_delta_plot.push(frame_dt);
+
 		m_frame_start_t[prof_info.m_frame_idx] = prof_info.m_frame_start_t;
 		m_frame_end_t[prof_info.m_frame_idx] = prof_info.m_frame_end_t;
 
@@ -126,10 +130,11 @@ void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 	}
 }
 
-void plot_ui(std::string plot_title, vren_demo::ui::plot const& plot, char const* unit)
+void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, char const* unit)
 {
 	if (ImGui::CollapsingHeader(plot_title.c_str(), NULL))
 	{
+		/* Summary */
 		if (ImGui::BeginTable((plot_title + "##plot-summary").c_str(), 5, ImGuiTableFlags_RowBg))
 		{
 			ImGui::TableSetupColumn((std::string("Latest (") + unit + ")").c_str());
@@ -140,26 +145,27 @@ void plot_ui(std::string plot_title, vren_demo::ui::plot const& plot, char const
 
 			ImGui::TableNextRow();
 
-			ImGui::TableNextColumn(); ImGui::Text("%.2f", plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
-			ImGui::TableNextColumn(); ImGui::Text("%.2f", plot.m_val_min);
-			ImGui::TableNextColumn(); ImGui::Text("%.2f", plot.m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
-			ImGui::TableNextColumn(); ImGui::Text("%.2f", plot.m_val_max);
+			ImGui::TableNextColumn(); ImGui::Text("%.3f", plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
+			ImGui::TableNextColumn(); ImGui::Text("%.3f", plot.m_val_min);
+			ImGui::TableNextColumn(); ImGui::Text("%.3f", plot.m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
+			ImGui::TableNextColumn(); ImGui::Text("%.3f", plot.m_val_max);
 
 			ImGui::EndTable();
 		}
 
+		/* Plot */
 		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 256), ImPlotFlags_CanvasOnly))
 		{
-			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoDecorations);
+			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit);
 
 			ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_LockMin);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1.0, ImPlotCond_Once);
 
-			ImPlot::PlotStairs("val", plot.m_val, VREN_DEMO_PLOT_SAMPLES_COUNT);
-			ImPlot::PlotStairs("val avg", plot.m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT);
+			ImPlot::PlotStairs((plot_title + "##val").c_str(), plot.m_val, VREN_DEMO_PLOT_SAMPLES_COUNT);
+			ImPlot::PlotStairs((plot_title + "##val_avg").c_str(), plot.m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT);
 
-			float min_line[] = { plot.m_val_min, plot.m_val_min }; ImPlot::PlotStairs("val min", min_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
-			float max_line[] = { plot.m_val_max, plot.m_val_max }; ImPlot::PlotStairs("val max", max_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
+			//float min_line[] = { plot.m_val_min, plot.m_val_min }; ImPlot::PlotStairs("val min", min_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
+			//float max_line[] = { plot.m_val_max, plot.m_val_max }; ImPlot::PlotStairs("val max", max_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
 
 			ImPlot::EndPlot();
 		}
@@ -168,8 +174,6 @@ void plot_ui(std::string plot_title, vren_demo::ui::plot const& plot, char const
 
 void vren_demo::ui::fps_ui::show()
 {
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.5));
-
 	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
 	{
 		ImGui::Text("FPS: 100");
@@ -180,6 +184,7 @@ void vren_demo::ui::fps_ui::show()
 		ImGui::Separator();
 
 		plot_ui("Frame parallelism##frame_parallelism-frame_ui", m_frame_parallelism_plot, "%");
+		plot_ui("Frame delta##frame_delta-frame_ui", m_frame_delta_plot, "ms");
 
 		ImGui::Separator();
 
@@ -190,8 +195,6 @@ void vren_demo::ui::fps_ui::show()
 	}
 
 	ImGui::End();
-
-	ImGui::PopStyleColor();
 }
 
 vren_demo::ui::main_ui::main_ui(
@@ -246,11 +249,50 @@ void vren_demo::ui::main_ui::update(float dt)
 
 void vren_demo::ui::main_ui::show()
 {
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->Pos);
+	ImGui::SetNextWindowSize(viewport->Size);
+	ImGui::SetNextWindowViewport(viewport->ID);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+	ImGui::Begin("##main", nullptr,
+				 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+				 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+				 ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground);
+
+	ImGui::PopStyleVar(3);
+
+	m_main_dock_id = ImGui::GetID("main-dock_id");
+
+	if (!ImGui::DockBuilderGetNode(m_main_dock_id))
+	{
+		ImGui::DockBuilderRemoveNode(m_main_dock_id);
+		ImGui::DockBuilderAddNode(m_main_dock_id, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(m_main_dock_id, viewport->Size);
+
+		ImGuiID rem_dock_id;
+		m_bottom_toolbar_dock_id = ImGui::DockBuilderSplitNode(m_main_dock_id, ImGuiDir_Down, 0.15f, nullptr, &rem_dock_id);
+		m_left_sidebar_dock_id = ImGui::DockBuilderSplitNode(rem_dock_id, ImGuiDir_Left, 0.2f, nullptr, nullptr);
+
+		ImGui::DockBuilderFinish(m_main_dock_id);
+	}
+
+	ImGui::DockSpace(m_main_dock_id, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+
+	ImGui::End();
+
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.1));
+
+	ImGui::SetNextWindowDockID(m_bottom_toolbar_dock_id, ImGuiCond_Once);
 	show_vk_pool_info_ui();
+
+	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
 
-	ImGui::ShowDemoWindow();
-	ImPlot::ShowDemoWindow();
+	ImGui::PopStyleColor();
 }
 
 

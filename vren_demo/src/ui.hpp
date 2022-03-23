@@ -39,6 +39,8 @@ namespace vren_demo::ui
 		bool m_paused = false;
 
 		plot m_frame_parallelism_plot;
+		plot m_frame_delta_plot;
+
 		plot m_main_pass_plot;
 		plot m_ui_pass_plot;
 
@@ -61,6 +63,10 @@ namespace vren_demo::ui
 		std::shared_ptr<vren::context> m_context;
 		std::shared_ptr<vren::renderer> m_renderer;
 
+		ImGuiID m_main_dock_id;
+		ImGuiID m_left_sidebar_dock_id;
+		ImGuiID m_bottom_toolbar_dock_id;
+
 
 	public:
 		vren_demo::ui::fps_ui m_fps_ui;
@@ -75,6 +81,4 @@ namespace vren_demo::ui
 
 		void update(float dt);
 	};
-
-
 }
