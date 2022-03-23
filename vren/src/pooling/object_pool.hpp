@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <iostream>
 
 namespace vren
 {
@@ -18,37 +19,43 @@ namespace vren
     {
     private:
         std::shared_ptr<object_pool<_t>> m_pool;
+		_t m_handle;
 
     public:
-        _t m_handle;
-
-        explicit pooled_object(std::shared_ptr<object_pool<_t>> const& pool, _t handle) :
+        explicit pooled_object(std::shared_ptr<object_pool<_t>> const& pool, _t&& handle) :
             m_pool(pool),
-            m_handle(handle)
+            m_handle(std::move(handle))
         {}
         pooled_object(pooled_object<_t> const& other) = delete;
-        pooled_object(pooled_object<_t>&& other) noexcept
+        pooled_object(pooled_object<_t>&& other) noexcept :
+			m_pool(std::move(other.m_pool)),
+			m_handle(std::move(other.m_handle))
         {
-			*this = std::move(other);
+			other.m_pool = nullptr;
         }
 
         ~pooled_object()
         {
             if (m_pool) {
-                m_pool->release(m_handle);
+                m_pool->release(std::move(m_handle));
             }
         }
 
         pooled_object<_t>& operator=(pooled_object<_t> const& other) = delete;
         pooled_object<_t>& operator=(pooled_object<_t>&& other) noexcept
         {
-			m_pool = other.m_pool;
-			m_handle = other.m_handle;
+			m_pool = std::move(other.m_pool);
+			m_handle = std::move(other.m_handle);
 
 			other.m_pool = nullptr;
 
 			return *this;
         }
+
+		_t const& get() const
+		{
+			return m_handle;
+		}
     };
 
     // --------------------------------------------------------------------------------------------------------------------------------
@@ -68,22 +75,31 @@ namespace vren
 
         virtual _t create_object() = 0;
 
-        virtual void release(_t const& obj)
+        virtual void release(_t&& obj)
 		{
-            m_unused_objects.push_back(obj);
+            m_unused_objects.push_back(std::move(obj));
 			m_acquired_count--;
         }
 
     public:
-		int get_acquired_objects_count() const {
+		object_pool() = default;
+		~object_pool()
+		{
+			std::cout << "deleting pool" << std::endl;
+		}
+
+		int get_acquired_objects_count() const
+		{
 			return m_acquired_count;
 		}
 
-		int get_pooled_objects_count() const {
+		int get_pooled_objects_count() const
+		{
 			return m_unused_objects.size();
 		}
 
-		int get_created_objects_count() const {
+		int get_created_objects_count() const
+		{
 			return get_acquired_objects_count() + get_pooled_objects_count();
 		}
 
@@ -97,11 +113,12 @@ namespace vren
                     create_object()
                 );
             } else {
-                auto pooled_obj = m_unused_objects.back();
+                _t pooled_obj(std::move(m_unused_objects.back()));
                 m_unused_objects.pop_back();
+
                 return vren::pooled_object(
                     std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
-                    pooled_obj
+                    std::move(pooled_obj)
                 );
             }
         }

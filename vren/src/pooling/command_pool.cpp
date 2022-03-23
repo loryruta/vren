@@ -28,9 +28,9 @@ VkCommandBuffer vren::command_pool::create_object()
     return cmd_buf;
 }
 
-void vren::command_pool::release(VkCommandBuffer const& obj)
+void vren::command_pool::release(VkCommandBuffer&& cmd_buf)
 {
-    vkResetCommandBuffer(obj, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+    vkResetCommandBuffer(cmd_buf, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
-    vren::object_pool<VkCommandBuffer>::release(obj);
+    vren::object_pool<VkCommandBuffer>::release(std::move(cmd_buf));
 }

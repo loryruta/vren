@@ -255,8 +255,15 @@ void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-int main(int argc, char* argv[])
+void glfw_error_callback(int error_code, const char* description)
 {
+	std::cerr << "[GLFW] (" << error_code << ") " << description << std::endl;
+}
+
+void launch()
+{
+	glfwSetErrorCallback(glfw_error_callback);
+
 	if (glfwInit() != GLFW_TRUE)
 	{
 		throw std::runtime_error("Couldn't create GLFW.");
@@ -406,9 +413,17 @@ int main(int argc, char* argv[])
 
 	vkDeviceWaitIdle(ctx->m_device);
 
-	glfwDestroyWindow(g_window);
+	//glfwDestroyWindow(g_window);
+	//glfwTerminate();
+}
 
-	glfwTerminate();
+int main(int argc, char* argv[])
+{
+	try {
+		launch();
+	} catch (std::exception& e) {
+		std::cerr << "vren_demo thrown an exception: " << e.what() << std::endl;
+	}
 
 	return 0;
 }

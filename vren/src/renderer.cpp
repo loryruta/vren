@@ -105,7 +105,7 @@ void vren::renderer::_init_light_array_descriptor_sets()
         VkWriteDescriptorSet desc_set_write{};
         desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         desc_set_write.pNext = nullptr;
-        desc_set_write.dstSet = m_lights_array_descriptor_sets[frame_idx].m_handle;
+        desc_set_write.dstSet = m_lights_array_descriptor_sets[frame_idx].get();
         desc_set_write.dstBinding = VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING;
         desc_set_write.dstArrayElement = 0;
         desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -231,7 +231,7 @@ void vren::renderer::render(
 	auto& node = cmd_graph.create_tail_node();
 	auto& cmd_buf = node.m_command_buffer;
 
-	vren::vk_utils::record_one_time_submit_commands(cmd_buf.m_handle, [&](VkCommandBuffer cmd_buf)
+	vren::vk_utils::record_one_time_submit_commands(cmd_buf.get(), [&](VkCommandBuffer cmd_buf)
 	{
 		/* Render pass begin */
 		VkClearValue clear_values[] = {

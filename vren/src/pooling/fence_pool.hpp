@@ -8,24 +8,24 @@
 
 namespace vren
 {
-    using pooled_vk_fence = vren::pooled_object<VkFence>;
+    using pooled_vk_fence = vren::pooled_object<vren::vk_fence>;
 
-    class fence_pool : public vren::object_pool<VkFence>
+    class fence_pool : public vren::object_pool<vren::vk_fence>
     {
     private:
         std::shared_ptr<vren::context> m_context;
 
     protected:
-        VkFence create_object() override
+		vren::vk_fence create_object() override
         {
-            VkFenceCreateInfo fence_info{};
-            fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fence_info.pNext = nullptr;
-            fence_info.flags = NULL;
-
+            VkFenceCreateInfo fence_info{
+				.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = NULL,
+			};
             VkFence fence;
             vren::vk_utils::check(vkCreateFence(m_context->m_device, &fence_info, nullptr, &fence));
-            return fence;
+            return vren::vk_fence(m_context, fence);
         }
 
     public:
@@ -35,9 +35,8 @@ namespace vren
 
         vren::pooled_vk_fence acquire() override
         {
-            auto fence = vren::object_pool<VkFence>::acquire();
-            vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &fence.m_handle));
-
+            auto fence = vren::object_pool<vren::vk_fence>::acquire();
+            vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &fence.get().m_handle));
             return fence;
         }
     };

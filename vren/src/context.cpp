@@ -59,31 +59,33 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-	VkDebugUtilsMessageTypeFlagsEXT message_type,
+	VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
+	VkDebugUtilsMessageTypeFlagsEXT msg_type,
 	VkDebugUtilsMessengerCallbackDataEXT const* data,
 	void* user_data
 )
 {
-	bool should_print = false;
-	//should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-	should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-	should_print |= message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-	if (should_print)
-	{
-		std::cerr << data->pMessage << std::endl;
+	if ((msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) || (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) {
+		std::cerr << "[VK] " << data->pMessage << std::endl;
+	} else {
+		std::cout << "[VK] " << data->pMessage << std::endl;
 	}
-
 	return VK_FALSE;
 }
 
-void populate_debug_messenger_info(VkDebugUtilsMessengerCreateInfoEXT& debug_messenger_info)
+VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 {
-	debug_messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	debug_messenger_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	debug_messenger_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	debug_messenger_info.pfnUserCallback = debug_messenger_callback;
+	return VkDebugUtilsMessengerCreateInfoEXT{
+		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+		.pNext = nullptr,
+		.flags = NULL,
+		.messageSeverity =
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+		.messageType =
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+		.pfnUserCallback = debug_messenger_callback,
+		.pUserData = nullptr,
+	};
 }
 
 VkInstance vren::context::create_instance()
@@ -121,9 +123,8 @@ VkInstance vren::context::create_instance()
 	instance_info.enabledLayerCount = (uint32_t) layers.size();
 	instance_info.ppEnabledLayerNames = layers.data();
 
-	// Debug messenger
-	VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info{};
-	populate_debug_messenger_info(debug_messenger_info);
+	/* Create debug messenger */
+	auto debug_messenger_info = create_debug_messenger_create_info();
 	instance_info.pNext = &debug_messenger_info;
 
 	//
@@ -137,13 +138,10 @@ VkInstance vren::context::create_instance()
 
 VkDebugUtilsMessengerEXT vren::context::setup_debug_messenger()
 {
-	VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info{};
-	populate_debug_messenger_info(debug_messenger_info);
+	auto debug_messenger_info = create_debug_messenger_create_info();
 
 	VkDebugUtilsMessengerEXT debug_messenger;
 	vren::vk_utils::check(CreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
-
-	std::cout << "Debug messenger set up" << std::endl;
 
 	return debug_messenger;
 }

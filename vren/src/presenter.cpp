@@ -308,7 +308,7 @@ void vren::presenter::present(render_func const& render_func)
 
 	{ /* Image layout transition from undefined image layout to color attachment */
 		auto& node = cmd_graph->create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf) {
+		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf) {
 			vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, m_swapchain->m_images.at(img_idx));
 		});
 	}
@@ -338,7 +338,7 @@ void vren::presenter::present(render_func const& render_func)
 
 	{ /* Image layout transition from color attachment to present */
 		auto& node = cmd_graph->create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf) {
+		vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf) {
 			vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf, m_swapchain->m_images.at(img_idx));
 		});
 	}

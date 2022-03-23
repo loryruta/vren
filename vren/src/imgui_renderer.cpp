@@ -223,7 +223,7 @@ void vren::imgui_renderer::render(
 
 	auto& node = cmd_graph.create_tail_node();
 
-	vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf)
+	vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
 	{
 		VkClearValue clear_values[] = {
 			{},

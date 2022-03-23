@@ -20,7 +20,7 @@ void vren::profiler::profile(
 {
 	{ /* Starting timestamp */
 		auto& begin_node = cmd_graph.create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(begin_node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf)
+		vren::vk_utils::record_one_time_submit_commands(begin_node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
 		{
 			vkCmdResetQueryPool(cmd_buf, m_query_pool.m_handle, slot_idx * 2, 2);
 
@@ -36,7 +36,7 @@ void vren::profiler::profile(
 
 	{ /* Ending timestamp */
 		auto& end_node = cmd_graph.create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(end_node.m_command_buffer.m_handle, [&](VkCommandBuffer cmd_buf)
+		vren::vk_utils::record_one_time_submit_commands(end_node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
 		{
 			auto query_idx = slot_idx * 2 + 1;
 			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, query_idx);

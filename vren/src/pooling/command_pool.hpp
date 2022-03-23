@@ -19,7 +19,7 @@ namespace vren
 
     protected:
         VkCommandBuffer create_object() override;
-        void release(VkCommandBuffer const& obj) override;
+        void release(VkCommandBuffer&& cmd_buf) override;
 
 	public:
 		command_pool(std::shared_ptr<vren::context> ctx, VkCommandPool handle);

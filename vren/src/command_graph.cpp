@@ -108,7 +108,7 @@ void vren::command_graph::submit(
 			.pWaitSemaphores = node_src_semaphores,
 			.pWaitDstStageMask = wait_stages.data(),
 			.commandBufferCount = 1,
-			.pCommandBuffers = &node.m_command_buffer.m_handle,
+			.pCommandBuffers = &node.m_command_buffer.get(),
 			.signalSemaphoreCount = (uint32_t) node_dst_semaphores_count,
 			.pSignalSemaphores = node_dst_semaphores
 		});
