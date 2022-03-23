@@ -137,7 +137,7 @@ namespace vren
 
 	public:
 		std::shared_ptr<vren::context> m_context;
-		VkSurfaceKHR m_surface;
+		std::shared_ptr<vren::vk_surface_khr> m_surface;
 
         uint32_t m_image_count;
 
@@ -148,9 +148,8 @@ namespace vren
 
 		presenter(
 			std::shared_ptr<vren::context> const& ctx,
-			VkSurfaceKHR surface // The surface ownership is transferred to the presenter!
+			std::shared_ptr<vren::vk_surface_khr> const& surface
 		);
-		~presenter();
 
 		void recreate_swapchain(
 			uint32_t width,

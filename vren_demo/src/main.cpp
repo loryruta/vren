@@ -298,10 +298,12 @@ int main(int argc, char* argv[])
 
 	auto ui_renderer = vren::imgui_renderer(ctx, g_window);
 
-	VkSurfaceKHR surface;
-	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surface));
+	/* Create surface */
+	VkSurfaceKHR surf_handle;
+	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surf_handle));
+	auto surf = std::make_shared<vren::vk_surface_khr>(ctx, surf_handle);
 
-	vren::presenter presenter(ctx, surface);
+	vren::presenter presenter(ctx, surf);
 
 	auto render_list = vren::render_list::create(ctx);
 

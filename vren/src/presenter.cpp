@@ -175,22 +175,17 @@ vren::swapchain::depth_buffer vren::swapchain::_create_depth_buffer()
 
 vren::presenter::presenter(
 	std::shared_ptr<vren::context> const& ctx,
-	VkSurfaceKHR surface
+	std::shared_ptr<vren::vk_surface_khr> const& surface
 ) :
 	m_context(ctx),
 	m_surface(surface)
 {
 	m_present_queue_family_idx = m_context->m_queue_families.m_graphics_idx;
 	VkBool32 has_support;
-	vkGetPhysicalDeviceSurfaceSupportKHR(m_context->m_physical_device, m_present_queue_family_idx, m_surface, &has_support);
+	vkGetPhysicalDeviceSurfaceSupportKHR(m_context->m_physical_device, m_present_queue_family_idx, m_surface->m_handle, &has_support);
 	if (!has_support) {
 		throw std::runtime_error("Unsupported state: the graphics queue family doesn't have the present support");
 	}
-}
-
-vren::presenter::~presenter()
-{
-	vkDestroySurfaceKHR(m_context->m_instance, m_surface, nullptr);
 }
 
 uint32_t vren::presenter::_pick_min_image_count(vren::vk_utils::surface_details const& surf_details)
@@ -238,7 +233,7 @@ void vren::presenter::recreate_swapchain(
 		}
 	}
 
-	auto surf_details = vren::vk_utils::get_surface_details(m_context->m_physical_device, m_surface);
+	auto surf_details = vren::vk_utils::get_surface_details(m_context->m_physical_device, m_surface->m_handle);
 
 	uint32_t img_count = _pick_min_image_count(surf_details);
 	VkSurfaceFormatKHR surf_format = _pick_surface_format(surf_details);
@@ -248,7 +243,7 @@ void vren::presenter::recreate_swapchain(
 	swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchain_info.pNext = nullptr;
 	swapchain_info.flags = NULL;
-	swapchain_info.surface = m_surface;
+	swapchain_info.surface = m_surface->m_handle;
 	swapchain_info.minImageCount = img_count;
 	swapchain_info.imageFormat = surf_format.format;
 	swapchain_info.imageColorSpace = surf_format.colorSpace;
