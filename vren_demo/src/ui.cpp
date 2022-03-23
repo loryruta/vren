@@ -148,7 +148,7 @@ void plot_ui(std::string plot_title, vren_demo::ui::plot const& plot, char const
 			ImGui::EndTable();
 		}
 
-		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 256), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText))
+		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 256), ImPlotFlags_CanvasOnly))
 		{
 			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoDecorations);
 
@@ -168,7 +168,9 @@ void plot_ui(std::string plot_title, vren_demo::ui::plot const& plot, char const
 
 void vren_demo::ui::fps_ui::show()
 {
-	if (ImGui::Begin("Frame info##frame_ui", nullptr))
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.5));
+
+	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
 	{
 		ImGui::Text("FPS: 100");
 		ImGui::Text("Plot samples count: %d", VREN_DEMO_PLOT_SAMPLES_COUNT);
@@ -188,6 +190,8 @@ void vren_demo::ui::fps_ui::show()
 	}
 
 	ImGui::End();
+
+	ImGui::PopStyleColor();
 }
 
 vren_demo::ui::main_ui::main_ui(
@@ -220,9 +224,11 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 				ImGui::TableNextColumn(); ImGui::Text("%d", pool.get_created_objects_count());
 			};
 
-			add_row("Graphics command pool", *m_context->m_graphics_command_pool);
-			add_row("Transfer command pool", *m_context->m_transfer_command_pool);
-			add_row("Fence pool", *m_context->m_fence_pool);
+			add_row("Graphics commands", *m_context->m_graphics_command_pool);
+			add_row("Transfer commands", *m_context->m_transfer_command_pool);
+			add_row("Fences", *m_context->m_fence_pool);
+			add_row("Material descriptors", *m_renderer->m_material_descriptor_pool);
+			add_row("Light array descriptors", *m_renderer->m_light_array_descriptor_pool);
 
 			/**/
 
