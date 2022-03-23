@@ -33,7 +33,10 @@ namespace vren
 	class material_descriptor_pool : public vren::descriptor_pool
 	{
 	public:
-		material_descriptor_pool(std::shared_ptr<vren::context> const& ctx);
+		material_descriptor_pool(
+			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
+		);
 
 		VkDescriptorPool create_descriptor_pool(int max_sets);
 	};

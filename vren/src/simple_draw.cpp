@@ -135,8 +135,8 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	color_blend_info.pAttachments = &color_blend_attachment;
 
 	std::vector<VkDescriptorSetLayout> desc_set_layouts = {
-		m_renderer->m_material_descriptor_set_layout.m_handle,
-		m_renderer->m_light_array_descriptor_set_layout.m_handle
+		m_renderer->m_material_descriptor_set_layout->m_handle,
+		m_renderer->m_light_array_descriptor_set_layout->m_handle
 	};
 
 	std::vector<VkPushConstantRange> push_constants;
@@ -242,10 +242,8 @@ void vren::simple_draw_pass::record_commands(
 		res_container.add_resource(render_obj.m_instances_buffer);
 
 		// Material
-		auto mat_desc_set = std::make_shared<vren::vk_descriptor_set>(
-			m_renderer->m_material_descriptor_pool->acquire_descriptor_set(
-				m_renderer->m_material_descriptor_set_layout.m_handle
-			)
+		auto mat_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+			m_renderer->m_material_descriptor_pool->acquire()
 		);
 		vren::update_material_descriptor_set(*m_renderer->m_context, *render_obj.m_material, mat_desc_set->m_handle);
 		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->m_handle, 0, nullptr);

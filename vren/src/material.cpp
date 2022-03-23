@@ -18,10 +18,12 @@ vren::material::material(std::shared_ptr<vren::context> const& ctx) :
 // material_descriptor_pool
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::material_descriptor_pool::material_descriptor_pool(std::shared_ptr<vren::context> const& ctx) :
-	vren::descriptor_pool(ctx)
-{
-}
+vren::material_descriptor_pool::material_descriptor_pool(
+	std::shared_ptr<vren::context> const& ctx,
+	std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
+) :
+	vren::descriptor_pool(ctx, desc_set_layout)
+{}
 
 VkDescriptorPool vren::material_descriptor_pool::create_descriptor_pool(int max_sets)
 {

@@ -37,15 +37,19 @@ std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>
 vren::renderer::_create_spot_lights_buffers()
 {
     return create_array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>(
-        [&]() { return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_SPOT_LIGHTS_BUFFER_SIZE, true); }
+        [&]() {
+			return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_SPOT_LIGHTS_BUFFER_SIZE, true);
+		}
     );
 }
 
-std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>
+std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>
 vren::renderer::_acquire_light_array_descriptor_sets()
 {
-    return create_array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>(
-        [&]() { return m_light_array_descriptor_pool->acquire_descriptor_set(m_light_array_descriptor_set_layout.m_handle); }
+    return create_array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT>(
+        [&]() {
+			return m_light_array_descriptor_pool->acquire();
+		}
     );
 }
 
@@ -54,11 +58,11 @@ vren::renderer::renderer(std::shared_ptr<vren::context> const& ctx) :
 
         m_render_pass(std::make_shared<vren::vk_render_pass>(_create_render_pass())),
 
-        m_material_descriptor_set_layout(vren::create_material_descriptor_set_layout(ctx)),
-        m_material_descriptor_pool(std::make_shared<vren::material_descriptor_pool>(ctx)),
+        m_material_descriptor_set_layout(std::make_shared<vren::vk_descriptor_set_layout>(vren::create_material_descriptor_set_layout(ctx))),
+        m_material_descriptor_pool(std::make_shared<vren::material_descriptor_pool>(ctx, m_material_descriptor_set_layout)),
 
-        m_light_array_descriptor_set_layout(vren::create_light_array_descriptor_set_layout(ctx)),
-        m_light_array_descriptor_pool(std::make_shared<vren::light_array_descriptor_pool>(ctx)),
+		m_light_array_descriptor_set_layout(std::make_shared<vren::vk_descriptor_set_layout>(vren::create_light_array_descriptor_set_layout(ctx))),
+        m_light_array_descriptor_pool(std::make_shared<vren::light_array_descriptor_pool>(ctx, m_light_array_descriptor_set_layout)),
 
         m_point_lights_buffers(_create_point_lights_buffers()),
         m_directional_lights_buffers(_create_directional_lights_buffers()),

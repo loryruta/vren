@@ -45,14 +45,11 @@ namespace vren
 
 		std::shared_ptr<vren::vk_render_pass> m_render_pass;
 
-        vren::vk_descriptor_set_layout m_material_descriptor_set_layout;
+		std::shared_ptr<vren::vk_descriptor_set_layout> m_material_descriptor_set_layout;
         std::shared_ptr<vren::descriptor_pool> m_material_descriptor_pool;
 
-        vren::vk_descriptor_set_layout m_light_array_descriptor_set_layout;
+		std::shared_ptr<vren::vk_descriptor_set_layout> m_light_array_descriptor_set_layout;
         std::shared_ptr<vren::descriptor_pool> m_light_array_descriptor_pool;
-
-		//vren::vk_descriptor_set_layout m_material_descriptor_set_layout;
-		//std::shared_ptr<vren::descriptor_set_pool> m_lights_descriptor_set_pool;
 
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 
@@ -66,7 +63,7 @@ namespace vren
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
 
-        std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> m_lights_array_descriptor_sets;
+        std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> m_lights_array_descriptor_sets;
 
 	private:
         vren::vk_render_pass _create_render_pass();
@@ -75,7 +72,7 @@ namespace vren
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_directional_lights_buffers();
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_spot_lights_buffers();
 
-        std::array<vren::vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> _acquire_light_array_descriptor_sets();
+        std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> _acquire_light_array_descriptor_sets();
 
 		renderer(std::shared_ptr<context> const& ctx);
 

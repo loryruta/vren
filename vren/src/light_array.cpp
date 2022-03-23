@@ -8,9 +8,10 @@
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::light_array_descriptor_pool::light_array_descriptor_pool(
-	std::shared_ptr<vren::context> const& ctx
+	std::shared_ptr<vren::context> const& ctx,
+	std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
 ) :
-	vren::descriptor_pool(ctx)
+	vren::descriptor_pool(ctx, desc_set_layout)
 {}
 
 VkDescriptorPool vren::light_array_descriptor_pool::create_descriptor_pool(int max_sets)

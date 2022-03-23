@@ -68,73 +68,6 @@ static ImGui_ImplVulkan_Data* ImGui_ImplVulkan_GetBackendData()
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// imgui_descriptor_pool
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::imgui_descriptor_pool::imgui_descriptor_pool(std::shared_ptr<vren::context> const& ctx) :
-	vren::descriptor_pool(ctx)
-{}
-
-vren::imgui_descriptor_pool::~imgui_descriptor_pool()
-{}
-
-VkDescriptorPool vren::imgui_descriptor_pool::create_descriptor_pool(int max_sets)
-{
-	VkDescriptorPoolSize pool_sizes[] = {
-		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-	};
-
-	VkDescriptorPoolCreateInfo pool_info = {};
-	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	pool_info.maxSets = 1000;
-	pool_info.poolSizeCount = std::size(pool_sizes);
-	pool_info.pPoolSizes = pool_sizes;
-
-	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &pool_info, nullptr, &desc_pool));
-
-	return desc_pool;
-}
-
-vren::vk_descriptor_set vren::imgui_descriptor_pool::acquire_descriptor_set()
-{
-	ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
-	return vren::descriptor_pool::acquire_descriptor_set(bd->DescriptorSetLayout);
-}
-
-void vren::imgui_descriptor_pool::write_descriptor_set(
-	vren::vk_descriptor_set const& desc_set,
-	VkSampler sampler,
-	VkImageView image_view,
-	VkImageLayout image_layout
-)
-{
-	VkDescriptorImageInfo desc_image{};
-	desc_image.sampler = sampler;
-	desc_image.imageView = image_view;
-	desc_image.imageLayout = image_layout;
-
-	VkWriteDescriptorSet write_desc{};
-	write_desc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc.dstSet = desc_set.m_handle;
-	write_desc.descriptorCount = 1;
-	write_desc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	write_desc.pImageInfo = &desc_image;
-	vkUpdateDescriptorSets(m_context->m_device, 1, &write_desc, 0, NULL);
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
 // imgui_renderer
 // --------------------------------------------------------------------------------------------------------------------------------
 
@@ -152,10 +85,32 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
-	m_descriptor_pool = std::make_shared<vren::imgui_descriptor_pool>(m_context);
-	_init_render_pass();
+	/* Create ImGui descriptor pool */
+	VkDescriptorPoolSize pool_sizes[] = {
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
 
-	m_internal_descriptor_pool = m_descriptor_pool->create_descriptor_pool(1000);
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1024;
+	pool_info.poolSizeCount = std::size(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+
+	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &pool_info, nullptr, &m_descriptor_pool));
+
+	/* Create ImGui render pass */
+	_init_render_pass();
 
 	ImGui_ImplVulkan_InitInfo init_info{};
 	init_info.Instance = ctx->m_instance;
@@ -164,7 +119,7 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 	init_info.QueueFamily = ctx->m_queue_families.m_graphics_idx;
 	init_info.Queue = ctx->m_graphics_queue;
 	init_info.PipelineCache = nullptr;
-	init_info.DescriptorPool = m_internal_descriptor_pool;
+	init_info.DescriptorPool = m_descriptor_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = 3; // Why do you need to know about image count here, dear imgui vulkan backend...?
 	init_info.ImageCount = 3;
@@ -188,7 +143,7 @@ vren::imgui_renderer::~imgui_renderer()
 	ImGui::DestroyContext();
 
 	vkDestroyRenderPass(m_context->m_device, m_render_pass, nullptr);
-	vkDestroyDescriptorPool(m_context->m_device, m_internal_descriptor_pool, nullptr);
+	vkDestroyDescriptorPool(m_context->m_device, m_descriptor_pool, nullptr);
 }
 
 void vren::imgui_renderer::_init_render_pass()
