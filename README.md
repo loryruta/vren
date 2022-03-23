@@ -1,23 +1,42 @@
 # VREN
 
-my Vulkan RENderer
+VREN (a creative abbreviation for "my Vulkan RENderer") is a 3D rendering library that makes use of the low-level graphics library Vulkan.
 
-## Useful references
+It's being written mainly for learning puposes.
 
-**C++ patterns:**
-- RAII: https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization
-- Model-concept idiom: https://gracicot.github.io/conceptmodel/2017/09/13/concept-model-part1.html
-- Copy-swap idiom: https://stackoverflow.com/questions/3279543/what-is-the-copy-and-swap-idiom
+## Directory structure
+- `docs`: github-pages website 
+- `vren`: the renderer's library code
+- `vren_demo`: the demonstration executable code meant to show off the features of vren
+- `vren_test`: unit tests
 
-**Vulkan specs:**
-- https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html
-- https://vulkan-tutorial.com/
-- https://vkguide.dev/
-  
-**PBR & gamma correction:**
-- https://learnopengl.com/PBR/Theory
-- https://learnopengl.com/PBR/Lighting
-- https://learnopengl.com/Advanced-Lighting/Gamma-Correction
+## How to build
+
+Ensure the following requirements are satisfied:
+- git
+- [CMake](https://cmake.org/download/) >= 3.19
+- [vcpkg](https://github.com/microsoft/vcpkg)
+- [Vulkan SDK](https://vulkan.lunarg.com/) >= 1.2 _- also make sure `VULKAN_SDK` is set and points to the correct installation folder_
+
+Clone this repository and navigate into it:
+```cmd
+git clone https://github.com/loryruta/vren
+cd vren
+```
+
+Generate the project build configuration through CMake:
+```cmd
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=<vcpkg home directory>/scripts/buildsystems/vcpkg.cmake
+```
+
+Build it:
+```cmd
+cmake --build .
+```
+
+You may want to run the demo executable at: `./build/vren_demo/vren_demo(.exe)`.
 
 ## Gallery 
 
