@@ -4,15 +4,17 @@
 
 #include <glm/glm.hpp>
 
-#include "context.hpp"
 #include "pooling/descriptor_pool.hpp"
 #include "utils/image.hpp"
 
 namespace vren
 {
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// Forward decl
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
 	// material
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	struct material
 	{
@@ -23,22 +25,24 @@ namespace vren
 		float m_metallic_factor;
 		float m_roughness_factor;
 
-		explicit material(std::shared_ptr<vren::context> const& ctx);
+		explicit material(vren::vk_utils::toolbox const& tb);
 	};
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// material_descriptor_pool
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	class material_descriptor_pool : public vren::descriptor_pool
 	{
+	protected:
+		VkDescriptorPool create_descriptor_pool(int max_sets);
+
 	public:
 		material_descriptor_pool(
 			std::shared_ptr<vren::context> const& ctx,
 			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
 		);
 
-		VkDescriptorPool create_descriptor_pool(int max_sets);
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------

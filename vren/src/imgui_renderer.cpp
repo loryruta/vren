@@ -6,6 +6,7 @@
 #include <imgui_impl_vulkan.h>
 #include <implot.h>
 
+#include "context.hpp"
 #include "utils/misc.hpp"
 
 // References:
@@ -71,10 +72,12 @@ static ImGui_ImplVulkan_Data* ImGui_ImplVulkan_GetBackendData()
 // imgui_renderer
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, GLFWwindow* window) :
-	m_context(ctx),
+vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::vk_utils::toolbox> const& tb, GLFWwindow* window) :
+	m_toolbox(tb),
 	m_window(window)
 {
+	auto& ctx = tb->m_context;
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void) io;
@@ -107,7 +110,7 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 	pool_info.poolSizeCount = std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
 
-	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &pool_info, nullptr, &m_descriptor_pool));
+	vren::vk_utils::check(vkCreateDescriptorPool(ctx->m_device, &pool_info, nullptr, &m_descriptor_pool));
 
 	/* Create ImGui render pass */
 	_init_render_pass();
@@ -128,7 +131,7 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 	init_info.CheckVkResultFn = vren::vk_utils::check;
 	ImGui_ImplVulkan_Init(&init_info, m_render_pass);
 
-	vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container) {
+	vren::vk_utils::immediate_graphics_queue_submit(*tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container) {
 		ImGui_ImplVulkan_CreateFontsTexture(cmd_buf);
 	});
 
@@ -137,17 +140,21 @@ vren::imgui_renderer::imgui_renderer(std::shared_ptr<vren::context> const& ctx, 
 
 vren::imgui_renderer::~imgui_renderer()
 {
+	auto& ctx = m_toolbox->m_context;
+
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
-	vkDestroyRenderPass(m_context->m_device, m_render_pass, nullptr);
-	vkDestroyDescriptorPool(m_context->m_device, m_descriptor_pool, nullptr);
+	vkDestroyRenderPass(ctx->m_device, m_render_pass, nullptr);
+	vkDestroyDescriptorPool(ctx->m_device, m_descriptor_pool, nullptr);
 }
 
 void vren::imgui_renderer::_init_render_pass()
 {
+	auto& ctx = m_toolbox->m_context;
+
 	VkAttachmentDescription color_attachment{};
 	color_attachment.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -204,7 +211,7 @@ void vren::imgui_renderer::_init_render_pass()
 	render_pass_info.pSubpasses = &subpass;
 	render_pass_info.dependencyCount = 1;
 	render_pass_info.pDependencies = &dependency;
-	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &m_render_pass));
+	vren::vk_utils::check(vkCreateRenderPass(ctx->m_device, &render_pass_info, nullptr, &m_render_pass));
 }
 
 void vren::imgui_renderer::render(

@@ -5,18 +5,22 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
-#include "context.hpp"
+#include "config.hpp"
 #include "pooling/descriptor_pool.hpp"
+#include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
 #include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
 #include "command_graph.hpp"
+#include "simple_draw.hpp"
 
 namespace vren
 {
 	// Forward decl
-	class simple_draw_pass;
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
 
 	struct camera
 	{
@@ -34,9 +38,9 @@ namespace vren
 		VkRect2D m_scissor;
 	};
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// renderer
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	class renderer : public std::enable_shared_from_this<renderer>
 	{
@@ -61,7 +65,7 @@ namespace vren
 
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_point_lights_buffers;
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
-        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
+		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
 
         std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> m_lights_array_descriptor_sets;
 

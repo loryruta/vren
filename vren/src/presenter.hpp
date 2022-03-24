@@ -77,7 +77,7 @@ namespace vren
 		depth_buffer _create_depth_buffer();
 
 	public:
-		std::shared_ptr<vren::context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		VkSwapchainKHR m_handle;
 
 		uint32_t m_image_width, m_image_height;
@@ -95,7 +95,7 @@ namespace vren
 		std::vector<vren::swapchain_frame_data> m_frame_data;
 
 		swapchain(
-			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
 			VkSwapchainKHR handle,
 			uint32_t img_width,
 			uint32_t img_height,
@@ -136,7 +136,7 @@ namespace vren
         VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
 
 	public:
-		std::shared_ptr<vren::context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		std::shared_ptr<vren::vk_surface_khr> m_surface;
 
         uint32_t m_image_count;
@@ -147,7 +147,7 @@ namespace vren
 		uint32_t m_current_frame_idx = 0;
 
 		presenter(
-			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
 			std::shared_ptr<vren::vk_surface_khr> const& surface
 		);
 

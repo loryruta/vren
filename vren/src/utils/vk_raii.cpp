@@ -1,5 +1,7 @@
 #include "vk_raii.hpp"
 
+#include "context.hpp"
+
 template<>
 void vren::destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, VkImage handle)
 {

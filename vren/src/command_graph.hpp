@@ -1,13 +1,13 @@
 #pragma once
 
-#include "context.hpp"
 #include "utils/vk_raii.hpp"
 #include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
 
-namespace vren
+namespace vren // TODO vk_utils
 {
 	// Forward decl
+	class context;
 	class command_graph;
 	class command_graph_node;
 

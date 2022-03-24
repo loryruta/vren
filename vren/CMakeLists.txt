@@ -35,11 +35,14 @@ set(SRC
         src/command_graph.hpp
         src/command_graph.cpp
         src/pooling/object_pool.hpp
+        src/pooling/fence_pool.cpp
         src/pooling/fence_pool.hpp
         src/utils/image_layout_transitions.hpp
         src/utils/image_layout_transitions.cpp
         src/utils/profiler.hpp
         src/utils/profiler.cpp
+        src/utils/vk_toolbox.hpp
+        src/utils/vk_toolbox.cpp
 )
 
 add_library(vren ${SRC})

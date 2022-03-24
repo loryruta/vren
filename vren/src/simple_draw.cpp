@@ -3,12 +3,8 @@
 #include <fstream>
 #include <iostream>
 
-#include <glm/gtc/type_ptr.hpp>
-
-#include "render_object.hpp"
-#include "pooling/descriptor_pool.hpp"
-#include "material.hpp"
-#include "utils/image.hpp"
+#include "context.hpp"
+#include "renderer.hpp"
 #include "utils/misc.hpp"
 
 vren::simple_draw_pass::simple_draw_pass(std::shared_ptr<vren::renderer> const& renderer) :

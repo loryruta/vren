@@ -5,10 +5,10 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include "context.hpp"
+#include "vk_toolbox.hpp"
 #include "render_object.hpp"
 #include "utils/misc.hpp"
-
-#define VREN_VAR_LEN_BUFFER_INCREMENT 256
 
 // References:
 // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html
@@ -98,21 +98,23 @@ void vren::vk_utils::update_host_visible_buffer(
 }
 
 void vren::vk_utils::update_device_only_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::vk_utils::buffer& buf,
 	void const* data,
 	size_t size,
 	size_t dst_offset
 )
 {
+	auto& ctx = tb.m_context;
+
 	vren::vk_utils::buffer staging_buf = alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
 	update_host_visible_buffer(*ctx, staging_buf, data, size, 0);
 
-    copy_buffer(*ctx, staging_buf, buf, size, 0, dst_offset);
+    copy_buffer(tb, staging_buf, buf, size, 0, dst_offset);
 }
 
 void vren::vk_utils::copy_buffer(
-	vren::context const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::vk_utils::buffer& src_buffer,
 	vren::vk_utils::buffer& dst_buffer,
 	size_t size,
@@ -120,7 +122,7 @@ void vren::vk_utils::copy_buffer(
 	size_t dst_offset
 )
 {
-    vren::vk_utils::immediate_transfer_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_transfer_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         VkBufferCopy copy_region{};
         copy_region.srcOffset = src_offset;
@@ -131,84 +133,40 @@ void vren::vk_utils::copy_buffer(
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	VkBufferUsageFlagBits buffer_usage,
 	void const* data,
 	size_t size
 )
 {
-	vren::vk_utils::buffer buf =
-		vren::vk_utils::alloc_device_only_buffer(ctx, buffer_usage, size);
-	vren::vk_utils::update_device_only_buffer(ctx, buf, data, size, 0);
+	auto buf = vren::vk_utils::alloc_device_only_buffer(tb.m_context, buffer_usage, size);
+	vren::vk_utils::update_device_only_buffer(tb, buf, data, size, 0);
 	return buf;
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_vertex_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::vertex const* vertices,
 	size_t vertices_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof(vren::vertex) * vertices_count);
+	return vren::vk_utils::create_device_only_buffer(tb, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof(vren::vertex) * vertices_count);
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_indices_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	uint32_t const* indices,
 	size_t indices_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof(uint32_t) * indices_count);
+	return vren::vk_utils::create_device_only_buffer(tb, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof(uint32_t) * indices_count);
 }
 
 vren::vk_utils::buffer vren::vk_utils::create_instances_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::instance_data const* instances,
 	size_t instances_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
-// Variable length buffer
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::vk_utils::var_len_buffer::var_len_buffer(
-	std::shared_ptr<vren::context> const& ctx,
-	VkBufferUsageFlagBits buf_usage
-) :
-	m_context(ctx),
-	m_buffer_usage(buf_usage)
-{
-}
-
-void vren::vk_utils::var_len_buffer::set_data(void* data, uint32_t len)
-{
-	size_t req_buf_len =
-		glm::ceil((float) len / (float) VREN_VAR_LEN_BUFFER_INCREMENT) * VREN_VAR_LEN_BUFFER_INCREMENT;
-
-	if (req_buf_len != m_current_buffer_length)
-	{
-		m_buffer = vren::vk_utils::alloc_host_visible_buffer(m_context, m_buffer_usage, req_buf_len);
-
-		vren::vk_utils::update_host_visible_buffer(*m_context, *m_buffer, data, req_buf_len, sizeof(uint32_t));
-
-		m_current_buffer_length = req_buf_len;
-	}
-}
-
-template<typename _t>
-void vren::vk_utils::var_len_buffer::set_elements_with_count(_t* elements, uint32_t elements_count)
-{
-	std::vector<uint8_t> buf_data(
-		sizeof(uint32_t) +
-			sizeof(uint32_t) * 3 +
-			elements_count * sizeof(_t)
-	);
-
-	std::memcpy(buf_data.data(), &elements_count, sizeof(uint32_t));
-	std::memcpy(buf_data.data() + sizeof(uint32_t) * 4, elements, elements_count * sizeof(_t));
-
-	set_data(buf_data.data(), buf_data.size());
+	return vren::vk_utils::create_device_only_buffer(tb, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
 }

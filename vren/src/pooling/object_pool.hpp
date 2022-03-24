@@ -73,6 +73,8 @@ namespace vren
     protected:
 		std::vector<_t> m_unused_objects;
 
+		explicit object_pool() = default;
+
         virtual _t create_object() = 0;
 
         virtual void release(_t&& obj)
@@ -80,13 +82,11 @@ namespace vren
             m_unused_objects.push_back(std::move(obj));
 			m_acquired_count--;
         }
-
     public:
-		object_pool() = default;
-		~object_pool()
-		{
-			std::cout << "deleting pool" << std::endl;
-		}
+		object_pool(object_pool<_t> const& other) = delete;
+		object_pool(object_pool<_t>&& other) = delete;
+
+		~object_pool() = default;
 
 		int get_acquired_objects_count() const
 		{
@@ -122,5 +122,10 @@ namespace vren
                 );
             }
         }
+
+		static std::shared_ptr<vren::object_pool<_t>> create()
+		{
+			return std::make_shared<vren::object_pool<_t>>();
+		}
     };
 }

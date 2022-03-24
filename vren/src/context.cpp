@@ -1,14 +1,8 @@
 #include "context.hpp"
 
 #include <iostream>
-#include <cstring>
 
-#include "utils/image.hpp"
 #include "utils/misc.hpp"
-#include "pooling/descriptor_pool.hpp"
-#include "pooling/fence_pool.hpp"
-#include "pooling/command_pool.hpp"
-#include "material.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
 {
@@ -39,8 +33,6 @@ bool vren::does_support_layers(std::vector<char const*> const& layers)
 
 	return true;
 }
-
-// ------------------------------------------------------------------------------------------------ renderer
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -280,39 +272,8 @@ void vren::context::create_vma_allocator()
 	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
-void vren::context::_init_graphics_command_pool()
-{
-	VkCommandPoolCreateInfo cmd_pool_info{};
-	cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmd_pool_info.pNext = nullptr;
-	cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	cmd_pool_info.queueFamilyIndex = m_queue_families.m_graphics_idx;
-
-	VkCommandPool cmd_pool;
-	vren::vk_utils::check(vkCreateCommandPool(m_device, &cmd_pool_info, nullptr, &cmd_pool));
-
-	m_graphics_command_pool = std::make_shared<vren::command_pool>(shared_from_this(), cmd_pool);
-}
-
-void vren::context::_init_transfer_command_pool()
-{
-	VkCommandPoolCreateInfo cmd_pool_info{};
-	cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmd_pool_info.pNext = nullptr;
-	cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	cmd_pool_info.queueFamilyIndex = m_queue_families.m_transfer_idx;
-
-	VkCommandPool cmd_pool;
-	vren::vk_utils::check(vkCreateCommandPool(m_device, &cmd_pool_info, nullptr, &cmd_pool));
-
-	m_transfer_command_pool = std::make_shared<vren::command_pool>(shared_from_this(), cmd_pool);
-}
-
-vren::context::context(vren::context_info& info) :
+vren::context::context(context_info const& info) :
 	m_info(info)
-{}
-
-void vren::context::_init()
 {
 	m_instance = create_instance();
 	m_debug_messenger = setup_debug_messenger();
@@ -328,40 +289,6 @@ void vren::context::_init()
 	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
 	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
 	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
-
-    // Pools initialization
-	_init_graphics_command_pool();
-	_init_transfer_command_pool();
-
-    m_fence_pool = std::make_shared<vren::fence_pool>(shared_from_this());
-
-	// Default textures
-	m_white_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(shared_from_this(), 255, 255, 255, 255)
-	);
-
-	m_black_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(shared_from_this(), 0, 0, 0, 0)
-	);
-
-	m_red_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(shared_from_this(), 255, 0, 0, 255)
-	);
-
-	m_green_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(shared_from_this(), 0, 255, 0, 255)
-	);
-
-	m_blue_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(shared_from_this(), 0, 0, 255, 255)
-	);
-}
-
-std::shared_ptr<vren::context> vren::context::create(vren::context_info& info)
-{
-	auto ctx = std::shared_ptr<vren::context>(new vren::context(info)); // renderer's initialization must be achieved in two steps because of shared_from_this()
-    ctx->_init();
-	return ctx;
 }
 
 vren::context::~context()
@@ -374,4 +301,9 @@ vren::context::~context()
 
 	DestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
 	vkDestroyInstance(m_instance, nullptr);
+}
+
+std::shared_ptr<vren::context> vren::context::create(vren::context_info const& ctx_info)
+{
+	return std::shared_ptr<vren::context>(new vren::context(ctx_info));
 }

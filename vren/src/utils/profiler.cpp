@@ -1,5 +1,6 @@
 #include "profiler.hpp"
 
+#include "context.hpp"
 #include "pooling/command_pool.hpp"
 #include "utils/misc.hpp"
 

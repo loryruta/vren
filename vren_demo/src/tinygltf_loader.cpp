@@ -73,8 +73,8 @@ VkSamplerAddressMode parse_address_mode(int gltf_address_mode)
 	}
 }
 
-vren::tinygltf_loader::tinygltf_loader(std::shared_ptr<vren::context> const& ctx) :
-	m_context(ctx)
+vren::tinygltf_loader::tinygltf_loader(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
+	m_toolbox(tb)
 {}
 
 void vren::tinygltf_loader::load_textures(
@@ -137,7 +137,7 @@ void vren::tinygltf_loader::load_textures(
 
 		auto tex = std::make_shared<vren::vk_utils::texture>(
             vren::vk_utils::create_texture(
-                m_context,
+				*m_toolbox,
                 img_w,
                 img_h,
                 img_data,
@@ -168,7 +168,7 @@ void vren::tinygltf_loader::load_materials(
 		tinygltf::Material const& gltf_mat = gltf_model.materials.at(i);
 		tinygltf::PbrMetallicRoughness const& gltf_pbr = gltf_mat.pbrMetallicRoughness;
 
-		auto mat = std::make_shared<vren::material>(m_context);
+		auto mat = std::make_shared<vren::material>(*m_toolbox);
 
 		mat->m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor);
 		mat->m_metallic_factor = (float) gltf_pbr.metallicFactor;
@@ -352,7 +352,7 @@ void vren::tinygltf_loader::load_model(
 
 				auto vertices_buf =
 					std::make_shared<vren::vk_utils::buffer>(
-						vren::vk_utils::create_vertex_buffer(m_context, vertices.data(), vertices.size())
+						vren::vk_utils::create_vertex_buffer(*m_toolbox, vertices.data(), vertices.size())
 					);
 				render_obj.set_vertices_buffer(vertices_buf, vertices.size());
 			}
@@ -395,7 +395,7 @@ void vren::tinygltf_loader::load_model(
 
 				auto indices_buf =
 					std::make_shared<vren::vk_utils::buffer>(
-						vren::vk_utils::create_indices_buffer(m_context, indices.data(), indices.size())
+						vren::vk_utils::create_indices_buffer(*m_toolbox, indices.data(), indices.size())
 					);
 				render_obj.set_indices_buffer(indices_buf, indices.size());
 			}
@@ -405,7 +405,7 @@ void vren::tinygltf_loader::load_model(
 
 			auto instances_buf =
 				std::make_shared<vren::vk_utils::buffer>(
-					vren::vk_utils::create_instances_buffer(m_context, instances.data(), instances.size())
+					vren::vk_utils::create_instances_buffer(*m_toolbox, instances.data(), instances.size())
 				);
 			render_obj.set_instances_buffer(instances_buf, instances.size());
 

@@ -5,12 +5,16 @@
 
 #include <glm/glm.hpp>
 
-#include "context.hpp"
+#include "render_object.hpp"
 
 namespace vren
 {
 	// Forward decl
-	class render_object;
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
+	// render_list
+	// ------------------------------------------------------------------------------------------------
 
 	class render_list : public std::enable_shared_from_this<render_list>
 	{

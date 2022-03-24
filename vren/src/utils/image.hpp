@@ -7,13 +7,21 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "context.hpp"
 #include "vk_raii.hpp"
 #include "resource_container.hpp"
 #include "pooling/command_pool.hpp"
 
+namespace vren
+{
+	// Forward decl
+	class context;
+}
+
 namespace vren::vk_utils
 {
+	// Forward decl
+	class toolbox;
+
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// Image
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -91,7 +99,7 @@ namespace vren::vk_utils
 	};
 
 	vren::vk_utils::texture create_texture(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::vk_utils::toolbox const& tb,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -105,11 +113,8 @@ namespace vren::vk_utils
 	);
 
 	vren::vk_utils::texture create_color_texture(
-		std::shared_ptr<vren::context> const& ctx,
-		uint8_t r,
-		uint8_t g,
-		uint8_t b,
-		uint8_t a
+		vren::vk_utils::toolbox const& tb,
+		uint8_t r, uint8_t g, uint8_t b, uint8_t a
 	);
 
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -145,13 +150,13 @@ namespace vren::vk_utils
 		};
 
 		static color_buffer create_color_buffer(
-			std::shared_ptr<vren::context> const& ctx,
+			vren::vk_utils::toolbox const& tb,
 			uint32_t width,
 			uint32_t height
 		);
 
 		static depth_buffer create_depth_buffer(
-			std::shared_ptr<vren::context> const& ctx,
+			vren::vk_utils::toolbox const& tb,
 			uint32_t width,
 			uint32_t height
 		);
@@ -171,7 +176,7 @@ namespace vren::vk_utils
 		vren::vk_framebuffer m_framebuffer;
 
 		custom_framebuffer(
-			std::shared_ptr<vren::context> const& ctx,
+			vren::vk_utils::toolbox const& tb,
 			std::shared_ptr<vren::vk_render_pass> const& render_pass,
 			uint32_t width,
 			uint32_t height

@@ -8,13 +8,15 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
-#include "render_list.hpp"
 #include "utils/image.hpp"
 #include "utils/buffer.hpp"
 #include "material.hpp"
 
 namespace vren
 {
+	// Forward decl
+	class render_list;
+
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	struct vertex

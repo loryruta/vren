@@ -1,6 +1,8 @@
 #include "renderer.hpp"
 
-#include "simple_draw.hpp"
+#include <array>
+
+#include "context.hpp"
 #include "material.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"

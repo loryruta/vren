@@ -1,5 +1,6 @@
 #include "command_graph.hpp"
 
+#include "context.hpp"
 #include "utils/misc.hpp"
 
 // ------------------------------------------------------------------------------------------------

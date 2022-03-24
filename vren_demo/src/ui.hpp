@@ -5,9 +5,11 @@
 
 #include <imgui.h>
 
+#include "profile.hpp"
+
 #include "context.hpp"
 #include "renderer.hpp"
-#include "profile.hpp"
+#include "utils/vk_toolbox.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
@@ -61,6 +63,7 @@ namespace vren_demo::ui
 	{
 	private:
 		std::shared_ptr<vren::context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		std::shared_ptr<vren::renderer> m_renderer;
 
 		ImGuiID m_main_dock_id;
@@ -73,6 +76,7 @@ namespace vren_demo::ui
 
 		main_ui(
 			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
 			std::shared_ptr<vren::renderer> const& renderer
 		);
 

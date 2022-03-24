@@ -7,10 +7,15 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "context.hpp"
-
 namespace vren
 {
+	// Forward decl
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
+	// vk_handle_wrapper
+	// ------------------------------------------------------------------------------------------------
+
 	template<typename T>
 	void destroy_vk_handle(std::shared_ptr<vren::context> const& ctx, T handle);
 
@@ -64,7 +69,8 @@ namespace vren
 		}
 	};
 
-	// wrapped vulkan handles
+	// ------------------------------------------------------------------------------------------------
+
 	using vk_image       = vren::vk_handle_wrapper<VkImage>;
 	using vk_image_view  = vren::vk_handle_wrapper<VkImageView>;
 	using vk_sampler     = vren::vk_handle_wrapper<VkSampler>;

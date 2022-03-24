@@ -1,14 +1,17 @@
 #include "material.hpp"
 
+#include "context.hpp"
 #include "utils/misc.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // material
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::material::material(std::shared_ptr<vren::context> const& ctx) :
-	m_base_color_texture(ctx->m_white_texture),
-	m_metallic_roughness_texture(ctx->m_white_texture),
+vren::material::material(
+	vren::vk_utils::toolbox const& tb
+) :
+	m_base_color_texture(tb.m_white_texture),
+	m_metallic_roughness_texture(tb.m_white_texture),
 	m_base_color_factor(1.0f),
 	m_metallic_factor(0.0f),
 	m_roughness_factor(0.0f)

@@ -6,12 +6,14 @@
 
 #include <vulkan/vulkan.h>
 
-#include "context.hpp"
 #include "object_pool.hpp"
 #include "utils/vk_raii.hpp"
 
-namespace vren // TODO convert to object_pool
+namespace vren
 {
+	// Forward decl
+	class context;
+
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// descriptor_pool
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -19,8 +21,12 @@ namespace vren // TODO convert to object_pool
 	class descriptor_pool : public vren::object_pool<VkDescriptorSet>
 	{
 	protected:
-		virtual VkDescriptorPool create_descriptor_pool(int max_sets) = 0;
+		explicit descriptor_pool(
+			std::shared_ptr<vren::context> const& ctx,
+			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
+		);
 
+		virtual VkDescriptorPool create_descriptor_pool(int max_sets) = 0;
 		virtual VkDescriptorSet create_object();
 
 	public:
@@ -30,10 +36,6 @@ namespace vren // TODO convert to object_pool
 		std::vector<VkDescriptorPool> m_descriptor_pools;
 		size_t m_last_pool_allocated_count = 0;
 
-		explicit descriptor_pool(
-			std::shared_ptr<vren::context> const& ctx,
-			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
-		);
 		~descriptor_pool();
 	};
 

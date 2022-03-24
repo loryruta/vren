@@ -6,7 +6,10 @@
 #include <tiny_gltf.h>
 
 #include "context.hpp"
+#include "render_list.hpp"
 #include "render_object.hpp"
+#include "material.hpp"
+#include "utils/image.hpp"
 
 namespace vren
 {
@@ -21,7 +24,7 @@ namespace vren
 	class tinygltf_loader
 	{
 	private:
-		std::shared_ptr<vren::context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 
 		void load_textures(
 			std::filesystem::path const& model_dir,
@@ -49,7 +52,9 @@ namespace vren
 		);
 
 	public:
-		tinygltf_loader(std::shared_ptr<vren::context> const& ctx);
+		tinygltf_loader(
+			std::shared_ptr<vren::vk_utils::toolbox> const& tb
+		);
 
 		void load_from_file(
 			std::filesystem::path const& model_filename,

@@ -1,5 +1,7 @@
 #include "misc.hpp"
 
+#include "context.hpp"
+#include "vk_toolbox.hpp"
 #include "pooling/command_pool.hpp"
 #include "pooling/fence_pool.hpp"
 
@@ -54,7 +56,13 @@ void vren::vk_utils::record_one_time_submit_commands(VkCommandBuffer cmd_buf, co
 	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
 }
 
-void vren::vk_utils::immediate_submit(vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func)
+void vren::vk_utils::immediate_submit(
+	vren::context const& ctx,
+	vren::command_pool& cmd_pool,
+	vren::fence_pool& fence_pool,
+	VkQueue queue,
+	record_commands_func_t const& record_func
+)
 {
 	auto cmd_buf = cmd_pool.acquire();
 
@@ -72,7 +80,7 @@ void vren::vk_utils::immediate_submit(vren::context const& ctx, vren::command_po
 
     vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.get()));
 
-	auto fence = ctx.m_fence_pool->acquire();
+	auto fence = fence_pool.acquire();
 
     VkSubmitInfo submit_info{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -90,14 +98,22 @@ void vren::vk_utils::immediate_submit(vren::context const& ctx, vren::command_po
     vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.get().m_handle, VK_TRUE, UINT64_MAX));
 }
 
-void vren::vk_utils::immediate_graphics_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func)
+void vren::vk_utils::immediate_graphics_queue_submit(
+	vren::vk_utils::toolbox const& tb,
+	record_commands_func_t const& record_func
+)
 {
-    vren::vk_utils::immediate_submit(ctx, *ctx.m_graphics_command_pool, ctx.m_graphics_queue, record_func);
+	auto& ctx = tb.m_context;
+    vren::vk_utils::immediate_submit(*ctx, *tb.m_graphics_command_pool, *tb.m_fence_pool, ctx->m_graphics_queue, record_func);
 }
 
-void vren::vk_utils::immediate_transfer_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func)
+void vren::vk_utils::immediate_transfer_queue_submit(
+	vren::vk_utils::toolbox const& tb,
+	record_commands_func_t const& record_func
+)
 {
-    vren::vk_utils::immediate_submit(ctx, *ctx.m_transfer_command_pool, ctx.m_transfer_queue, record_func);
+	auto& ctx = tb.m_context;
+	vren::vk_utils::immediate_submit(*ctx, *tb.m_transfer_command_pool, *tb.m_fence_pool, ctx->m_transfer_queue, record_func);
 }
 
 vren::vk_utils::surface_details vren::vk_utils::get_surface_details(

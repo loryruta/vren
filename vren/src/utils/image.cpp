@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "context.hpp"
+#include "vk_toolbox.hpp"
 #include "buffer.hpp"
 #include "utils/image_layout_transitions.hpp"
 #include "utils/misc.hpp"
@@ -162,7 +164,7 @@ vren::vk_sampler vren::vk_utils::create_sampler(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_utils::texture vren::vk_utils::create_texture(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -175,9 +177,11 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 	VkSamplerAddressMode address_mode_w
 )
 {
+	auto& ctx = tb.m_context;
+
 	auto img = vren::vk_utils::create_image(ctx, width, height, format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf, img.m_image.m_handle);
 
@@ -215,16 +219,13 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 }
 
 vren::vk_utils::texture vren::vk_utils::create_color_texture(
-	std::shared_ptr<vren::context> const& ctx,
-	uint8_t r,
-	uint8_t g,
-	uint8_t b,
-	uint8_t a
+	vren::vk_utils::toolbox const& tb,
+	uint8_t r, uint8_t g, uint8_t b, uint8_t a
 )
 {
 	uint8_t img_data[]{ r, g, b, a };
 	return vren::vk_utils::create_texture(
-		ctx,
+		tb,
 		1,
 		1,
 		img_data,
@@ -244,11 +245,13 @@ vren::vk_utils::texture vren::vk_utils::create_color_texture(
 
 vren::vk_utils::custom_framebuffer::color_buffer
 vren::vk_utils::custom_framebuffer::create_color_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	uint32_t width,
 	uint32_t height
 )
 {
+	auto& ctx = tb.m_context;
+
 	auto img = vren::vk_utils::create_image(
 		ctx,
 		width, height,
@@ -257,7 +260,7 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
 	);
 
-    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, img.m_image.m_handle);
     });
@@ -277,11 +280,13 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 
 vren::vk_utils::custom_framebuffer::depth_buffer
 vren::vk_utils::custom_framebuffer::create_depth_buffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	uint32_t width,
 	uint32_t height
 )
 {
+	auto& ctx = tb.m_context;
+
 	auto img = vren::vk_utils::create_image(
 		ctx,
 		width, height,
@@ -290,7 +295,7 @@ vren::vk_utils::custom_framebuffer::create_depth_buffer(
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
 
-    vren::vk_utils::immediate_graphics_queue_submit(*ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
     });
@@ -335,13 +340,13 @@ vren::vk_utils::custom_framebuffer::_create_framebuffer(
 }
 
 vren::vk_utils::custom_framebuffer::custom_framebuffer(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	std::shared_ptr<vren::vk_render_pass> const& render_pass,
 	uint32_t width,
 	uint32_t height
 ) :
 	m_render_pass(render_pass),
-	m_color_buffer(create_color_buffer(ctx, width, height)),
-	m_depth_buffer(create_depth_buffer(ctx, width, height)),
-	m_framebuffer(_create_framebuffer(ctx, width, height))
+	m_color_buffer(create_color_buffer(tb, width, height)),
+	m_depth_buffer(create_depth_buffer(tb, width, height)),
+	m_framebuffer(_create_framebuffer(tb.m_context, width, height))
 {}

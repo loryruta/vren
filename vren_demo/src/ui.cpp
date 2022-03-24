@@ -5,9 +5,6 @@
 #include <imgui_internal.h>
 #include <implot.h>
 
-#include "pooling/command_pool.hpp"
-#include "pooling/fence_pool.hpp"
-
 template<typename _t>
 void left_shift_array(_t* arr, size_t size, size_t pos)
 {
@@ -199,9 +196,11 @@ void vren_demo::ui::fps_ui::show()
 
 vren_demo::ui::main_ui::main_ui(
 	std::shared_ptr<vren::context> const& ctx,
+	std::shared_ptr<vren::vk_utils::toolbox> const& tb,
 	std::shared_ptr<vren::renderer> const& renderer
 ) :
 	m_context(ctx),
+	m_toolbox(tb),
 	m_renderer(renderer)
 {}
 
@@ -227,9 +226,9 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 				ImGui::TableNextColumn(); ImGui::Text("%d", pool.get_created_objects_count());
 			};
 
-			add_row("Graphics commands", *m_context->m_graphics_command_pool);
-			add_row("Transfer commands", *m_context->m_transfer_command_pool);
-			add_row("Fences", *m_context->m_fence_pool);
+			add_row("Graphics commands", *m_toolbox->m_graphics_command_pool);
+			add_row("Transfer commands", *m_toolbox->m_transfer_command_pool);
+			add_row("Fences", *m_toolbox->m_fence_pool);
 			add_row("Material descriptors", *m_renderer->m_material_descriptor_pool);
 			add_row("Light array descriptors", *m_renderer->m_light_array_descriptor_pool);
 

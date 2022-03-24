@@ -2,9 +2,10 @@
 
 #include <utility>
 
+#include "context.hpp"
 #include "utils/misc.hpp"
 
-vren::command_pool::command_pool(std::shared_ptr<vren::context> ctx, VkCommandPool handle) :
+vren::command_pool::command_pool(std::shared_ptr<vren::context> const& ctx, VkCommandPool handle) :
 	m_context(std::move(ctx)),
 	m_handle(handle)
 {}
@@ -33,4 +34,9 @@ void vren::command_pool::release(VkCommandBuffer&& cmd_buf)
     vkResetCommandBuffer(cmd_buf, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
     vren::object_pool<VkCommandBuffer>::release(std::move(cmd_buf));
+}
+
+std::shared_ptr<vren::command_pool> vren::command_pool::create(std::shared_ptr<vren::context> const& ctx, VkCommandPool handle)
+{
+	return std::shared_ptr<command_pool>(new command_pool(ctx, handle));
 }

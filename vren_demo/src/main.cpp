@@ -9,6 +9,7 @@
 #include <glm/gtx/transform.hpp>
 
 #include "context.hpp"
+#include "utils/vk_toolbox.hpp"
 #include "presenter.hpp"
 #include "utils/buffer.hpp"
 #include "camera.hpp"
@@ -25,7 +26,7 @@
 GLFWwindow* g_window;
 
 void create_cube(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::render_object& render_obj,
 	glm::vec3 position,
 	glm::vec3 rotation,
@@ -85,7 +86,7 @@ void create_cube(
 
 	auto vertices_buf =
 		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_vertex_buffer(ctx, vertices.data(), vertices.size())
+			vren::vk_utils::create_vertex_buffer(tb, vertices.data(), vertices.size())
 		);
 	render_obj.set_vertices_buffer(vertices_buf, vertices.size());
 
@@ -95,7 +96,7 @@ void create_cube(
 
 	auto indices_buf =
 		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_indices_buffer(ctx, indices.data(), indices.size())
+			vren::vk_utils::create_indices_buffer(tb, indices.data(), indices.size())
 		);
 	render_obj.set_indices_buffer(indices_buf, indices.size());
 
@@ -120,7 +121,7 @@ void create_cube(
 
 		auto instances_buf =
 			std::make_shared<vren::vk_utils::buffer>(
-				vren::vk_utils::create_instances_buffer(ctx, &inst, 1)
+				vren::vk_utils::create_instances_buffer(tb, &inst, 1)
 			);
 		render_obj.set_indices_buffer(instances_buf, 1);
 	}
@@ -130,7 +131,7 @@ void create_cube(
 }
 
 void create_cube_scene(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::vk_utils::toolbox const& tb,
 	vren::render_list& render_list,
 	vren::light_array& lights_arr
 )
@@ -143,13 +144,13 @@ void create_cube_scene(
 	{ // Surface
 		auto& surface = render_list.create_render_object();
 
-		auto mat = std::make_shared<vren::material>(ctx);
-		mat->m_base_color_texture = ctx->m_green_texture;
-		mat->m_metallic_roughness_texture = ctx->m_green_texture;
+		auto mat = std::make_shared<vren::material>(tb);
+		mat->m_base_color_texture = tb.m_green_texture;
+		mat->m_metallic_roughness_texture = tb.m_green_texture;
 		surface.m_material = mat;
 
 		create_cube(
-			ctx,
+			tb,
 			surface,
 			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
 			glm::vec3(0),
@@ -166,12 +167,12 @@ void create_cube_scene(
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = std::make_shared<vren::material>(ctx);
-		mat->m_base_color_texture = ctx->m_red_texture;
-		mat->m_metallic_roughness_texture = ctx->m_green_texture;
+		auto mat = std::make_shared<vren::material>(tb);
+		mat->m_base_color_texture = tb.m_red_texture;
+		mat->m_metallic_roughness_texture = tb.m_green_texture;
 
 		create_cube(
-			ctx,
+			tb,
 			cube,
 			glm::vec3(
 				cos_i * r,
@@ -298,23 +299,25 @@ void launch()
 	ctx_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
+
 	auto ctx = vren::context::create(ctx_info);
+	auto tb = vren::vk_utils::toolbox::create(ctx);
 
 	auto renderer = vren::renderer::create(ctx);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
-	auto ui_renderer = vren::imgui_renderer(ctx, g_window);
+	auto ui_renderer = vren::imgui_renderer(tb, g_window);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surf_handle));
 	auto surf = std::make_shared<vren::vk_surface_khr>(ctx, surf_handle);
 
-	vren::presenter presenter(ctx, surf);
+	vren::presenter presenter(tb, surf);
 
 	auto render_list = vren::render_list::create(ctx);
 
-	auto ui = vren_demo::ui::main_ui(ctx, renderer);
+	auto ui = vren_demo::ui::main_ui(ctx, tb, renderer);
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
 
@@ -325,7 +328,7 @@ void launch()
 	});
 
 	vren::tinygltf_scene loaded_scene;
-	vren::tinygltf_loader gltf_loader(ctx);
+	vren::tinygltf_loader gltf_loader(tb);
 	gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", *render_list, loaded_scene);
 
 	// ---------------------------------------------------------------- Game loop

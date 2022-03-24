@@ -2,14 +2,20 @@
 
 #include <functional>
 
-#include "context.hpp"
 #include "resource_container.hpp"
 #include "utils/vk_raii.hpp"
 #include "command_graph.hpp"
 
 namespace vren
 {
-	struct profiler
+	// Forward decl
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
+	// profiler
+	// ------------------------------------------------------------------------------------------------
+
+	class profiler
 	{
 	private:
 		std::shared_ptr<vren::context> m_context;

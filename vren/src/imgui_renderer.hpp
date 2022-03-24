@@ -8,9 +8,10 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
+#include "utils/vk_toolbox.hpp"
+#include "command_graph.hpp"
+#include "resource_container.hpp"
 #include "renderer.hpp"
-#include "pooling/command_pool.hpp"
-#include "pooling/descriptor_pool.hpp"
 
 namespace vren
 {
@@ -27,10 +28,10 @@ namespace vren
 		void _init_render_pass();
 
 	public:
-		std::shared_ptr<vren::context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		GLFWwindow* m_window;
 
-		explicit imgui_renderer(std::shared_ptr<vren::context> const& context, GLFWwindow* window);
+		explicit imgui_renderer(std::shared_ptr<vren::vk_utils::toolbox> const& tb, GLFWwindow* window);
 		~imgui_renderer();
 
 		void render(

@@ -6,11 +6,20 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "renderer.hpp"
-#include "pooling/command_pool.hpp"
+#include "resource_container.hpp"
+#include "render_list.hpp"
+#include "light_array.hpp"
 
 namespace vren
 {
+	// Forward decl
+	class renderer;
+	struct camera;
+
+	// ------------------------------------------------------------------------------------------------
+	// simple_draw_pass
+	// ------------------------------------------------------------------------------------------------
+
 	class simple_draw_pass
 	{
 	private:
@@ -25,7 +34,9 @@ namespace vren
 		VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 		VkPipeline m_graphics_pipeline = VK_NULL_HANDLE;
 
-		simple_draw_pass(std::shared_ptr<vren::renderer> const& renderer);
+		simple_draw_pass(
+			std::shared_ptr<vren::renderer> const& renderer
+		);
 		~simple_draw_pass();
 
 		void record_commands(

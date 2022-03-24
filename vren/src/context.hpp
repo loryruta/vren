@@ -11,27 +11,14 @@
 
 #include "config.hpp"
 
-// --------------------------------------------------------------------------------------------------------------------------------
-// Forward decl
-// --------------------------------------------------------------------------------------------------------------------------------
-
-namespace vren
-{
-	class command_pool;
-    class fence_pool;
-}
-
-namespace vren::vk_utils
-{
-	struct texture;
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
-
 namespace vren
 {
 	void get_supported_layers(std::vector<VkLayerProperties>& layers); // todo in utils/misc ?
 	bool does_support_layers(std::vector<char const*> const& layers);
+
+	// ------------------------------------------------------------------------------------------------
+	// context
+	// ------------------------------------------------------------------------------------------------
 
 	struct context_info
 	{
@@ -42,7 +29,11 @@ namespace vren
 		std::vector<char const*> m_device_extensions;
 	};
 
-	class context : public std::enable_shared_from_this<context>
+	// ------------------------------------------------------------------------------------------------
+	// context
+	// ------------------------------------------------------------------------------------------------
+
+	class context
 	{
 	public:
 		struct queue_families
@@ -59,9 +50,7 @@ namespace vren
 		};
 
 	private:
-		explicit context(vren::context_info& info);
-
-		void _init();
+		explicit context(context_info const& ctx_info);
 
 		VkInstance create_instance();
 		VkDebugUtilsMessengerEXT setup_debug_messenger();
@@ -70,15 +59,12 @@ namespace vren
 		VkDevice create_logical_device();
 		std::vector<VkQueue> get_queues();
 		void create_vma_allocator();
-		void _init_graphics_command_pool();
-		void _init_transfer_command_pool();
 
 	public:
 		vren::context_info m_info;
 
 		VkInstance m_instance;
 
-		// Debug messenger
 		VkDebugUtilsMessengerEXT m_debug_messenger;
 
 		VkPhysicalDevice m_physical_device;
@@ -94,22 +80,12 @@ namespace vren
 
 		VmaAllocator m_vma_allocator;
 
-		// Command pools
-		std::shared_ptr<vren::command_pool> m_graphics_command_pool;
-		std::shared_ptr<vren::command_pool> m_transfer_command_pool;
-
-        std::shared_ptr<vren::fence_pool> m_fence_pool;
-
-		// Textures
-		std::shared_ptr<vren::vk_utils::texture> m_white_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_black_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_red_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_green_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_blue_texture;
+		context(context const& other) = delete;
+		// TODO move constructor
 
 		~context();
 
-		static std::shared_ptr<vren::context> create(vren::context_info& info); // renderer's initialization must be achieved in two steps because of shared_from_this()
+		static std::shared_ptr<context> create(context_info const& ctx_info);
 	};
 }
 
