@@ -360,8 +360,6 @@ void launch()
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
 		last_time = cur_time;
 
-		ui.update(dt);
-
 		if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
 			update_camera(dt, camera);
 		}
@@ -413,6 +411,8 @@ void launch()
 			});
 		});
 	}
+
+	int* a = new int(); // leaked
 
 	vkDeviceWaitIdle(ctx->m_device);
 

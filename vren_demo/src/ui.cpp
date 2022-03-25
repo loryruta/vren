@@ -43,20 +43,6 @@ vren_demo::ui::fps_ui::fps_ui()
 	std::fill_n(m_frame_end_t, std::size(m_frame_end_t), 0);
 }
 
-void vren_demo::ui::fps_ui::update(float dt)
-{
-	double cur_time = glfwGetTime();
-
-	m_fps_counter++;
-
-	if (m_last_fps_time < 0 || (cur_time - m_last_fps_time) >= 1.)
-	{
-		m_fps = m_fps_counter;
-		m_fps_counter = 0;
-		m_last_fps_time = cur_time;
-	}
-}
-
 void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 	vren_demo::profile_info const& prof_info
 )
@@ -65,18 +51,30 @@ void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 		return;
 	}
 
+	/* FPS */
+	m_fps_counter++;
+	if ((glfwGetTime() - m_last_fps_time) >= 1.0 || m_last_fps_time < 0)
+	{
+		m_fps = m_fps_counter;
+		m_fps_counter = 0;
+		m_last_fps_time = glfwGetTime();
+	}
+
+	/* Main pass */
 	if (prof_info.m_main_pass_profiled)
 	{
 		float main_pass_dt = (float) (prof_info.m_main_pass_end_t - prof_info.m_main_pass_start_t) / (1000.0f * 1000.0f);
 		m_main_pass_plot.push(main_pass_dt);
 	}
 
+	/* UI pass */
 	if (prof_info.m_ui_pass_profiled)
 	{
 		float ui_pass_dt = (float) (prof_info.m_ui_pass_end_t - prof_info.m_ui_pass_start_t) / (1000.0f * 1000.0f);
 		m_ui_pass_plot.push(ui_pass_dt);
 	}
 
+	/* Frame profiling */
 	if (prof_info.m_frame_profiled)
 	{
 		float frame_dt = (float) (prof_info.m_frame_end_t - prof_info.m_frame_start_t) / (1000.0f * 1000.0f);;
@@ -129,9 +127,10 @@ void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 
 void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, char const* unit)
 {
-	if (ImGui::CollapsingHeader(plot_title.c_str(), NULL))
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+	if (ImGui::TreeNode(plot_title.c_str()))
 	{
-		/* Summary */
+		/* Summary
 		if (ImGui::BeginTable((plot_title + "##plot-summary").c_str(), 5, ImGuiTableFlags_RowBg))
 		{
 			ImGui::TableSetupColumn((std::string("Latest (") + unit + ")").c_str());
@@ -148,15 +147,16 @@ void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, cha
 			ImGui::TableNextColumn(); ImGui::Text("%.3f", plot.m_val_max);
 
 			ImGui::EndTable();
-		}
+		}*/
 
 		/* Plot */
-		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 256), ImPlotFlags_CanvasOnly))
+		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 128), ImPlotFlags_CanvasOnly))
 		{
-			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit);
+			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoDecorations);
+			ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_AutoFit);
 
-			ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_LockMin);
-			ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1.0, ImPlotCond_Once);
+			//ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_LockMin);
+			//ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1.0, ImPlotCond_Once);
 
 			ImPlot::PlotStairs((plot_title + "##val").c_str(), plot.m_val, VREN_DEMO_PLOT_SAMPLES_COUNT);
 			ImPlot::PlotStairs((plot_title + "##val_avg").c_str(), plot.m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT);
@@ -166,6 +166,8 @@ void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, cha
 
 			ImPlot::EndPlot();
 		}
+
+		ImGui::TreePop();
 	}
 }
 
@@ -173,18 +175,24 @@ void vren_demo::ui::fps_ui::show()
 {
 	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
 	{
-		ImGui::Text("FPS: 100");
-		ImGui::Text("Plot samples count: %d", VREN_DEMO_PLOT_SAMPLES_COUNT);
-
 		ImGui::Checkbox("Pause", &m_paused);
 
 		ImGui::Separator();
+
+		/* General */
+		ImGui::Text("FPS: %d", m_fps);
+
+		ImGui::Separator();
+
+		/* Frame profiling */
+		ImGui::Text("Frame profiling:");
 
 		plot_ui("Frame parallelism##frame_parallelism-frame_ui", m_frame_parallelism_plot, "%");
 		plot_ui("Frame delta##frame_delta-frame_ui", m_frame_delta_plot, "ms");
 
 		ImGui::Separator();
 
+		/* Passes */
 		ImGui::Text("Passes:");
 
 		plot_ui("Main pass##main_pass-frame_ui", m_main_pass_plot, "ms");
@@ -241,11 +249,6 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 	ImGui::End();
 }
 
-void vren_demo::ui::main_ui::update(float dt)
-{
-	m_fps_ui.update(dt);
-}
-
 void vren_demo::ui::main_ui::show()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -283,15 +286,14 @@ void vren_demo::ui::main_ui::show()
 
 	ImGui::End();
 
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.1));
-
 	ImGui::SetNextWindowDockID(m_bottom_toolbar_dock_id, ImGuiCond_Once);
 	show_vk_pool_info_ui();
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
 
-	ImGui::PopStyleColor();
+	ImGui::ShowDemoWindow();
+	ImPlot::ShowDemoWindow();
 }
 
 

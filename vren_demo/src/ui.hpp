@@ -33,7 +33,7 @@ namespace vren_demo::ui
 	private:
 		uint32_t m_fps_counter = 0;
 		uint32_t m_fps;
-		double m_last_fps_time = -1.;
+		double m_last_fps_time = -1.0;
 
 		uint64_t m_frame_start_t[VREN_MAX_FRAMES_IN_FLIGHT];
 		uint64_t m_frame_end_t[VREN_MAX_FRAMES_IN_FLIGHT];
@@ -52,7 +52,6 @@ namespace vren_demo::ui
 		void notify_frame_profiling_data(vren_demo::profile_info const& prof_info);
 
 		void show();
-		void update(float dt);
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -82,7 +81,5 @@ namespace vren_demo::ui
 
 		void show_vk_pool_info_ui();
 		void show();
-
-		void update(float dt);
 	};
 }
