@@ -13,6 +13,11 @@ find_package(Vulkan REQUIRED)
 # ${Vulkan_INCLUDE_DIRS}
 # ${Vulkan_LIBRARIES}
 
+if (MSVC)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /fsanitize=address")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} /fsanitize=address")
+endif()
+
 add_subdirectory(vren)
 
 if (${BUILD_TEST})
