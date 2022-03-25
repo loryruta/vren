@@ -77,7 +77,7 @@ vren::renderer::~renderer()
 
 void vren::renderer::_init()
 {
-	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(shared_from_this());
+	m_simple_draw_pass = std::make_unique<vren::simple_draw_pass>(*this);
 
     _init_light_array_descriptor_sets();
 }

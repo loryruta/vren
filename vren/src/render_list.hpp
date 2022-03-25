@@ -16,7 +16,7 @@ namespace vren
 	// render_list
 	// ------------------------------------------------------------------------------------------------
 
-	class render_list : public std::enable_shared_from_this<render_list>
+	class render_list
 	{
 	public:
 		std::shared_ptr<vren::context> m_context;

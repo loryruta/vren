@@ -42,7 +42,7 @@ namespace vren
 	// renderer
 	// ------------------------------------------------------------------------------------------------
 
-	class renderer : public std::enable_shared_from_this<renderer>
+	class renderer
 	{
 	public:
 		std::shared_ptr<context> m_context;

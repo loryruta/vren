@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-vren::render_object::render_object(std::shared_ptr<vren::render_list> const& render_list) :
-	m_render_list(render_list)
+vren::render_object::render_object(render_list& render_list) :
+	m_render_list(&render_list)
 {
 	m_vertices_count = 0;
 	m_indices_count = 0;

@@ -170,9 +170,10 @@ namespace vren
 
 		static constexpr VkIndexType s_index_type = VK_INDEX_TYPE_UINT32;
 
-	public:
-		std::shared_ptr<vren::render_list> m_render_list;
+	private:
+		vren::render_list* m_render_list;
 
+	public:
 		uint32_t m_idx = -1;
 
 		std::shared_ptr<vren::vk_utils::buffer> m_vertices_buffer;
@@ -186,7 +187,7 @@ namespace vren
 
 		std::shared_ptr<vren::material> m_material;
 
-		explicit render_object(std::shared_ptr<vren::render_list> const& render_list);
+		explicit render_object(vren::render_list& render_list);
 		render_object(vren::render_object const& other) = delete;
 		render_object(vren::render_object&& other) noexcept;
 

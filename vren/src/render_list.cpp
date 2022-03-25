@@ -11,7 +11,7 @@ vren::render_object& vren::render_list::create_render_object()
 	size_t pos = m_render_objects.size();
 	m_position_by_idx.emplace_back(pos);
 
-	auto& render_obj = m_render_objects.emplace_back(shared_from_this());
+	auto& render_obj = m_render_objects.emplace_back(*this);
 	render_obj.m_idx = m_next_idx;
 	m_next_idx++;
 
