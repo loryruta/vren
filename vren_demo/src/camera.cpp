@@ -4,10 +4,10 @@
 
 glm::mat4 vren_demo::camera::get_orientation() const
 {
-	auto rot_mat = glm::identity<glm::mat4>();
-	rot_mat = glm::rotate(rot_mat, -m_yaw, glm::vec3(0, 1, 0));
-	rot_mat = glm::rotate(rot_mat, -m_pitch, glm::vec3(1, 0, 0));
-	return rot_mat;
+	auto mat = glm::identity<glm::mat4>();
+	mat = glm::rotate(mat, -m_yaw, glm::vec3(0, 1, 0));
+	mat = glm::rotate(mat, -m_pitch, glm::vec3(1, 0, 0));
+	return mat;
 }
 
 glm::vec3 vren_demo::camera::get_forward() const

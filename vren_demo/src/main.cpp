@@ -199,25 +199,25 @@ void update_camera(float dt, vren_demo::camera& camera)
 {
 	const glm::vec4 k_world_up = glm::vec4(0, 1, 0, 0);
 
-	// Movement
+	/* Movement */
 	const float k_speed = 4.0f; // m/s
 
-	glm::vec3 direction{};
-	if (glfwGetKey(g_window, GLFW_KEY_W) == GLFW_PRESS) direction += -camera.get_forward();
-	if (glfwGetKey(g_window, GLFW_KEY_S) == GLFW_PRESS) direction += camera.get_forward();
-	if (glfwGetKey(g_window, GLFW_KEY_A) == GLFW_PRESS) direction += -camera.get_right();
-	if (glfwGetKey(g_window, GLFW_KEY_D) == GLFW_PRESS) direction += camera.get_right();
-	if (glfwGetKey(g_window, GLFW_KEY_SPACE) == GLFW_PRESS) direction += camera.get_up();
-	if (glfwGetKey(g_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) direction += -camera.get_up();
+	glm::vec3 dir{};
+	if (glfwGetKey(g_window, GLFW_KEY_W) == GLFW_PRESS) dir += -camera.get_forward();
+	if (glfwGetKey(g_window, GLFW_KEY_S) == GLFW_PRESS) dir += camera.get_forward();
+	if (glfwGetKey(g_window, GLFW_KEY_A) == GLFW_PRESS) dir += -camera.get_right();
+	if (glfwGetKey(g_window, GLFW_KEY_D) == GLFW_PRESS) dir += camera.get_right();
+	if (glfwGetKey(g_window, GLFW_KEY_SPACE) == GLFW_PRESS) dir += camera.get_up();
+	if (glfwGetKey(g_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) dir += -camera.get_up();
 
 	float inc = k_speed * dt;
 	if (glfwGetKey(g_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		inc *= 100;
 	}
 
-	camera.m_position += direction * inc;
+	camera.m_position += dir * inc;
 
-	// Rotation
+	/* Rotation */
 	static std::optional<glm::dvec2> last_cur_pos;
 	const glm::vec2 k_sensitivity = glm::radians(glm::vec2(90.0f)); // rad/(pixel * s)
 
@@ -228,7 +228,7 @@ void update_camera(float dt, vren_demo::camera& camera)
 	{
 		glm::vec2 d_cur_pos = glm::vec2(cur_pos - last_cur_pos.value()) * k_sensitivity * dt;
 		camera.m_yaw += d_cur_pos.x;
-		camera.m_pitch += d_cur_pos.y;
+		camera.m_pitch = glm::clamp(camera.m_pitch + (float) d_cur_pos.y, -glm::pi<float>() / 4.0f, glm::pi<float>() / 4.0f);
 	}
 
 	last_cur_pos = cur_pos;
