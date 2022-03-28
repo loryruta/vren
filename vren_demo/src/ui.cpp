@@ -95,7 +95,7 @@ void vren_demo::ui::scene_ui::show()
 				pt_lights.resize(pt_lights_num);
 
 				for (; i < pt_lights.size(); i++) {
-					auto pt = pt_lights[i];
+					auto& pt = pt_lights[i];
 					pt.m_position = {0, 0, 0};
 					pt.m_color    = {0.84f, 0.81f, 0.2f};
 				}
