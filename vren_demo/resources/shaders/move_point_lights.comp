@@ -1,0 +1,71 @@
+#version 460
+
+#define PI  3.14
+#define EPS 0.0001
+#define INF 1e35
+
+#define MAX_ITERS 256
+
+#define VREN_MAX_POINT_LIGHTS 1024
+
+struct PointLight
+{
+    vec3 position; float _pad;
+    vec3 color;
+};
+
+layout(set = 0, binding = 0) buffer PointLights
+{
+    PointLight buf[VREN_MAX_POINT_LIGHTS];
+} b_point_lights;
+
+layout(push_constant) uniform PushConstants
+{
+    vec3 scene_min; float _pad;
+    vec3 scene_max; float _pad1;
+    float speed;
+} push_constants;
+
+layout(set = 0, binding = 1) buffer PointLightsDirs
+{
+    vec4 buf[VREN_MAX_POINT_LIGHTS];
+} b_point_lights_dirs;
+
+void main()
+{
+    uint idx = gl_LocalInvocationIndex;
+
+    vec3 sM = push_constants.scene_max;
+    vec3 sm = push_constants.scene_min;
+
+    vec3 p = b_point_lights.buf[idx].position;
+    p = min(max(p, sm), sM); // Brings the light position within the scene's AABB
+
+    vec3 d = b_point_lights_dirs.buf[idx].xyz;
+    float rem_t = push_constants.speed;
+
+    for (int i = 0; i < MAX_ITERS && rem_t > 0; i++)
+    {
+        float tx1 = (sm.x - p.x) / d.x; tx1 = tx1 <= 0 ? INF : tx1;
+        float tx2 = (sM.x - p.x) / d.x; tx2 = tx2 <= 0 ? INF : tx2;
+        float ty1 = (sm.y - p.y) / d.y; ty1 = ty1 <= 0 ? INF : ty1;
+        float ty2 = (sM.y - p.y) / d.y; ty2 = ty2 <= 0 ? INF : ty2;
+        float tz1 = (sm.z - p.z) / d.z; tz1 = tz1 <= 0 ? INF : tz1;
+        float tz2 = (sM.z - p.z) / d.z; tz2 = tz2 <= 0 ? INF : tz2;
+
+        float min_t = min(tx1, min(tx2, min(ty1, min(ty2, min(tz1, tz2))))); // How much we can step in order not to hit a plane
+        float dt = min(min_t, max(rem_t - min_t, 0));
+
+        p += dt * d;
+        rem_t -= dt;
+
+        d *= vec3( // Inverts the direction of the plane being hit
+            (tx1 <= min_t || tx2 <= min_t ? -1.0 : 1.0), // <= to be sure
+            (ty1 <= min_t || ty2 <= min_t ? -1.0 : 1.0),
+            (tz1 <= min_t || tz2 <= min_t ? -1.0 : 1.0)
+        );
+    }
+
+    b_point_lights.buf[idx].position = p;
+    b_point_lights_dirs.buf[idx]     = vec4(d, 1);
+}
