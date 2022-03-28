@@ -249,7 +249,7 @@ void vren::simple_draw_pass::record_commands(
 		);
 		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->get());
 		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->get(), 0, nullptr);
-		res_container.add_resource(mat_desc_set);
+		res_container.add_resources(mat_desc_set, render_obj.m_material);
 
 		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}

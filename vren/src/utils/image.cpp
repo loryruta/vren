@@ -60,9 +60,7 @@ void vren::vk_utils::upload_image_data(
     void* img_data
 )
 {
-	VkMemoryRequirements img_mem_req{};
-	vkGetImageMemoryRequirements(ctx->m_device, img, &img_mem_req);
-	VkDeviceSize img_size = img_mem_req.size;
+	VkDeviceSize img_size = img_width * img_height * 4; // Always assume RGBA
 
 	auto staging_buffer = std::make_shared<vren::vk_utils::buffer>(
         vren::vk_utils::alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, img_size, false)
@@ -71,7 +69,7 @@ void vren::vk_utils::upload_image_data(
 
 	void* mapped_img_data;
 	vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data));
-		std::memcpy(mapped_img_data, img_data, static_cast<size_t>(img_size));
+		std::memcpy(mapped_img_data, img_data, img_size);
 	vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle);
 
 	VkBufferImageCopy img_copy_region{};

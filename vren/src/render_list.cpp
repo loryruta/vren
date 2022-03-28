@@ -2,10 +2,6 @@
 
 #include "render_object.hpp"
 
-vren::render_list::render_list(std::shared_ptr<vren::context> const& ctx) :
-	m_context(ctx)
-{}
-
 vren::render_object& vren::render_list::create_render_object()
 {
 	size_t pos = m_render_objects.size();
@@ -42,9 +38,4 @@ void vren::render_list::delete_render_object(uint32_t idx)
 	cur_obj.m_idx = UINT32_MAX;
 
 	m_render_objects.pop_back();
-}
-
-std::shared_ptr<vren::render_list> vren::render_list::create(std::shared_ptr<vren::context> const& ctx)
-{
-	return std::shared_ptr<vren::render_list>(new vren::render_list(ctx));
 }

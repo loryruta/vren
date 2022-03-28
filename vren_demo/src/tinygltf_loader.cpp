@@ -73,14 +73,14 @@ VkSamplerAddressMode parse_address_mode(int gltf_address_mode)
 	}
 }
 
-vren::tinygltf_loader::tinygltf_loader(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
+vren_demo::tinygltf_loader::tinygltf_loader(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
 	m_toolbox(tb)
 {}
 
-void vren::tinygltf_loader::load_textures(
+void vren_demo::tinygltf_loader::load_textures(
 	std::filesystem::path const& model_dir,
 	tinygltf::Model const& gltf_model,
-	vren::tinygltf_scene& result
+	vren_demo::tinygltf_scene& result
 )
 {
 	result.m_textures.resize(gltf_model.textures.size());
@@ -156,9 +156,9 @@ void vren::tinygltf_loader::load_textures(
 	}
 }
 
-void vren::tinygltf_loader::load_materials(
+void vren_demo::tinygltf_loader::load_materials(
 	tinygltf::Model const& gltf_model,
-	vren::tinygltf_scene& result
+	vren_demo::tinygltf_scene& result
 )
 {
 	result.m_materials.resize(gltf_model.materials.size());
@@ -184,7 +184,7 @@ void vren::tinygltf_loader::load_materials(
 	}
 }
 
-void vren::tinygltf_loader::linearize_node_hierarchy(
+void vren_demo::tinygltf_loader::linearize_node_hierarchy(
 	tinygltf::Model const& gltf_model,
 	tinygltf::Node const& gltf_node,
 	glm::mat4 transform,
@@ -227,11 +227,11 @@ void vren::tinygltf_loader::linearize_node_hierarchy(
 	}
 }
 
-void vren::tinygltf_loader::load_model(
+void vren_demo::tinygltf_loader::load_model(
 	std::filesystem::path const& model_dir,
 	tinygltf::Model const& gltf_model,
 	vren::render_list& render_list,
-	vren::tinygltf_scene& result
+	vren_demo::tinygltf_scene& result
 )
 {
 	// Textures
@@ -418,10 +418,10 @@ void vren::tinygltf_loader::load_model(
 	}
 }
 
-void vren::tinygltf_loader::load_from_file(
+void vren_demo::tinygltf_loader::load_from_file(
 	std::filesystem::path const& model_file,
 	vren::render_list& render_list,
-	vren::tinygltf_scene& result
+	vren_demo::tinygltf_scene& result
 )
 {
 	tinygltf::TinyGLTF loader;

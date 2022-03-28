@@ -10,6 +10,7 @@
 #include "context.hpp"
 #include "renderer.hpp"
 #include "utils/vk_toolbox.hpp"
+#include "tinygltf_loader.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
@@ -27,6 +28,34 @@ namespace vren_demo::ui
 
 		void push(float val);
 	};
+
+	// ------------------------------------------------------------------------------------------------
+	// scene_ui
+	// ------------------------------------------------------------------------------------------------
+
+	class scene_ui
+	{
+	private:
+		vren_demo::tinygltf_loader m_gltf_loader;
+
+		char m_scene_path[512];
+
+		glm::vec4 m_point_lights_dir[VREN_MAX_POINT_LIGHTS];
+		float m_speed = 1.0f;
+
+
+	public:
+		vren::render_list m_render_list;
+		vren::light_array m_light_array;
+
+		scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb);
+
+		void show();
+	};
+
+	// ------------------------------------------------------------------------------------------------
+	// fps_ui
+	// ------------------------------------------------------------------------------------------------
 
 	class fps_ui
 	{
@@ -65,13 +94,15 @@ namespace vren_demo::ui
 		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		std::shared_ptr<vren::renderer> m_renderer;
 
-		ImGuiID m_main_dock_id;
-		ImGuiID m_left_sidebar_dock_id;
-		ImGuiID m_bottom_toolbar_dock_id;
-
+		ImGuiID
+			m_main_dock_id,
+			m_left_sidebar_dock_id,
+			m_right_sidebar_dock_id,
+			m_bottom_toolbar_dock_id;
 
 	public:
 		vren_demo::ui::fps_ui m_fps_ui;
+		vren_demo::ui::scene_ui m_scene_ui;
 
 		main_ui(
 			std::shared_ptr<vren::context> const& ctx,

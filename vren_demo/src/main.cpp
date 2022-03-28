@@ -132,8 +132,7 @@ void create_cube(
 
 void create_cube_scene(
 	vren::vk_utils::toolbox const& tb,
-	vren::render_list& render_list,
-	vren::light_array& lights_arr
+	vren::render_list& render_list
 )
 {
 	float const surface_y = 1;
@@ -315,21 +314,9 @@ void launch()
 
 	vren::presenter presenter(tb, surf);
 
-	auto render_list = vren::render_list::create(ctx);
-
 	auto ui = vren_demo::ui::main_ui(ctx, tb, renderer);
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
-
-	vren::light_array lights_arr{};
-	lights_arr.m_point_lights.push_back({
-		.m_position = {0, 100, 0},
-		.m_color = {1.0f, 1.0f, 1.0f}
-	});
-
-	vren::tinygltf_scene loaded_scene;
-	vren::tinygltf_loader gltf_loader(tb);
-	gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", *render_list, loaded_scene);
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -396,7 +383,7 @@ void launch()
 					.m_view = camera.get_view(),
 					.m_projection = camera.get_projection()
 				};
-				renderer->render(frame_idx, cmd_graph, res_container, target, *render_list, lights_arr, cam_data);
+				renderer->render(frame_idx, cmd_graph, res_container, target, ui.m_scene_ui.m_render_list, ui.m_scene_ui.m_light_array, cam_data);
 			});
 
 			/* Renders the UI */
@@ -411,8 +398,6 @@ void launch()
 			});
 		});
 	}
-
-	int* a = new int(); // leaked
 
 	vkDeviceWaitIdle(ctx->m_device);
 

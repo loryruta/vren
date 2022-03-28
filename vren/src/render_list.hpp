@@ -19,17 +19,13 @@ namespace vren
 	class render_list
 	{
 	public:
-		std::shared_ptr<vren::context> m_context;
-
 		std::vector<uint32_t> m_position_by_idx;
 		uint32_t m_next_idx = 0;
 
 		std::vector<vren::render_object> m_render_objects;
 
-	private:
-		explicit render_list(std::shared_ptr<vren::context> const& ctx);
-
 	public:
+		explicit render_list() = default;
 		~render_list() = default;
 
 		vren::render_object& create_render_object();
@@ -44,6 +40,10 @@ namespace vren
 			return m_render_objects.end();
 		}
 
-		static std::shared_ptr<vren::render_list> create(std::shared_ptr<vren::context> const& ctx);
+		void clear()
+		{
+			m_position_by_idx.clear();
+			m_render_objects.clear();
+		}
 	};
 }

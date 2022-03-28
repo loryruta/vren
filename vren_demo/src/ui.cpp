@@ -5,6 +5,10 @@
 #include <imgui_internal.h>
 #include <implot.h>
 
+// --------------------------------------------------------------------------------------------------------------------------------
+// plot
+// --------------------------------------------------------------------------------------------------------------------------------
+
 template<typename _t>
 void left_shift_array(_t* arr, size_t size, size_t pos)
 {
@@ -36,6 +40,95 @@ void vren_demo::ui::plot::push(float val)
 	left_shift_array(m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT, 1);
 	m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT - 1] = m_val_sum / (float) VREN_DEMO_PLOT_SAMPLES_COUNT;
 }
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// scene_ui
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren_demo::ui::scene_ui::scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
+	m_gltf_loader(tb)
+{}
+
+void vren_demo::ui::scene_ui::show()
+{
+	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
+	{
+		/* Load a scene */
+		if (ImGui::TreeNode("Load a scene##load_scene-scene_ui"))
+		{
+			vren_demo::tinygltf_scene loaded_scene;
+
+			/* Sponza */
+			if (ImGui::Button("Load Sponza##load_scene-scene_ui"))
+			{
+				m_render_list.clear();
+				m_gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", m_render_list, loaded_scene);
+			}
+
+			/* DamagedHelmet */
+			if (ImGui::Button("Load DamagedHelmet##load_scene-scene_ui"))
+			{
+				m_render_list.clear();
+				m_gltf_loader.load_from_file("resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf", m_render_list, loaded_scene);
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Separator();
+
+		/* Lighting */
+		ImGui::Text("Lighting");
+
+		{ /* Point lights */
+			ImGui::Text("Point lights");
+
+			auto& pt_lights = m_light_array.m_point_lights;
+
+			int pt_lights_num = (int) pt_lights.size();
+			ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &pt_lights_num, 0, VREN_MAX_POINT_LIGHTS);
+
+			if (pt_lights.size() != pt_lights_num)
+			{
+				int i = pt_lights.size();
+
+				pt_lights.resize(pt_lights_num);
+
+				for (; i < pt_lights.size(); i++) {
+					auto pt = pt_lights[i];
+					pt.m_position = {0, 0, 0};
+					pt.m_color    = {0.84f, 0.81f, 0.2f};
+				}
+			}
+
+			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 100.0f);
+		}
+
+		{ /* Directional lights */
+			ImGui::Text("Dir. lights");
+
+			int dir_lights_num = (int) m_light_array.m_directional_lights.size();
+			ImGui::SliderInt("Num.##dir_lights-lighting-scene_ui", &dir_lights_num, 0, VREN_MAX_DIRECTIONAL_LIGHTS);
+
+			// todo
+		}
+
+		{ /* Spot lights */
+			ImGui::Text("Spot lights");
+
+			int spot_lights_num = (int) m_light_array.m_spot_lights.size();
+			ImGui::SliderInt("Num.##spot_lights-lighting-scene_ui", &spot_lights_num, 0, VREN_MAX_SPOT_LIGHTS);
+
+			// todo
+		}
+	}
+
+	ImGui::End();
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// fps_ui
+// --------------------------------------------------------------------------------------------------------------------------------
 
 vren_demo::ui::fps_ui::fps_ui()
 {
@@ -153,7 +246,7 @@ void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, cha
 		if (ImPlot::BeginPlot((plot_title + "##plot").c_str(), ImVec2(-1, 128), ImPlotFlags_CanvasOnly))
 		{
 			ImPlot::SetupAxis(ImAxis_X1, "", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoDecorations);
-			ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_AutoFit);
+			ImPlot::SetupAxis(ImAxis_Y1, unit, ImPlotAxisFlags_AutoFit);
 
 			//ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_LockMin);
 			//ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1.0, ImPlotCond_Once);
@@ -209,7 +302,8 @@ vren_demo::ui::main_ui::main_ui(
 ) :
 	m_context(ctx),
 	m_toolbox(tb),
-	m_renderer(renderer)
+	m_renderer(renderer),
+	m_scene_ui(tb)
 {}
 
 void vren_demo::ui::main_ui::show_vk_pool_info_ui()
@@ -275,9 +369,12 @@ void vren_demo::ui::main_ui::show()
 		ImGui::DockBuilderAddNode(m_main_dock_id, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
 		ImGui::DockBuilderSetNodeSize(m_main_dock_id, viewport->Size);
 
-		ImGuiID rem_dock_id;
-		m_bottom_toolbar_dock_id = ImGui::DockBuilderSplitNode(m_main_dock_id, ImGuiDir_Down, 0.15f, nullptr, &rem_dock_id);
-		m_left_sidebar_dock_id = ImGui::DockBuilderSplitNode(rem_dock_id, ImGuiDir_Left, 0.2f, nullptr, nullptr);
+		ImGuiID ctr_dock;
+		m_bottom_toolbar_dock_id = ImGui::DockBuilderSplitNode(m_main_dock_id, ImGuiDir_Down, 0.15f, nullptr, &ctr_dock);
+
+		ImGuiID rem_dock;
+		m_right_sidebar_dock_id  = ImGui::DockBuilderSplitNode(ctr_dock, ImGuiDir_Right, 0.2f, nullptr, &rem_dock);
+		m_left_sidebar_dock_id   = ImGui::DockBuilderSplitNode(rem_dock, ImGuiDir_Left, 0.2f, nullptr, nullptr);
 
 		ImGui::DockBuilderFinish(m_main_dock_id);
 	}
@@ -286,14 +383,17 @@ void vren_demo::ui::main_ui::show()
 
 	ImGui::End();
 
+	ImGui::SetNextWindowDockID(m_right_sidebar_dock_id, ImGuiCond_Once);
+	m_scene_ui.show();
+
 	ImGui::SetNextWindowDockID(m_bottom_toolbar_dock_id, ImGuiCond_Once);
 	show_vk_pool_info_ui();
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
 
-	ImGui::ShowDemoWindow();
-	ImPlot::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
+	//ImPlot::ShowDemoWindow();
 }
 
 

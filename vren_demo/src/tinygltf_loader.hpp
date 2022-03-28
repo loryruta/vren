@@ -11,7 +11,7 @@
 #include "material.hpp"
 #include "utils/image.hpp"
 
-namespace vren
+namespace vren_demo
 {
 	struct tinygltf_scene
 	{
@@ -29,12 +29,12 @@ namespace vren
 		void load_textures(
 			std::filesystem::path const& model_dir,
 			tinygltf::Model const& gltf_model,
-			vren::tinygltf_scene& result
+			vren_demo::tinygltf_scene& result
 		);
 
 		void load_materials(
 			tinygltf::Model const& gltf_model,
-			vren::tinygltf_scene& result
+			vren_demo::tinygltf_scene& result
 		);
 
 		void linearize_node_hierarchy(
@@ -48,7 +48,7 @@ namespace vren
 			std::filesystem::path const& model_dir,
 			tinygltf::Model const& gltf_model,
 			vren::render_list& render_list,
-			vren::tinygltf_scene& result
+			vren_demo::tinygltf_scene& result
 		);
 
 	public:
@@ -59,7 +59,7 @@ namespace vren
 		void load_from_file(
 			std::filesystem::path const& model_filename,
 			vren::render_list& render_list,
-			vren::tinygltf_scene& result
+			vren_demo::tinygltf_scene& result
 		);
 	};
 }
