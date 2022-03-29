@@ -5,6 +5,9 @@
 #include <imgui_internal.h>
 #include <implot.h>
 
+#include "utils/misc.hpp"
+#include "utils/shader.hpp"
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // plot
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -45,9 +48,94 @@ void vren_demo::ui::plot::push(float val)
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
+vren::vk_descriptor_set_layout vren_demo::ui::move_point_lights_compute_pipeline::create_descriptor_set_layout(
+	std::shared_ptr<vren::context> const& ctx
+)
+{
+	/* Bindings */
+	VkDescriptorSetLayoutBinding bindings[]{
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+
+		}
+	};
+
+	/* Descriptor set layout */
+	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.bindingCount = std::size(bindings),
+		.pBindings = bindings,
+	};
+
+	VkDescriptorSetLayout desc_set_layout;
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
+
+
+}
+
+vren::vk_pipeline vren_demo::ui::move_point_lights_compute_pipeline::_create_pipeline(std::shared_ptr<vren::context> const& ctx)
+{
+	vren::vk_utils::compute_pipeline::create(
+		ctx,
+		{ /* Descriptor set layouts */
+			{ //
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = NULL,
+				.bindingCount = 1,
+				.pBindings =
+			},
+			{ //
+
+			}
+		},
+		{ /* Push constants */
+			{
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.offset = 0,
+				.size =
+				sizeof(glm::vec3) +     // scene_min
+					sizeof(float) +     // _pad
+					sizeof(glm::vec3) + // scene_max
+					sizeof(float) +     // _pad1
+					sizeof(float)       // speed
+			}
+		},
+		vren::vk_utils::load_shader_module(ctx, "resources/shaders/move_point_lights.comp")
+	);
+}
+
 vren_demo::ui::scene_ui::scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
 	m_gltf_loader(tb)
 {}
+
+void vren_demo::ui::scene_ui::_record_move_point_lights(VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+{
+	vkCmdBindPipeline(cmd_buf, )
+
+	vkCmdDispatch(cmd_buf, glm::ceil(VREN_MAX_POINT_LIGHTS / 512.0f), 1, 1);
+
+	for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++) {
+		VkBufferCopy buf_cpy{
+			.srcOffset = 0,
+			.dstOffset = 0,
+			.size =
+		};
+
+		vkCmdCopyBuffer(
+			cmd_buf,
+			m_renderer.m_point_lights_buffers[0].m_buffer.m_handle,
+			m_renderer.m_point_lights_buffers[i].m_buffer.m_handle,
+			1,
+			&buf_cpy
+		);
+	}
+}
 
 void vren_demo::ui::scene_ui::show()
 {
@@ -97,7 +185,7 @@ void vren_demo::ui::scene_ui::show()
 				for (; i < pt_lights.size(); i++) {
 					auto& pt = pt_lights[i];
 					pt.m_position = {0, 0, 0};
-					pt.m_color    = {0.84f, 0.81f, 0.2f};
+					pt.m_color    = {0.8f, 0.8f, 1.0f};
 				}
 			}
 

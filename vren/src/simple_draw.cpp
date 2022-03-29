@@ -75,16 +75,6 @@ void vren::simple_draw_pass::_create_graphics_pipeline()
 	shader_stage_infos.push_back(shader_stage_info);
 
 	//
-	VkVertexInputBindingDescription vtx_binding{};
-	vtx_binding.binding = 0;
-	vtx_binding.stride = sizeof(vren::vertex);
-	vtx_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-	VkVertexInputBindingDescription instance_data_binding{};
-	instance_data_binding.binding = 1;
-	instance_data_binding.stride = sizeof(vren::instance_data);
-	instance_data_binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-
 	auto binding_descriptions = vren::render_object::get_all_binding_desc();
 	auto attribute_descriptions = vren::render_object::get_all_attrib_desc();
 

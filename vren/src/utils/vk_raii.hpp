@@ -81,7 +81,11 @@ namespace vren
 	using vk_fence       = vren::vk_handle_wrapper<VkFence>;
 	using vk_descriptor_set_layout = vren::vk_handle_wrapper<VkDescriptorSetLayout>;
 	using vk_query_pool  = vren::vk_handle_wrapper<VkQueryPool>;
+	using vk_pipeline    = vren::vk_handle_wrapper<VkPipeline>;
+	using vk_shader_module = vren::vk_handle_wrapper<VkShaderModule>;
+	using vk_descriptor_pool = vren::vk_handle_wrapper<VkDescriptorPool>;
 	using vk_surface_khr = vren::vk_handle_wrapper<VkSurfaceKHR>;
+
 
 	using vma_allocation = vren::vk_handle_wrapper<VmaAllocation>;
 }

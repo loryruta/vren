@@ -43,6 +43,8 @@ set(SRC
         src/utils/profiler.cpp
         src/utils/vk_toolbox.hpp
         src/utils/vk_toolbox.cpp
+        src/utils/shader.hpp
+        src/utils/shader.cpp
 )
 
 add_library(vren ${SRC})
