@@ -216,7 +216,7 @@ void vren::imgui_renderer::_init_render_pass()
 
 void vren::imgui_renderer::render(
 	int frame_idx,
-	vren::command_graph& cmd_graph,
+	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
 	std::function<void()> const& show_guis_func
@@ -228,33 +228,28 @@ void vren::imgui_renderer::render(
 
 	show_guis_func();
 
-	auto& node = cmd_graph.create_tail_node();
+	VkClearValue clear_values[] = {
+		{},
+		{ .depthStencil = { 1.0f, 0 } }
+	};
 
-	vren::vk_utils::record_one_time_submit_commands(node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
-	{
-		VkClearValue clear_values[] = {
-			{},
-			{ .depthStencil = { 1.0f, 0 } }
-		};
+	VkRenderPassBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	begin_info.pNext = nullptr;
+	begin_info.renderPass = m_render_pass;
+	begin_info.framebuffer = target.m_framebuffer;
+	begin_info.renderArea = target.m_render_area;
+	begin_info.clearValueCount = 2;
+	begin_info.pClearValues = clear_values;
 
-		VkRenderPassBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		begin_info.pNext = nullptr;
-		begin_info.renderPass = m_render_pass;
-		begin_info.framebuffer = target.m_framebuffer;
-		begin_info.renderArea = target.m_render_area;
-		begin_info.clearValueCount = 2;
-		begin_info.pClearValues = clear_values;
+	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
-		vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-		vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+	ImGui::Render();
+	ImDrawData* draw_data = ImGui::GetDrawData();
+	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf);
 
-		ImGui::Render();
-		ImDrawData* draw_data = ImGui::GetDrawData();
-		ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf);
-
-		vkCmdEndRenderPass(cmd_buf);
-	});
+	vkCmdEndRenderPass(cmd_buf);
 }

@@ -22,7 +22,7 @@ namespace vren::vk_utils
 		vren::vk_pipeline m_pipeline;
 	};
 
-	static pipeline create_compute_pipeline(
+	pipeline create_compute_pipeline(
 		std::shared_ptr<vren::context> const& ctx,
 		std::vector<VkDescriptorSetLayout> desc_set_layouts,
 		std::vector<VkPushConstantRange> push_constants,

@@ -19,9 +19,10 @@ namespace vren
     {
     private:
         std::shared_ptr<object_pool<_t>> m_pool; // TODO CIRCULAR DEPENDENCY, FIX IT!
-		_t m_handle;
 
     public:
+		_t m_handle;
+
         explicit pooled_object(std::shared_ptr<object_pool<_t>> const& pool, _t&& handle) :
             m_pool(pool),
             m_handle(std::move(handle))
@@ -51,11 +52,6 @@ namespace vren
 
 			return *this;
         }
-
-		_t const& get() const
-		{
-			return m_handle;
-		}
     };
 
     // --------------------------------------------------------------------------------------------------------------------------------

@@ -22,7 +22,7 @@ vren::vk_fence vren::fence_pool::create_object()
 vren::pooled_vk_fence vren::fence_pool::acquire()
 {
 	auto fence = vren::object_pool<vren::vk_fence>::acquire();
-	vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &fence.get().m_handle));
+	vren::vk_utils::check(vkResetFences(m_context->m_device, 1, &fence.m_handle.m_handle));
 	return fence;
 }
 

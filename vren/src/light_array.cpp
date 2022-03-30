@@ -45,21 +45,21 @@ vren::vk_descriptor_set_layout vren::create_light_array_descriptor_set_layout(st
 			.binding = VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING,
 			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
 		{ /* Directional lights */
 			.binding = VREN_LIGHT_ARRAY_DIRECTIONAL_LIGHT_BUFFER_BINDING,
 			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
 		{ /* Spot lights */
 			.binding = VREN_LIGHT_ARRAY_SPOT_LIGHT_BUFFER_BINDING,
 			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		}
 	};

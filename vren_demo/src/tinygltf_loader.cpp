@@ -234,6 +234,9 @@ void vren_demo::tinygltf_loader::load_model(
 	vren_demo::tinygltf_scene& result
 )
 {
+	result.m_min = glm::vec3(std::numeric_limits<float>::infinity());
+	result.m_max = glm::vec3(-std::numeric_limits<float>::infinity());
+
 	// Textures
 	load_textures(model_dir, gltf_model, result);
 
@@ -281,6 +284,10 @@ void vren_demo::tinygltf_loader::load_model(
 
 			{ // POSITION attribute accessor
 				pos_accessor = gltf_model.accessors.at(gltf_primitive.attributes.at("POSITION"));
+			}
+
+			if (pos_accessor->get().type != TINYGLTF_TYPE_VEC3 || pos_accessor->get().componentType != TINYGLTF_COMPONENT_TYPE_FLOAT) {
+				throw std::runtime_error("`Position` accessor must be VEC3 of component type FLOAT");
 			}
 
 			// NORMAL attribute accessor
@@ -400,7 +407,7 @@ void vren_demo::tinygltf_loader::load_model(
 				render_obj.set_indices_buffer(indices_buf, indices.size());
 			}
 
-			// Instances
+			/* Instances */
 			auto& instances = instance_data_by_mesh_idx.at(mesh_idx);
 
 			auto instances_buf =
@@ -409,10 +416,21 @@ void vren_demo::tinygltf_loader::load_model(
 				);
 			render_obj.set_instances_buffer(instances_buf, instances.size());
 
-
-			// material
+			/* Material */
 			render_obj.m_material = result.m_materials.at(gltf_primitive.material);
 
+			/* AABB computation */
+			glm::vec3
+				mesh_min = parse_gltf_vec3_to_glm_vec3(pos_accessor->get().minValues),
+				mesh_max = parse_gltf_vec3_to_glm_vec3(pos_accessor->get().maxValues);
+
+			for (auto& inst : instances)
+			{
+				result.m_min = glm::min(result.m_min, glm::vec3(inst.m_transform * glm::vec4(mesh_min, 1.f)));
+				result.m_max = glm::max(result.m_max, glm::vec3(inst.m_transform * glm::vec4(mesh_max, 1.f)));
+			}
+
+			/*  */
 			result.m_render_objects.push_back(render_obj.m_idx); // register the id of the render object for the loaded scene
 		}
 	}

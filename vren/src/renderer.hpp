@@ -12,7 +12,6 @@
 #include "light_array.hpp"
 #include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
-#include "command_graph.hpp"
 #include "simple_draw.hpp"
 
 namespace vren
@@ -85,13 +84,12 @@ namespace vren
 
         void _upload_lights_array(int frame_idx, vren::light_array const& lights_arr);
 
-
 	public:
 		~renderer();
 
 		void render(
 			int frame_idx,
-			vren::command_graph& cmd_graph,
+			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
 			vren::render_target const& target,
 			vren::render_list const& render_list,

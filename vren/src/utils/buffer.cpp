@@ -15,7 +15,7 @@
 
 vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 	std::shared_ptr<vren::context> const& ctx,
-	VkBufferUsageFlagBits buffer_usage,
+	VkBufferUsageFlags buffer_usage,
 	size_t size,
 	bool persistently_mapped
 )
@@ -43,7 +43,7 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 
 vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 	std::shared_ptr<vren::context> const& ctx,
-	VkBufferUsageFlagBits buffer_usage,
+	VkBufferUsageFlags buffer_usage,
 	size_t size
 )
 {
@@ -134,7 +134,7 @@ void vren::vk_utils::copy_buffer(
 
 vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(
 	vren::vk_utils::toolbox const& tb,
-	VkBufferUsageFlagBits buffer_usage,
+	VkBufferUsageFlags buffer_usage,
 	void const* data,
 	size_t size
 )

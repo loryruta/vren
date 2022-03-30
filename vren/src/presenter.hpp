@@ -22,9 +22,7 @@ namespace vren
 	{
 		/* Sync objects */
 		vren::vk_semaphore m_image_available_semaphore;
-		vren::vk_semaphore m_transited_to_color_attachment_image_layout_semaphore;
 		vren::vk_semaphore m_render_finished_semaphore;
-		vren::vk_semaphore m_transited_to_present_image_layout_semaphore;
 
 		vren::vk_fence m_frame_fence;
 
@@ -125,7 +123,7 @@ namespace vren
 
 		using render_func = std::function<void(
 			int frame_idx,
-			vren::command_graph& cmd_graph,
+			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
 			vren::render_target const& target
 		)>;

@@ -8,6 +8,10 @@
 
 #define VREN_MAX_POINT_LIGHTS 1024
 
+layout (local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
+
+/* */
+
 layout(push_constant) uniform PushConstants
 {
     vec3 scene_min; float _pad;
@@ -15,31 +19,66 @@ layout(push_constant) uniform PushConstants
     float speed;
 } push_constants;
 
+/* */
+
 struct PointLight
 {
-    vec3 position; float _pad;
-    vec3 color;
+    vec3 pos; float _pad;
+    vec3 col; float _pad1;
 };
 
-layout(set = 0, binding = 0) buffer LightArray
+struct DirLight
+{
+    vec3 dir; float _pad;
+    vec3 col; float _pad1;
+};
+
+struct SpotLight
+{
+    vec3 dir; float _pad;
+    vec3 col; float _pad1;
+    float r;  float _pad2[3];
+};
+
+layout(set = 0, binding = 0) buffer LightArray_PointLights
 {
     uint num; float _pad[3];
     PointLight buf[];
 } b_point_lights;
+
+layout(set = 0, binding = 1) buffer LightArray_DirLights
+{
+    uint num; float _pad[3];
+    DirLight buf[];
+} b_dir_lights;
+
+layout(set = 0, binding = 2) buffer LightArray_SpotLights
+{
+    uint num; float _pad[3];
+    SpotLight buf[];
+} b_spot_lights;
+
+/* */
 
 layout(set = 1, binding = 0) buffer LightArrayMovementBuf
 {
     vec4 buf[VREN_MAX_POINT_LIGHTS];
 } b_point_lights_dirs;
 
+/* */
+
 void main()
 {
-    uint idx = gl_LocalInvocationIndex;
+    uint idx = gl_GlobalInvocationID.x;
+
+    if (idx >= b_point_lights.num) {
+        return;
+    }
 
     vec3 sM = push_constants.scene_max;
     vec3 sm = push_constants.scene_min;
 
-    vec3 p = b_point_lights.buf[idx].position;
+    vec3 p = b_point_lights.buf[idx].pos;
     p = min(max(p, sm), sM); // Brings the light position within the scene's AABB
 
     vec3 d = b_point_lights_dirs.buf[idx].xyz;
@@ -57,6 +96,10 @@ void main()
         float min_t = min(tx1, min(tx2, min(ty1, min(ty2, min(tz1, tz2))))); // How much we can step in order not to hit a plane
         float dt = min(min_t, max(rem_t - min_t, 0));
 
+        if (dt <= 0.) {
+            break;
+        }
+
         p += dt * d;
         rem_t -= dt;
 
@@ -67,6 +110,6 @@ void main()
         );
     }
 
-    b_point_lights.buf[idx].position = p;
-    b_point_lights_dirs.buf[idx]     = vec4(d, 1);
+    b_point_lights.buf[idx].pos  = p;
+    b_point_lights_dirs.buf[idx] = vec4(d, 1);
 }

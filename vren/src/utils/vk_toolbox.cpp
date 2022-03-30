@@ -42,6 +42,9 @@ vren::vk_utils::toolbox::toolbox(std::shared_ptr<vren::context> const& ctx) :
 	m_transfer_command_pool(_create_transfer_command_pool(ctx)),
 	m_fence_pool(vren::fence_pool::create(ctx)),
 
+	m_light_array_descriptor_set_layout(std::make_shared<vren::vk_descriptor_set_layout>(vren::create_light_array_descriptor_set_layout(ctx))),
+	m_light_array_descriptor_pool(std::make_shared<vren::light_array_descriptor_pool>(ctx, m_light_array_descriptor_set_layout)),
+
 	m_white_texture(std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*this, 255, 255, 255, 255))),
 	m_black_texture(std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*this, 0, 0, 0, 255))),
 	m_red_texture  (std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*this, 255, 0, 0, 255))),

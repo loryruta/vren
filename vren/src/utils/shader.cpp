@@ -4,7 +4,7 @@
 
 #include "misc.hpp"
 
-vren::vk_shader_module create_shader_module(std::shared_ptr<vren::context> const& ctx, size_t code_size, uint32_t* code)
+vren::vk_shader_module vren::vk_utils::create_shader_module(std::shared_ptr<vren::context> const& ctx, size_t code_size, uint32_t* code)
 {
 	VkShaderModuleCreateInfo shader_info{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -81,9 +81,11 @@ vren::vk_utils::pipeline vren::vk_utils::create_compute_pipeline(
 		.flags = NULL,
 		.stage = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.pNext = nullptr,
 			.stage = VK_SHADER_STAGE_COMPUTE_BIT,
 			.module = shader_module.m_handle,
-			.pName = "main"
+			.pName = "main",
+			.pSpecializationInfo = nullptr,
 		},
 		.layout = pipeline_layout,
 		.basePipelineHandle = VK_NULL_HANDLE,

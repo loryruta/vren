@@ -17,8 +17,9 @@ namespace vren_demo
 	{
 		std::vector<std::shared_ptr<vren::vk_utils::texture>> m_textures;
 		std::vector<std::shared_ptr<vren::material>> m_materials;
-
 		std::vector<uint32_t> m_render_objects;
+
+		glm::vec3 m_min, m_max;
 	};
 
 	class tinygltf_loader

@@ -74,11 +74,11 @@ void vren::vk_utils::immediate_submit(
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         .pInheritanceInfo = nullptr
     };
-    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.get(), &begin_info));
+    vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf.m_handle, &begin_info));
 
-	record_func(cmd_buf.get(), res_container);
+	record_func(cmd_buf.m_handle, res_container);
 
-    vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.get()));
+    vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
 
 	auto fence = fence_pool.acquire();
 
@@ -87,15 +87,15 @@ void vren::vk_utils::immediate_submit(
         .pNext = nullptr,
         .waitSemaphoreCount = 0,
         .pWaitSemaphores = nullptr,
-        .pWaitDstStageMask = nullptr,
+        .pWaitDstStageMask = NULL,
         .commandBufferCount = 1,
-        .pCommandBuffers = &cmd_buf.get(),
+        .pCommandBuffers = &cmd_buf.m_handle,
         .signalSemaphoreCount = 0,
         .pSignalSemaphores = nullptr
     };
-    vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, fence.get().m_handle));
+    vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, fence.m_handle.m_handle));
 
-    vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.get().m_handle, VK_TRUE, UINT64_MAX));
+    vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.m_handle.m_handle, VK_TRUE, UINT64_MAX));
 }
 
 void vren::vk_utils::immediate_graphics_queue_submit(

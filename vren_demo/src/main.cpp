@@ -185,15 +185,6 @@ void create_cube_scene(
 	}
 }
 
-template<glm::length_t L, typename T>
-void log_vec(glm::vec<L, T> v)
-{
-	for (int i = 0; i < L; i++) {
-		std::cout << " v[" << i << "]: " << v[i];
-	}
-	std::cout << std::endl;
-}
-
 void update_camera(float dt, vren_demo::camera& camera)
 {
 	const glm::vec4 k_world_up = glm::vec4(0, 1, 0, 0);
@@ -333,14 +324,20 @@ void launch()
 	ctx_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
-
 	auto ctx = vren::context::create(ctx_info);
 	auto tb = vren::vk_utils::toolbox::create(ctx);
 
+	/* renderer */
 	auto renderer = vren::renderer::create(ctx);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
+	/* UI renderer */
 	auto ui_renderer = vren::imgui_renderer(tb, g_window);
+
+	vren::render_list render_list;
+	vren::light_array light_array;
+
+	auto move_lights = vren_demo::move_lights::create(*tb);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
@@ -389,8 +386,11 @@ void launch()
 		int win_width, win_height;
 		glfwGetWindowSize(g_window, &win_width, &win_height);
 
-		presenter.present([&](int frame_idx, vren::command_graph& cmd_graph, vren::resource_container& res_container, vren::render_target const& target)
+		VkBufferMemoryBarrier mem_bar;
+
+		presenter.present([&](int frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, vren::render_target const& target)
         {
+			/* Profiles the frame */
 			int prof_slot = frame_idx * vren_demo::profile_slot::count;
 
 			vren_demo::profile_info prof_info{};
@@ -398,37 +398,108 @@ void launch()
 			prof_info.m_frame_idx = frame_idx;
 			prof_info.m_frame_in_flight_count = presenter.m_swapchain->m_frame_data.size();
 
-			{ /* Print frame timestamps */
-				prof_info.m_main_pass_profiled =
-					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &prof_info.m_main_pass_start_t, &prof_info.m_main_pass_end_t);
+			prof_info.m_main_pass_profiled =
+				profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &prof_info.m_main_pass_start_t, &prof_info.m_main_pass_end_t);
 
-				prof_info.m_ui_pass_profiled =
-					profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &prof_info.m_ui_pass_start_t, &prof_info.m_ui_pass_end_t);
+			prof_info.m_ui_pass_profiled =
+				profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &prof_info.m_ui_pass_start_t, &prof_info.m_ui_pass_end_t);
 
-				prof_info.m_frame_profiled = prof_info.m_main_pass_profiled && prof_info.m_ui_pass_profiled;
-				prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
-				prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
+			prof_info.m_frame_profiled = prof_info.m_main_pass_profiled && prof_info.m_ui_pass_profiled;
+			prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
+			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
+
+			/* Move lights */
+			move_lights->dispatch(
+				frame_idx,
+				cmd_buf,
+				res_container,
+				{
+					.m_scene_min = ui.m_scene_ui.m_scene_min,
+					.m_scene_max = ui.m_scene_ui.m_scene_max,
+					.m_speed     = ui.m_scene_ui.m_speed
+				},
+				renderer->m_lights_array_descriptor_sets.at(0).m_handle
+			);
+
+			mem_bar = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.buffer = renderer->m_point_lights_buffers.at(0).m_buffer.m_handle,
+				.offset = 0,
+				.size = VK_WHOLE_SIZE
+			};
+			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &mem_bar, 0, nullptr);
+
+			for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
+			{
+				VkBufferCopy buf_cpy{
+					.srcOffset = 0,
+					.dstOffset = 0,
+					.size      = VREN_POINT_LIGHTS_BUFFER_SIZE
+				};
+
+				vkCmdCopyBuffer(
+					cmd_buf,
+					renderer->m_point_lights_buffers.at(0).m_buffer.m_handle,
+					renderer->m_point_lights_buffers.at(i).m_buffer.m_handle,
+					1,
+					&buf_cpy
+				);
 			}
 
+			mem_bar = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.buffer = renderer->m_point_lights_buffers.at(frame_idx).m_buffer.m_handle,
+				.offset = 0,
+				.size = VK_WHOLE_SIZE
+			};
+			vkCmdPipelineBarrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				NULL,
+				0, nullptr,
+				1, &mem_bar,
+				0, nullptr
+			);
+
 			/* Renders the scene */
-			profiler.profile(prof_slot + vren_demo::profile_slot::MainPass, cmd_graph, res_container, [&]()
+			profiler.profile(prof_slot + vren_demo::profile_slot::MainPass, cmd_buf, res_container, [&]()
 			{
 				auto cam_data = vren::camera{
 					.m_position = camera.m_position,
 					.m_view = camera.get_view(),
 					.m_projection = camera.get_projection()
 				};
-				renderer->render(frame_idx, cmd_graph, res_container, target, ui.m_scene_ui.m_render_list, ui.m_scene_ui.m_light_array, cam_data);
+
+				renderer->render(
+					frame_idx,
+					cmd_buf,
+					res_container,
+					target,
+					render_list,
+					light_array,
+					cam_data
+				);
 			});
 
 			/* Renders the UI */
-			profiler.profile(prof_slot + vren_demo::profile_slot::UiPass, cmd_graph, res_container, [&]()
+			profiler.profile(prof_slot + vren_demo::profile_slot::UiPass, cmd_buf, res_container, [&]()
 			{
-				ui_renderer.render(frame_idx, cmd_graph, res_container, target, [&]()
+				ui_renderer.render(frame_idx, cmd_buf, res_container, target, [&]()
 				{
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
 
-					ui.show();
+					ui.show(render_list, light_array);
 				});
 			});
 		});

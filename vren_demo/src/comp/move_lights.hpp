@@ -47,6 +47,7 @@ namespace vren_demo
 	private:
 		/* light_array_movement_buf */
 		light_array_movement_buf       m_light_array_movement_buf;
+
 		vren::vk_descriptor_set_layout m_light_array_movement_buf_descriptor_set_layout; // TODO layout and pool could be required anywhere: make them global?
 		vren::vk_descriptor_pool       m_light_array_movement_buf_descriptor_pool;
 		VkDescriptorSet                m_light_array_movement_buf_descriptor_set;

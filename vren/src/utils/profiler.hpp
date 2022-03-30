@@ -4,7 +4,6 @@
 
 #include "resource_container.hpp"
 #include "utils/vk_raii.hpp"
-#include "command_graph.hpp"
 
 namespace vren
 {
@@ -27,7 +26,7 @@ namespace vren
 
 		void profile(
 			int slot_idx,
-			vren::command_graph& cmd_graph,
+			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
 			std::function<void()> const& sample_func
 		);

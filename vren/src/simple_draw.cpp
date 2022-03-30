@@ -206,7 +206,16 @@ void vren::simple_draw_pass::record_commands(
 
 	// Lights array
 	// todo light array buffer is managed by the renderer why is it bound here?
-	vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_LIGHT_ARRAY_DESCRIPTOR_SET, 1, &m_renderer->m_lights_array_descriptor_sets[frame_idx].get(), 0, nullptr);
+	vkCmdBindDescriptorSets(
+		cmd_buf,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		m_pipeline_layout,
+		VREN_LIGHT_ARRAY_DESCRIPTOR_SET,
+		1,
+		&m_renderer->m_lights_array_descriptor_sets.at(frame_idx).m_handle,
+		0,
+		nullptr
+	);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
@@ -238,8 +247,8 @@ void vren::simple_draw_pass::record_commands(
 		auto mat_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
 			m_renderer->m_material_descriptor_pool->acquire()
 		);
-		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->get());
-		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->get(), 0, nullptr);
+		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->m_handle);
+		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->m_handle, 0, nullptr);
 		res_container.add_resources(mat_desc_set, render_obj.m_material);
 
 		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);

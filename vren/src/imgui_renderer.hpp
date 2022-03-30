@@ -9,7 +9,6 @@
 #include <imgui_impl_vulkan.h>
 
 #include "utils/vk_toolbox.hpp"
-#include "command_graph.hpp"
 #include "resource_container.hpp"
 #include "renderer.hpp"
 
@@ -36,7 +35,7 @@ namespace vren
 
 		void render(
 			int frame_idx,
-			vren::command_graph& cmd_graph,
+			VkCommandBuffer cmd_buf,
             vren::resource_container& res_container,
 			vren::render_target const& target,
 			std::function<void()> const& show_guis_func

@@ -40,22 +40,16 @@ namespace vren_demo::ui
 	{
 	private:
 		vren_demo::tinygltf_loader m_gltf_loader;
-
 		char m_scene_path[512];
 
-		glm::vec4 m_point_lights_dir[VREN_MAX_POINT_LIGHTS];
+	public:
+		glm::vec3
+			m_scene_min = glm::vec3(0),
+			m_scene_max = glm::vec3(0);
 		float m_speed = 1.0f;
 
-		std::shared_ptr<vren_demo::move_lights> m_move_lights;
-
-	public:
-		scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb);
-
-		void record_move_lights(
-			vren::renderer const& renderer,
-			int frame_idx,
-			VkCommandBuffer cmd_buf,
-			vren::resource_container& res_container
+		scene_ui(
+			std::shared_ptr<vren::vk_utils::toolbox> const& tb
 		);
 
 		void show(
@@ -122,6 +116,9 @@ namespace vren_demo::ui
 		);
 
 		void show_vk_pool_info_ui();
-		void show();
+		void show(
+			vren::render_list& render_list,
+			vren::light_array& light_arr
+		);
 	};
 }

@@ -137,8 +137,10 @@ vec3 apply_point_lights(
     {
         PointLight light = b_point_lights.data[i];
 
+        float d = length(light.position.xyz - frag_pos);
         vec3 L = normalize(frag_pos - light.position.xyz);
-        vec3 radiance = light.color.rgb;
+        float att = 1.0 / (d * d); // attenuation
+        vec3 radiance = light.color.rgb * att;
 
         Lo += apply_light(
             V,

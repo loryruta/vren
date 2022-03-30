@@ -23,7 +23,17 @@ std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>
 vren::renderer::_create_point_lights_buffers()
 {
     return create_array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT>(
-        [&]() { return vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_POINT_LIGHTS_BUFFER_SIZE, true); }
+        [&]() {
+			return vren::vk_utils::alloc_host_visible_buffer(
+				m_context,
+				// The usage should only be storage buffer, but from vren_demo we need to copy the buffer's content
+				// through `vkCmdCopyBuffer`. For this reason we're also providing transfer usage. Copying is a common need,
+				// does it make sense always to create buffers with copy support?
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				VREN_POINT_LIGHTS_BUFFER_SIZE,
+				true
+			);
+		}
     );
 }
 
@@ -107,7 +117,7 @@ void vren::renderer::_init_light_array_descriptor_sets()
         VkWriteDescriptorSet desc_set_write{};
         desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         desc_set_write.pNext = nullptr;
-        desc_set_write.dstSet = m_lights_array_descriptor_sets[frame_idx].get();
+        desc_set_write.dstSet = m_lights_array_descriptor_sets.at(frame_idx).m_handle;
         desc_set_write.dstBinding = VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING;
         desc_set_write.dstArrayElement = 0;
         desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -222,7 +232,7 @@ void vren::renderer::_upload_lights_array(int frame_idx, vren::light_array const
 
 void vren::renderer::render(
 	int frame_idx,
-	vren::command_graph& cmd_graph,
+	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
 	vren::render_list const& render_list,
@@ -230,41 +240,35 @@ void vren::renderer::render(
 	vren::camera const& camera
 )
 {
-	auto& node = cmd_graph.create_tail_node();
-	auto& cmd_buf = node.m_command_buffer;
+	/* Render pass begin */
+	VkClearValue clear_values[] = {
+		{ .color = m_clear_color },
+		{ .depthStencil = {
+			.depth = 1.0f,
+			.stencil = 0
+		}}
+	};
+	VkRenderPassBeginInfo render_pass_begin_info{};
+	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_pass_begin_info.renderPass = m_render_pass->m_handle;
+	render_pass_begin_info.framebuffer = target.m_framebuffer;
+	render_pass_begin_info.renderArea = target.m_render_area;
+	render_pass_begin_info.clearValueCount = std::size(clear_values);
+	render_pass_begin_info.pClearValues = clear_values;
 
-	vren::vk_utils::record_one_time_submit_commands(cmd_buf.get(), [&](VkCommandBuffer cmd_buf)
-	{
-		/* Render pass begin */
-		VkClearValue clear_values[] = {
-			{ .color = m_clear_color },
-			{ .depthStencil = {
-				.depth = 1.0f,
-				.stencil = 0
-			}}
-		};
-		VkRenderPassBeginInfo render_pass_begin_info{};
-		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_begin_info.renderPass = m_render_pass->m_handle;
-		render_pass_begin_info.framebuffer = target.m_framebuffer;
-		render_pass_begin_info.renderArea = target.m_render_area;
-		render_pass_begin_info.clearValueCount = std::size(clear_values);
-		render_pass_begin_info.pClearValues = clear_values;
+	vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
 
-		vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-		vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+	/* Write light buffers */
+	_upload_lights_array(frame_idx, lights_arr);
 
-		/* Write light buffers */
-		_upload_lights_array(frame_idx, lights_arr);
+	/* Subpass recording */
+	m_simple_draw_pass->record_commands(frame_idx, cmd_buf, res_container, render_list, lights_arr, camera);
 
-		/* Subpass recording */
-		m_simple_draw_pass->record_commands(frame_idx, cmd_buf, res_container, render_list, lights_arr, camera);
-
-		/* Render pass end */
-		vkCmdEndRenderPass(cmd_buf);
-	});
+	/* Render pass end */
+	vkCmdEndRenderPass(cmd_buf);
 }
 
 std::shared_ptr<vren::renderer>

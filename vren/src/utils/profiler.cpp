@@ -14,35 +14,22 @@ vren::profiler::~profiler()
 
 void vren::profiler::profile(
 	int slot_idx,
-	vren::command_graph& cmd_graph,
+	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
 	std::function<void()> const& sample_func
 )
 {
-	{ /* Starting timestamp */
-		auto& begin_node = cmd_graph.create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(begin_node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
-		{
-			vkCmdResetQueryPool(cmd_buf, m_query_pool.m_handle, slot_idx * 2, 2);
+	/* Starting timestamp */
+	vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr); // Needed ?
 
-			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr);
-
-			auto query_idx = slot_idx * 2;
-			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, query_idx);
-		});
-	}
+	vkCmdResetQueryPool(cmd_buf, m_query_pool.m_handle, slot_idx * 2, 2);
+	vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2);
 
 	/* Recording */
 	sample_func();
 
-	{ /* Ending timestamp */
-		auto& end_node = cmd_graph.create_tail_node();
-		vren::vk_utils::record_one_time_submit_commands(end_node.m_command_buffer.get(), [&](VkCommandBuffer cmd_buf)
-		{
-			auto query_idx = slot_idx * 2 + 1;
-			vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, query_idx);
-		});
-	}
+	/* Ending timestamp */
+	vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
 }
 
 bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t)
