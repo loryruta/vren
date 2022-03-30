@@ -22,6 +22,8 @@ add_executable(vren_demo
         src/tinygltf_loader.cpp
         src/ui.hpp
         src/ui.cpp
+        src/comp/move_lights.hpp
+        src/comp/move_lights.cpp
 )
 
 # vren_demo

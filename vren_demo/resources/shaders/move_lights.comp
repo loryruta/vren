@@ -8,17 +8,6 @@
 
 #define VREN_MAX_POINT_LIGHTS 1024
 
-struct PointLight
-{
-    vec3 position; float _pad;
-    vec3 color;
-};
-
-layout(set = 0, binding = 0) buffer PointLights
-{
-    PointLight buf[VREN_MAX_POINT_LIGHTS];
-} b_point_lights;
-
 layout(push_constant) uniform PushConstants
 {
     vec3 scene_min; float _pad;
@@ -26,7 +15,19 @@ layout(push_constant) uniform PushConstants
     float speed;
 } push_constants;
 
-layout(set = 0, binding = 1) buffer PointLightsDirs
+struct PointLight
+{
+    vec3 position; float _pad;
+    vec3 color;
+};
+
+layout(set = 0, binding = 0) buffer LightArray
+{
+    uint num; float _pad[3];
+    PointLight buf[];
+} b_point_lights;
+
+layout(set = 1, binding = 0) buffer LightArrayMovementBuf
 {
     vec4 buf[VREN_MAX_POINT_LIGHTS];
 } b_point_lights_dirs;
@@ -59,7 +60,7 @@ void main()
         p += dt * d;
         rem_t -= dt;
 
-        d *= vec3( // Inverts the direction of the plane being hit
+        d *= vec3( // Inverts the direction based on the plane being hit
             (tx1 <= min_t || tx2 <= min_t ? -1.0 : 1.0), // <= to be sure
             (ty1 <= min_t || ty2 <= min_t ? -1.0 : 1.0),
             (tz1 <= min_t || tz2 <= min_t ? -1.0 : 1.0)

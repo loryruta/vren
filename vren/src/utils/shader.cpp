@@ -49,45 +49,29 @@ vren::vk_shader_module vren::vk_utils::load_shader_module(std::shared_ptr<vren::
 // compute_pipeline
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::compute_pipeline::compute_pipeline(std::shared_ptr<vren::context> const& ctx) :
-	m_context(ctx)
-{}
-
-vren::vk_utils::compute_pipeline::~compute_pipeline()
-{
-	vkDestroyPipeline(m_context->m_device, m_pipeline, nullptr);
-	vkDestroyPipelineLayout(m_context->m_device, m_pipeline_layout, nullptr);
-}
-
-vren::vk_utils::compute_pipeline vren::vk_utils::compute_pipeline::create(
+vren::vk_utils::pipeline vren::vk_utils::create_compute_pipeline(
 	std::shared_ptr<vren::context> const& ctx,
-	std::vector<std::shared_ptr<vren::vk_descriptor_set_layout>> desc_set_layouts,
+	std::vector<VkDescriptorSetLayout> desc_set_layouts,
 	std::vector<VkPushConstantRange> push_constants,
 	vren::vk_shader_module&& shader_module
 )
 {
-	compute_pipeline res(ctx);
-
-	/* Descriptor set layouts */
-	res.m_descriptor_set_layouts = std::move(desc_set_layouts);
-
-	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
-	for (auto& desc_set_layout : res.m_descriptor_set_layouts) {
-		raw_desc_set_layouts.emplace_back(desc_set_layout->m_handle);
-	}
+	// We're not binding `descriptor set layouts` lifetime to the `pipeline` lifetime:
+	// once the pipeline is created, do we need descriptor set layouts to be still alive?
 
 	/* Pipeline layout */
 	VkPipelineLayoutCreateInfo pipeline_layout_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.setLayoutCount = (uint32_t) raw_desc_set_layouts.size(),
-		.pSetLayouts = raw_desc_set_layouts.data(),
+		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
+		.pSetLayouts = desc_set_layouts.data(),
 		.pushConstantRangeCount = (uint32_t) push_constants.size(),
 		.pPushConstantRanges = push_constants.data(),
 	};
+	VkPipelineLayout pipeline_layout;
 	vren::vk_utils::check(
-		vkCreatePipelineLayout(ctx->m_device, &pipeline_layout_info, nullptr, &res.m_pipeline_layout)
+		vkCreatePipelineLayout(ctx->m_device, &pipeline_layout_info, nullptr, &pipeline_layout)
 	);
 
 	/* Pipeline */
@@ -101,16 +85,19 @@ vren::vk_utils::compute_pipeline vren::vk_utils::compute_pipeline::create(
 			.module = shader_module.m_handle,
 			.pName = "main"
 		},
-		.layout = res.m_pipeline_layout,
+		.layout = pipeline_layout,
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = 0,
 	};
+	VkPipeline pipeline;
 	vren::vk_utils::check(
-		vkCreateComputePipelines(ctx->m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &res.m_pipeline)
+		vkCreateComputePipelines(ctx->m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline)
 	);
 
 	// shader_module destroyed
 
-	return res;
+	return vren::vk_utils::pipeline{
+		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
+		.m_pipeline        = vren::vk_pipeline(ctx, pipeline)
+	};
 }
-

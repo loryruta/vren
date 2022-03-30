@@ -48,96 +48,20 @@ void vren_demo::ui::plot::push(float val)
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_descriptor_set_layout vren_demo::ui::move_point_lights_compute_pipeline::create_descriptor_set_layout(
-	std::shared_ptr<vren::context> const& ctx
-)
-{
-	/* Bindings */
-	VkDescriptorSetLayoutBinding bindings[]{
-		{
-			.binding = 0,
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+vren_demo::ui::scene_ui::scene_ui(
+	std::shared_ptr<vren::vk_utils::toolbox> const& tb
+) :
+	m_gltf_loader(tb),
 
-		}
-	};
-
-	/* Descriptor set layout */
-	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = NULL,
-		.bindingCount = std::size(bindings),
-		.pBindings = bindings,
-	};
-
-	VkDescriptorSetLayout desc_set_layout;
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
-
-
-}
-
-vren::vk_pipeline vren_demo::ui::move_point_lights_compute_pipeline::_create_pipeline(std::shared_ptr<vren::context> const& ctx)
-{
-	vren::vk_utils::compute_pipeline::create(
-		ctx,
-		{ /* Descriptor set layouts */
-			{ //
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = NULL,
-				.bindingCount = 1,
-				.pBindings =
-			},
-			{ //
-
-			}
-		},
-		{ /* Push constants */
-			{
-				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-				.offset = 0,
-				.size =
-				sizeof(glm::vec3) +     // scene_min
-					sizeof(float) +     // _pad
-					sizeof(glm::vec3) + // scene_max
-					sizeof(float) +     // _pad1
-					sizeof(float)       // speed
-			}
-		},
-		vren::vk_utils::load_shader_module(ctx, "resources/shaders/move_point_lights.comp")
-	);
-}
-
-vren_demo::ui::scene_ui::scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb) :
-	m_gltf_loader(tb)
+	m_move_lights(
+		vren_demo::move_lights::create(*tb) // we sure we want it here ? :/
+	)
 {}
 
-void vren_demo::ui::scene_ui::_record_move_point_lights(VkCommandBuffer cmd_buf, vren::resource_container& res_container)
-{
-	vkCmdBindPipeline(cmd_buf, )
-
-	vkCmdDispatch(cmd_buf, glm::ceil(VREN_MAX_POINT_LIGHTS / 512.0f), 1, 1);
-
-	for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++) {
-		VkBufferCopy buf_cpy{
-			.srcOffset = 0,
-			.dstOffset = 0,
-			.size =
-		};
-
-		vkCmdCopyBuffer(
-			cmd_buf,
-			m_renderer.m_point_lights_buffers[0].m_buffer.m_handle,
-			m_renderer.m_point_lights_buffers[i].m_buffer.m_handle,
-			1,
-			&buf_cpy
-		);
-	}
-}
-
-void vren_demo::ui::scene_ui::show()
+void vren_demo::ui::scene_ui::show(
+	vren::render_list& render_list,
+	vren::light_array& light_arr
+)
 {
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
@@ -149,15 +73,15 @@ void vren_demo::ui::scene_ui::show()
 			/* Sponza */
 			if (ImGui::Button("Load Sponza##load_scene-scene_ui"))
 			{
-				m_render_list.clear();
-				m_gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", m_render_list, loaded_scene);
+				render_list.clear();
+				m_gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", render_list, loaded_scene);
 			}
 
 			/* DamagedHelmet */
 			if (ImGui::Button("Load DamagedHelmet##load_scene-scene_ui"))
 			{
-				m_render_list.clear();
-				m_gltf_loader.load_from_file("resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf", m_render_list, loaded_scene);
+				render_list.clear();
+				m_gltf_loader.load_from_file("resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf", render_list, loaded_scene);
 			}
 
 			ImGui::TreePop();
@@ -171,7 +95,7 @@ void vren_demo::ui::scene_ui::show()
 		{ /* Point lights */
 			ImGui::Text("Point lights");
 
-			auto& pt_lights = m_light_array.m_point_lights;
+			auto& pt_lights = light_arr.m_point_lights;
 
 			int pt_lights_num = (int) pt_lights.size();
 			ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &pt_lights_num, 0, VREN_MAX_POINT_LIGHTS);
@@ -195,7 +119,7 @@ void vren_demo::ui::scene_ui::show()
 		{ /* Directional lights */
 			ImGui::Text("Dir. lights");
 
-			int dir_lights_num = (int) m_light_array.m_directional_lights.size();
+			int dir_lights_num = (int) light_arr.m_directional_lights.size();
 			ImGui::SliderInt("Num.##dir_lights-lighting-scene_ui", &dir_lights_num, 0, VREN_MAX_DIRECTIONAL_LIGHTS);
 
 			// todo
@@ -204,7 +128,7 @@ void vren_demo::ui::scene_ui::show()
 		{ /* Spot lights */
 			ImGui::Text("Spot lights");
 
-			int spot_lights_num = (int) m_light_array.m_spot_lights.size();
+			int spot_lights_num = (int) light_arr.m_spot_lights.size();
 			ImGui::SliderInt("Num.##spot_lights-lighting-scene_ui", &spot_lights_num, 0, VREN_MAX_SPOT_LIGHTS);
 
 			// todo

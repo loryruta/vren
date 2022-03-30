@@ -18,7 +18,7 @@ namespace vren
     class pooled_object
     {
     private:
-        std::shared_ptr<object_pool<_t>> m_pool;
+        std::shared_ptr<object_pool<_t>> m_pool; // TODO CIRCULAR DEPENDENCY, FIX IT!
 		_t m_handle;
 
     public:

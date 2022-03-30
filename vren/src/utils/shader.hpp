@@ -16,28 +16,16 @@ namespace vren::vk_utils
 	// compute_pipeline
 	// ------------------------------------------------------------------------------------------------
 
-	class compute_pipeline
+	struct pipeline
 	{
-	private:
-		std::shared_ptr<vren::context> m_context;
-
-		explicit compute_pipeline(std::shared_ptr<vren::context> const& ctx);
-
-	public:
-		std::vector<std::shared_ptr<vren::vk_descriptor_set_layout>> m_descriptor_set_layouts;
-		VkPipelineLayout m_pipeline_layout;
-		VkPipeline m_pipeline;
-
-		compute_pipeline(compute_pipeline const& other) = delete;
-		compute_pipeline(compute_pipeline&& other); // TODO move ctr
-
-		~compute_pipeline();
-
-		static compute_pipeline create(
-			std::shared_ptr<vren::context> const& ctx,
-			std::vector<std::shared_ptr<vren::vk_descriptor_set_layout>> desc_set_layouts,
-			std::vector<VkPushConstantRange> push_constants,
-			vren::vk_shader_module&& shader_module
-		);
+		vren::vk_pipeline_layout m_pipeline_layout;
+		vren::vk_pipeline m_pipeline;
 	};
+
+	static pipeline create_compute_pipeline(
+		std::shared_ptr<vren::context> const& ctx,
+		std::vector<VkDescriptorSetLayout> desc_set_layouts,
+		std::vector<VkPushConstantRange> push_constants,
+		vren::vk_shader_module&& shader_module
+	);
 }

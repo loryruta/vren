@@ -205,6 +205,7 @@ void vren::simple_draw_pass::record_commands(
 	vkCmdPushConstants(cmd_buf, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vren::camera), &camera);
 
 	// Lights array
+	// todo light array buffer is managed by the renderer why is it bound here?
 	vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_LIGHT_ARRAY_DESCRIPTOR_SET, 1, &m_renderer->m_lights_array_descriptor_sets[frame_idx].get(), 0, nullptr);
 
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)

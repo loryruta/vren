@@ -63,6 +63,30 @@ void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkQueryP
 }
 
 template<>
+void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkShaderModule handle)
+{
+	vkDestroyShaderModule(ctx->m_device, handle, nullptr);
+}
+
+template<>
+void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkDescriptorPool handle)
+{
+	vkDestroyDescriptorPool(ctx->m_device, handle, nullptr);
+}
+
+template<>
+void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkPipeline handle)
+{
+	vkDestroyPipeline(ctx->m_device, handle, nullptr);
+}
+
+template<>
+void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkPipelineLayout handle)
+{
+	vkDestroyPipelineLayout(ctx->m_device, handle, nullptr);
+}
+
+template<>
 void vren::destroy_vk_handle(const std::shared_ptr<vren::context>& ctx, VkSurfaceKHR handle)
 {
 	vkDestroySurfaceKHR(ctx->m_instance, handle, nullptr);

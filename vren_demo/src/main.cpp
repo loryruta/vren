@@ -260,6 +260,41 @@ void glfw_error_callback(int error_code, const char* description)
 	std::cerr << "[GLFW] (" << error_code << ") " << description << std::endl;
 }
 
+/* TODO
+void record_move_lights(
+	vren::renderer const& renderer,
+	int frame_idx,
+	VkCommandBuffer cmd_buf,
+	vren::resource_container& res_container
+)
+{
+	// Move lights for the *first* light array buffer, then we reflect the changes to other N-1 light array buffers.
+
+	m_move_lights->dispatch(
+		frame_idx,
+		cmd_buf,
+		res_container,
+		renderer.m_lights_array_descriptor_sets.at(0).get()
+	);
+
+	for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VkBufferCopy buf_cpy{
+			.srcOffset = 0,
+			.dstOffset = 0,
+			.size      = VK_WHOLE_SIZE,
+		};
+
+		vkCmdCopyBuffer(
+			cmd_buf,
+			renderer.m_point_lights_buffers[0].m_buffer.m_handle,
+			renderer.m_point_lights_buffers[i].m_buffer.m_handle,
+			1,
+			&buf_cpy
+		);
+	}
+}*/
+
 void launch()
 {
 	glfwSetErrorCallback(glfw_error_callback);

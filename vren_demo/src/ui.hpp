@@ -12,6 +12,7 @@
 #include "tinygltf_loader.hpp"
 #include "utils/vk_toolbox.hpp"
 #include "utils/shader.hpp"
+#include "comp/move_lights.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
@@ -34,26 +35,7 @@ namespace vren_demo::ui
 	// scene_ui
 	// ------------------------------------------------------------------------------------------------
 
-	class move_point_lights_compute_pipeline
-	{
-	private:
-		vren::vk_descriptor_set_layout create_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
-
-	public:
-		vren::vk_shader_module m_shader;
-
-		vren::vk_utils::compute_pipeline m_pipeline;
-		std::shared_ptr<vren::vk_descriptor_set_layout> m_descriptor_set_layout;
-
-		vren::vk_descriptor_pool m_descriptor_pool;
-		VkDescriptorSet m_descriptor_set;
-
-		move_point_lights();
-		~move_point_lights();
-
-
-	};
-
+	// TODO should this class manage rendering?
 	class scene_ui
 	{
 	private:
@@ -64,19 +46,22 @@ namespace vren_demo::ui
 		glm::vec4 m_point_lights_dir[VREN_MAX_POINT_LIGHTS];
 		float m_speed = 1.0f;
 
+		std::shared_ptr<vren_demo::move_lights> m_move_lights;
+
 	public:
-		vren::renderer m_renderer;
-
-		vren::render_list m_render_list;
-		vren::light_array m_light_array;
-
 		scene_ui(std::shared_ptr<vren::vk_utils::toolbox> const& tb);
 
-		/* Move point lights */
-		void _init_move_point_lights_pipeline();
-		void _record_move_point_lights(VkCommandBuffer cmd_buf, vren::resource_container& res_container);
+		void record_move_lights(
+			vren::renderer const& renderer,
+			int frame_idx,
+			VkCommandBuffer cmd_buf,
+			vren::resource_container& res_container
+		);
 
-		void show();
+		void show(
+			vren::render_list& render_list,
+			vren::light_array& light_arr
+		);
 	};
 
 	// ------------------------------------------------------------------------------------------------
