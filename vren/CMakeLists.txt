@@ -71,3 +71,6 @@ target_link_libraries(vren PUBLIC imgui::imgui)
 find_package(implot CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC implot::implot)
 
+# spirv-reflect
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+target_link_libraries(vren PRIVATE unofficial::spirv-reflect::spirv-reflect)

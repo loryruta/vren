@@ -17,6 +17,7 @@
         "implot",
         "tinyfiledialogs",
         "stb",
-        "gtest"
+        "gtest",
+        "spirv-reflect"
     ]
 }
