@@ -45,22 +45,6 @@ namespace vren
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// light_array_descriptor_pool
-	// ------------------------------------------------------------------------------------------------
-
-	class light_array_descriptor_pool : public vren::descriptor_pool
-	{
-	protected:
-		VkDescriptorPool create_descriptor_pool(int max_sets);
-
-	public:
-		light_array_descriptor_pool(
-			std::shared_ptr<vren::context> const& ctx,
-			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
-		);
-	};
-
-	// ------------------------------------------------------------------------------------------------
 
 	vren::vk_descriptor_set_layout create_light_array_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
 }

@@ -28,23 +28,6 @@ namespace vren
 		explicit material(vren::vk_utils::toolbox const& tb);
 	};
 
-	// ------------------------------------------------------------------------------------------------
-	// material_descriptor_pool
-	// ------------------------------------------------------------------------------------------------
-
-	class material_descriptor_pool : public vren::descriptor_pool
-	{
-	protected:
-		VkDescriptorPool create_descriptor_pool(int max_sets);
-
-	public:
-		material_descriptor_pool(
-			std::shared_ptr<vren::context> const& ctx,
-			std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
-		);
-
-	};
-
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	vren::vk_descriptor_set_layout create_material_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);

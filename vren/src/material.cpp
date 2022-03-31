@@ -18,38 +18,6 @@ vren::material::material(
 {}
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// material_descriptor_pool
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::material_descriptor_pool::material_descriptor_pool(
-	std::shared_ptr<vren::context> const& ctx,
-	std::shared_ptr<vren::vk_descriptor_set_layout> const& desc_set_layout
-) :
-	vren::descriptor_pool(ctx, desc_set_layout)
-{}
-
-VkDescriptorPool vren::material_descriptor_pool::create_descriptor_pool(int max_sets)
-{
-	VkDescriptorPoolSize pool_sizes[] = {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }, // Base color texture
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }, // Metallic-roughness texture
-	};
-
-	VkDescriptorPoolCreateInfo pool_info = {};
-	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_info.pNext = nullptr;
-	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	pool_info.maxSets = max_sets;
-	pool_info.poolSizeCount = std::size(pool_sizes);
-	pool_info.pPoolSizes = pool_sizes;
-
-	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &pool_info, nullptr, &desc_pool));
-
-	return desc_pool;
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_descriptor_set_layout vren::create_material_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx)
 {

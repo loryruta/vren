@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <optional>
+#include <functional>
 
 namespace vren
 {
@@ -71,13 +73,20 @@ namespace vren
 
 		explicit object_pool() = default;
 
-        virtual _t create_object() = 0;
-
         virtual void release(_t&& obj)
 		{
             m_unused_objects.push_back(std::move(obj));
 			m_acquired_count--;
         }
+
+		vren::pooled_object<_t> create_managed_object(_t&& obj)
+		{
+			return vren::pooled_object(
+				std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
+				std::move(obj)
+			);
+		}
+
     public:
 		object_pool(object_pool<_t> const& other) = delete;
 		object_pool(object_pool<_t>&& other) = delete;
@@ -86,7 +95,7 @@ namespace vren
 
 		int get_acquired_objects_count() const
 		{
-			return m_acquired_count;
+			return 0; // TODO
 		}
 
 		int get_pooled_objects_count() const
@@ -99,25 +108,21 @@ namespace vren
 			return get_acquired_objects_count() + get_pooled_objects_count();
 		}
 
-        virtual vren::pooled_object<_t> acquire()
-        {
-			m_acquired_count++;
+		std::optional<vren::pooled_object<_t>> try_acquire()
+		{
+			if (m_unused_objects.size() > 0)
+			{
+				_t pooled_obj(std::move(m_unused_objects.back()));
+				m_unused_objects.pop_back();
 
-            if (m_unused_objects.empty()) {
-                return vren::pooled_object(
-                    std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
-                    create_object()
-                );
-            } else {
-                _t pooled_obj(std::move(m_unused_objects.back()));
-                m_unused_objects.pop_back();
+				return vren::pooled_object(
+					std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
+					std::move(pooled_obj)
+				);
+			}
 
-                return vren::pooled_object(
-                    std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
-                    std::move(pooled_obj)
-                );
-            }
-        }
+			return std::nullopt;
+		}
 
 		static std::shared_ptr<vren::object_pool<_t>> create()
 		{

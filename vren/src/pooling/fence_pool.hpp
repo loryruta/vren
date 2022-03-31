@@ -24,10 +24,8 @@ namespace vren
     protected:
 		explicit fence_pool(std::shared_ptr<vren::context> ctx);
 
-		vren::vk_fence create_object() override;
-
     public:
-        vren::pooled_vk_fence acquire() override;
+        vren::pooled_vk_fence acquire();
 
 		static std::shared_ptr<fence_pool> create(std::shared_ptr<vren::context> const& ctx);
     };
