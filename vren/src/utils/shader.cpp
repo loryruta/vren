@@ -175,19 +175,17 @@ vren::vk_utils::load_and_describe_shader(
 vren::vk_utils::self_described_compute_pipeline
 vren::vk_utils::create_compute_pipeline(
 	std::shared_ptr<vren::context> const& ctx,
-	self_described_shader&& comp_shader
+	self_described_shader&& comp_shad
 )
 {
 	/* Descriptor set layouts */
-	std::vector<VkDescriptorSetLayout> desc_set_layouts(
-		comp_shader.m_descriptor_set_layouts.size()
-	);
-	for (auto& desc_set_layout : comp_shader.m_descriptor_set_layouts) {
+	std::vector<VkDescriptorSetLayout> desc_set_layouts;
+	for (auto& desc_set_layout : comp_shad.m_descriptor_set_layouts) {
 		desc_set_layouts.push_back(desc_set_layout.m_handle);
 	}
 
 	/* Push constant ranges */
-	auto& push_const_ranges = comp_shader.m_push_constant_ranges;
+	auto& push_const_ranges = comp_shad.m_push_constant_ranges;
 
 	/* Pipeline layout */
 	VkPipelineLayoutCreateInfo pipeline_layout_info{
@@ -209,14 +207,7 @@ vren::vk_utils::create_compute_pipeline(
 		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.stage = {
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-			.pNext = nullptr,
-			.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-			.module = comp_shader.m_shader_module.m_handle,
-			.pName = "main",
-			.pSpecializationInfo = nullptr,
-		},
+		.stage = comp_shad.m_pipeline_shader_stage_info,
 		.layout = pipeline_layout,
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = 0,
@@ -229,7 +220,89 @@ vren::vk_utils::create_compute_pipeline(
 	return vren::vk_utils::self_described_compute_pipeline{
 		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
 		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
-	  	.m_shader = std::move(comp_shader)
+	  	.m_shader = std::move(comp_shad)
+	};
+}
+
+vren::vk_utils::self_described_graphics_pipeline
+vren::vk_utils::create_graphics_pipeline(
+	std::shared_ptr<vren::context> const& ctx,
+	std::vector<self_described_shader>&& shaders,
+	VkPipelineVertexInputStateCreateInfo* vtx_input_state_info,
+	VkPipelineInputAssemblyStateCreateInfo* input_assembly_state_info,
+	VkPipelineTessellationStateCreateInfo* tessellation_state_info,
+	VkPipelineViewportStateCreateInfo* viewport_state_info,
+	VkPipelineRasterizationStateCreateInfo* rasterization_state_info,
+	VkPipelineMultisampleStateCreateInfo* multisample_state_info,
+	VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
+	VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
+	VkPipelineDynamicStateCreateInfo* dynamic_state_info,
+	VkRenderPass render_pass,
+	uint32_t subpass
+)
+{
+	std::vector<VkPipelineShaderStageCreateInfo> shad_stages;
+	std::vector<VkDescriptorSetLayout> desc_set_layouts;
+	std::vector<VkPushConstantRange> push_const_ranges;
+
+	for (auto& shad : shaders)
+	{
+		/* Shader stage */
+		shad_stages.push_back(shad.m_pipeline_shader_stage_info);
+
+		/* Descriptor set layouts */
+		for (auto& desc_set_layout : shad.m_descriptor_set_layouts) {
+			desc_set_layouts.push_back(desc_set_layout.m_handle);
+		}
+
+		/* Push constant ranges */
+		for (auto& push_const_range : shad.m_push_constant_ranges) {
+			push_const_ranges.push_back(push_const_range);
+		}
+	}
+
+	/* Pipeline layout */
+	VkPipelineLayoutCreateInfo pipeline_layout_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
+		.pSetLayouts = desc_set_layouts.data(),
+		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
+		.pPushConstantRanges = push_const_ranges.data(),
+	};
+	VkPipelineLayout pipeline_layout;
+	vren::vk_utils::check(vkCreatePipelineLayout(ctx->m_device, &pipeline_layout_info, nullptr, &pipeline_layout));
+
+	/* Graphics pipeline */
+	VkGraphicsPipelineCreateInfo pipeline_info{
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.stageCount = (uint32_t) shad_stages.size(),
+		.pStages = shad_stages.data(),
+		.pVertexInputState = vtx_input_state_info,
+		.pInputAssemblyState = input_assembly_state_info,
+		.pTessellationState = tessellation_state_info,
+		.pViewportState = viewport_state_info,
+		.pRasterizationState = rasterization_state_info,
+		.pMultisampleState = multisample_state_info,
+		.pDepthStencilState = depth_stencil_state_info,
+		.pColorBlendState = color_blend_state_info,
+		.pDynamicState = dynamic_state_info,
+		.layout = pipeline_layout,
+		.renderPass = render_pass, // Shouldn't render_pass lifetime be managed ALSO by the graphics pipeline class?
+		.subpass = subpass
+	};
+	VkPipeline pipeline;
+	vren::vk_utils::check(vkCreateGraphicsPipelines(ctx->m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline));
+
+	/* */
+
+	return {
+		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
+		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
+		.m_shaders = std::move(shaders)
 	};
 }
 
