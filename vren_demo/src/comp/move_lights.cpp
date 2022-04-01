@@ -88,11 +88,7 @@ void vren_demo::move_lights::dispatch(
 
 	res_container.add_resource(shared_from_this());
 
-	/* */
-
-	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline.m_pipeline.m_handle);
-
-	/* */
+	m_pipeline.bind(cmd_buf);
 
 	auto light_arr_layout = m_shader->get_descriptor_set_layout(k_light_arr_desc_set);
 	auto light_arr_mov_buf_layout = m_shader->get_descriptor_set_layout(k_light_arr_mov_buf_desc_set);
@@ -102,16 +98,7 @@ void vren_demo::move_lights::dispatch(
 		tb->m_descriptor_pool->acquire(light_arr_layout)
 	);
 	m_renderer->write_light_array_descriptor_set(frame_idx, light_arr_desc_set->m_handle.m_descriptor_set);
-	vkCmdBindDescriptorSets(
-		cmd_buf,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
-		m_pipeline.m_pipeline_layout.m_handle,
-		k_light_arr_desc_set,
-		1,
-		&light_arr_desc_set->m_handle.m_descriptor_set,
-		0,
-		nullptr
-	);
+	m_pipeline.bind_descriptor_set(cmd_buf, 0, light_arr_desc_set->m_handle.m_descriptor_set);
 	res_container.add_resource(light_arr_desc_set);
 
 	/* light_array_movement_buf */
@@ -119,27 +106,11 @@ void vren_demo::move_lights::dispatch(
 		tb->m_descriptor_pool->acquire(light_arr_mov_buf_layout)
 	);
 	m_light_array_movement_buf.write_descriptor_set(light_arr_mov_buf_desc_set->m_handle.m_descriptor_set);
-	vkCmdBindDescriptorSets(
-		cmd_buf,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
-		m_pipeline.m_pipeline_layout.m_handle,
-		k_light_arr_mov_buf_desc_set,
-		1,
-		&light_arr_mov_buf_desc_set->m_handle.m_descriptor_set,
-		0,
-		nullptr
-	);
+	m_pipeline.bind_descriptor_set(cmd_buf, 1, light_arr_mov_buf_desc_set->m_handle.m_descriptor_set);
 	res_container.add_resource(light_arr_mov_buf_desc_set);
 
 	/* Push constants */
-	vkCmdPushConstants(
-		cmd_buf,
-		m_pipeline.m_pipeline_layout.m_handle,
-		VK_SHADER_STAGE_COMPUTE_BIT,
-		0,
-		sizeof(push_constants),
-		&push_const
-	);
+	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_COMPUTE_BIT, &push_const, sizeof(push_const));
 
 	auto max_lights = glm::max(VREN_MAX_POINT_LIGHTS, glm::max(VREN_MAX_DIRECTIONAL_LIGHTS, VREN_MAX_SPOT_LIGHTS));
 	vkCmdDispatch(cmd_buf, (uint32_t) glm::ceil(float(max_lights) / 512.0f), 1, 1);

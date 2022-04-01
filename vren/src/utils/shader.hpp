@@ -68,7 +68,39 @@ namespace vren::vk_utils
 	{
 		vren::vk_pipeline m_pipeline;
 		vren::vk_pipeline_layout m_pipeline_layout;
+
 		std::shared_ptr<self_described_shader> m_shader;
+
+		void bind(VkCommandBuffer cmd_buf)
+		{
+			vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline.m_handle);
+		}
+
+		void bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set)
+		{
+			vkCmdBindDescriptorSets(
+				cmd_buf,
+				VK_PIPELINE_BIND_POINT_COMPUTE,
+				m_pipeline_layout.m_handle,
+				desc_set_idx,
+				1,
+				&desc_set,
+				0,
+				nullptr
+			);
+		}
+
+		void push_constants(VkCommandBuffer cmd_buf, VkShaderStageFlags shader_stage, void const* val, uint32_t val_size, uint32_t val_off = 0)
+		{
+			vkCmdPushConstants(
+				cmd_buf,
+				m_pipeline_layout.m_handle,
+				shader_stage,
+				val_off,
+				val_size,
+				val
+			);
+		}
 	};
 
 	self_described_compute_pipeline create_compute_pipeline(
