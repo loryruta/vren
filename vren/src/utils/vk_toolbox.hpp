@@ -4,6 +4,7 @@
 
 #include "pooling/command_pool.hpp"
 #include "pooling/fence_pool.hpp"
+#include "pooling/descriptor_pool.hpp"
 #include "utils/image.hpp"
 #include "light_array.hpp"
 
@@ -27,14 +28,11 @@ namespace vren::vk_utils
 	public:
 		std::shared_ptr<vren::context> m_context;
 
-		/* Light array */
-		std::shared_ptr<vren::vk_descriptor_set_layout>    m_light_array_descriptor_set_layout;
-		std::shared_ptr<vren::light_array_descriptor_pool> m_light_array_descriptor_pool;
-
 		/* Pools */
 		std::shared_ptr<vren::command_pool> m_graphics_command_pool;
 		std::shared_ptr<vren::command_pool> m_transfer_command_pool;
-		std::shared_ptr<vren::fence_pool>   m_fence_pool;
+		std::shared_ptr<vren::fence_pool> m_fence_pool;
+		std::shared_ptr<vren::descriptor_pool> m_descriptor_pool;
 
 		/* Default textures */
 		std::shared_ptr<vren::vk_utils::texture> m_white_texture;

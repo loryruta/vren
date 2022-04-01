@@ -325,28 +325,28 @@ void launch()
 	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
 	auto ctx = vren::context::create(ctx_info);
-	auto tb = vren::vk_utils::toolbox::create(ctx);
+	auto toolbox = vren::vk_utils::toolbox::create(ctx);
 
 	/* renderer */
-	auto renderer = vren::renderer::create(ctx);
+	auto renderer = vren::renderer::create(toolbox);
 	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
 	/* UI renderer */
-	auto ui_renderer = vren::imgui_renderer(tb, g_window);
+	auto ui_renderer = vren::imgui_renderer(toolbox, g_window);
 
 	vren::render_list render_list;
 	vren::light_array light_array;
 
-	auto move_lights = vren_demo::move_lights::create(*tb);
+	auto move_lights = vren_demo::move_lights::create(*renderer);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
 	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surf_handle));
 	auto surf = std::make_shared<vren::vk_surface_khr>(ctx, surf_handle);
 
-	vren::presenter presenter(tb, surf);
+	vren::presenter presenter(toolbox, surf);
 
-	auto ui = vren_demo::ui::main_ui(ctx, tb, renderer);
+	auto ui = vren_demo::ui::main_ui(ctx, toolbox, renderer);
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
 
@@ -417,8 +417,7 @@ void launch()
 					.m_scene_min = ui.m_scene_ui.m_scene_min,
 					.m_scene_max = ui.m_scene_ui.m_scene_max,
 					.m_speed     = ui.m_scene_ui.m_speed
-				},
-				renderer->m_lights_array_descriptor_sets.at(0).m_handle
+				}
 			);
 
 			mem_bar = {
@@ -513,11 +512,7 @@ void launch()
 
 int main(int argc, char* argv[])
 {
-	try {
-		launch();
-	} catch (std::exception& e) {
-		std::cerr << "vren_demo thrown an exception: " << e.what() << std::endl;
-	}
+	launch();
 
 	return 0;
 }

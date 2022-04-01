@@ -9,6 +9,7 @@
 #include "resource_container.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
+#include "utils/shader.hpp"
 
 namespace vren
 {
@@ -22,20 +23,26 @@ namespace vren
 
 	class simple_draw_pass
 	{
+	public:
+		static constexpr uint32_t k_material_descriptor_set    = 0;
+		static constexpr uint32_t k_light_array_descriptor_set = 1;
+
 	private:
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
+
 		vren::renderer* m_renderer;
 
-		void _create_graphics_pipeline();
+		std::shared_ptr<vren::vk_utils::self_described_shader> m_vertex_shader;
+		std::shared_ptr<vren::vk_utils::self_described_shader> m_fragment_shader;
+		vren::vk_utils::self_described_graphics_pipeline m_pipeline;
+
+		vren::vk_utils::self_described_graphics_pipeline _create_graphics_pipeline();
 
 	public:
-		VkShaderModule m_vertex_shader = VK_NULL_HANDLE;
-		VkShaderModule m_fragment_shader = VK_NULL_HANDLE;
-
-		VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
-		VkPipeline m_graphics_pipeline = VK_NULL_HANDLE;
-
-		simple_draw_pass(vren::renderer& renderer);
-		~simple_draw_pass();
+		simple_draw_pass(
+			std::shared_ptr<vren::vk_utils::toolbox> const& toolbox,
+			vren::renderer& renderer
+		);
 
 		void record_commands(
             int frame_idx,

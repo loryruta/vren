@@ -18,7 +18,7 @@ std::shared_ptr<vren::command_pool> vren::vk_utils::toolbox::_create_graphics_co
 
 	VkCommandPool cmd_pool;
 	vren::vk_utils::check(vkCreateCommandPool(ctx->m_device, &cmd_pool_info, nullptr, &cmd_pool));
-	return vren::command_pool::create(ctx, cmd_pool);
+	return vren::command_pool::create(ctx, vren::vk_command_pool(ctx, cmd_pool));
 }
 
 std::shared_ptr<vren::command_pool> vren::vk_utils::toolbox::_create_transfer_command_pool(std::shared_ptr<vren::context> const& ctx)
@@ -32,7 +32,7 @@ std::shared_ptr<vren::command_pool> vren::vk_utils::toolbox::_create_transfer_co
 
 	VkCommandPool cmd_pool;
 	vren::vk_utils::check(vkCreateCommandPool(ctx->m_device, &cmd_pool_info, nullptr, &cmd_pool));
-	return vren::command_pool::create(ctx, cmd_pool);
+	return vren::command_pool::create(ctx, vren::vk_command_pool(ctx, cmd_pool));
 }
 
 vren::vk_utils::toolbox::toolbox(std::shared_ptr<vren::context> const& ctx) :
@@ -41,9 +41,7 @@ vren::vk_utils::toolbox::toolbox(std::shared_ptr<vren::context> const& ctx) :
 	m_graphics_command_pool(_create_graphics_command_pool(ctx)),
 	m_transfer_command_pool(_create_transfer_command_pool(ctx)),
 	m_fence_pool(vren::fence_pool::create(ctx)),
-
-	m_light_array_descriptor_set_layout(std::make_shared<vren::vk_descriptor_set_layout>(vren::create_light_array_descriptor_set_layout(ctx))),
-	m_light_array_descriptor_pool(std::make_shared<vren::light_array_descriptor_pool>(ctx, m_light_array_descriptor_set_layout)),
+	m_descriptor_pool(vren::descriptor_pool::create(ctx)),
 
 	m_white_texture(std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*this, 255, 255, 255, 255))),
 	m_black_texture(std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*this, 0, 0, 0, 255))),

@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "context.hpp"
+#include "renderer.hpp"
 #include "resource_container.hpp"
 #include "utils/vk_raii.hpp"
 #include "utils/buffer.hpp"
@@ -22,12 +23,11 @@ namespace vren_demo
 	public:
 		vren::vk_utils::buffer m_point_lights_dirs;
 
-		light_array_movement_buf(vren::vk_utils::toolbox const& tb);
+		light_array_movement_buf(
+			vren::vk_utils::toolbox const& tb
+		);
 
 		void write_descriptor_set(VkDescriptorSet desc_set);
-
-		static vren::vk_descriptor_set_layout create_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
-		static vren::vk_descriptor_pool create_descriptor_pool(std::shared_ptr<vren::context> const& ctx, uint32_t max_sets);
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -37,6 +37,9 @@ namespace vren_demo
 	class move_lights : public std::enable_shared_from_this<move_lights>
 	{
 	public:
+		static constexpr uint32_t k_light_arr_desc_set         = 0;
+		static constexpr uint32_t k_light_arr_mov_buf_desc_set = 1;
+
 		struct push_constants
 		{
 			glm::vec3 m_scene_min; float _pad;
@@ -45,30 +48,27 @@ namespace vren_demo
 		};
 
 	private:
+		vren::renderer* m_renderer;
+
 		/* light_array_movement_buf */
-		light_array_movement_buf       m_light_array_movement_buf;
+		light_array_movement_buf m_light_array_movement_buf;
 
-		vren::vk_descriptor_set_layout m_light_array_movement_buf_descriptor_set_layout; // TODO layout and pool could be required anywhere: make them global?
-		vren::vk_descriptor_pool       m_light_array_movement_buf_descriptor_pool;
-		VkDescriptorSet                m_light_array_movement_buf_descriptor_set;
+		std::shared_ptr<vren::vk_utils::self_described_shader> m_shader;
+		vren::vk_utils::self_described_compute_pipeline m_pipeline;
 
-		/* */
-		vren::vk_utils::pipeline m_pipeline;
-
-		move_lights(vren::vk_utils::toolbox const& tb);
+		move_lights(vren::renderer& renderer);
 
 	public:
 		void dispatch(
 			int frame_idx,
 			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
-			push_constants push_const,
-			VkDescriptorSet light_array_buf_desc_set // It's lifetime must be externally ensured (aka. we expect it to already be present in resource container)
+			push_constants push_const
 		);
 
-		static std::shared_ptr<move_lights> create(vren::vk_utils::toolbox const& tb)
+		static std::shared_ptr<move_lights> create(vren::renderer& renderer)
 		{
-			return std::shared_ptr<move_lights>(new move_lights(tb));
+			return std::shared_ptr<move_lights>(new move_lights(renderer));
 		}
 	};
 }

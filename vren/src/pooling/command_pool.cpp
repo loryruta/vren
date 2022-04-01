@@ -5,38 +5,29 @@
 #include "context.hpp"
 #include "utils/misc.hpp"
 
-vren::command_pool::command_pool(std::shared_ptr<vren::context> const& ctx, VkCommandPool handle) :
+vren::command_pool::command_pool(std::shared_ptr<vren::context> const& ctx, vren::vk_command_pool&& handle) :
 	m_context(std::move(ctx)),
-	m_handle(handle)
+	m_handle(std::move(handle))
 {}
 
-vren::command_pool::~command_pool()
+vren::pooled_vk_command_buffer vren::command_pool::acquire()
 {
-	vkDestroyCommandPool(m_context->m_device, m_handle, nullptr);
-}
+	auto pooled = try_acquire();
+	if (pooled.has_value())
+	{
+		vkResetCommandBuffer(pooled.value().m_handle, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+		return std::move(pooled.value());
+	}
 
-VkCommandBuffer vren::command_pool::create_object()
-{
     VkCommandBufferAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.pNext = nullptr;
-    alloc_info.commandPool = m_handle;
+    alloc_info.commandPool = m_handle.m_handle;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandBufferCount = 1;
 
     VkCommandBuffer cmd_buf;
     vren::vk_utils::check(vkAllocateCommandBuffers(m_context->m_device, &alloc_info, &cmd_buf));
-    return cmd_buf;
+    return create_managed_object(std::move(cmd_buf));
 }
 
-void vren::command_pool::release(VkCommandBuffer&& cmd_buf)
-{
-    vkResetCommandBuffer(cmd_buf, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-
-    vren::object_pool<VkCommandBuffer>::release(std::move(cmd_buf));
-}
-
-std::shared_ptr<vren::command_pool> vren::command_pool::create(std::shared_ptr<vren::context> const& ctx, VkCommandPool handle)
-{
-	return std::shared_ptr<command_pool>(new command_pool(ctx, handle));
-}

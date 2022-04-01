@@ -31,7 +31,6 @@ set(SRC
         src/utils/misc.hpp
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
-        src/utils/vk_raii.cpp
         src/command_graph.hpp
         src/command_graph.cpp
         src/pooling/object_pool.hpp

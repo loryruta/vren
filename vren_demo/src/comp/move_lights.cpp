@@ -56,113 +56,80 @@ void vren_demo::light_array_movement_buf::write_descriptor_set(VkDescriptorSet d
 	vkUpdateDescriptorSets(m_context->m_device, (uint32_t) std::size(desc_set_writes), desc_set_writes, 0, nullptr);
 }
 
-vren::vk_descriptor_set_layout vren_demo::light_array_movement_buf::create_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx)
-{
-	VkDescriptorSetLayoutBinding bindings[]{
-		{ /* point_lights_dirs */
-			.binding = 0,
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_ALL,
-			.pImmutableSamplers = nullptr
-		}
-	};
-
-	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = NULL,
-		.bindingCount = (uint32_t) std::size(bindings),
-		.pBindings = bindings
-	};
-	VkDescriptorSetLayout desc_set_layout;
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
-	return vren::vk_descriptor_set_layout(ctx, desc_set_layout);
-}
-
-vren::vk_descriptor_pool vren_demo::light_array_movement_buf::create_descriptor_pool(std::shared_ptr<vren::context> const& ctx, uint32_t max_sets)
-{
-	VkDescriptorPoolSize pool_sizes[]{
-		{ /* point_lights_dirs */
-			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 1,
-		}
-	};
-
-	VkDescriptorPoolCreateInfo desc_pool_info{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		.maxSets = max_sets,
-		.poolSizeCount = (uint32_t) std::size(pool_sizes),
-		.pPoolSizes = pool_sizes,
-	};
-
-	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(ctx->m_device, &desc_pool_info, nullptr, &desc_pool));
-	return vren::vk_descriptor_pool(ctx, desc_pool);
-}
-
 // --------------------------------------------------------------------------------------------------------------------------------
 // move_lights
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren_demo::move_lights::move_lights(vren::vk_utils::toolbox const& tb) :
-	/* light_array */
+vren_demo::move_lights::move_lights(
+	vren::renderer& renderer
+) :
+	m_renderer(&renderer),
 
-	/* light_array_movement_buf */
-	m_light_array_movement_buf(tb),
-	m_light_array_movement_buf_descriptor_set_layout(
-		vren_demo::light_array_movement_buf::create_descriptor_set_layout(tb.m_context)
-	),
-	m_light_array_movement_buf_descriptor_pool(
-		vren_demo::light_array_movement_buf::create_descriptor_pool(tb.m_context, 1)
-	),
-	/* */
+	m_light_array_movement_buf(*renderer.m_toolbox),
+	m_shader(std::make_shared<vren::vk_utils::self_described_shader>(
+			vren::vk_utils::load_and_describe_shader(renderer.m_toolbox->m_context, "resources/shaders/move_lights.comp.bin")
+	)),
 	m_pipeline(
-		vren::vk_utils::create_compute_pipeline(
-			tb.m_context,
-			{ /* Descriptor set layouts */
-				tb.m_light_array_descriptor_set_layout->m_handle,          // light_array
-				m_light_array_movement_buf_descriptor_set_layout.m_handle, // light_array_movement_buf
-			},
-			{ /* Push constants */
-				{
-					.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-					.offset = 0,
-					.size = sizeof(push_constants)
-				}
-			},
-			vren::vk_utils::load_shader_module(tb.m_context, "resources/shaders/move_lights.comp.bin")
-		)
+		vren::vk_utils::create_compute_pipeline(renderer.m_toolbox->m_context, m_shader)
 	)
-{
-	VkDescriptorSetAllocateInfo alloc_info{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		.pNext = nullptr,
-		.descriptorPool = m_light_array_movement_buf_descriptor_pool.m_handle,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &m_light_array_movement_buf_descriptor_set_layout.m_handle,
-	};
-	vren::vk_utils::check(vkAllocateDescriptorSets(tb.m_context->m_device, &alloc_info, &m_light_array_movement_buf_descriptor_set));
-
-	m_light_array_movement_buf.write_descriptor_set(m_light_array_movement_buf_descriptor_set);
-}
+{}
 
 void vren_demo::move_lights::dispatch(
 	int frame_idx,
 	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
-	push_constants push_const,
-	VkDescriptorSet light_array_buf_desc_set
+	push_constants push_const
 )
 {
+	auto& tb = m_renderer->m_toolbox;
+
 	// The whole class is used to ensure its members' lifetime (descriptor pools, descriptor set layouts...)
 	// is ensured for the frame execution.
 
 	res_container.add_resource(shared_from_this());
 
+	/* */
+
 	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline.m_pipeline.m_handle);
+
+	/* */
+
+	auto light_arr_layout = m_shader->get_descriptor_set_layout(k_light_arr_desc_set);
+	auto light_arr_mov_buf_layout = m_shader->get_descriptor_set_layout(k_light_arr_mov_buf_desc_set);
+
+	/* light_array */
+	auto light_arr_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+		tb->m_descriptor_pool->acquire(light_arr_layout)
+	);
+	m_renderer->write_light_array_descriptor_set(frame_idx, light_arr_desc_set->m_handle.m_descriptor_set);
+	vkCmdBindDescriptorSets(
+		cmd_buf,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		m_pipeline.m_pipeline_layout.m_handle,
+		k_light_arr_desc_set,
+		1,
+		&light_arr_desc_set->m_handle.m_descriptor_set,
+		0,
+		nullptr
+	);
+	res_container.add_resource(light_arr_desc_set);
+
+	/* light_array_movement_buf */
+	auto light_arr_mov_buf_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+		tb->m_descriptor_pool->acquire(light_arr_mov_buf_layout)
+	);
+	m_light_array_movement_buf.write_descriptor_set(light_arr_mov_buf_desc_set->m_handle.m_descriptor_set);
+	vkCmdBindDescriptorSets(
+		cmd_buf,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		m_pipeline.m_pipeline_layout.m_handle,
+		k_light_arr_mov_buf_desc_set,
+		1,
+		&light_arr_mov_buf_desc_set->m_handle.m_descriptor_set,
+		0,
+		nullptr
+	);
+	res_container.add_resource(light_arr_mov_buf_desc_set);
 
 	/* Push constants */
 	vkCmdPushConstants(
@@ -172,30 +139,6 @@ void vren_demo::move_lights::dispatch(
 		0,
 		sizeof(push_constants),
 		&push_const
-	);
-
-	/* light_array_buf */
-	vkCmdBindDescriptorSets(
-		cmd_buf,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
-		m_pipeline.m_pipeline_layout.m_handle,
-		0, 									   // firstSet
-		1,									   // descriptorSetCount
-		&light_array_buf_desc_set,             // pDescriptorSets
-		0,
-		nullptr
-	);
-
-	/* light_array_movement_buf */
-	vkCmdBindDescriptorSets(
-		cmd_buf,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
-		m_pipeline.m_pipeline_layout.m_handle,
-		1, 											// firstSet
-		1,											// descriptorSetCount
-		&m_light_array_movement_buf_descriptor_set, // pDescriptorSets
-		0,
-		nullptr
 	);
 
 	auto max_lights = glm::max(VREN_MAX_POINT_LIGHTS, glm::max(VREN_MAX_DIRECTIONAL_LIGHTS, VREN_MAX_SPOT_LIGHTS));

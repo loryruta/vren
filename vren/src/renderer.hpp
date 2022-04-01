@@ -6,13 +6,18 @@
 #include <vulkan/vulkan.h>
 
 #include "config.hpp"
-#include "pooling/descriptor_pool.hpp"
 #include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
 #include "pooling/command_pool.hpp"
 #include "resource_container.hpp"
 #include "simple_draw.hpp"
+
+// Forward decl
+namespace vren::vk_utils
+{
+	class toolbox;
+}
 
 namespace vren
 {
@@ -44,15 +49,9 @@ namespace vren
 	class renderer
 	{
 	public:
-		std::shared_ptr<context> m_context;
+		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 
 		std::shared_ptr<vren::vk_render_pass> m_render_pass;
-
-		std::shared_ptr<vren::vk_descriptor_set_layout> m_material_descriptor_set_layout;
-        std::shared_ptr<vren::descriptor_pool> m_material_descriptor_pool;
-
-		std::shared_ptr<vren::vk_descriptor_set_layout> m_light_array_descriptor_set_layout;
-        std::shared_ptr<vren::descriptor_pool> m_light_array_descriptor_pool;
 
 		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
 
@@ -66,8 +65,6 @@ namespace vren
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
 		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
 
-        std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> m_lights_array_descriptor_sets;
-
 	private:
         vren::vk_render_pass _create_render_pass();
 
@@ -75,17 +72,16 @@ namespace vren
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_directional_lights_buffers();
         std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> _create_spot_lights_buffers();
 
-        std::array<vren::pooled_vk_descriptor_set, VREN_MAX_FRAMES_IN_FLIGHT> _acquire_light_array_descriptor_sets();
-
-		renderer(std::shared_ptr<context> const& ctx);
+		renderer(std::shared_ptr<vren::vk_utils::toolbox> const& toolbox);
 
 		void _init();
-        void _init_light_array_descriptor_sets();
 
         void _upload_lights_array(int frame_idx, vren::light_array const& lights_arr);
 
 	public:
 		~renderer();
+
+		void write_light_array_descriptor_set(uint32_t frame_idx, VkDescriptorSet desc_set);
 
 		void render(
 			int frame_idx,
@@ -97,6 +93,6 @@ namespace vren
 			vren::camera const& camera
 		);
 
-		static std::shared_ptr<vren::renderer> create(std::shared_ptr<context> const& ctx);
+		static std::shared_ptr<vren::renderer> create(std::shared_ptr<vren::vk_utils::toolbox> const& toolbox);
 	};
 }

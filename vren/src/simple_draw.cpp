@@ -1,191 +1,171 @@
 #include "simple_draw.hpp"
 
-#include <fstream>
 #include <iostream>
 
 #include "context.hpp"
 #include "renderer.hpp"
 #include "utils/misc.hpp"
+#include "utils/shader.hpp"
 
-vren::simple_draw_pass::simple_draw_pass(vren::renderer& renderer) :
-	m_renderer(&renderer)
+vren::simple_draw_pass::simple_draw_pass(
+	std::shared_ptr<vren::vk_utils::toolbox> const& toolbox,
+	vren::renderer& renderer
+) :
+	m_toolbox(toolbox),
+	m_renderer(&renderer),
+
+	m_vertex_shader(std::make_shared<vren::vk_utils::self_described_shader>(
+		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/simple_draw.vert.bin")
+	)),
+	m_fragment_shader(std::make_shared<vren::vk_utils::self_described_shader>(
+		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/simple_draw.frag.bin")
+	)),
+
+	m_pipeline(_create_graphics_pipeline())
+{}
+
+vren::vk_utils::self_described_graphics_pipeline vren::simple_draw_pass::_create_graphics_pipeline()
 {
-	_create_graphics_pipeline();
-}
+	auto& ctx = m_toolbox->m_context;
 
-vren::simple_draw_pass::~simple_draw_pass()
-{
-	auto& ctx = m_renderer->m_context;
-
-	vkDestroyPipelineLayout(ctx->m_device, m_pipeline_layout, nullptr);
-	vkDestroyPipeline(ctx->m_device, m_graphics_pipeline, nullptr);
-
-	vkDestroyShaderModule(ctx->m_device, m_fragment_shader, nullptr);
-	vkDestroyShaderModule(ctx->m_device, m_vertex_shader, nullptr);
-}
-
-VkShaderModule create_shader_module(VkDevice device, char const* path)
-{
-	// Read file
-	std::ifstream f(path, std::ios::ate | std::ios::binary);
-	if (!f.is_open()) {
-		throw std::runtime_error("Failed to open file");
-	}
-
-	auto file_size = f.tellg();
-	std::vector<char> buffer((size_t) glm::ceil(file_size / (float) sizeof(uint32_t)) * sizeof(uint32_t)); // Rounds to a multiple of 4 because codeSize requires it.
-
-	f.seekg(0);
-	f.read(buffer.data(), file_size);
-
-	f.close();
-
-	// Create shader
-	VkShaderModuleCreateInfo shader_info{};
-	shader_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shader_info.codeSize = buffer.size();
-	shader_info.pCode = reinterpret_cast<uint32_t const*>(buffer.data());
-
-	VkShaderModule shader_module;
-	vren::vk_utils::check(vkCreateShaderModule(device, &shader_info, nullptr, &shader_module));
-
-	return shader_module;
-}
-
-void vren::simple_draw_pass::_create_graphics_pipeline()
-{
-	auto& ctx = m_renderer->m_context;
-
-	// Shader stages
-	std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
-
-	VkPipelineShaderStageCreateInfo shader_stage_info{};
-	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-
-	shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	m_vertex_shader = create_shader_module(ctx->m_device, "./.vren/resources/simple_draw.vert.bin");
-	shader_stage_info.module = m_vertex_shader;
-	shader_stage_info.pName = "main";
-	shader_stage_infos.push_back(shader_stage_info);
-
-	shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	m_fragment_shader = create_shader_module(ctx->m_device, "./.vren/resources/simple_draw.frag.bin");
-	shader_stage_info.module = m_fragment_shader;
-	shader_stage_info.pName = "main";
-	shader_stage_infos.push_back(shader_stage_info);
-
-	//
+	/* Vertex input state */
 	auto binding_descriptions = vren::render_object::get_all_binding_desc();
 	auto attribute_descriptions = vren::render_object::get_all_attrib_desc();
 
-	VkPipelineVertexInputStateCreateInfo vtx_input_info{};
-	vtx_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vtx_input_info.vertexBindingDescriptionCount = binding_descriptions.size();
-	vtx_input_info.pVertexBindingDescriptions = binding_descriptions.data();
-	vtx_input_info.vertexAttributeDescriptionCount = attribute_descriptions.size();
-	vtx_input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
-
-	VkPipelineInputAssemblyStateCreateInfo input_assembly_info{};
-	input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	input_assembly_info.primitiveRestartEnable = VK_FALSE;
-
-	// Rasterization state
-	VkPipelineRasterizationStateCreateInfo rasterization_state_info{};
-	rasterization_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterization_state_info.cullMode = VK_CULL_MODE_NONE;
-	rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterization_state_info.lineWidth = 1.0f;
-
-	// Multisampling state
-	VkPipelineMultisampleStateCreateInfo multisampling_info{};
-	multisampling_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling_info.sampleShadingEnable = VK_FALSE;
-	multisampling_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
-	depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depth_stencil_info.depthTestEnable = VK_TRUE;
-	depth_stencil_info.depthWriteEnable = VK_TRUE;
-	depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
-	depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
-	depth_stencil_info.minDepthBounds = 0.0f;
-	depth_stencil_info.maxDepthBounds = 1.0f;
-	depth_stencil_info.stencilTestEnable = VK_FALSE;
-
-	VkPipelineColorBlendAttachmentState color_blend_attachment{};
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_FALSE;
-
-	VkPipelineColorBlendStateCreateInfo color_blend_info{};
-	color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	color_blend_info.logicOpEnable = VK_FALSE;
-	color_blend_info.attachmentCount = 1;
-	color_blend_info.pAttachments = &color_blend_attachment;
-
-	std::vector<VkDescriptorSetLayout> desc_set_layouts = {
-		m_renderer->m_material_descriptor_set_layout->m_handle,
-		m_renderer->m_light_array_descriptor_set_layout->m_handle
+	VkPipelineVertexInputStateCreateInfo vtx_input_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.vertexBindingDescriptionCount = binding_descriptions.size(),
+		.pVertexBindingDescriptions = binding_descriptions.data(),
+		.vertexAttributeDescriptionCount = attribute_descriptions.size(),
+		.pVertexAttributeDescriptions = attribute_descriptions.data()
 	};
 
-	std::vector<VkPushConstantRange> push_constants;
+	/* Input assembly state */
+	VkPipelineInputAssemblyStateCreateInfo input_assembly_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.primitiveRestartEnable = VK_FALSE
+	};
 
-	VkPushConstantRange push_constant{};
-	push_constant.offset = 0;
-	push_constant.size = sizeof(vren::camera);
-	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	push_constants.push_back(push_constant);
+	/* Tessellation state */
 
-	VkPipelineLayoutCreateInfo pipe_layout_info{};
-	pipe_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipe_layout_info.pNext = nullptr;
-	pipe_layout_info.flags = 0;
-	pipe_layout_info.setLayoutCount = desc_set_layouts.size();
-	pipe_layout_info.pSetLayouts = desc_set_layouts.data();
-	pipe_layout_info.pushConstantRangeCount = (uint32_t) push_constants.size();
-	pipe_layout_info.pPushConstantRanges = push_constants.data();
+	/* Viewport state */
+	VkPipelineViewportStateCreateInfo viewport_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.viewportCount = 1,
+		.pViewports = nullptr,
+		.scissorCount = 1,
+		.pScissors = nullptr
+	};
 
-	vren::vk_utils::check(vkCreatePipelineLayout(ctx->m_device, &pipe_layout_info, nullptr, &m_pipeline_layout));
+	/* Rasterization state */
+	VkPipelineRasterizationStateCreateInfo rasterization_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.depthClampEnable = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable = VK_FALSE,
+		.depthBiasConstantFactor = 0.0f,
+		.depthBiasClamp = 0.0f,
+		.depthBiasSlopeFactor = 0.0f,
+		.lineWidth = 1.0f
+	};
 
-	// Viewport state
-	VkPipelineViewportStateCreateInfo viewport_state_info{};
-	viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewport_state_info.viewportCount = 1;
-	viewport_state_info.scissorCount = 1;
+	/* Multisample state */
+	VkPipelineMultisampleStateCreateInfo multisample_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+		.sampleShadingEnable = VK_FALSE,
+		.minSampleShading = 0.0f,
+		.pSampleMask = nullptr,
+		.alphaToCoverageEnable = VK_FALSE,
+		.alphaToOneEnable = VK_FALSE
+	};
 
-	// Dynamic states
-	std::vector<VkDynamicState> dynamic_states = {
+	/* Depth-stencil state */
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.depthTestEnable = VK_TRUE,
+		.depthWriteEnable = VK_TRUE,
+		.depthCompareOp = VK_COMPARE_OP_LESS,
+		.depthBoundsTestEnable = VK_FALSE,
+		.stencilTestEnable = VK_FALSE,
+		.front = {},
+		.back = {},
+		.minDepthBounds = 0.0f,
+		.maxDepthBounds = 1.0f
+	};
+
+	/* Color blend state */
+	VkPipelineColorBlendAttachmentState color_blend_attachments[]{
+		{
+			.blendEnable = VK_FALSE,
+			.srcColorBlendFactor = {},
+			.dstColorBlendFactor = {},
+			.colorBlendOp = {},
+			.srcAlphaBlendFactor = {},
+			.dstAlphaBlendFactor = {},
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+		}
+	};
+	VkPipelineColorBlendStateCreateInfo color_blend_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.logicOpEnable = VK_FALSE,
+		.logicOp = {},
+		.attachmentCount = std::size(color_blend_attachments),
+		.pAttachments = color_blend_attachments,
+		.blendConstants = {}
+	};
+
+	/* Dynamic state */
+	VkDynamicState dynamic_states[]{
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR
 	};
-	VkPipelineDynamicStateCreateInfo dynamic_state_info{};
-	dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamic_state_info.dynamicStateCount = (uint32_t) dynamic_states.size();
-	dynamic_state_info.pDynamicStates = dynamic_states.data();
+	VkPipelineDynamicStateCreateInfo dynamic_state_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.dynamicStateCount = std::size(dynamic_states),
+		.pDynamicStates = dynamic_states
+	};
 
-	// Graphics pipeline
-	VkGraphicsPipelineCreateInfo graphics_pipeline_info{};
-	graphics_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	graphics_pipeline_info.stageCount = shader_stage_infos.size();
-	graphics_pipeline_info.pStages = shader_stage_infos.data();
-	graphics_pipeline_info.pVertexInputState = &vtx_input_info;
-	graphics_pipeline_info.pInputAssemblyState = &input_assembly_info;
-	graphics_pipeline_info.pViewportState = &viewport_state_info;
-	graphics_pipeline_info.pDynamicState = &dynamic_state_info;
-	graphics_pipeline_info.pRasterizationState = &rasterization_state_info;
-	graphics_pipeline_info.pMultisampleState = &multisampling_info;
-	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
-	graphics_pipeline_info.pColorBlendState = &color_blend_info;
-	graphics_pipeline_info.layout = m_pipeline_layout;
-	graphics_pipeline_info.renderPass = m_renderer->m_render_pass->m_handle;
-	graphics_pipeline_info.subpass = 0;
-	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+	/* */
 
-	vren::vk_utils::check(vkCreateGraphicsPipelines(ctx->m_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_graphics_pipeline));
-
-	//vkDestroyShaderModule(m_renderer->m_context->m_device, vert_shader_mod, nullptr);
-	//vkDestroyShaderModule(m_renderer->m_context->m_device, frag_shader_mod, nullptr);
+	return vren::vk_utils::create_graphics_pipeline(
+		ctx,
+		{
+			m_vertex_shader,
+			m_fragment_shader
+		},
+		&vtx_input_info,
+		&input_assembly_info,
+		nullptr,
+		&viewport_info,
+		&rasterization_info,
+		&multisample_info,
+		&depth_stencil_info,
+		&color_blend_info,
+		&dynamic_state_info,
+		m_renderer->m_render_pass->m_handle,
+		0
+	);
 }
 
 void vren::simple_draw_pass::record_commands(
@@ -197,26 +177,38 @@ void vren::simple_draw_pass::record_commands(
 	vren::camera const& camera
 )
 {
-	auto& ctx = m_renderer->m_context;
+	auto& ctx = m_toolbox->m_context;
 
-	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+	/* Descriptor set layouts */
+	auto mat_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_material_descriptor_set);
+	auto light_arr_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_light_array_descriptor_set);
+
+	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.m_pipeline.m_handle);
 
 	// Camera
-	vkCmdPushConstants(cmd_buf, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vren::camera), &camera);
+	vkCmdPushConstants(cmd_buf, m_pipeline.m_pipeline_layout.m_handle, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vren::camera), &camera);
 
-	// Lights array
-	// todo light array buffer is managed by the renderer why is it bound here?
+	/* Light array */
+	auto light_arr_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+		m_toolbox->m_descriptor_pool->acquire(light_arr_desc_set_layout)
+	);
+	m_renderer->write_light_array_descriptor_set(
+		frame_idx,
+		light_arr_desc_set->m_handle.m_descriptor_set
+	);
 	vkCmdBindDescriptorSets(
 		cmd_buf,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		m_pipeline_layout,
-		VREN_LIGHT_ARRAY_DESCRIPTOR_SET,
+		m_pipeline.m_pipeline_layout.m_handle,
+		k_light_array_descriptor_set,
 		1,
-		&m_renderer->m_lights_array_descriptor_sets.at(frame_idx).m_handle,
+		&light_arr_desc_set->m_handle.m_descriptor_set,
 		0,
 		nullptr
 	);
+	res_container.add_resource(light_arr_desc_set);
 
+	/* Render objects */
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
 	{
 		auto& render_obj = render_list.m_render_objects.at(i);
@@ -231,25 +223,37 @@ void vren::simple_draw_pass::record_commands(
 
 		VkDeviceSize offsets[] = { 0 };
 
-		// Vertex buffer
+		/* Vertex buffer */
 		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &render_obj.m_vertices_buffer->m_buffer.m_handle, offsets);
-		res_container.add_resource(render_obj.m_vertices_buffer); // todo (design) cleaner way to track resource usage for command buffers (bind resource usage to command list instead of frame)
+		res_container.add_resource(render_obj.m_vertices_buffer);
 
-		// Indices buffer
+		/* Index buffer */
 		vkCmdBindIndexBuffer(cmd_buf, render_obj.m_indices_buffer->m_buffer.m_handle, 0, vren::render_object::s_index_type);
 		res_container.add_resource(render_obj.m_indices_buffer);
 
-		// Instances buffer
+		/* Instance buffer */
 		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &render_obj.m_instances_buffer->m_buffer.m_handle, offsets);
 		res_container.add_resource(render_obj.m_instances_buffer);
 
-		// Material
+		/* Material */
 		auto mat_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-			m_renderer->m_material_descriptor_pool->acquire()
+			m_toolbox->m_descriptor_pool->acquire(mat_desc_set_layout)
 		);
-		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->m_handle);
-		vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, VREN_MATERIAL_DESCRIPTOR_SET, 1, &mat_desc_set->m_handle, 0, nullptr);
-		res_container.add_resources(mat_desc_set, render_obj.m_material);
+		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->m_handle.m_descriptor_set);
+		vkCmdBindDescriptorSets(
+			cmd_buf,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			m_pipeline.m_pipeline_layout.m_handle,
+			k_material_descriptor_set,
+			1,
+			&mat_desc_set->m_handle.m_descriptor_set,
+			0,
+			nullptr
+		);
+		res_container.add_resources(
+			mat_desc_set,
+			render_obj.m_material
+		);
 
 		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}

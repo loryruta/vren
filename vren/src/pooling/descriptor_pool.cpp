@@ -42,25 +42,53 @@ vren::vk_descriptor_pool vren::descriptor_pool::create_descriptor_pool(uint32_t 
 	return vren::vk_descriptor_pool(m_context, desc_pool);
 }
 
-
 vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLayout desc_set_layout)
 {
-	auto pooled = try_acquire();
-	if (pooled.has_value())
-	{
-		return std::move(pooled.value());
-	}
+	VkDescriptorPool desc_pool = VK_NULL_HANDLE;
 
-	if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)
+	if (m_unused_objects.size() > 0)
 	{
+		// If a descriptor set allocated for the requested descriptor set layout is found, then returns it.
+
+		for (auto it = m_unused_objects.begin(); it != m_unused_objects.end(); it++)
+		{
+			auto desc_set = *it;
+
+			if (desc_set.m_descriptor_set_layout == desc_set_layout)
+			{
+				m_unused_objects.erase(it);
+				return create_managed_object(std::move(desc_set));
+			}
+		}
+
+		// Otherwise takes the last descriptor set and takes it back to the pool,
+		// then the same pool will be used to allocate a new descriptor set for the requested descriptor set layout.
+
+		auto desc_set = m_unused_objects.back();
+		m_unused_objects.pop_back();
+
+		vkResetDescriptorPool(m_context->m_device, desc_set.m_descriptor_pool, NULL);
+		desc_pool = desc_set.m_descriptor_pool;
+	}
+	else if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)
+	{
+		// If there's no unused object and the descriptor pool is full, we need to create a new descriptor pool
+		// and allocate the new descriptor set from there.
+
 		m_descriptor_pools.push_back(create_descriptor_pool(VREN_DESCRIPTOR_POOL_SIZE));
+		desc_pool = m_descriptor_pools.back().m_handle;
+
 		m_last_pool_allocated_count = 0;
+	}
+	else
+	{
+		desc_pool = m_descriptor_pools.back().m_handle;
 	}
 
 	VkDescriptorSetAllocateInfo alloc_info{};
 	alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	alloc_info.pNext = nullptr;
-	alloc_info.descriptorPool = m_descriptor_pools.back().m_handle;
+	alloc_info.descriptorPool = desc_pool;
 	alloc_info.descriptorSetCount = 1;
 	alloc_info.pSetLayouts = &desc_set_layout;
 
@@ -69,5 +97,9 @@ vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLay
 
 	m_last_pool_allocated_count++;
 
-	return create_managed_object(std::move(desc_set));
+	return create_managed_object({
+		.m_descriptor_set_layout = desc_set_layout,
+		.m_descriptor_pool = desc_pool,
+		.m_descriptor_set = desc_set,
+	});
 }

@@ -355,8 +355,9 @@ void vren_demo::ui::main_ui::show_vk_pool_info_ui()
 			add_row("Graphics commands", *m_toolbox->m_graphics_command_pool);
 			add_row("Transfer commands", *m_toolbox->m_transfer_command_pool);
 			add_row("Fences", *m_toolbox->m_fence_pool);
-			add_row("Material descriptors", *m_renderer->m_material_descriptor_pool);
-			add_row("Light array descriptors", *m_renderer->m_light_array_descriptor_pool);
+			add_row("Descriptor pool", *m_toolbox->m_descriptor_pool);
+			//add_row("Material descriptors", *m_renderer->m_material_descriptor_pool);
+			//add_row("Light array descriptors", *m_renderer->m_light_array_descriptor_pool);
 
 			/**/
 
