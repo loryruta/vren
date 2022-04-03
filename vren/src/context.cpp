@@ -65,6 +65,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 	return VK_FALSE;
 }
 
+// --------------------------------------------------------------------------------------------------------------------------------
+// context
+// --------------------------------------------------------------------------------------------------------------------------------
+
 VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 {
 	return VkDebugUtilsMessengerCreateInfoEXT{
@@ -72,9 +76,9 @@ VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 		.pNext = nullptr,
 		.flags = NULL,
 		.messageSeverity =
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
 		.messageType =
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 		.pfnUserCallback = debug_messenger_callback,
 		.pUserData = nullptr,
 	};
@@ -128,7 +132,7 @@ VkInstance vren::context::create_instance()
 	return instance;
 }
 
-VkDebugUtilsMessengerEXT vren::context::setup_debug_messenger()
+VkDebugUtilsMessengerEXT vren::context::create_debug_messenger()
 {
 	auto debug_messenger_info = create_debug_messenger_create_info();
 
@@ -136,35 +140,6 @@ VkDebugUtilsMessengerEXT vren::context::setup_debug_messenger()
 	vren::vk_utils::check(CreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
 
 	return debug_messenger;
-}
-
-vren::context::queue_families vren::context::get_queue_families(VkPhysicalDevice physical_device)
-{
-	auto queue_families_properties = vren::vk_utils::get_queue_families_properties(physical_device);
-
-	vren::context::queue_families queue_families;
-	for (int i = 0; i < queue_families_properties.size(); i++) {
-		// Graphics
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT) { // todo possibly graphics only queue
-			queue_families.m_graphics_idx = i;
-		}
-
-		// Compute
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_COMPUTE_BIT) { // todo possibly compute only queue
-			queue_families.m_compute_idx = i;
-		}
-
-		// Transfer
-		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_TRANSFER_BIT) { // todo possibly transfer only queue
-			queue_families.m_transfer_idx = i;
-		}
-
-		if (queue_families.is_valid()) {
-			break;
-		}
-	}
-
-	return queue_families;
 }
 
 VkPhysicalDevice vren::context::find_physical_device()
@@ -202,6 +177,35 @@ VkPhysicalDevice vren::context::find_physical_device()
 	std::cout << "- API version:    " << m_physical_device_properties.apiVersion << std::endl;
 
 	return found;
+}
+
+vren::context::queue_families vren::context::get_queue_families(VkPhysicalDevice physical_device)
+{
+	auto queue_families_properties = vren::vk_utils::get_queue_families_properties(physical_device);
+
+	vren::context::queue_families queue_families;
+	for (int i = 0; i < queue_families_properties.size(); i++) {
+		// Graphics
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT) { // todo possibly graphics only queue
+			queue_families.m_graphics_idx = i;
+		}
+
+		// Compute
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_COMPUTE_BIT) { // todo possibly compute only queue
+			queue_families.m_compute_idx = i;
+		}
+
+		// Transfer
+		if (queue_families_properties.at(i).queueFlags & VK_QUEUE_TRANSFER_BIT) { // todo possibly transfer only queue
+			queue_families.m_transfer_idx = i;
+		}
+
+		if (queue_families.is_valid()) {
+			break;
+		}
+	}
+
+	return queue_families;
 }
 
 VkDevice vren::context::create_logical_device()
@@ -249,18 +253,18 @@ std::vector<VkQueue> vren::context::get_queues()
 	std::vector<VkQueue> queues(queue_families_count);
 	for (uint32_t i = 0; i < queue_families_count; i++)
 	{
-		vkGetDeviceQueue(m_device, i, 0, &queues.at(i)); // Gets a queue from every queue family.
+		vkGetDeviceQueue(m_device, i, 0, &queues.at(i)); // Gets a queue from every queue family
 	}
 	return queues;
 }
 
-void vren::context::create_vma_allocator()
+VmaAllocator vren::context::create_vma_allocator()
 {
 	VmaAllocatorCreateInfo allocator_info{
 		.flags = NULL,
 		.physicalDevice = m_physical_device,
 		.device = m_device,
-		.preferredLargeHeapBlockSize = 0, // default: 256MB
+		.preferredLargeHeapBlockSize = 0, // default is 256MB
 		.pAllocationCallbacks = nullptr,
 		.pDeviceMemoryCallbacks = nullptr,
 		.pHeapSizeLimit = nullptr,
@@ -269,41 +273,37 @@ void vren::context::create_vma_allocator()
 		.vulkanApiVersion = VK_API_VERSION_1_2,
 		.pTypeExternalMemoryHandleTypes = nullptr,
 	};
-	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
+
+	VmaAllocator allocator;
+	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &allocator));
+	return allocator;
 }
 
 vren::context::context(context_info const& info) :
-	m_info(info)
-{
-	m_instance = create_instance();
-	m_debug_messenger = setup_debug_messenger();
-	m_physical_device = find_physical_device();
-	m_queue_families = get_queue_families(m_physical_device);
+	m_info(info),
 
-	m_device = create_logical_device();
+	m_instance(create_instance()),
+	m_debug_messenger(create_debug_messenger()),
+	m_physical_device(find_physical_device()),
+	m_queue_families(get_queue_families(m_physical_device)),
+	m_device(create_logical_device()),
+	m_queues(get_queues()),
+	m_graphics_queue(m_queues.at(m_queue_families.m_graphics_idx)),
+	m_transfer_queue(m_queues.at(m_queue_families.m_transfer_idx)),
+	//m_compute_queue(m_queues.at(m_queue_families.m_compute_idx)),
+	m_vma_allocator(create_vma_allocator()),
 
-	m_queues = get_queues();
-
-	create_vma_allocator();
-
-	m_transfer_queue = m_queues.at(m_queue_families.m_transfer_idx);
-	m_graphics_queue = m_queues.at(m_queue_families.m_graphics_idx);
-	m_compute_queue  = m_queues.at(m_queue_families.m_compute_idx);
-}
+	m_toolbox(std::make_unique<vren::toolbox>(*this))
+{}
 
 vren::context::~context()
 {;
-	vmaDestroyAllocator(m_vma_allocator);
+	m_toolbox.reset();
 
-	//m_queues.clear();
+	vmaDestroyAllocator(m_vma_allocator);
 
 	vkDestroyDevice(m_device, nullptr);
 
 	DestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
 	vkDestroyInstance(m_instance, nullptr);
-}
-
-std::shared_ptr<vren::context> vren::context::create(vren::context_info const& ctx_info)
-{
-	return std::shared_ptr<vren::context>(new vren::context(ctx_info));
 }

@@ -5,7 +5,7 @@
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_descriptor_set_layout vren::create_light_array_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx)
+vren::vk_descriptor_set_layout vren::create_light_array_descriptor_set_layout(vren::context const& ctx)
 {
 	VkDescriptorSetLayoutBinding bindings[]{
 		{ /* Point lights */
@@ -39,6 +39,6 @@ vren::vk_descriptor_set_layout vren::create_light_array_descriptor_set_layout(st
 	desc_set_layout_info.pBindings = bindings;
 
 	VkDescriptorSetLayout desc_set_layout;
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
 	return vren::vk_descriptor_set_layout(ctx, desc_set_layout);
 }

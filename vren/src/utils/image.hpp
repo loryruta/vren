@@ -19,12 +19,9 @@ namespace vren
 
 namespace vren::vk_utils
 {
-	// Forward decl
-	class toolbox;
-
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Image
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	struct image
 	{
@@ -33,7 +30,7 @@ namespace vren::vk_utils
 	};
 
 	vren::vk_utils::image create_image(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
 		uint32_t width,
 		uint32_t height,
 		VkFormat format,
@@ -43,7 +40,7 @@ namespace vren::vk_utils
 
     /** Expects the image to be in VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL */
 	void upload_image_data(
-        std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
         VkCommandBuffer cmd_buf,
         vren::resource_container& res_container,
         VkImage img,
@@ -52,23 +49,23 @@ namespace vren::vk_utils
         void* img_data
     );
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Image view
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	vren::vk_image_view create_image_view(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
 		VkImage image,
 		VkFormat format,
 		VkImageAspectFlagBits aspect
 	);
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Sampler
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	vren::vk_sampler create_sampler(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
 		VkFilter mag_filter,
 		VkFilter min_filter,
 		VkSamplerMipmapMode mipmap_mode,
@@ -77,29 +74,19 @@ namespace vren::vk_utils
 		VkSamplerAddressMode address_mode_w
 	);
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Texture
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	struct texture
 	{
 		vren::vk_utils::image m_image;
 		vren::vk_image_view m_image_view;
 		vren::vk_sampler m_sampler;
-
-		texture(
-			vren::vk_utils::image&& image,
-			vren::vk_image_view&& image_view,
-			vren::vk_sampler&& sampler
-		) :
-			m_image(std::move(image)),
-			m_image_view(std::move(image_view)),
-			m_sampler(std::move(sampler))
-		{}
 	};
 
 	vren::vk_utils::texture create_texture(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		uint32_t width,
 		uint32_t height,
 		void* image_data,
@@ -113,13 +100,16 @@ namespace vren::vk_utils
 	);
 
 	vren::vk_utils::texture create_color_texture(
-		vren::vk_utils::toolbox const& tb,
-		uint8_t r, uint8_t g, uint8_t b, uint8_t a
+		vren::context const& ctx,
+		uint8_t r,
+		uint8_t g,
+		uint8_t b,
+		uint8_t a
 	);
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Custom framebuffer
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	class custom_framebuffer
 	{
@@ -150,20 +140,20 @@ namespace vren::vk_utils
 		};
 
 		static color_buffer create_color_buffer(
-			vren::vk_utils::toolbox const& tb,
+			vren::context const& ctx,
 			uint32_t width,
 			uint32_t height
 		);
 
 		static depth_buffer create_depth_buffer(
-			vren::vk_utils::toolbox const& tb,
+			vren::context const& ctx,
 			uint32_t width,
 			uint32_t height
 		);
 
 	private:
-		vren::vk_framebuffer _create_framebuffer(
-			std::shared_ptr<vren::context> const& ctx,
+		vren::vk_framebuffer create_framebuffer(
+			vren::context const& ctx,
 			uint32_t width,
 			uint32_t height
 		);
@@ -176,12 +166,10 @@ namespace vren::vk_utils
 		vren::vk_framebuffer m_framebuffer;
 
 		custom_framebuffer(
-			vren::vk_utils::toolbox const& tb,
+			vren::context const& ctx,
 			std::shared_ptr<vren::vk_render_pass> const& render_pass,
 			uint32_t width,
 			uint32_t height
 		);
 	};
-
-
 }

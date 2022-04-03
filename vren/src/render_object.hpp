@@ -8,9 +8,9 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
+#include "material.hpp"
 #include "utils/image.hpp"
 #include "utils/buffer.hpp"
-#include "material.hpp"
 
 namespace vren
 {

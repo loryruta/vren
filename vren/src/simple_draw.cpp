@@ -8,17 +8,17 @@
 #include "utils/shader.hpp"
 
 vren::simple_draw_pass::simple_draw_pass(
-	std::shared_ptr<vren::vk_utils::toolbox> const& toolbox,
+	vren::context const& ctx,
 	vren::renderer& renderer
 ) :
-	m_toolbox(toolbox),
+	m_context(&ctx),
 	m_renderer(&renderer),
 
 	m_vertex_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/shaders/pbr_draw.vert.bin")
+		vren::vk_utils::load_and_describe_shader(ctx, ".vren/resources/shaders/pbr_draw.vert.bin")
 	)),
 	m_fragment_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
+		vren::vk_utils::load_and_describe_shader(ctx, ".vren/resources/shaders/pbr_draw.frag.bin")
 	)),
 
 	m_pipeline(_create_graphics_pipeline())
@@ -26,8 +26,6 @@ vren::simple_draw_pass::simple_draw_pass(
 
 vren::vk_utils::self_described_graphics_pipeline vren::simple_draw_pass::_create_graphics_pipeline()
 {
-	auto& ctx = m_toolbox->m_context;
-
 	/* Vertex input state */
 	auto binding_descriptions = vren::render_object::get_all_binding_desc();
 	auto attribute_descriptions = vren::render_object::get_all_attrib_desc();
@@ -177,8 +175,6 @@ void vren::simple_draw_pass::record_commands(
 	vren::camera const& camera
 )
 {
-	auto& ctx = m_toolbox->m_context;
-
 	/* Descriptor set layouts */
 	auto mat_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_material_descriptor_set);
 	auto light_arr_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_light_array_descriptor_set);
@@ -190,7 +186,7 @@ void vren::simple_draw_pass::record_commands(
 
 	/* Light array */
 	auto light_arr_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-		m_toolbox->m_descriptor_pool->acquire(light_arr_desc_set_layout)
+		m_context->m_toolbox->m_descriptor_pool.acquire(light_arr_desc_set_layout)
 	);
 	m_renderer->write_light_array_descriptor_set(
 		frame_idx,
@@ -237,9 +233,9 @@ void vren::simple_draw_pass::record_commands(
 
 		/* Material */
 		auto mat_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-			m_toolbox->m_descriptor_pool->acquire(mat_desc_set_layout)
+			m_context->m_toolbox->m_descriptor_pool.acquire(mat_desc_set_layout)
 		);
-		vren::update_material_descriptor_set(*ctx, *render_obj.m_material, mat_desc_set->m_handle.m_descriptor_set);
+		vren::update_material_descriptor_set(*m_context, *render_obj.m_material, mat_desc_set->m_handle.m_descriptor_set);
 		vkCmdBindDescriptorSets(
 			cmd_buf,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,

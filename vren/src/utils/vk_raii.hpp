@@ -7,8 +7,6 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "context.hpp"
-
 #define VREN_DEFINE_VK_RAII(_raii_t, _t, _dtor_lambda) \
     namespace vren { \
         using _raii_t = vren::vk_handle_wrapper<_t>; \
@@ -21,6 +19,9 @@
 
 namespace vren
 {
+	// Forward decl
+	class context;
+
 	// ------------------------------------------------------------------------------------------------
 	// vk_handle_wrapper
 	// ------------------------------------------------------------------------------------------------
@@ -32,16 +33,13 @@ namespace vren
 	class vk_handle_wrapper
 	{
 	private:
-		std::shared_ptr<vren::context> m_context;
+		vren::context const* m_context;
 
 	public:
 		_t m_handle;
 
-		explicit vk_handle_wrapper(
-			std::shared_ptr<vren::context> const& ctx,
-			_t handle
-		) :
-			m_context(ctx),
+		explicit vk_handle_wrapper(vren::context const& ctx, _t handle) :
+			m_context(&ctx),
 			m_handle(handle)
 		{}
 

@@ -4,14 +4,12 @@
 #include "utils/misc.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// material
+// Material
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::material::material(
-	vren::vk_utils::toolbox const& tb
-) :
-	m_base_color_texture(tb.m_white_texture),
-	m_metallic_roughness_texture(tb.m_white_texture),
+vren::material::material(vren::context const& ctx) :
+	m_base_color_texture(ctx.m_toolbox->m_white_texture),
+	m_metallic_roughness_texture(ctx.m_toolbox->m_white_texture),
 	m_base_color_factor(1.0f),
 	m_metallic_factor(0.0f),
 	m_roughness_factor(0.0f)
@@ -19,7 +17,7 @@ vren::material::material(
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_descriptor_set_layout vren::create_material_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx)
+vren::vk_descriptor_set_layout vren::create_material_descriptor_set_layout(vren::context const& ctx)
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -49,7 +47,7 @@ vren::vk_descriptor_set_layout vren::create_material_descriptor_set_layout(std::
 	desc_set_layout_info.pBindings = bindings.data();
 
 	VkDescriptorSetLayout desc_set_layout;
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx->m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
+	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
 	return vren::vk_descriptor_set_layout(ctx, desc_set_layout);
 }
 

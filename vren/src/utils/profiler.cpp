@@ -1,11 +1,10 @@
 #include "profiler.hpp"
 
 #include "context.hpp"
-#include "pooling/command_pool.hpp"
 #include "utils/misc.hpp"
 
-vren::profiler::profiler(std::shared_ptr<vren::context> const& ctx, size_t slots_count) :
-	m_context(ctx),
+vren::profiler::profiler(vren::context const& ctx, size_t slots_count) :
+	m_context(&ctx),
 	m_query_pool(vren::vk_utils::create_timestamp_query_pool(ctx, slots_count * 2))
 {}
 
@@ -55,4 +54,3 @@ bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* e
 		throw std::runtime_error("Failed to read query results");
 	}
 }
-

@@ -14,6 +14,9 @@
 
 namespace vren
 {
+	// Forward decl
+	class context;
+
 	// --------------------------------------------------------------------------------------------------------------------------------
 	// Swapchain frame data
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -30,7 +33,7 @@ namespace vren
 		 * ensures they live enough. */
 		vren::resource_container m_resource_container;
 
-		swapchain_frame_data(std::shared_ptr<vren::context> const& ctx);
+		swapchain_frame_data(vren::context const& ctx);
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------
@@ -69,13 +72,14 @@ namespace vren
 		};
 
 	private:
-		void _swap(swapchain& other);
+		void swap(swapchain& other);
 
-		std::vector<VkImage> _get_swapchain_images();
-		depth_buffer _create_depth_buffer();
+		std::vector<VkImage> get_swapchain_images();
+		depth_buffer create_depth_buffer();
+
+		vren::context const* m_context;
 
 	public:
-		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		VkSwapchainKHR m_handle;
 
 		uint32_t m_image_width, m_image_height;
@@ -93,7 +97,7 @@ namespace vren
 		std::vector<vren::swapchain_frame_data> m_frame_data;
 
 		swapchain(
-			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
+			vren::context const& ctx,
 			VkSwapchainKHR handle,
 			uint32_t img_width,
 			uint32_t img_height,
@@ -129,12 +133,13 @@ namespace vren
 		)>;
 
 	private:
-		uint32_t _pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
-		VkSurfaceFormatKHR _pick_surface_format(vren::vk_utils::surface_details const& surf_details);
-        VkPresentModeKHR _pick_present_mode(vren::vk_utils::surface_details const& surf_details);
+		vren::context const* m_context;
+
+		uint32_t pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
+		VkSurfaceFormatKHR pick_surface_format(vren::vk_utils::surface_details const& surf_details);
+        VkPresentModeKHR pick_present_mode(vren::vk_utils::surface_details const& surf_details);
 
 	public:
-		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		std::shared_ptr<vren::vk_surface_khr> m_surface;
 
         uint32_t m_image_count;
@@ -145,7 +150,7 @@ namespace vren
 		uint32_t m_current_frame_idx = 0;
 
 		presenter(
-			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
+			vren::context const& ctx,
 			std::shared_ptr<vren::vk_surface_khr> const& surface
 		);
 

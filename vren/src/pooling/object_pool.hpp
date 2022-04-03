@@ -12,26 +12,26 @@ namespace vren
     template<typename _t>
     class object_pool;
 
-    // --------------------------------------------------------------------------------------------------------------------------------
-    // pooled_object
-    // --------------------------------------------------------------------------------------------------------------------------------
+    // ------------------------------------------------------------------------------------------------
+    // Pooled object
+    // ------------------------------------------------------------------------------------------------
 
     template<typename _t>
     class pooled_object
     {
     private:
-        std::shared_ptr<object_pool<_t>> m_pool; // TODO CIRCULAR DEPENDENCY, FIX IT!
+		object_pool<_t>* m_pool;
 
     public:
 		_t m_handle;
 
-        explicit pooled_object(std::shared_ptr<object_pool<_t>> const& pool, _t&& handle) :
-            m_pool(pool),
+        explicit pooled_object(object_pool<_t>& pool, _t&& handle) :
+            m_pool(&pool),
             m_handle(std::move(handle))
         {}
         pooled_object(pooled_object<_t> const& other) = delete;
         pooled_object(pooled_object<_t>&& other) noexcept :
-			m_pool(std::move(other.m_pool)),
+			m_pool(other.m_pool),
 			m_handle(std::move(other.m_handle))
         {
 			other.m_pool = nullptr;
@@ -56,12 +56,12 @@ namespace vren
         }
     };
 
-    // --------------------------------------------------------------------------------------------------------------------------------
-    // object_pool
-    // --------------------------------------------------------------------------------------------------------------------------------
+    // ------------------------------------------------------------------------------------------------
+    // Object pool
+    // ------------------------------------------------------------------------------------------------
 
     template<typename _t>
-    class object_pool : public std::enable_shared_from_this<object_pool<_t>>
+    class object_pool
     {
         friend pooled_object<_t>;
 
@@ -122,11 +122,6 @@ namespace vren
 			}
 
 			return std::nullopt;
-		}
-
-		static std::shared_ptr<vren::object_pool<_t>> create()
-		{
-			return std::make_shared<vren::object_pool<_t>>();
 		}
     };
 }

@@ -11,7 +11,7 @@ namespace vren
 	class context;
 
 	// ------------------------------------------------------------------------------------------------
-	// fence_pool
+	// Fence pool
 	// ------------------------------------------------------------------------------------------------
 
 	using pooled_vk_fence = vren::pooled_object<vren::vk_fence>;
@@ -19,14 +19,11 @@ namespace vren
     class fence_pool : public vren::object_pool<vren::vk_fence>
     {
     private:
-        std::shared_ptr<vren::context> m_context;
-
-    protected:
-		explicit fence_pool(std::shared_ptr<vren::context> ctx);
+		vren::context const* m_context;
 
     public:
-        vren::pooled_vk_fence acquire();
+		explicit fence_pool(vren::context const& ctx);
 
-		static std::shared_ptr<fence_pool> create(std::shared_ptr<vren::context> const& ctx);
+        vren::pooled_vk_fence acquire();
     };
 }

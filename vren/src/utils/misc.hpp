@@ -5,7 +5,7 @@
 
 #include "vk_raii.hpp"
 #include "resource_container.hpp"
-#include "utils/vk_toolbox.hpp"
+#include "toolbox.hpp"
 
 namespace vren
 {
@@ -17,16 +17,16 @@ namespace vren::vk_utils
 {
 	void check(VkResult result);
 
-	vren::vk_semaphore create_semaphore(
-		std::shared_ptr<vren::context> const& ctx
-	);
+	vren::vk_semaphore create_semaphore(vren::context const& ctx);
 
-	vren::vk_fence create_fence(std::shared_ptr<vren::context> const& ctx, bool signaled = false);
+	vren::vk_fence create_fence(vren::context const& ctx,bool signaled = false);
 
-    using record_commands_func_t =
-        std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
+	// ------------------------------------------------------------------------------------------------
+	// Immediate submission
+	// ------------------------------------------------------------------------------------------------
 
-	void record_one_time_submit_commands(VkCommandBuffer cmd_buf, std::function<void(VkCommandBuffer cmd_buf)> const& record_func); // TODO use it below
+	using record_commands_func_t =
+		std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
 
 	void immediate_submit(
 		vren::context const& ctx,
@@ -36,13 +36,12 @@ namespace vren::vk_utils
 		record_commands_func_t const& record_func
 	);
 
-    void immediate_graphics_queue_submit(vren::vk_utils::toolbox const& tb, record_commands_func_t const& record_func);
-    //void immediate_compute_queue_submit(vren::vk_utils::toolbox const& tb, record_commands_func_t const& record_func);
-    void immediate_transfer_queue_submit(vren::vk_utils::toolbox const& tb, record_commands_func_t const& record_func);
+    void immediate_graphics_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
+	void immediate_transfer_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
 
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 	// Surface details
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
 
 	struct surface_details
 	{
@@ -56,9 +55,10 @@ namespace vren::vk_utils
 		VkSurfaceKHR surface
 	);
 
-	// --------------------------------------------------------------------------------------------------------------------------------
-
-	vren::vk_query_pool create_timestamp_query_pool(std::shared_ptr<vren::context> const& ctx, uint32_t query_count);
+	vren::vk_query_pool create_timestamp_query_pool(
+		vren::context const& ctx,
+		uint32_t query_count
+	);
 
 	std::vector<VkQueueFamilyProperties> get_queue_families_properties(VkPhysicalDevice phy_dev);
 }

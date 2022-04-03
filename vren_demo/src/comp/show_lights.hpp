@@ -2,7 +2,7 @@
 
 #include "resource_container.hpp"
 #include "renderer.hpp"
-#include "utils/vk_toolbox.hpp"
+#include "toolbox.hpp"
 
 namespace vren_demo
 {

@@ -9,7 +9,7 @@ namespace vren::utils
 	// TODO Make a singleton of must used shapes (buffer, sphere...) in toolbox?
 
 	void create_cube(
-		vren::vk_utils::toolbox const& toolbox,
+		vren::context const& ctx,
 		vren::render_object& render_obj
 	)
 	{
@@ -65,7 +65,7 @@ namespace vren::utils
 		};
 		size_t vertices_count = std::size(vertices);
 		auto vertices_buf = std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_vertex_buffer(toolbox, vertices, vertices_count)
+			vren::vk_utils::create_vertex_buffer(ctx, vertices, vertices_count)
 		);
 		render_obj.set_vertices_buffer(vertices_buf, vertices_count);
 
@@ -75,7 +75,7 @@ namespace vren::utils
 
 		auto indices_buf =
 			std::make_shared<vren::vk_utils::buffer>(
-				vren::vk_utils::create_indices_buffer(toolbox, indices.data(), indices.size())
+				vren::vk_utils::create_indices_buffer(ctx, indices.data(), indices.size())
 			);
 		render_obj.set_indices_buffer(indices_buf, indices.size());
 	}

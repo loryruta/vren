@@ -4,11 +4,11 @@
 #include "utils/misc.hpp"
 
 // ------------------------------------------------------------------------------------------------
-// descriptor_pool
+// Descriptor pool
 // ------------------------------------------------------------------------------------------------
 
-vren::descriptor_pool::descriptor_pool(std::shared_ptr<vren::context> const& ctx) :
-	m_context(ctx)
+vren::descriptor_pool::descriptor_pool(vren::context const& ctx) :
+	m_context(&ctx)
 {}
 
 vren::vk_descriptor_pool vren::descriptor_pool::create_descriptor_pool(uint32_t max_sets)
@@ -39,7 +39,7 @@ vren::vk_descriptor_pool vren::descriptor_pool::create_descriptor_pool(uint32_t 
 	};
 	VkDescriptorPool desc_pool;
 	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &desc_pool_info, nullptr, &desc_pool));
-	return vren::vk_descriptor_pool(m_context, desc_pool);
+	return vren::vk_descriptor_pool(*m_context, desc_pool);
 }
 
 vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLayout desc_set_layout)

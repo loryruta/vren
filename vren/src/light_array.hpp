@@ -34,7 +34,7 @@ namespace vren
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// light_array
+	// Light array
 	// ------------------------------------------------------------------------------------------------
 
 	struct light_array
@@ -46,5 +46,5 @@ namespace vren
 
 	// ------------------------------------------------------------------------------------------------
 
-	vren::vk_descriptor_set_layout create_light_array_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
+	vren::vk_descriptor_set_layout create_light_array_descriptor_set_layout(vren::context const& ctx);
 }

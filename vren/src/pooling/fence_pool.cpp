@@ -3,8 +3,8 @@
 #include "context.hpp"
 #include "utils/misc.hpp"
 
-vren::fence_pool::fence_pool(std::shared_ptr<vren::context> ctx) :
-	m_context(std::move(ctx))
+vren::fence_pool::fence_pool(vren::context const& ctx) :
+	m_context(&ctx)
 {}
 
 vren::pooled_vk_fence vren::fence_pool::acquire()
@@ -24,12 +24,6 @@ vren::pooled_vk_fence vren::fence_pool::acquire()
 	VkFence fence;
 	vren::vk_utils::check(vkCreateFence(m_context->m_device, &fence_info, nullptr, &fence));
 	return create_managed_object(
-		vren::vk_fence(m_context, fence)
+		vren::vk_fence(*m_context, fence)
 	);
 }
-
-std::shared_ptr<vren::fence_pool> vren::fence_pool::create(std::shared_ptr<vren::context> const& ctx)
-{
-	return std::shared_ptr<vren::fence_pool>(new vren::fence_pool(ctx));
-}
-

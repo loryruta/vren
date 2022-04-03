@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "config.hpp"
+#include "toolbox.hpp"
 
 namespace vren
 {
@@ -17,7 +18,7 @@ namespace vren
 	bool does_support_layers(std::vector<char const*> const& layers);
 
 	// ------------------------------------------------------------------------------------------------
-	// context
+	// Context
 	// ------------------------------------------------------------------------------------------------
 
 	struct context_info
@@ -28,10 +29,6 @@ namespace vren
 		std::vector<char const*> m_extensions;
 		std::vector<char const*> m_device_extensions;
 	};
-
-	// ------------------------------------------------------------------------------------------------
-	// context
-	// ------------------------------------------------------------------------------------------------
 
 	class context
 	{
@@ -50,21 +47,18 @@ namespace vren
 		};
 
 	private:
-		explicit context(context_info const& ctx_info);
-
 		VkInstance create_instance();
-		VkDebugUtilsMessengerEXT setup_debug_messenger();
-		vren::context::queue_families get_queue_families(VkPhysicalDevice physical_device);
+		VkDebugUtilsMessengerEXT create_debug_messenger();
 		VkPhysicalDevice find_physical_device();
+		vren::context::queue_families get_queue_families(VkPhysicalDevice physical_device);
 		VkDevice create_logical_device();
 		std::vector<VkQueue> get_queues();
-		void create_vma_allocator();
+		VmaAllocator create_vma_allocator();
 
 	public:
 		vren::context_info m_info;
 
 		VkInstance m_instance;
-
 		VkDebugUtilsMessengerEXT m_debug_messenger;
 
 		VkPhysicalDevice m_physical_device;
@@ -74,18 +68,19 @@ namespace vren
 		VkDevice m_device;
 
 		std::vector<VkQueue> m_queues;
-		VkQueue m_transfer_queue;
 		VkQueue m_graphics_queue;
-		VkQueue m_compute_queue;
+		VkQueue m_transfer_queue;
+		//VkQueue m_compute_queue;
 
 		VmaAllocator m_vma_allocator;
 
+		std::unique_ptr<vren::toolbox> m_toolbox;
+
+		explicit context(context_info const& ctx_info);
 		context(context const& other) = delete;
 		// TODO move constructor
 
 		~context();
-
-		static std::shared_ptr<context> create(context_info const& ctx_info);
 	};
 }
 

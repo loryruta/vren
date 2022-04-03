@@ -3,7 +3,6 @@
 #include <cstring>
 
 #include "context.hpp"
-#include "vk_toolbox.hpp"
 #include "buffer.hpp"
 #include "utils/image_layout_transitions.hpp"
 #include "utils/misc.hpp"
@@ -14,7 +13,7 @@
 
 vren::vk_utils::image
 vren::vk_utils::create_image(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::context const& ctx,
 	uint32_t width,
 	uint32_t height,
 	VkFormat format,
@@ -42,7 +41,7 @@ vren::vk_utils::create_image(
 
 	VkImage image;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateImage(ctx->m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, nullptr));
+	vren::vk_utils::check(vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, nullptr));
 
 	return {
 		.m_image = vren::vk_image(ctx, image),
@@ -51,7 +50,7 @@ vren::vk_utils::create_image(
 }
 
 void vren::vk_utils::upload_image_data(
-    std::shared_ptr<vren::context> const& ctx,
+	vren::context const& ctx,
     VkCommandBuffer cmd_buf,
     vren::resource_container& res_container,
     VkImage img,
@@ -68,9 +67,9 @@ void vren::vk_utils::upload_image_data(
     res_container.add_resource(staging_buffer);
 
 	void* mapped_img_data;
-	vren::vk_utils::check(vmaMapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data));
+	vren::vk_utils::check(vmaMapMemory(ctx.m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data));
 		std::memcpy(mapped_img_data, img_data, img_size);
-	vmaUnmapMemory(ctx->m_vma_allocator, staging_buffer->m_allocation.m_handle);
+	vmaUnmapMemory(ctx.m_vma_allocator, staging_buffer->m_allocation.m_handle);
 
 	VkBufferImageCopy img_copy_region{};
 	img_copy_region.bufferOffset = 0;
@@ -94,7 +93,7 @@ void vren::vk_utils::upload_image_data(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_image_view vren::vk_utils::create_image_view(
-	std::shared_ptr<vren::context> const& renderer,
+	vren::context const& ctx,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlagBits aspect
@@ -112,9 +111,8 @@ vren::vk_image_view vren::vk_utils::create_image_view(
 	image_view_info.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	vren::vk_utils::check(vkCreateImageView(renderer->m_device, &image_view_info, nullptr, &image_view));
-
-	return vren::vk_image_view(renderer, image_view);
+	vren::vk_utils::check(vkCreateImageView(ctx.m_device, &image_view_info, nullptr, &image_view));
+	return vren::vk_image_view(ctx, image_view);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -122,7 +120,7 @@ vren::vk_image_view vren::vk_utils::create_image_view(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_sampler vren::vk_utils::create_sampler(
-	std::shared_ptr<vren::context> const& ctx,
+	vren::context const& ctx,
 	VkFilter mag_filter,
 	VkFilter min_filter,
 	VkSamplerMipmapMode mipmap_mode,
@@ -152,8 +150,7 @@ vren::vk_sampler vren::vk_utils::create_sampler(
 	sampler_info.unnormalizedCoordinates = VK_FALSE;
 
 	VkSampler sampler;
-	vren::vk_utils::check(vkCreateSampler(ctx->m_device, &sampler_info, nullptr, &sampler));
-
+	vren::vk_utils::check(vkCreateSampler(ctx.m_device, &sampler_info, nullptr, &sampler));
 	return vren::vk_sampler(ctx, sampler);
 }
 
@@ -162,7 +159,7 @@ vren::vk_sampler vren::vk_utils::create_sampler(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_utils::texture vren::vk_utils::create_texture(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	uint32_t width,
 	uint32_t height,
 	void* image_data,
@@ -175,11 +172,9 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 	VkSamplerAddressMode address_mode_w
 )
 {
-	auto& ctx = tb.m_context;
-
 	auto img = vren::vk_utils::create_image(ctx, width, height, format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf, img.m_image.m_handle);
 
@@ -209,21 +204,24 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 		)
 	);
 
-	return vren::vk_utils::texture(
-		std::move(img),
-		std::move(img_view),
-		std::move(sampler)
-	);
+	return {
+		.m_image = std::move(img),
+		.m_image_view = std::move(img_view),
+		.m_sampler = std::move(sampler)
+	};
 }
 
 vren::vk_utils::texture vren::vk_utils::create_color_texture(
-	vren::vk_utils::toolbox const& tb,
-	uint8_t r, uint8_t g, uint8_t b, uint8_t a
+	vren::context const& ctx,
+	uint8_t r,
+	uint8_t g,
+	uint8_t b,
+	uint8_t a
 )
 {
 	uint8_t img_data[]{ r, g, b, a };
 	return vren::vk_utils::create_texture(
-		tb,
+		ctx,
 		1,
 		1,
 		img_data,
@@ -238,18 +236,16 @@ vren::vk_utils::texture vren::vk_utils::create_color_texture(
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// custom_framebuffer
+// Custom framebuffer
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_utils::custom_framebuffer::color_buffer
 vren::vk_utils::custom_framebuffer::create_color_buffer(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	uint32_t width,
 	uint32_t height
 )
 {
-	auto& ctx = tb.m_context;
-
 	auto img = vren::vk_utils::create_image(
 		ctx,
 		width, height,
@@ -258,7 +254,7 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
 	);
 
-    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, img.m_image.m_handle);
     });
@@ -278,13 +274,11 @@ vren::vk_utils::custom_framebuffer::create_color_buffer(
 
 vren::vk_utils::custom_framebuffer::depth_buffer
 vren::vk_utils::custom_framebuffer::create_depth_buffer(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	uint32_t width,
 	uint32_t height
 )
 {
-	auto& ctx = tb.m_context;
-
 	auto img = vren::vk_utils::create_image(
 		ctx,
 		width, height,
@@ -293,7 +287,7 @@ vren::vk_utils::custom_framebuffer::create_depth_buffer(
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
 
-    vren::vk_utils::immediate_graphics_queue_submit(tb, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_graphics_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
     {
         vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
     });
@@ -312,8 +306,8 @@ vren::vk_utils::custom_framebuffer::create_depth_buffer(
 }
 
 vren::vk_framebuffer
-vren::vk_utils::custom_framebuffer::_create_framebuffer(
-	std::shared_ptr<vren::context> const& ctx,
+vren::vk_utils::custom_framebuffer::create_framebuffer(
+	vren::context const& ctx,
 	uint32_t width,
 	uint32_t height
 )
@@ -333,18 +327,18 @@ vren::vk_utils::custom_framebuffer::_create_framebuffer(
 	fb_info.layers = 1;
 
 	VkFramebuffer fb;
-	vren::vk_utils::check(vkCreateFramebuffer(ctx->m_device, &fb_info, nullptr, &fb));
+	vren::vk_utils::check(vkCreateFramebuffer(ctx.m_device, &fb_info, nullptr, &fb));
 	return vren::vk_framebuffer(ctx, fb);
 }
 
 vren::vk_utils::custom_framebuffer::custom_framebuffer(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	std::shared_ptr<vren::vk_render_pass> const& render_pass,
 	uint32_t width,
 	uint32_t height
 ) :
 	m_render_pass(render_pass),
-	m_color_buffer(create_color_buffer(tb, width, height)),
-	m_depth_buffer(create_depth_buffer(tb, width, height)),
-	m_framebuffer(_create_framebuffer(tb.m_context, width, height))
+	m_color_buffer(create_color_buffer(ctx, width, height)),
+	m_depth_buffer(create_depth_buffer(ctx, width, height)),
+	m_framebuffer(create_framebuffer(ctx, width, height))
 {}

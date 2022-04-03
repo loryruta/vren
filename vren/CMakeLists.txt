@@ -40,8 +40,8 @@ set(SRC
         src/utils/image_layout_transitions.cpp
         src/utils/profiler.hpp
         src/utils/profiler.cpp
-        src/utils/vk_toolbox.hpp
-        src/utils/vk_toolbox.cpp
+        src/toolbox.hpp
+        src/toolbox.cpp
         src/utils/shader.hpp
         src/utils/shader.cpp
         src/utils/barrier.hpp

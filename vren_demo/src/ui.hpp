@@ -10,7 +10,7 @@
 #include "context.hpp"
 #include "renderer.hpp"
 #include "tinygltf_loader.hpp"
-#include "utils/vk_toolbox.hpp"
+#include "toolbox.hpp"
 #include "utils/shader.hpp"
 #include "comp/move_lights.hpp"
 

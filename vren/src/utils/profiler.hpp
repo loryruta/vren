@@ -17,11 +17,11 @@ namespace vren
 	class profiler
 	{
 	private:
-		std::shared_ptr<vren::context> m_context;
+		vren::context const* m_context;
 		vren::vk_query_pool m_query_pool;
 
 	public:
-		profiler(std::shared_ptr<vren::context> const& ctx, size_t slots_count);
+		profiler(vren::context const& ctx, size_t slots_count);
 		~profiler();
 
 		void profile(

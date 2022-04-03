@@ -1,11 +1,18 @@
 #pragma once
 
 #include "utils/vk_raii.hpp"
-#include "utils/vk_toolbox.hpp"
+#include "utils/buffer.hpp"
 #include "utils/shader.hpp"
 
 namespace vren
 {
+	// Forward decl
+	class context;
+
+	// ------------------------------------------------------------------------------------------------
+	// Debug renderer
+	// ------------------------------------------------------------------------------------------------
+
 	class dbg_renderer
 	{
 	public:
@@ -13,7 +20,7 @@ namespace vren
 		struct line  { glm::vec3 m_from, m_to; };
 
 	private:
-		vren::vk_utils::toolbox const* m_toolbox;
+		vren::context const* m_context;
 
 		vren::vk_utils::resizable_buffer m_points_buffer;
 		uint32_t m_point_idx = 0;
@@ -41,7 +48,9 @@ namespace vren
 		vren::vk_utils::self_described_graphics_pipeline create_generic_graphics_pipeline();
 
 	public:
-		dbg_renderer(vren::vk_utils::toolbox const& toolbox);
+		dbg_renderer(
+			vren::context const& ctx
+		);
 		~dbg_renderer();
 
 		void clear();

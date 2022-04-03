@@ -4,12 +4,12 @@
 #include "utils/misc.hpp"
 
 vren::dbg_renderer::dbg_renderer(
-	vren::vk_utils::toolbox const& toolbox
+	vren::context const& ctx
 ) :
-	m_toolbox(&toolbox),
+	m_context(&ctx),
 
-	m_points_buffer(toolbox, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-	m_lines_buffer(toolbox, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+	m_points_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+	m_lines_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
 
 	m_render_pass(create_render_pass())
 {}
@@ -90,8 +90,8 @@ vren::vk_render_pass vren::dbg_renderer::create_render_pass()
 	};
 
 	VkRenderPass render_pass;
-	vren::vk_utils::check(vkCreateRenderPass(m_toolbox->m_context->m_device, &render_pass_info, nullptr, &render_pass));
-	return vren::vk_render_pass(m_toolbox->m_context, render_pass);
+	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass));
+	return vren::vk_render_pass(*m_context, render_pass);
 }
 
 vren::vk_utils::self_described_graphics_pipeline vren::dbg_renderer::create_graphics_pipeline()
@@ -117,5 +117,4 @@ void vren::dbg_renderer::draw_line(line line)
 
 void vren::dbg_renderer::render()
 {
-
 }

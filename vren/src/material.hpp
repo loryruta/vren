@@ -4,7 +4,6 @@
 
 #include <glm/glm.hpp>
 
-#include "pooling/descriptor_pool.hpp"
 #include "utils/image.hpp"
 
 namespace vren
@@ -13,7 +12,7 @@ namespace vren
 	class context;
 
 	// ------------------------------------------------------------------------------------------------
-	// material
+	// Material
 	// ------------------------------------------------------------------------------------------------
 
 	struct material
@@ -25,11 +24,11 @@ namespace vren
 		float m_metallic_factor;
 		float m_roughness_factor;
 
-		explicit material(vren::vk_utils::toolbox const& tb);
+		explicit material(vren::context const& ctx);
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 
-	vren::vk_descriptor_set_layout create_material_descriptor_set_layout(std::shared_ptr<vren::context> const& ctx);
+	vren::vk_descriptor_set_layout create_material_descriptor_set_layout(vren::context const& ctx);
 	void update_material_descriptor_set(vren::context const& ctx, vren::material const& mat, VkDescriptorSet desc_set);
 }

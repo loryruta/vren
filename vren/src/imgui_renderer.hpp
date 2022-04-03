@@ -8,29 +8,33 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
-#include "utils/vk_toolbox.hpp"
 #include "resource_container.hpp"
 #include "renderer.hpp"
 
 namespace vren
 {
+	// Forward decl
+	class context;
+
 	// --------------------------------------------------------------------------------------------------------------------------------
-	// imgui_renderer
+	// ImGui renderer
 	// --------------------------------------------------------------------------------------------------------------------------------
 
 	class imgui_renderer
 	{
 	private:
+		vren::context const* m_context;
+
 		VkDescriptorPool m_descriptor_pool;
 		VkRenderPass m_render_pass;
 
-		void _init_render_pass();
+		void init_render_pass();
 
 	public:
 		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		GLFWwindow* m_window;
 
-		explicit imgui_renderer(std::shared_ptr<vren::vk_utils::toolbox> const& tb, GLFWwindow* window);
+		explicit imgui_renderer(vren::context const& ctx, GLFWwindow* window);
 		~imgui_renderer();
 
 		void render(

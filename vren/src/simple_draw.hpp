@@ -18,18 +18,17 @@ namespace vren
 	struct camera;
 
 	// ------------------------------------------------------------------------------------------------
-	// simple_draw_pass
+	// Simple draw pass
 	// ------------------------------------------------------------------------------------------------
 
 	class simple_draw_pass
 	{
 	public:
-		static constexpr uint32_t k_material_descriptor_set    = 0;
+		static constexpr uint32_t k_material_descriptor_set = 0;
 		static constexpr uint32_t k_light_array_descriptor_set = 1;
 
 	private:
-		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
-
+		vren::context const* m_context;
 		vren::renderer* m_renderer;
 
 		std::shared_ptr<vren::vk_utils::self_described_shader> m_vertex_shader;
@@ -40,7 +39,7 @@ namespace vren
 
 	public:
 		simple_draw_pass(
-			std::shared_ptr<vren::vk_utils::toolbox> const& toolbox,
+			vren::context const& ctx,
 			vren::renderer& renderer
 		);
 

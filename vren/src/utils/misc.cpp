@@ -1,7 +1,7 @@
 #include "misc.hpp"
 
 #include "context.hpp"
-#include "vk_toolbox.hpp"
+#include "toolbox.hpp"
 #include "pooling/command_pool.hpp"
 #include "pooling/fence_pool.hpp"
 
@@ -16,19 +16,20 @@ void vren::vk_utils::check(VkResult result)
 	}
 }
 
-vren::vk_semaphore vren::vk_utils::create_semaphore(
-	std::shared_ptr<vren::context> const& ctx
-)
+vren::vk_semaphore vren::vk_utils::create_semaphore(vren::context const& ctx)
 {
-	VkSemaphoreCreateInfo sem_info{};
-	sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreCreateInfo sem_info{
+		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL
+	};
 
 	VkSemaphore sem;
-	vren::vk_utils::check(vkCreateSemaphore(ctx->m_device, &sem_info, nullptr, &sem));
+	vren::vk_utils::check(vkCreateSemaphore(ctx.m_device, &sem_info, nullptr, &sem));
 	return vren::vk_semaphore(ctx, sem);
 }
 
-vren::vk_fence vren::vk_utils::create_fence(std::shared_ptr<vren::context> const& ctx, bool signaled)
+vren::vk_fence vren::vk_utils::create_fence(vren::context const& ctx, bool signaled)
 {
 	VkFenceCreateInfo fence_info{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -37,23 +38,8 @@ vren::vk_fence vren::vk_utils::create_fence(std::shared_ptr<vren::context> const
     };
 
 	VkFence fence;
-	vren::vk_utils::check(vkCreateFence(ctx->m_device, &fence_info, nullptr, &fence));
+	vren::vk_utils::check(vkCreateFence(ctx.m_device, &fence_info, nullptr, &fence));
 	return vren::vk_fence(ctx, fence);
-}
-
-void vren::vk_utils::record_one_time_submit_commands(VkCommandBuffer cmd_buf, const std::function<void(VkCommandBuffer)>& record_func)
-{
-	VkCommandBufferBeginInfo begin_info{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.pNext = nullptr,
-		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-		.pInheritanceInfo = nullptr
-	};
-	vren::vk_utils::check(vkBeginCommandBuffer(cmd_buf, &begin_info));
-
-	record_func(cmd_buf);
-
-	vren::vk_utils::check(vkEndCommandBuffer(cmd_buf));
 }
 
 void vren::vk_utils::immediate_submit(
@@ -99,21 +85,31 @@ void vren::vk_utils::immediate_submit(
 }
 
 void vren::vk_utils::immediate_graphics_queue_submit(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	record_commands_func_t const& record_func
 )
 {
-	auto& ctx = tb.m_context;
-    vren::vk_utils::immediate_submit(*ctx, *tb.m_graphics_command_pool, *tb.m_fence_pool, ctx->m_graphics_queue, record_func);
+    vren::vk_utils::immediate_submit(
+		ctx,
+		ctx.m_toolbox->m_graphics_command_pool,
+		ctx.m_toolbox->m_fence_pool,
+		ctx.m_graphics_queue,
+		record_func
+	);
 }
 
 void vren::vk_utils::immediate_transfer_queue_submit(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	record_commands_func_t const& record_func
 )
 {
-	auto& ctx = tb.m_context;
-	vren::vk_utils::immediate_submit(*ctx, *tb.m_transfer_command_pool, *tb.m_fence_pool, ctx->m_transfer_queue, record_func);
+	vren::vk_utils::immediate_submit(
+		ctx,
+		ctx.m_toolbox->m_transfer_command_pool,
+		ctx.m_toolbox->m_fence_pool,
+		ctx.m_transfer_queue,
+		record_func
+	);
 }
 
 vren::vk_utils::surface_details vren::vk_utils::get_surface_details(
@@ -149,7 +145,10 @@ vren::vk_utils::surface_details vren::vk_utils::get_surface_details(
 	return surf_det;
 }
 
-vren::vk_query_pool vren::vk_utils::create_timestamp_query_pool(std::shared_ptr<vren::context> const& ctx, uint32_t query_count)
+vren::vk_query_pool vren::vk_utils::create_timestamp_query_pool(
+	vren::context const& ctx,
+	uint32_t query_count
+)
 {
 	VkQueryPoolCreateInfo pool_info{
 		.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
@@ -161,7 +160,7 @@ vren::vk_query_pool vren::vk_utils::create_timestamp_query_pool(std::shared_ptr<
 	};
 
 	VkQueryPool handle;
-	vren::vk_utils::check(vkCreateQueryPool(ctx->m_device, &pool_info, nullptr, &handle));
+	vren::vk_utils::check(vkCreateQueryPool(ctx.m_device, &pool_info, nullptr, &handle));
 	return vren::vk_query_pool(ctx, handle);
 }
 

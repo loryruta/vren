@@ -10,16 +10,16 @@ namespace vren
 {
 	// Forward decl
 	class context;
+
 	struct vertex;
 	struct instance_data;
 }
 
 namespace vren::vk_utils
 {
-	// Forward decl
-	class toolbox;
-
-	// --------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
+	// Buffer
+	// ------------------------------------------------------------------------------------------------
 
 	struct buffer
 	{
@@ -28,14 +28,14 @@ namespace vren::vk_utils
 	};
 
 	vren::vk_utils::buffer alloc_host_visible_buffer(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
 		VkBufferUsageFlags buffer_usage,
 		size_t size,
 		bool persistently_mapped = false
 	);
 
 	vren::vk_utils::buffer alloc_device_only_buffer(
-		std::shared_ptr<vren::context> const& ctx,
+		vren::context const& ctx,
 		VkBufferUsageFlags buffer_usage,
 		size_t size
 	);
@@ -49,7 +49,7 @@ namespace vren::vk_utils
 	);
 
 	void update_device_only_buffer(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		vren::vk_utils::buffer& buf,
 		void const* data,
 		size_t size,
@@ -57,7 +57,7 @@ namespace vren::vk_utils
 	);
 
 	void copy_buffer(
-		vren::vk_utils::toolbox const& toolbox,
+		vren::context const& ctx,
 		VkBuffer src_buf,
 		VkBuffer dst_buf,
 		size_t size,
@@ -66,26 +66,26 @@ namespace vren::vk_utils
 	);
 
 	vren::vk_utils::buffer create_device_only_buffer(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		VkBufferUsageFlags buffer_usage,
 		void const* data,
 		size_t size
 	);
 
 	vren::vk_utils::buffer create_vertex_buffer(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		vren::vertex const* vertices,
 		size_t vertices_count
 	);
 
 	vren::vk_utils::buffer create_indices_buffer(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		uint32_t const* indices,
 		size_t indices_count
 	);
 
 	vren::vk_utils::buffer create_instances_buffer(
-		vren::vk_utils::toolbox const& tb,
+		vren::context const& ctx,
 		vren::instance_data const* instances,
 		size_t instances_count
 	);
@@ -103,14 +103,14 @@ namespace vren::vk_utils
 		VkBufferUsageFlags m_buffer_usage;
 
 	public:
-		vren::vk_utils::toolbox const* m_toolbox;
+		vren::context const* m_context;
 
 		std::shared_ptr<vren::vk_utils::buffer> m_buffer;
 		size_t m_size = 0;
 		size_t m_offset = 0;
 
 		resizable_buffer(
-			vren::vk_utils::toolbox const& toolbox,
+			vren::context const& ctx,
 			VkBufferUsageFlags buffer_usage
 		);
 		~resizable_buffer();
