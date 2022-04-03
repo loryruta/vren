@@ -44,6 +44,8 @@ set(SRC
         src/utils/vk_toolbox.cpp
         src/utils/shader.hpp
         src/utils/shader.cpp
+        src/utils/barrier.hpp
+        src/shapes.hpp
 )
 
 add_library(vren ${SRC})

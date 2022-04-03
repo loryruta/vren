@@ -140,7 +140,9 @@ vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(
 )
 {
 	auto buf = vren::vk_utils::alloc_device_only_buffer(tb.m_context, buffer_usage, size);
-	vren::vk_utils::update_device_only_buffer(tb, buf, data, size, 0);
+	if (data != nullptr) {
+		vren::vk_utils::update_device_only_buffer(tb, buf, data, size, 0);
+	}
 	return buf;
 }
 
@@ -168,5 +170,5 @@ vren::vk_utils::buffer vren::vk_utils::create_instances_buffer(
 	size_t instances_count
 )
 {
-	return vren::vk_utils::create_device_only_buffer(tb, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
+	return vren::vk_utils::create_device_only_buffer(tb, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
 }

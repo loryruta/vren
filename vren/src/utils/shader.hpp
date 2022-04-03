@@ -101,6 +101,11 @@ namespace vren::vk_utils
 				val
 			);
 		}
+
+		void dispatch(VkCommandBuffer cmd_buf, uint32_t group_num_x, uint32_t group_num_y, uint32_t group_num_z)
+		{
+			vkCmdDispatch(cmd_buf, group_num_x, group_num_y, group_num_z);
+		}
 	};
 
 	self_described_compute_pipeline create_compute_pipeline(

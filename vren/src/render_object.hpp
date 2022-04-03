@@ -177,13 +177,13 @@ namespace vren
 		uint32_t m_idx = -1;
 
 		std::shared_ptr<vren::vk_utils::buffer> m_vertices_buffer;
-		uint32_t m_vertices_count;
+		uint32_t m_vertices_count = 0;
 
 		std::shared_ptr<vren::vk_utils::buffer> m_indices_buffer;
-		uint32_t m_indices_count;
+		uint32_t m_indices_count = 0;
 
 		std::shared_ptr<vren::vk_utils::buffer> m_instances_buffer;
-		uint32_t m_instances_count;
+		uint32_t m_instances_count = 0;
 
 		std::shared_ptr<vren::material> m_material;
 

@@ -215,7 +215,7 @@ void vren::simple_draw_pass::record_commands(
 
 		if (!render_obj.is_valid())
 		{
-			fprintf(stderr, "WARNING: Render object %d is invalid", render_obj.m_idx);
+			fprintf(stderr, "WARNING: Render object %d is invalid\n", render_obj.m_idx);
 			fflush(stderr);
 
 			continue;

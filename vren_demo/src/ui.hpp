@@ -40,7 +40,6 @@ namespace vren_demo::ui
 	{
 	private:
 		vren_demo::tinygltf_loader m_gltf_loader;
-		char m_scene_path[512];
 
 	public:
 		glm::vec3

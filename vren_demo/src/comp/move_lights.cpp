@@ -83,11 +83,6 @@ void vren_demo::move_lights::dispatch(
 {
 	auto& tb = m_renderer->m_toolbox;
 
-	// The whole class is used to ensure its members' lifetime (descriptor pools, descriptor set layouts...)
-	// is ensured for the frame execution.
-
-	res_container.add_resource(shared_from_this());
-
 	m_pipeline.bind(cmd_buf);
 
 	auto light_arr_layout = m_shader->get_descriptor_set_layout(k_light_arr_desc_set);

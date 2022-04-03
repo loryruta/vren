@@ -80,7 +80,7 @@ void vren_demo::ui::scene_ui::show(
 			/* DamagedHelmet */
 			if (ImGui::Button("Load DamagedHelmet##load_scene-scene_ui"))
 			{
-				render_list.clear();
+				//render_list.clear();
 
 				loaded_scene = vren_demo::tinygltf_scene{};
 				m_gltf_loader.load_from_file("resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf", render_list, *loaded_scene);
@@ -94,6 +94,9 @@ void vren_demo::ui::scene_ui::show(
 
 			ImGui::TreePop();
 		}
+
+		ImGui::Text("Scene min: (%.1f, %.1f, %.1f)", m_scene_min.x, m_scene_min.y, m_scene_min.z);
+		ImGui::Text("Scene max: (%.1f, %.1f, %.1f)", m_scene_max.x, m_scene_max.y, m_scene_max.z);
 
 		ImGui::Separator();
 
@@ -117,15 +120,11 @@ void vren_demo::ui::scene_ui::show(
 				for (; i < pt_lights.size(); i++) {
 					auto& pt = pt_lights[i];
 					pt.m_position = {0, 0, 0};
-					pt.m_color    = {
-						glm::linearRand(0.27f, 1.f),
-						glm::linearRand(0.27f, 1.f),
-						glm::linearRand(0.27f, 1.f)
-					};
+					pt.m_color    = {0.91f, 0.91f, 0.77f};
 				}
 			}
 
-			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 100.0f);
+			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 1.0f);
 		}
 
 		{ /* Directional lights */

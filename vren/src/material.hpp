@@ -21,7 +21,7 @@ namespace vren
 		std::shared_ptr<vren::vk_utils::texture> m_base_color_texture;
 		std::shared_ptr<vren::vk_utils::texture> m_metallic_roughness_texture; // b = metallic / g = roughness
 
-		glm::vec4 m_base_color_factor;
+		glm::vec4 m_base_color_factor; // TODO push these parameters to shaders through some buffer
 		float m_metallic_factor;
 		float m_roughness_factor;
 

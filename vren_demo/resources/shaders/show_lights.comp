@@ -1,0 +1,69 @@
+#version 460
+
+#define PI  3.14
+#define EPS 0.0001
+#define INF 1e35
+
+layout (local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants
+{
+    float visualizer_scale;
+} push_constants;
+
+struct PointLight
+{
+    vec3 pos; float _pad;
+    vec3 col; float _pad1;
+};
+
+struct DirLight
+{
+    vec3 dir; float _pad;
+    vec3 col; float _pad1;
+};
+
+struct SpotLight
+{
+    vec3 dir; float _pad;
+    vec3 col; float _pad1;
+    float r;  float _pad2[3];
+};
+
+
+layout(set = 0, binding = 0) buffer readonly PointLights
+{
+    uint num; float _pad[3];
+    PointLight data[];
+} b_point_lights;
+
+layout(set = 0, binding = 1) buffer LightArray_DirLights
+{
+    uint num; float _pad[3];
+    DirLight buf[];
+} b_dir_lights;
+
+layout(set = 0, binding = 2) buffer LightArray_SpotLights
+{
+    uint num; float _pad[3];
+    SpotLight buf[];
+} b_spot_lights;
+
+layout(set = 1, binding = 0) buffer PointLightsInstanceBuffer
+{
+    mat4 transform[];
+} b_point_lights_instance_buf;
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+
+    if (idx < b_point_lights.num)
+    {
+        b_point_lights_instance_buf.transform[idx]    = mat4(push_constants.visualizer_scale); // Scale
+        b_point_lights_instance_buf.transform[idx][3] = vec4( // Translate
+            b_point_lights.data[idx].pos,
+            1.0
+        );
+    }
+}

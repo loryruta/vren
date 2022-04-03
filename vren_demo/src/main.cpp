@@ -15,10 +15,13 @@
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
 #include "imgui_renderer.hpp"
-#include "ui.hpp"
 #include "utils/profiler.hpp"
+#include "utils/barrier.hpp"
+#include "shapes.hpp"
 
-#include "profile.hpp"
+#include "ui.hpp"
+#include "comp/move_lights.hpp"
+#include "comp/show_lights.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -34,71 +37,7 @@ void create_cube(
 	std::shared_ptr<vren::material> const& material
 )
 {
-	std::vector<vren::vertex> vertices = {
-		// Bottom face
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, -1, 0 } },
-		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, -1, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, -1, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, -1, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 0, -1, 0 } },
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, -1, 0 } },
-
-		// Top face
-		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 1, 0 } },
-		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { 0, 1, 0 } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 1, 0 } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 1, 0 } },
-		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 1, 0 } },
-		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 1, 0 } },
-
-		// Left face
-		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { -1, 0, 0 } },
-		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { -1, 0, 0 } },
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { -1, 0, 0 } },
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { -1, 0, 0 } },
-		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { -1, 0, 0 } },
-		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { -1, 0, 0 } },
-
-		// Right face
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 1, 0, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 1, 0, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 1, 0, 0 } },
-		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 1, 0, 0 } },
-		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 1, 0, 0 } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 1, 0, 0 } },
-
-		// Back face
-		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, 0, -1 } },
-		vren::vertex{ .m_position = { 0, 1, 0 }, .m_normal = { 0, 0, -1 } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 0, -1 } },
-		vren::vertex{ .m_position = { 1, 1, 0 }, .m_normal = { 0, 0, -1 } },
-		vren::vertex{ .m_position = { 1, 0, 0 }, .m_normal = { 0, 0, -1 } },
-		vren::vertex{ .m_position = { 0, 0, 0 }, .m_normal = { 0, 0, -1 } },
-
-		// Front face
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, 0, 1 } },
-		vren::vertex{ .m_position = { 0, 1, 1 }, .m_normal = { 0, 0, 1 } },
-		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 0, 1 } },
-		vren::vertex{ .m_position = { 1, 1, 1 }, .m_normal = { 0, 0, 1 } },
-		vren::vertex{ .m_position = { 1, 0, 1 }, .m_normal = { 0, 0, 1 } },
-		vren::vertex{ .m_position = { 0, 0, 1 }, .m_normal = { 0, 0, 1 } },
-	};
-
-	auto vertices_buf =
-		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_vertex_buffer(tb, vertices.data(), vertices.size())
-		);
-	render_obj.set_vertices_buffer(vertices_buf, vertices.size());
-
-	// Indices
-	std::vector<uint32_t> indices(vertices.size());
-	std::iota(indices.begin(), indices.end(), 0);
-
-	auto indices_buf =
-		std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::create_indices_buffer(tb, indices.data(), indices.size())
-		);
-	render_obj.set_indices_buffer(indices_buf, indices.size());
+	vren::utils::create_cube(tb, render_obj);
 
 	{ // Instances
 		auto transf = glm::identity<glm::mat4>();
@@ -125,7 +64,6 @@ void create_cube(
 			);
 		render_obj.set_indices_buffer(instances_buf, 1);
 	}
-
 
 	render_obj.m_material = material;
 }
@@ -251,41 +189,6 @@ void glfw_error_callback(int error_code, const char* description)
 	std::cerr << "[GLFW] (" << error_code << ") " << description << std::endl;
 }
 
-/* TODO
-void record_move_lights(
-	vren::renderer const& renderer,
-	int frame_idx,
-	VkCommandBuffer cmd_buf,
-	vren::resource_container& res_container
-)
-{
-	// Move lights for the *first* light array buffer, then we reflect the changes to other N-1 light array buffers.
-
-	m_move_lights->dispatch(
-		frame_idx,
-		cmd_buf,
-		res_container,
-		renderer.m_lights_array_descriptor_sets.at(0).get()
-	);
-
-	for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		VkBufferCopy buf_cpy{
-			.srcOffset = 0,
-			.dstOffset = 0,
-			.size      = VK_WHOLE_SIZE,
-		};
-
-		vkCmdCopyBuffer(
-			cmd_buf,
-			renderer.m_point_lights_buffers[0].m_buffer.m_handle,
-			renderer.m_point_lights_buffers[i].m_buffer.m_handle,
-			1,
-			&buf_cpy
-		);
-	}
-}*/
-
 void launch()
 {
 	glfwSetErrorCallback(glfw_error_callback);
@@ -337,7 +240,21 @@ void launch()
 	vren::render_list render_list;
 	vren::light_array light_array;
 
-	auto move_lights = vren_demo::move_lights::create(*renderer);
+	/* point_light_visualizer */
+
+	auto& point_light_visualizer = render_list.create_render_object();
+	vren::utils::create_cube(*toolbox, point_light_visualizer);
+	point_light_visualizer.m_material = std::make_shared<vren::material>(*toolbox);
+	point_light_visualizer.m_material->m_base_color_texture = std::make_shared<vren::vk_utils::texture>(
+		vren::vk_utils::create_color_texture(*toolbox, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.77f * 255.0f, 255)
+	);
+
+	uint32_t point_light_visualizer_idx = point_light_visualizer.m_idx;
+
+	/* */
+
+	vren_demo::move_lights move_lights(*renderer);
+	vren_demo::show_lights show_lights(*renderer);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
@@ -386,8 +303,6 @@ void launch()
 		int win_width, win_height;
 		glfwGetWindowSize(g_window, &win_width, &win_height);
 
-		VkBufferMemoryBarrier mem_bar;
-
 		presenter.present([&](int frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, vren::render_target const& target)
         {
 			/* Profiles the frame */
@@ -409,29 +324,26 @@ void launch()
 			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 
 			/* Move lights */
-			move_lights->dispatch(
+			move_lights.dispatch(
 				frame_idx,
 				cmd_buf,
 				res_container,
 				{
 					.m_scene_min = ui.m_scene_ui.m_scene_min,
 					.m_scene_max = ui.m_scene_ui.m_scene_max,
-					.m_speed     = ui.m_scene_ui.m_speed
+					.m_speed     = ui.m_scene_ui.m_speed,
+					.m_dt        = dt
 				}
 			);
 
-			mem_bar = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.buffer = renderer->m_point_lights_buffers.at(0).m_buffer.m_handle,
-				.offset = 0,
-				.size = VK_WHOLE_SIZE
-			};
-			vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &mem_bar, 0, nullptr);
+			vren::vk_utils::buffer_barrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_ACCESS_SHADER_WRITE_BIT,
+				VK_ACCESS_TRANSFER_READ_BIT,
+				renderer->m_point_lights_buffers.at(0).m_buffer.m_handle
+			);
 
 			for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
 			{
@@ -450,26 +362,39 @@ void launch()
 				);
 			}
 
-			mem_bar = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.buffer = renderer->m_point_lights_buffers.at(frame_idx).m_buffer.m_handle,
-				.offset = 0,
-				.size = VK_WHOLE_SIZE
-			};
-			vkCmdPipelineBarrier(
+			vren::vk_utils::buffer_barrier(
 				cmd_buf,
 				VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-				NULL,
-				0, nullptr,
-				1, &mem_bar,
-				0, nullptr
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+				VK_ACCESS_SHADER_READ_BIT,
+				renderer->m_point_lights_buffers.at(frame_idx).m_buffer.m_handle
 			);
+
+			/* Show lights */
+			auto& point_lights_visualizer = render_list.get_render_object(point_light_visualizer_idx);
+
+			show_lights.dispatch(
+				frame_idx,
+				cmd_buf,
+				res_container,
+				light_array,
+				point_lights_visualizer,
+				{ .m_visualizer_scale = 0.1f }
+			);
+
+			if (point_lights_visualizer.m_instances_buffer)
+			{
+				vren::vk_utils::buffer_barrier(
+					cmd_buf,
+					VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+					VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+					VK_ACCESS_SHADER_WRITE_BIT,
+					VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+					point_lights_visualizer.m_instances_buffer->m_buffer.m_handle
+				);
+				res_container.add_resource(point_lights_visualizer.m_instances_buffer);
+			}
 
 			/* Renders the scene */
 			profiler.profile(prof_slot + vren_demo::profile_slot::MainPass, cmd_buf, res_container, [&]()

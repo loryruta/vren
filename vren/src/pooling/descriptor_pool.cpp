@@ -48,7 +48,7 @@ vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLay
 
 	if (m_unused_objects.size() > 0)
 	{
-		// If a descriptor set allocated for the requested descriptor set layout is found, then returns it.
+		// If an unused descriptor set allocated for the requested descriptor set layout is found, then returns it.
 
 		for (auto it = m_unused_objects.begin(); it != m_unused_objects.end(); it++)
 		{
@@ -61,13 +61,14 @@ vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLay
 			}
 		}
 
-		// Otherwise takes the last descriptor set and takes it back to the pool,
-		// then the same pool will be used to allocate a new descriptor set for the requested descriptor set layout.
+		// Otherwise takes the first descriptor set (which is the less used), frees it from its pool and
+		// allocate a new descriptor set from it for the given layout.
 
-		auto desc_set = m_unused_objects.back();
-		m_unused_objects.pop_back();
+		auto desc_set = m_unused_objects.front();
+		m_unused_objects.erase(m_unused_objects.begin()); // TODO not efficient, prefer the use of std::deque
 
-		vkResetDescriptorPool(m_context->m_device, desc_set.m_descriptor_pool, NULL);
+		vkFreeDescriptorSets(m_context->m_device, desc_set.m_descriptor_pool, 1, &desc_set.m_descriptor_set);
+
 		desc_pool = desc_set.m_descriptor_pool;
 	}
 	else if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)

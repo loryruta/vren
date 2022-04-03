@@ -24,6 +24,8 @@ add_executable(vren_demo
         src/ui.cpp
         src/comp/move_lights.hpp
         src/comp/move_lights.cpp
+        src/comp/show_lights.hpp
+        src/comp/show_lights.cpp
 )
 
 # vren_demo
