@@ -37,8 +37,13 @@ function (setup_resources TARGET_NAME)
     # Shaders
     set(SHADERS "")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/simple_draw.vert" "${RESOURCES_DIR}/simple_draw.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/simple_draw.frag" "${RESOURCES_DIR}/simple_draw.frag.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw_line.vert" "${RESOURCES_DIR}/shaders/dbg_draw_line.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw_point.vert" "${RESOURCES_DIR}/shaders/dbg_draw_point.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.vert" "${RESOURCES_DIR}/shaders/dbg_draw.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.frag" "${RESOURCES_DIR}/shaders/dbg_draw.frag.bin")
+
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.vert" "${RESOURCES_DIR}/shaders/pbr_draw.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${RESOURCES_DIR}/shaders/pbr_draw.frag.bin")
 
     add_custom_target(${TARGET_NAME}_shaders DEPENDS ${SHADERS})
 

@@ -21,8 +21,6 @@ layout(push_constant) uniform PushConstants
     float _pad2[2];
 } push_constants;
 
-// TODO dt ?
-
 /* */
 
 struct PointLight
