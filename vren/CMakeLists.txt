@@ -46,6 +46,8 @@ set(SRC
         src/utils/shader.cpp
         src/utils/barrier.hpp
         src/shapes.hpp
+        src/dbg_renderer.hpp
+        src/dbg_renderer.cpp
 )
 
 add_library(vren ${SRC})

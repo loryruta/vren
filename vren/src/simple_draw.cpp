@@ -15,10 +15,10 @@ vren::simple_draw_pass::simple_draw_pass(
 	m_renderer(&renderer),
 
 	m_vertex_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/simple_draw.vert.bin")
+		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/shaders/pbr_draw.vert.bin")
 	)),
 	m_fragment_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/simple_draw.frag.bin")
+		vren::vk_utils::load_and_describe_shader(toolbox->m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
 	)),
 
 	m_pipeline(_create_graphics_pipeline())
