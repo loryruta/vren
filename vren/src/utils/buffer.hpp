@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <functional>
 
 #include "vk_raii.hpp"
 
@@ -56,9 +57,9 @@ namespace vren::vk_utils
 	);
 
 	void copy_buffer(
-		vren::vk_utils::toolbox const& tb,
-		vren::vk_utils::buffer& src_buffer,
-		vren::vk_utils::buffer& dst_buffer,
+		vren::vk_utils::toolbox const& toolbox,
+		VkBuffer src_buf,
+		VkBuffer dst_buf,
 		size_t size,
 		size_t src_offset,
 		size_t dst_offset
@@ -88,4 +89,33 @@ namespace vren::vk_utils
 		vren::instance_data const* instances,
 		size_t instances_count
 	);
+
+	// ------------------------------------------------------------------------------------------------
+	// resizable_buffer
+	// ------------------------------------------------------------------------------------------------
+
+	class resizable_buffer
+	{
+	public:
+		static constexpr size_t k_block_size = 1024 * 1024; // 1MB
+
+	private:
+		VkBufferUsageFlags m_buffer_usage;
+
+	public:
+		vren::vk_utils::toolbox const* m_toolbox;
+
+		std::shared_ptr<vren::vk_utils::buffer> m_buffer;
+		size_t m_size = 0;
+		size_t m_offset = 0;
+
+		resizable_buffer(
+			vren::vk_utils::toolbox const& toolbox,
+			VkBufferUsageFlags buffer_usage
+		);
+		~resizable_buffer();
+
+		void clear();
+		void push_value(void const* data, size_t length);
+	};
 }
