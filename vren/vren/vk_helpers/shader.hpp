@@ -39,13 +39,13 @@ namespace vren::vk_utils
 		std::vector<VkPushConstantRange> m_push_constant_ranges;
 	};
 
-	shader create_and_describe_shader(
+	shader load_shader(
 		vren::context const& ctx,
 		size_t spv_code_size,
 		uint32_t* spv_code
 	);
 
-	shader load_and_describe_shader(
+	shader load_shader_from_file(
 		vren::context const& ctx,
 		char const* shad_path
 	);

@@ -5,7 +5,7 @@ vren_demo::show_lights::show_lights(vren::context const& ctx, vren::renderer& re
 
 	m_pipeline(vren::vk_utils::create_compute_pipeline(
 		ctx,
-		vren::vk_utils::load_and_describe_shader(ctx, "./resources/shaders/show_lights.comp.bin")
+		vren::vk_utils::load_shader_from_file(ctx, "./resources/shaders/show_lights.comp.bin")
 	))
 {}
 

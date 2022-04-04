@@ -97,7 +97,7 @@ create_descriptor_set_layouts(
 }
 
 vren::vk_utils::shader
-vren::vk_utils::create_and_describe_shader(
+vren::vk_utils::load_shader(
 	vren::context const& ctx,
 	size_t spv_code_size,
 	uint32_t* spv_code
@@ -179,14 +179,14 @@ vren::vk_utils::create_and_describe_shader(
 }
 
 vren::vk_utils::shader
-vren::vk_utils::load_and_describe_shader(
+vren::vk_utils::load_shader_from_file(
 	vren::context const& ctx,
 	char const* shad_path
 )
 {
 	std::vector<char> buf;
 	load_bin_file(shad_path, buf);
-	return create_and_describe_shader(ctx, buf.size(), reinterpret_cast<uint32_t*>(buf.data()));
+	return load_shader(ctx, buf.size(), reinterpret_cast<uint32_t*>(buf.data()));
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

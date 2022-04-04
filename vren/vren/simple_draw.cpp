@@ -140,10 +140,9 @@ vren::vk_utils::pipeline vren::simple_draw_pass::create_graphics_pipeline()
 	/* */
 
 	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_and_describe_shader(*m_context, ".vren/resources/shaders/pbr_draw.vert.bin"),
-		vren::vk_utils::load_and_describe_shader(*m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.vert.bin"),
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
 	};
-
 	return vren::vk_utils::create_graphics_pipeline(
 		*m_context,
 		shaders,
