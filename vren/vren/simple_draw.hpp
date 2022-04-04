@@ -24,18 +24,16 @@ namespace vren
 	class simple_draw_pass
 	{
 	public:
-		static constexpr uint32_t k_material_descriptor_set = 0;
-		static constexpr uint32_t k_light_array_descriptor_set = 1;
+		static constexpr uint32_t k_material_descriptor_set_idx = 0;
+		static constexpr uint32_t k_light_array_descriptor_set_idx = 1;
 
 	private:
 		vren::context const* m_context;
 		vren::renderer* m_renderer;
 
-		std::shared_ptr<vren::vk_utils::self_described_shader> m_vertex_shader;
-		std::shared_ptr<vren::vk_utils::self_described_shader> m_fragment_shader;
-		vren::vk_utils::self_described_graphics_pipeline m_pipeline;
+		vren::vk_utils::pipeline m_pipeline;
 
-		vren::vk_utils::self_described_graphics_pipeline _create_graphics_pipeline();
+		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
 		simple_draw_pass(

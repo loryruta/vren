@@ -14,17 +14,10 @@ vren::simple_draw_pass::simple_draw_pass(
 	m_context(&ctx),
 	m_renderer(&renderer),
 
-	m_vertex_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(ctx, ".vren/resources/shaders/pbr_draw.vert.bin")
-	)),
-	m_fragment_shader(std::make_shared<vren::vk_utils::self_described_shader>(
-		vren::vk_utils::load_and_describe_shader(ctx, ".vren/resources/shaders/pbr_draw.frag.bin")
-	)),
-
-	m_pipeline(_create_graphics_pipeline())
+	m_pipeline(create_graphics_pipeline())
 {}
 
-vren::vk_utils::self_described_graphics_pipeline vren::simple_draw_pass::_create_graphics_pipeline()
+vren::vk_utils::pipeline vren::simple_draw_pass::create_graphics_pipeline()
 {
 	/* Vertex input state */
 	auto binding_descriptions = vren::render_object::get_all_binding_desc();
@@ -147,10 +140,10 @@ vren::vk_utils::self_described_graphics_pipeline vren::simple_draw_pass::_create
 	/* */
 
 	return vren::vk_utils::create_graphics_pipeline(
-		ctx,
+		*m_context,
 		{
-			m_vertex_shader,
-			m_fragment_shader
+			vren::vk_utils::load_and_describe_shader(*m_context, ".vren/resources/shaders/pbr_draw.vert.bin"),
+			vren::vk_utils::load_and_describe_shader(*m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
 		},
 		&vtx_input_info,
 		&input_assembly_info,
@@ -175,34 +168,20 @@ void vren::simple_draw_pass::record_commands(
 	vren::camera const& camera
 )
 {
-	/* Descriptor set layouts */
-	auto mat_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_material_descriptor_set);
-	auto light_arr_desc_set_layout = m_fragment_shader->get_descriptor_set_layout(k_light_array_descriptor_set);
+	m_pipeline.bind(cmd_buf);
 
-	vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.m_pipeline.m_handle);
-
-	// Camera
-	vkCmdPushConstants(cmd_buf, m_pipeline.m_pipeline_layout.m_handle, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vren::camera), &camera);
+	/* Camera */
+	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
 
 	/* Light array */
-	auto light_arr_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-		m_context->m_toolbox->m_descriptor_pool.acquire(light_arr_desc_set_layout)
-	);
-	m_renderer->write_light_array_descriptor_set(
-		frame_idx,
-		light_arr_desc_set->m_handle.m_descriptor_set
-	);
-	vkCmdBindDescriptorSets(
+	m_pipeline.acquire_and_bind_descriptor_set(
+		*m_context,
 		cmd_buf,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		m_pipeline.m_pipeline_layout.m_handle,
-		k_light_array_descriptor_set,
-		1,
-		&light_arr_desc_set->m_handle.m_descriptor_set,
-		0,
-		nullptr
-	);
-	res_container.add_resource(light_arr_desc_set);
+		res_container,
+		VK_SHADER_STAGE_FRAGMENT_BIT, k_light_array_descriptor_set_idx,
+		[&](VkDescriptorSet desc_set){
+			m_renderer->write_light_array_descriptor_set(frame_idx, desc_set);
+		});
 
 	/* Render objects */
 	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
@@ -232,24 +211,15 @@ void vren::simple_draw_pass::record_commands(
 		res_container.add_resource(render_obj.m_instances_buffer);
 
 		/* Material */
-		auto mat_desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-			m_context->m_toolbox->m_descriptor_pool.acquire(mat_desc_set_layout)
-		);
-		vren::update_material_descriptor_set(*m_context, *render_obj.m_material, mat_desc_set->m_handle.m_descriptor_set);
-		vkCmdBindDescriptorSets(
+		m_pipeline.acquire_and_bind_descriptor_set(
+			*m_context,
 			cmd_buf,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_pipeline.m_pipeline_layout.m_handle,
-			k_material_descriptor_set,
-			1,
-			&mat_desc_set->m_handle.m_descriptor_set,
-			0,
-			nullptr
-		);
-		res_container.add_resources(
-			mat_desc_set,
-			render_obj.m_material
-		);
+			res_container,
+			VK_SHADER_STAGE_FRAGMENT_BIT, k_material_descriptor_set_idx,
+			[&](VkDescriptorSet desc_set){
+				vren::update_material_descriptor_set(*m_context, *render_obj.m_material, desc_set);
+			});
+		res_container.add_resources(render_obj.m_material);
 
 		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
 	}
