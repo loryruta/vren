@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.h>
 
 #include "object_pool.hpp"
-#include "utils/vk_raii.hpp"
+#include "vk_helpers/vk_raii.hpp"
 
 namespace vren
 {

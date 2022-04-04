@@ -8,8 +8,8 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_raii.hpp"
-#include "resource_container.hpp"
-#include "pooling/command_pool.hpp"
+#include "base/resource_container.hpp"
+#include "pools/command_pool.hpp"
 
 namespace vren
 {

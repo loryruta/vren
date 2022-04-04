@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "resource_container.hpp"
-#include "utils/vk_raii.hpp"
+#include "base/resource_container.hpp"
+#include "vk_helpers/vk_raii.hpp"
 
 namespace vren
 {
@@ -11,7 +11,7 @@ namespace vren
 	class context;
 
 	// ------------------------------------------------------------------------------------------------
-	// profiler
+	// Profiler
 	// ------------------------------------------------------------------------------------------------
 
 	class profiler

@@ -1,9 +1,8 @@
 #include "misc.hpp"
 
 #include "context.hpp"
-#include "toolbox.hpp"
-#include "pooling/command_pool.hpp"
-#include "pooling/fence_pool.hpp"
+#include "pools/command_pool.hpp"
+#include "pools/fence_pool.hpp"
 
 void vren::vk_utils::check(VkResult result)
 {

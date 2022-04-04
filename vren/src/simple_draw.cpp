@@ -4,8 +4,8 @@
 
 #include "context.hpp"
 #include "renderer.hpp"
-#include "utils/misc.hpp"
-#include "utils/shader.hpp"
+#include "vk_helpers/misc.hpp"
+#include "vk_helpers/shader.hpp"
 
 vren::simple_draw_pass::simple_draw_pass(
 	vren::context const& ctx,

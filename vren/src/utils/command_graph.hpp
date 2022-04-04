@@ -1,8 +1,8 @@
 #pragma once
 
-#include "utils/vk_raii.hpp"
-#include "pooling/command_pool.hpp"
-#include "resource_container.hpp"
+#include "vk_helpers/vk_raii.hpp"
+#include "pools/command_pool.hpp"
+#include "base/resource_container.hpp"
 
 namespace vren // TODO vk_utils
 {

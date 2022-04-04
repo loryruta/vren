@@ -4,7 +4,7 @@
 
 #include <glm/glm.hpp>
 
-#include "utils/image.hpp"
+#include "vk_helpers/image.hpp"
 
 namespace vren
 {

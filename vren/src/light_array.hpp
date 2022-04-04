@@ -4,8 +4,8 @@
 
 #include <glm/glm.hpp>
 
-#include "pooling/descriptor_pool.hpp"
-#include "utils/buffer.hpp"
+#include "pools/descriptor_pool.hpp"
+#include "vk_helpers/buffer.hpp"
 
 namespace vren
 {

@@ -9,15 +9,8 @@
 #include "simple_draw.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
-#include "pooling/command_pool.hpp"
-#include "resource_container.hpp"
-#include "simple_draw.hpp"
-
-// Forward decl
-namespace vren::vk_utils
-{
-	class toolbox;
-}
+#include "pools/command_pool.hpp"
+#include "base/resource_container.hpp"
 
 namespace vren
 {

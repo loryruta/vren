@@ -15,9 +15,9 @@
 #include "camera.hpp"
 #include "tinygltf_loader.hpp"
 #include "imgui_renderer.hpp"
-#include "utils/profiler.hpp"
+#include "tool/profiler.hpp"
 #include "utils/barrier.hpp"
-#include "shapes.hpp"
+#include "tool/shapes.hpp"
 
 #include "ui.hpp"
 #include "comp/move_lights.hpp"

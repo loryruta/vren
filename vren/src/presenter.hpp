@@ -6,11 +6,11 @@
 #include <vulkan/vulkan.h>
 
 #include "renderer.hpp"
-#include "utils/image.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/image.hpp"
+#include "vk_helpers/misc.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
-#include "resource_container.hpp"
+#include "base/resource_container.hpp"
 
 namespace vren
 {

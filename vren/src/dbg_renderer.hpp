@@ -1,8 +1,8 @@
 #pragma once
 
-#include "utils/vk_raii.hpp"
-#include "utils/buffer.hpp"
-#include "utils/shader.hpp"
+#include "vk_helpers/vk_raii.hpp"
+#include "vk_helpers/buffer.hpp"
+#include "vk_helpers/shader.hpp"
 
 namespace vren
 {

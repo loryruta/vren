@@ -4,7 +4,7 @@
 
 #include "context.hpp"
 #include "renderer.hpp"
-#include "resource_container.hpp"
+#include "base/resource_container.hpp"
 #include "utils/vk_raii.hpp"
 #include "utils/buffer.hpp"
 #include "utils/shader.hpp"

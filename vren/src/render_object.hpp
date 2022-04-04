@@ -9,8 +9,8 @@
 #include <vulkan/vulkan.h>
 
 #include "material.hpp"
-#include "utils/image.hpp"
-#include "utils/buffer.hpp"
+#include "vk_helpers/image.hpp"
+#include "vk_helpers/buffer.hpp"
 
 namespace vren
 {

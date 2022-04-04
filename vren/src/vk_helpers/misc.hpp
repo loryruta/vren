@@ -4,8 +4,7 @@
 #include <functional>
 
 #include "vk_raii.hpp"
-#include "resource_container.hpp"
-#include "toolbox.hpp"
+#include "base/resource_container.hpp"
 
 namespace vren
 {

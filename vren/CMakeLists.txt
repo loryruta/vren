@@ -23,7 +23,7 @@ set(SRC
         src/imgui_renderer.cpp
         src/pooling/command_pool.hpp
         src/pooling/command_pool.cpp
-        src/resource_container.hpp
+        src/base/resource_container.hpp
         src/utils/buffer.hpp
         src/utils/buffer.cpp
         src/utils/image.hpp
@@ -31,21 +31,21 @@ set(SRC
         src/utils/misc.hpp
         src/utils/misc.cpp
         src/utils/vk_raii.hpp
-        src/command_graph.hpp
-        src/command_graph.cpp
+        src/tool/command_graph.hpp
+        src/tool/command_graph.cpp
         src/pooling/object_pool.hpp
         src/pooling/fence_pool.cpp
         src/pooling/fence_pool.hpp
         src/utils/image_layout_transitions.hpp
         src/utils/image_layout_transitions.cpp
-        src/utils/profiler.hpp
-        src/utils/profiler.cpp
+        src/tool/profiler.hpp
+        src/tool/profiler.cpp
         src/toolbox.hpp
         src/toolbox.cpp
         src/utils/shader.hpp
         src/utils/shader.cpp
         src/utils/barrier.hpp
-        src/shapes.hpp
+        src/tool/shapes.hpp
         src/dbg_renderer.hpp
         src/dbg_renderer.cpp
 )

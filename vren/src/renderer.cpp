@@ -3,8 +3,8 @@
 #include <array>
 
 #include "context.hpp"
-#include "utils/image.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/image.hpp"
+#include "vk_helpers/misc.hpp"
 
 template<typename _t, size_t... _is> // TODO put in utilities?
 auto create_array_impl(std::function<_t()> const& create_entry_fn, std::index_sequence<_is...> _)

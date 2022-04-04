@@ -7,6 +7,8 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
+#include "context.hpp"
+
 #define VREN_DEFINE_VK_RAII(_raii_t, _t, _dtor_lambda) \
     namespace vren { \
         using _raii_t = vren::vk_handle_wrapper<_t>; \
@@ -23,7 +25,7 @@ namespace vren
 	class context;
 
 	// ------------------------------------------------------------------------------------------------
-	// vk_handle_wrapper
+	// VK handle wrapper (lifetime guard)
 	// ------------------------------------------------------------------------------------------------
 
 	template<typename T>

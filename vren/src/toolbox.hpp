@@ -2,10 +2,10 @@
 
 #include <memory>
 
-#include "pooling/command_pool.hpp"
-#include "pooling/descriptor_pool.hpp"
-#include "pooling/fence_pool.hpp"
-#include "utils/image.hpp"
+#include "pools/command_pool.hpp"
+#include "pools/descriptor_pool.hpp"
+#include "pools/fence_pool.hpp"
+#include "vk_helpers/image.hpp"
 
 namespace vren
 {

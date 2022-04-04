@@ -1,7 +1,7 @@
 #include "dbg_renderer.hpp"
 
-#include "utils/buffer.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/buffer.hpp"
+#include "vk_helpers/misc.hpp"
 
 vren::dbg_renderer::dbg_renderer(
 	vren::context const& ctx

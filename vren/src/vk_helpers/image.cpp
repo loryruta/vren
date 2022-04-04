@@ -4,8 +4,8 @@
 
 #include "context.hpp"
 #include "buffer.hpp"
-#include "utils/image_layout_transitions.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/image_layout_transitions.hpp"
+#include "vk_helpers/misc.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image

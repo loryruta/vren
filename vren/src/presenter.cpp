@@ -3,8 +3,7 @@
 #include <iostream>
 
 #include "context.hpp"
-#include "toolbox.hpp"
-#include "utils/image_layout_transitions.hpp"
+#include "vk_helpers/image_layout_transitions.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Swapchain frame

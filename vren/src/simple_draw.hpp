@@ -6,10 +6,10 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "resource_container.hpp"
+#include "base/resource_container.hpp"
 #include "render_list.hpp"
 #include "light_array.hpp"
-#include "utils/shader.hpp"
+#include "vk_helpers/shader.hpp"
 
 namespace vren
 {

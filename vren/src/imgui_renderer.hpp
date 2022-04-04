@@ -8,7 +8,7 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
-#include "resource_container.hpp"
+#include "base/resource_container.hpp"
 #include "renderer.hpp"
 
 namespace vren
@@ -31,7 +31,6 @@ namespace vren
 		void init_render_pass();
 
 	public:
-		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
 		GLFWwindow* m_window;
 
 		explicit imgui_renderer(vren::context const& ctx, GLFWwindow* window);

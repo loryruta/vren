@@ -6,9 +6,8 @@
 #include <vk_mem_alloc.h>
 
 #include "context.hpp"
-#include "toolbox.hpp"
 #include "render_object.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/misc.hpp"
 
 // References:
 // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html

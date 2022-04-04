@@ -1,7 +1,7 @@
 #include "material.hpp"
 
 #include "context.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/misc.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Material
