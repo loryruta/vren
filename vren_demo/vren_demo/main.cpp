@@ -8,17 +8,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include "context.hpp"
-#include "toolbox.hpp"
-#include "presenter.hpp"
-#include "utils/buffer.hpp"
-#include "camera.hpp"
-#include "tinygltf_loader.hpp"
-#include "imgui_renderer.hpp"
-#include "tool/profiler.hpp"
-#include "utils/barrier.hpp"
-#include "tool/shapes.hpp"
+#include <vren/context.hpp>
+#include <vren/presenter.hpp>
+#include <vren/vk_helpers/buffer.hpp>
+#include <vren/imgui_renderer.hpp>
+#include <vren/utils/profiler.hpp>
+#include <vren/vk_helpers/barrier.hpp>
+#include <vren/utils/shapes.hpp>
 
+#include "tinygltf_loader.hpp"
+#include "camera.hpp"
 #include "ui.hpp"
 #include "comp/move_lights.hpp"
 #include "comp/show_lights.hpp"
@@ -29,7 +28,7 @@
 GLFWwindow* g_window;
 
 void create_cube(
-	vren::vk_utils::toolbox const& tb,
+	vren::context const& ctx,
 	vren::render_object& render_obj,
 	glm::vec3 position,
 	glm::vec3 rotation,
@@ -37,7 +36,7 @@ void create_cube(
 	std::shared_ptr<vren::material> const& material
 )
 {
-	vren::utils::create_cube(tb, render_obj);
+	vren::utils::create_cube(ctx, render_obj);
 
 	{ // Instances
 		auto transf = glm::identity<glm::mat4>();
@@ -60,7 +59,7 @@ void create_cube(
 
 		auto instances_buf =
 			std::make_shared<vren::vk_utils::buffer>(
-				vren::vk_utils::create_instances_buffer(tb, &inst, 1)
+				vren::vk_utils::create_instances_buffer(ctx, &inst, 1)
 			);
 		render_obj.set_indices_buffer(instances_buf, 1);
 	}
@@ -68,10 +67,7 @@ void create_cube(
 	render_obj.m_material = material;
 }
 
-void create_cube_scene(
-	vren::vk_utils::toolbox const& tb,
-	vren::render_list& render_list
-)
+void create_cube_scene(vren::context const& ctx, vren::render_list& render_list)
 {
 	float const surface_y = 1;
 	float const surface_side = 30;
@@ -81,13 +77,13 @@ void create_cube_scene(
 	{ // Surface
 		auto& surface = render_list.create_render_object();
 
-		auto mat = std::make_shared<vren::material>(tb);
-		mat->m_base_color_texture = tb.m_green_texture;
-		mat->m_metallic_roughness_texture = tb.m_green_texture;
+		auto mat = std::make_shared<vren::material>(ctx);
+		mat->m_base_color_texture = ctx.m_toolbox->m_green_texture;
+		mat->m_metallic_roughness_texture = ctx.m_toolbox->m_green_texture;
 		surface.m_material = mat;
 
 		create_cube(
-			tb,
+			ctx,
 			surface,
 			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
 			glm::vec3(0),
@@ -104,12 +100,12 @@ void create_cube_scene(
 		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
 		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
 
-		auto mat = std::make_shared<vren::material>(tb);
-		mat->m_base_color_texture = tb.m_red_texture;
-		mat->m_metallic_roughness_texture = tb.m_green_texture;
+		auto mat = std::make_shared<vren::material>(ctx);
+		mat->m_base_color_texture = ctx.m_toolbox->m_red_texture;
+		mat->m_metallic_roughness_texture = ctx.m_toolbox->m_green_texture;
 
 		create_cube(
-			tb,
+			ctx,
 			cube,
 			glm::vec3(
 				cos_i * r,
@@ -227,43 +223,41 @@ void launch()
 	ctx_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
 
-	auto ctx = vren::context::create(ctx_info);
-	auto toolbox = vren::vk_utils::toolbox::create(ctx);
+	vren::context ctx(ctx_info);
 
-	/* renderer */
-	auto renderer = vren::renderer::create(toolbox);
-	renderer->m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
+	/* Renderer */
+	vren::renderer renderer(ctx);
+	renderer.m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
-	/* UI renderer */
-	auto ui_renderer = vren::imgui_renderer(toolbox, g_window);
+	/* ImGui renderer */
+	vren::imgui_renderer ui_renderer(ctx, g_window);
 
 	vren::render_list render_list;
 	vren::light_array light_array;
 
-	/* point_light_visualizer */
-
+	/* Point light visualizer */
 	auto& point_light_visualizer = render_list.create_render_object();
-	vren::utils::create_cube(*toolbox, point_light_visualizer);
-	point_light_visualizer.m_material = std::make_shared<vren::material>(*toolbox);
+	vren::utils::create_cube(ctx, point_light_visualizer);
+	point_light_visualizer.m_material = std::make_shared<vren::material>(ctx);
 	point_light_visualizer.m_material->m_base_color_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(*toolbox, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.77f * 255.0f, 255)
+		vren::vk_utils::create_color_texture(ctx, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.77f * 255.0f, 255)
 	);
 
 	uint32_t point_light_visualizer_idx = point_light_visualizer.m_idx;
 
 	/* */
 
-	vren_demo::move_lights move_lights(*renderer);
-	vren_demo::show_lights show_lights(*renderer);
+	vren_demo::move_lights move_lights(ctx, renderer);
+	vren_demo::show_lights show_lights(ctx, renderer);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
-	vren::vk_utils::check(glfwCreateWindowSurface(ctx->m_instance, g_window, nullptr, &surf_handle));
+	vren::vk_utils::check(glfwCreateWindowSurface(ctx.m_instance, g_window, nullptr, &surf_handle));
 	auto surf = std::make_shared<vren::vk_surface_khr>(ctx, surf_handle);
 
-	vren::presenter presenter(toolbox, surf);
+	vren::presenter presenter(ctx, surf);
 
-	auto ui = vren_demo::ui::main_ui(ctx, toolbox, renderer);
+	vren_demo::ui::main_ui ui(ctx, renderer);
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
 
@@ -286,7 +280,7 @@ void launch()
 
 		if (cur_fb_width != fb_width || cur_fb_height != fb_height)
 		{
-			presenter.recreate_swapchain(cur_fb_width, cur_fb_height, renderer->m_render_pass);
+			presenter.recreate_swapchain(cur_fb_width, cur_fb_height, renderer.m_render_pass);
 
 			fb_width = cur_fb_width;
 			fb_height = cur_fb_height;
@@ -342,7 +336,7 @@ void launch()
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				VK_ACCESS_SHADER_WRITE_BIT,
 				VK_ACCESS_TRANSFER_READ_BIT,
-				renderer->m_point_lights_buffers.at(0).m_buffer.m_handle
+				renderer.m_point_lights_buffers.at(0).m_buffer.m_handle
 			);
 
 			for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
@@ -355,8 +349,8 @@ void launch()
 
 				vkCmdCopyBuffer(
 					cmd_buf,
-					renderer->m_point_lights_buffers.at(0).m_buffer.m_handle,
-					renderer->m_point_lights_buffers.at(i).m_buffer.m_handle,
+					renderer.m_point_lights_buffers.at(0).m_buffer.m_handle,
+					renderer.m_point_lights_buffers.at(i).m_buffer.m_handle,
 					1,
 					&buf_cpy
 				);
@@ -368,7 +362,7 @@ void launch()
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 				VK_ACCESS_SHADER_READ_BIT,
-				renderer->m_point_lights_buffers.at(frame_idx).m_buffer.m_handle
+				renderer.m_point_lights_buffers.at(frame_idx).m_buffer.m_handle
 			);
 
 			/* Show lights */
@@ -405,7 +399,7 @@ void launch()
 					.m_projection = camera.get_projection()
 				};
 
-				renderer->render(
+				renderer.render(
 					frame_idx,
 					cmd_buf,
 					res_container,
@@ -429,9 +423,9 @@ void launch()
 		});
 	}
 
-	vkDeviceWaitIdle(ctx->m_device);
+	vkDeviceWaitIdle(ctx.m_device);
 
-	//glfwDestroyWindow(g_window);
+	//glfwDestroyWindow(g_window); // TODO Terminate only AFTER Vulkan instance destruction!
 	//glfwTerminate();
 }
 

@@ -52,7 +52,12 @@ set(SRC
 
 add_library(vren ${SRC})
 
-target_include_directories(vren PUBLIC vren)
+# ------------------------------------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------------------------------------
+
+# Self include
+target_include_directories(vren PRIVATE vren)
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})
@@ -76,4 +81,4 @@ target_link_libraries(vren PUBLIC implot::implot)
 
 # spirv-reflect
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
-target_link_libraries(vren PRIVATE unofficial::spirv-reflect::spirv-reflect)
+target_link_libraries(vren PUBLIC unofficial::spirv-reflect::spirv-reflect)

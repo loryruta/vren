@@ -5,6 +5,7 @@
 #include <spirv_reflect.h>
 
 #include "context.hpp"
+#include "toolbox.hpp"
 #include "misc.hpp"
 
 void load_bin_file(char const* file_path, std::vector<char>& buf)

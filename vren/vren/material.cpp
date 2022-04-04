@@ -1,6 +1,7 @@
 #include "material.hpp"
 
 #include "context.hpp"
+#include "toolbox.hpp"
 #include "vk_helpers/misc.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------

@@ -15,7 +15,6 @@ namespace vren_demo
 		};
 	};
 
-
 	struct profile_info
 	{
 		uint32_t m_frame_idx;

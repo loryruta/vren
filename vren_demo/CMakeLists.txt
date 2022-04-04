@@ -1,47 +1,40 @@
-set(VREN_HOME ".." CACHE PATH "The path to the vren project repository.")
-
-include(FetchContent)
-
-# tinygltfloader
-FetchContent_Declare(
-        tinygltfloader
-        GIT_REPOSITORY https://github.com/syoyo/tinygltf
-        GIT_TAG        v2.5.0
-)
-FetchContent_MakeAvailable(tinygltfloader)
-
-# ------------------------------------------------------------------------------------------------
-# Libraries
-# ------------------------------------------------------------------------------------------------
+set(VREN_HOME ".." CACHE PATH "The path to the vren project repository")
 
 add_executable(vren_demo
-        src/main.cpp
-        src/camera.hpp
-        src/camera.cpp
-        src/tinygltf_loader.hpp
-        src/tinygltf_loader.cpp
-        src/ui.hpp
-        src/ui.cpp
-        src/comp/move_lights.hpp
-        src/comp/move_lights.cpp
-        src/comp/show_lights.hpp
-        src/comp/show_lights.cpp
+        vren_demo/main.cpp
+        vren_demo/camera.hpp
+        vren_demo/camera.cpp
+        vren_demo/tinygltf_loader.hpp
+        vren_demo/tinygltf_loader.cpp
+        vren_demo/ui.hpp
+        vren_demo/ui.cpp
+        vren_demo/comp/move_lights.hpp
+        vren_demo/comp/move_lights.cpp
+        vren_demo/comp/show_lights.hpp
+        vren_demo/comp/show_lights.cpp
 )
 
-# vren_demo
-target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren_demo/src")
+# ------------------------------------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------------------------------------
+
+# Self include
+target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren_demo/vren_demo")
 
 # vren
-target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren/src")
+target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren")
 target_link_libraries(vren_demo PUBLIC vren)
 
-# tinygltfloader
-target_include_directories(vren_demo PUBLIC ${tinygltfloader_SOURCE_DIR})
+# tinyfiledialogs
+find_package(tinyfiledialogs CONFIG REQUIRED)
+target_link_libraries(vren_demo PRIVATE tinyfiledialogs::tinyfiledialogs)
 
-# glfw3
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(vren_demo PUBLIC glfw)
+# tinygltf
+find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
+target_include_directories(vren_demo PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 
+# ------------------------------------------------------------------------------------------------
+# Resources
 # ------------------------------------------------------------------------------------------------
 
 include("${VREN_HOME}/VRen.cmake")

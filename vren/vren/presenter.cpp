@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "context.hpp"
+#include "toolbox.hpp"
 #include "vk_helpers/image_layout_transitions.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------

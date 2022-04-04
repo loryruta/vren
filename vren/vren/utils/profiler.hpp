@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "base/resource_container.hpp"
-#include "vk_helpers/vk_raii.hpp"
+#include <vren/base/resource_container.hpp>
+#include <vren/vk_helpers/vk_raii.hpp>
 
 namespace vren
 {

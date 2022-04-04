@@ -5,6 +5,8 @@
 
 #include "vk_raii.hpp"
 #include "base/resource_container.hpp"
+#include "pools/command_pool.hpp"
+#include "pools/fence_pool.hpp"
 
 namespace vren
 {

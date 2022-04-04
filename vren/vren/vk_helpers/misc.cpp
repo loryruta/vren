@@ -1,6 +1,7 @@
 #include "misc.hpp"
 
 #include "context.hpp"
+#include "toolbox.hpp"
 #include "pools/command_pool.hpp"
 #include "pools/fence_pool.hpp"
 

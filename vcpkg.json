@@ -1,7 +1,7 @@
 {
     "name": "vren",
     "version": "1.0.0",
-    "description": "VRen (Vulkan RENderer)",
+    "description": "my Vulkan RENderer",
     "dependencies": [
         "glfw3",
         "glm",
@@ -15,9 +15,12 @@
             ]
         },
         "implot",
-        "tinyfiledialogs",
         "stb",
-        "gtest",
-        "spirv-reflect"
+        "spirv-reflect",
+
+        "tinyfiledialogs",
+        "tinygltf",
+
+        "gtest"
     ]
 }

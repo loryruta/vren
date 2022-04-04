@@ -7,11 +7,12 @@
 
 #include "profile.hpp"
 
-#include "context.hpp"
-#include "renderer.hpp"
+#include <vren/context.hpp>
+#include <vren/renderer.hpp>
+#include <vren/toolbox.hpp>
+#include <vren/vk_helpers/shader.hpp>
+
 #include "tinygltf_loader.hpp"
-#include "toolbox.hpp"
-#include "utils/shader.hpp"
 #include "comp/move_lights.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
@@ -47,9 +48,7 @@ namespace vren_demo::ui
 			m_scene_max = glm::vec3(0);
 		float m_speed = 1.0f;
 
-		scene_ui(
-			std::shared_ptr<vren::vk_utils::toolbox> const& tb
-		);
+		scene_ui(vren::context const& ctx);
 
 		void show(
 			vren::render_list& render_list,
@@ -94,9 +93,8 @@ namespace vren_demo::ui
 	class main_ui
 	{
 	private:
-		std::shared_ptr<vren::context> m_context;
-		std::shared_ptr<vren::vk_utils::toolbox> m_toolbox;
-		std::shared_ptr<vren::renderer> m_renderer;
+		vren::context const* m_context;
+		vren::renderer const* m_renderer;
 
 		ImGuiID
 			m_main_dock_id,
@@ -108,11 +106,7 @@ namespace vren_demo::ui
 		vren_demo::ui::fps_ui m_fps_ui;
 		vren_demo::ui::scene_ui m_scene_ui;
 
-		main_ui(
-			std::shared_ptr<vren::context> const& ctx,
-			std::shared_ptr<vren::vk_utils::toolbox> const& tb,
-			std::shared_ptr<vren::renderer> const& renderer
-		);
+		main_ui(vren::context const& ctx, vren::renderer const& renderer);
 
 		void show_vk_pool_info_ui();
 		void show(

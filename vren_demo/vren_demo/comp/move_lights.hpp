@@ -2,43 +2,41 @@
 
 #include <memory>
 
-#include "context.hpp"
-#include "renderer.hpp"
-#include "base/resource_container.hpp"
-#include "utils/vk_raii.hpp"
-#include "utils/buffer.hpp"
-#include "utils/shader.hpp"
+#include <vren/context.hpp>
+#include <vren/renderer.hpp>
+#include <vren/base/resource_container.hpp>
+#include <vren/vk_helpers/vk_raii.hpp>
+#include <vren/vk_helpers/buffer.hpp>
+#include <vren/vk_helpers/shader.hpp>
 
 namespace vren_demo
 {
 	// ------------------------------------------------------------------------------------------------
-	// light_array_movement_buf
+	// Light array movement buffer
 	// ------------------------------------------------------------------------------------------------
 
 	class light_array_movement_buf
 	{
 	private:
-		std::shared_ptr<vren::context> m_context;
+		vren::context const* m_context;
 
 	public:
 		vren::vk_utils::buffer m_point_lights_dirs;
 
-		light_array_movement_buf(
-			vren::vk_utils::toolbox const& tb
-		);
+		light_array_movement_buf(vren::context const& ctx);
 
 		void write_descriptor_set(VkDescriptorSet desc_set);
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// move_lights
+	// Move lights
 	// ------------------------------------------------------------------------------------------------
 
 	class move_lights
 	{
 	public:
-		static constexpr uint32_t k_light_arr_desc_set         = 0;
-		static constexpr uint32_t k_light_arr_mov_buf_desc_set = 1;
+		static constexpr uint32_t k_light_array_descriptor_set_idx = 0;
+		static constexpr uint32_t k_light_array_movement_buffer_descriptor_set_idx = 1;
 
 		struct push_constants
 		{
@@ -49,16 +47,16 @@ namespace vren_demo
 		};
 
 	private:
+		vren::context const* m_context;
 		vren::renderer* m_renderer;
 
 		/* light_array_movement_buf */
 		light_array_movement_buf m_light_array_movement_buf;
 
-		std::shared_ptr<vren::vk_utils::self_described_shader> m_shader;
-		vren::vk_utils::self_described_compute_pipeline m_pipeline;
+		vren::vk_utils::pipeline m_pipeline;
 
 	public:
-		move_lights(vren::renderer& renderer);
+		move_lights(vren::context const& ctx, vren::renderer& renderer);
 
 		void dispatch(
 			int frame_idx,

@@ -1,7 +1,7 @@
 #include "command_graph.hpp"
 
 #include "context.hpp"
-#include "utils/misc.hpp"
+#include "vk_helpers/misc.hpp"
 
 // ------------------------------------------------------------------------------------------------
 // command_graph_node
@@ -30,13 +30,13 @@ vren::command_graph::command_graph(
 	m_context(ctx),
 	m_command_pool(cmd_pool),
 
-	m_src_semaphore(vren::vk_utils::create_semaphore(ctx)),
-	m_dst_semaphore(vren::vk_utils::create_semaphore(ctx))
+	m_src_semaphore(vren::vk_utils::create_semaphore(*ctx)),
+	m_dst_semaphore(vren::vk_utils::create_semaphore(*ctx))
 {}
 
 vren::vk_semaphore& vren::command_graph::acquire_semaphore()
 {
-	return m_acquired_semaphores.emplace_back(vren::vk_utils::create_semaphore(m_context));
+	return m_acquired_semaphores.emplace_back(vren::vk_utils::create_semaphore(*m_context));
 }
 
 vren::command_graph_node& vren::command_graph::create_node()

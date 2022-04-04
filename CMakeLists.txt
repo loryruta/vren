@@ -5,8 +5,8 @@ project(vren)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(BUILD_TEST "Should build unit tests?" ON)
 option(BUILD_DEMO "Should build the renderer demo?" ON)
+option(BUILD_TEST "Should build unit tests?" ON)
 
 # Vulkan
 find_package(Vulkan REQUIRED)

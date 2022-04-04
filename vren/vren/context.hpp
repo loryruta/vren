@@ -10,10 +10,14 @@
 #include <glm/glm.hpp>
 
 #include "config.hpp"
-#include "toolbox.hpp"
 
 namespace vren
 {
+	// Forward decl
+	class toolbox;
+
+	// ------------------------------------------------------------------------------------------------
+
 	void get_supported_layers(std::vector<VkLayerProperties>& layers); // todo in utils/misc ?
 	bool does_support_layers(std::vector<char const*> const& layers);
 

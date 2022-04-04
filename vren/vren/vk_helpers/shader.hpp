@@ -3,9 +3,15 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <span>
 
-#include "context.hpp"
 #include "vk_raii.hpp"
+
+namespace vren
+{
+	// Forward decl
+	class context;
+}
 
 namespace vren::vk_utils
 {
@@ -78,7 +84,7 @@ namespace vren::vk_utils
 
 	pipeline create_graphics_pipeline(
 		vren::context const& ctx,
-		std::vector<shader> const& shaders,
+		std::span<shader> const& shaders,
 		VkPipelineVertexInputStateCreateInfo* vtx_input_state_info,
 		VkPipelineInputAssemblyStateCreateInfo* input_assembly_state_info,
 		VkPipelineTessellationStateCreateInfo* tessellation_state_info,
