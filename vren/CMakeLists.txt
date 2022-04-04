@@ -1,58 +1,58 @@
 
 set(SRC
-        src/render_list.cpp
-        src/render_list.hpp
-        src/render_object.cpp
-        src/render_object.hpp
-        src/context.hpp
-        src/context.cpp
-        src/renderer.hpp
-        src/renderer.cpp
-        src/simple_draw.hpp
-        src/simple_draw.cpp
-        src/config.hpp
-        src/presenter.cpp
-        src/presenter.hpp
-        src/material.hpp
-        src/material.cpp
-        src/light_array.cpp
-        src/light_array.hpp
-        src/pooling/descriptor_pool.hpp
-        src/pooling/descriptor_pool.cpp
-        src/imgui_renderer.hpp
-        src/imgui_renderer.cpp
-        src/pooling/command_pool.hpp
-        src/pooling/command_pool.cpp
-        src/base/resource_container.hpp
-        src/utils/buffer.hpp
-        src/utils/buffer.cpp
-        src/utils/image.hpp
-        src/utils/image.cpp
-        src/utils/misc.hpp
-        src/utils/misc.cpp
-        src/utils/vk_raii.hpp
-        src/tool/command_graph.hpp
-        src/tool/command_graph.cpp
-        src/pooling/object_pool.hpp
-        src/pooling/fence_pool.cpp
-        src/pooling/fence_pool.hpp
-        src/utils/image_layout_transitions.hpp
-        src/utils/image_layout_transitions.cpp
-        src/tool/profiler.hpp
-        src/tool/profiler.cpp
-        src/toolbox.hpp
-        src/toolbox.cpp
-        src/utils/shader.hpp
-        src/utils/shader.cpp
-        src/utils/barrier.hpp
-        src/tool/shapes.hpp
-        src/dbg_renderer.hpp
-        src/dbg_renderer.cpp
+        vren/render_list.cpp
+        vren/render_list.hpp
+        vren/render_object.cpp
+        vren/render_object.hpp
+        vren/context.hpp
+        vren/context.cpp
+        vren/renderer.hpp
+        vren/renderer.cpp
+        vren/simple_draw.hpp
+        vren/simple_draw.cpp
+        vren/config.hpp
+        vren/presenter.cpp
+        vren/presenter.hpp
+        vren/material.hpp
+        vren/material.cpp
+        vren/light_array.cpp
+        vren/light_array.hpp
+        vren/pools/descriptor_pool.hpp
+        vren/pools/descriptor_pool.cpp
+        vren/imgui_renderer.hpp
+        vren/imgui_renderer.cpp
+        vren/pools/command_pool.hpp
+        vren/pools/command_pool.cpp
+        vren/base/resource_container.hpp
+        vren/vk_helpers/buffer.hpp
+        vren/vk_helpers/buffer.cpp
+        vren/vk_helpers/image.hpp
+        vren/vk_helpers/image.cpp
+        vren/vk_helpers/misc.hpp
+        vren/vk_helpers/misc.cpp
+        vren/vk_helpers/vk_raii.hpp
+        vren/utils/command_graph.hpp
+        vren/utils/command_graph.cpp
+        vren/pools/object_pool.hpp
+        vren/pools/fence_pool.cpp
+        vren/pools/fence_pool.hpp
+        vren/vk_helpers/image_layout_transitions.hpp
+        vren/vk_helpers/image_layout_transitions.cpp
+        vren/utils/profiler.hpp
+        vren/utils/profiler.cpp
+        vren/toolbox.hpp
+        vren/toolbox.cpp
+        vren/vk_helpers/shader.hpp
+        vren/vk_helpers/shader.cpp
+        vren/vk_helpers/barrier.hpp
+        vren/utils/shapes.hpp
+        vren/dbg_renderer.hpp
+        vren/dbg_renderer.cpp
 )
 
 add_library(vren ${SRC})
 
-target_include_directories(vren PUBLIC src)
+target_include_directories(vren PUBLIC vren)
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})
