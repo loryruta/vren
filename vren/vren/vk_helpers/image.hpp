@@ -49,6 +49,9 @@ namespace vren::vk_utils
         void* img_data
     );
 
+	void clear_color_image(VkCommandBuffer cmd_buf, VkImage img, VkClearColorValue clear_color);
+	void clear_depth_image(VkCommandBuffer cmd_buf, VkImage img, VkClearDepthStencilValue clear_depth_stencil);
+
 	// ------------------------------------------------------------------------------------------------
 	// Image view
 	// ------------------------------------------------------------------------------------------------

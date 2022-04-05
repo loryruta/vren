@@ -56,7 +56,7 @@ namespace vren
 		{
 			if (m_handle != VK_NULL_HANDLE)
 			{
-				std::cout << "Destroying " << typeid(_t).name() << std::endl;
+				//std::cout << "Destroying " << typeid(_t).name() << std::endl;
 
 				vren::destroy_vk_handle<_t>(*m_context, m_handle);
 				m_handle = VK_NULL_HANDLE;

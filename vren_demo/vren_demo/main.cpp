@@ -324,6 +324,43 @@ void launch()
 			prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
 			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 
+			/* Clear */
+			vren::vk_utils::image_barrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+				NULL, VK_ACCESS_TRANSFER_WRITE_BIT,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				target.m_color_buffer,
+				VK_IMAGE_ASPECT_COLOR_BIT
+			);
+			vren::vk_utils::clear_color_image(cmd_buf, target.m_color_buffer, {float(0x1A) / 255.0f, float(0x23) / 255.0f, float(0x7E) / 255.0f, 0});
+			vren::vk_utils::image_barrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				target.m_color_buffer,
+				VK_IMAGE_ASPECT_COLOR_BIT
+			);
+
+			vren::vk_utils::image_barrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+				NULL, VK_ACCESS_TRANSFER_WRITE_BIT,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				target.m_depth_buffer,
+				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+			);
+			vren::vk_utils::clear_depth_image(cmd_buf, target.m_depth_buffer, { .depth = 1, .stencil = 0 });
+			vren::vk_utils::image_barrier(
+				cmd_buf,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+				target.m_depth_buffer,
+				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+			);
+
 			/**/
 			dbg_renderer.draw_line({ .m_from = ui.m_scene_ui.m_scene_min, .m_to = ui.m_scene_ui.m_scene_max, .m_color = glm::vec4(1, 0, 0, 1) });
 

@@ -10,7 +10,6 @@ vren::dbg_renderer::dbg_renderer(vren::context const& ctx) :
 
 	m_identity_instance_buffer(create_identity_instance_buffer()),
 
-	m_points_vertex_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
 	m_lines_vertex_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
 
 	m_render_pass(create_render_pass()),
@@ -21,11 +20,11 @@ vren::vk_utils::buffer vren::dbg_renderer::create_identity_instance_buffer()
 {
 	auto buf = vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(dbg_renderer::instance_data));
 
-	dbg_renderer::instance_data id{
+	dbg_renderer::instance_data inst_data{
 		.m_transform = glm::identity<glm::mat4>(),
-		.m_color = glm::vec4(1)
+		.m_color = glm::vec4(1, 1, 1, 1)
 	};
-	vren::vk_utils::update_device_only_buffer(*m_context, buf, &id, sizeof(id), 0);
+	vren::vk_utils::update_device_only_buffer(*m_context, buf, &inst_data, sizeof(inst_data), 0);
 
 	return buf;
 }
@@ -125,13 +124,13 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::vertex, m_color) },
 
 		// Instance transform
-		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 },
-		{ .location = 17, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) },
-		{ .location = 18, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 2 },
-		{ .location = 19, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 3 },
+		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = 0 },
+		{ .location = 17, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(glm::vec4) },
+		{ .location = 18, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(glm::vec4) * 2 },
+		{ .location = 19, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(glm::vec4) * 3 },
 
 		// Instance color
-		{ .location = 20, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::instance_data, m_transform) },
+		{ .location = 20, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::instance_data, m_color) },
 	};
 
 	/* Vertex input state */
@@ -141,7 +140,7 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		.flags = NULL,
 		.vertexBindingDescriptionCount = (uint32_t) std::size(vtx_bindings),
 		.pVertexBindingDescriptions = vtx_bindings,
-		.vertexAttributeDescriptionCount = (uint32_t) std::size(vtx_bindings),
+		.vertexAttributeDescriptionCount = (uint32_t) std::size(vtx_attribs),
 		.pVertexAttributeDescriptions = vtx_attribs,
 	};
 
@@ -173,7 +172,7 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		.pNext = nullptr,
 		.flags = NULL,
 		.depthClampEnable = false,
-		.rasterizerDiscardEnable = true,
+		.rasterizerDiscardEnable = false,
 		.polygonMode = VK_POLYGON_MODE_LINE,
 		.cullMode = VK_CULL_MODE_NONE,
 		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
@@ -276,20 +275,8 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 
 void vren::dbg_renderer::clear()
 {
-	m_points_vertex_buffer.clear();
-	m_points_vertex_count = 0;
-
 	m_lines_vertex_buffer.clear();
 	m_lines_vertex_count = 0;
-}
-
-void vren::dbg_renderer::draw_point(dbg_renderer::point point)
-{
-	dbg_renderer::vertex v{
-		.m_position = point.m_position, .m_color = point.m_color
-	};
-	m_points_vertex_buffer.push_value(&v, 1);
-	m_points_vertex_count++;
 }
 
 void vren::dbg_renderer::draw_line(dbg_renderer::line line)
@@ -298,7 +285,7 @@ void vren::dbg_renderer::draw_line(dbg_renderer::line line)
 		{ .m_position = line.m_from, .m_color = line.m_color },
 		{ .m_position = line.m_to, .m_color = line.m_color }
 	};
-	m_lines_vertex_buffer.push_value(v, std::size(v));
+	m_lines_vertex_buffer.push_value(v, sizeof(v));
 	m_lines_vertex_count += 2;
 }
 
@@ -326,21 +313,13 @@ void vren::dbg_renderer::render(
 
 	m_pipeline.bind(cmd_buf);
 
+	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
+	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+
 	/* Push constants */
 	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(dbg_renderer::push_constants));
 
 	VkDeviceSize offsets[]{0};
-
-	/* Draw points */
-	if (m_points_vertex_count > 0)
-	{
-		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_points_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
-		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
-
-		vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
-
-		vkCmdDraw(cmd_buf, m_points_vertex_count, 1, 0, 0);
-	}
 
 	/* Draw lines */
 	if (m_lines_vertex_count > 0)
@@ -349,7 +328,7 @@ void vren::dbg_renderer::render(
 		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
 
 		vkCmdSetLineWidth(cmd_buf, 1.0f);
-		//vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+		vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
 		vkCmdDraw(cmd_buf, m_lines_vertex_count, 1, 0, 0);
 	}

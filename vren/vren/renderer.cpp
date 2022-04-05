@@ -76,21 +76,21 @@ vren::vk_render_pass vren::renderer::create_render_pass()
 	VkAttachmentDescription color_attachment{};
 	color_attachment.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription depth_attachment{};
 	depth_attachment.format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT;
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription attachments[]{
@@ -218,20 +218,13 @@ void vren::renderer::render(
 )
 {
 	/* Render pass begin */
-	VkClearValue clear_values[] = {
-		{ .color = m_clear_color },
-		{ .depthStencil = {
-			.depth = 1.0f,
-			.stencil = 0
-		}}
-	};
 	VkRenderPassBeginInfo render_pass_begin_info{};
 	render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	render_pass_begin_info.renderPass = m_render_pass->m_handle;
 	render_pass_begin_info.framebuffer = target.m_framebuffer;
 	render_pass_begin_info.renderArea = target.m_render_area;
-	render_pass_begin_info.clearValueCount = std::size(clear_values);
-	render_pass_begin_info.pClearValues = clear_values;
+	render_pass_begin_info.clearValueCount = 0;
+	render_pass_begin_info.pClearValues = nullptr;
 
 	vkCmdBeginRenderPass(cmd_buf, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 

@@ -88,6 +88,30 @@ void vren::vk_utils::upload_image_data(
 	vkCmdCopyBufferToImage(cmd_buf, staging_buffer->m_buffer.m_handle, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &img_copy_region);
 }
 
+void vren::vk_utils::clear_color_image(VkCommandBuffer cmd_buf, VkImage img, VkClearColorValue clear_color)
+{
+	VkImageSubresourceRange subresource_range{
+		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1,
+	};
+	vkCmdClearColorImage(cmd_buf, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subresource_range);
+}
+
+void vren::vk_utils::clear_depth_image(VkCommandBuffer cmd_buf, VkImage img, VkClearDepthStencilValue clear_depth_stencil)
+{
+	VkImageSubresourceRange subresource_range{
+		.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1,
+	};
+	vkCmdClearDepthStencilImage(cmd_buf, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &subresource_range);
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image view
 // --------------------------------------------------------------------------------------------------------------------------------

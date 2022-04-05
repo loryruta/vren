@@ -29,7 +29,10 @@ namespace vren
 
 	struct render_target
 	{
+		VkImage m_color_buffer;
+		VkImage m_depth_buffer;
 		VkFramebuffer m_framebuffer;
+
 		VkRect2D m_render_area;
 		VkViewport m_viewport;
 		VkRect2D m_scissor;

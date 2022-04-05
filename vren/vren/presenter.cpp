@@ -152,7 +152,7 @@ vren::swapchain::depth_buffer vren::swapchain::create_depth_buffer()
 		m_image_width, m_image_height,
         VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
 	);
 
     vren::vk_utils::immediate_graphics_queue_submit(*m_context, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
@@ -246,7 +246,7 @@ void vren::presenter::recreate_swapchain(
 	swapchain_info.imageColorSpace = surf_format.colorSpace;
 	swapchain_info.imageExtent = { width, height };
 	swapchain_info.imageArrayLayers = 1;
-	swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	swapchain_info.queueFamilyIndexCount = NULL;
 	swapchain_info.pQueueFamilyIndices = nullptr;
@@ -311,6 +311,8 @@ void vren::presenter::present(render_func const& render_func)
 
 	/* Render pass */
 	vren::render_target render_target{
+		.m_color_buffer = m_swapchain->m_color_buffers.at(img_idx).m_image,
+		.m_depth_buffer = m_swapchain->m_depth_buffer.m_image.m_image.m_handle,
 		.m_framebuffer = m_swapchain->m_framebuffers.at(img_idx).m_handle,
 		.m_render_area = {
 			.offset = {0, 0},

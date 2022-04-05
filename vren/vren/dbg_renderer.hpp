@@ -53,7 +53,6 @@ namespace vren
 
 		vren::vk_utils::buffer m_identity_instance_buffer;
 
-		vren::vk_utils::resizable_buffer m_points_vertex_buffer; size_t m_points_vertex_count = 0;
 		vren::vk_utils::resizable_buffer m_lines_vertex_buffer;  size_t m_lines_vertex_count = 0;
 
 		vren::vk_render_pass m_render_pass;
@@ -69,7 +68,6 @@ namespace vren
 
 		void clear();
 
-		void draw_point(dbg_renderer::point point);
 		void draw_line(dbg_renderer::line line);
 
 		void render(

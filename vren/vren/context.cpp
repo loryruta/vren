@@ -214,13 +214,17 @@ VkDevice vren::context::create_logical_device()
 	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
 		.pNext = nullptr,
-		.extendedDynamicState = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
+		.extendedDynamicState = VK_TRUE,
+	};
+
+	VkPhysicalDeviceFeatures features{
+		.fillModeNonSolid = VK_TRUE,
 	};
 
 	/* Device */
 	VkDeviceCreateInfo dev_info{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = nullptr,
+		.pNext = &extended_dynamic_state_feature,
 		.flags = NULL,
 		.queueCreateInfoCount = (uint32_t) queue_infos.size(),
 		.pQueueCreateInfos = queue_infos.data(),
@@ -228,7 +232,7 @@ VkDevice vren::context::create_logical_device()
 		.ppEnabledLayerNames = nullptr,
 		.enabledExtensionCount = (uint32_t) dev_ext.size(),
 		.ppEnabledExtensionNames = dev_ext.data(),
-		.pEnabledFeatures = nullptr,//&extended_dynamic_state_feature
+		.pEnabledFeatures = &features
 	};
 	VkDevice device;
 	vren::vk_utils::check(vkCreateDevice(m_physical_device, &dev_info, nullptr, &device));
