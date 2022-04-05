@@ -1,5 +1,40 @@
 
 set(SRC
+        vren/base/resource_container.hpp
+
+        vren/pools/command_pool.hpp
+        vren/pools/command_pool.cpp
+        vren/pools/descriptor_pool.hpp
+        vren/pools/descriptor_pool.cpp
+        vren/pools/object_pool.hpp
+
+        vren/utils/command_graph.hpp
+        vren/utils/command_graph.cpp
+        vren/utils/profiler.hpp
+        vren/utils/profiler.cpp
+        vren/utils/shapes.hpp
+
+        vren/vk_helpers/buffer.hpp
+        vren/vk_helpers/buffer.cpp
+        vren/vk_helpers/image.hpp
+        vren/vk_helpers/image.cpp
+        vren/vk_helpers/misc.hpp
+        vren/vk_helpers/misc.cpp
+        vren/vk_helpers/vk_raii.hpp
+        vren/vk_helpers/vk_ext.cpp
+        vren/vk_helpers/vk_ext.hpp
+        vren/vk_helpers/image_layout_transitions.hpp
+        vren/vk_helpers/image_layout_transitions.cpp
+
+        vren/imgui_renderer.hpp
+        vren/imgui_renderer.cpp
+        vren/toolbox.hpp
+        vren/toolbox.cpp
+        vren/vk_helpers/shader.hpp
+        vren/vk_helpers/shader.cpp
+        vren/vk_helpers/barrier.hpp
+        vren/dbg_renderer.hpp
+        vren/dbg_renderer.cpp
         vren/render_list.cpp
         vren/render_list.hpp
         vren/render_object.cpp
@@ -17,37 +52,8 @@ set(SRC
         vren/material.cpp
         vren/light_array.cpp
         vren/light_array.hpp
-        vren/pools/descriptor_pool.hpp
-        vren/pools/descriptor_pool.cpp
-        vren/imgui_renderer.hpp
-        vren/imgui_renderer.cpp
-        vren/pools/command_pool.hpp
-        vren/pools/command_pool.cpp
-        vren/base/resource_container.hpp
-        vren/vk_helpers/buffer.hpp
-        vren/vk_helpers/buffer.cpp
-        vren/vk_helpers/image.hpp
-        vren/vk_helpers/image.cpp
-        vren/vk_helpers/misc.hpp
-        vren/vk_helpers/misc.cpp
-        vren/vk_helpers/vk_raii.hpp
-        vren/utils/command_graph.hpp
-        vren/utils/command_graph.cpp
-        vren/pools/object_pool.hpp
-        vren/pools/fence_pool.cpp
-        vren/pools/fence_pool.hpp
-        vren/vk_helpers/image_layout_transitions.hpp
-        vren/vk_helpers/image_layout_transitions.cpp
-        vren/utils/profiler.hpp
-        vren/utils/profiler.cpp
-        vren/toolbox.hpp
-        vren/toolbox.cpp
-        vren/vk_helpers/shader.hpp
-        vren/vk_helpers/shader.cpp
-        vren/vk_helpers/barrier.hpp
-        vren/utils/shapes.hpp
-        vren/dbg_renderer.hpp
-        vren/dbg_renderer.cpp
+
+
 )
 
 add_library(vren ${SRC})
@@ -57,7 +63,7 @@ add_library(vren ${SRC})
 # ------------------------------------------------------------------------------------------------
 
 # Self include
-target_include_directories(vren PRIVATE vren)
+target_include_directories(vren PUBLIC vren)
 
 # Vulkan
 target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})

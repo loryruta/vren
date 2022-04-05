@@ -28,25 +28,20 @@ function (copy_resources TARGET_NAME FROM TO)
 endfunction()
 
 function (setup_resources TARGET_NAME)
-    set(RESOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/.vren/resources")
-    add_custom_target(create_dirs
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCES_DIR}
-            COMMENT "Creating resources directory: ${RESOURCES_DIR}"
-    )
+    set(VREN_SHADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/.vren/resources/shaders")
+
+    add_custom_target(create_vren_dirs  COMMAND ${CMAKE_COMMAND} -E make_directory ${VREN_SHADERS_DIR})
 
     # Shaders
     set(SHADERS "")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw_line.vert" "${RESOURCES_DIR}/shaders/dbg_draw_line.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw_point.vert" "${RESOURCES_DIR}/shaders/dbg_draw_point.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.vert" "${RESOURCES_DIR}/shaders/dbg_draw.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.frag" "${RESOURCES_DIR}/shaders/dbg_draw.frag.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.vert" "${VREN_SHADERS_DIR}/dbg_draw.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.frag" "${VREN_SHADERS_DIR}/dbg_draw.frag.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.vert" "${VREN_SHADERS_DIR}/pbr_draw.vert.bin")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.bin")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.vert" "${RESOURCES_DIR}/shaders/pbr_draw.vert.bin")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${RESOURCES_DIR}/shaders/pbr_draw.frag.bin")
+    add_custom_target(vren_shaders DEPENDS ${SHADERS})
 
-    add_custom_target(${TARGET_NAME}_shaders DEPENDS ${SHADERS})
-
-    #
-    add_dependencies(${TARGET_NAME} create_dirs ${TARGET_NAME}_shaders)
+    add_dependencies(vren_shaders create_vren_dirs)
+    add_dependencies(${TARGET_NAME} vren_shaders)
 endfunction()
