@@ -4,7 +4,6 @@
 
 #include "pools/command_pool.hpp"
 #include "pools/descriptor_pool.hpp"
-#include "pools/fence_pool.hpp"
 #include "vk_helpers/image.hpp"
 
 namespace vren
@@ -18,16 +17,19 @@ namespace vren
 
 	class toolbox
 	{
+		friend vren::context;
+
 	private:
+		vren::context const* m_context;
+
 		vren::command_pool create_graphics_command_pool(vren::context const& ctx);
 		vren::command_pool create_transfer_command_pool(vren::context const& ctx);
 
-		vren::context const* m_context;
+		void lazy_initialize();
 
 	public:
 		vren::command_pool m_graphics_command_pool;
 		vren::command_pool m_transfer_command_pool;
-		vren::fence_pool m_fence_pool;
 		vren::descriptor_pool m_descriptor_pool;
 
 		std::shared_ptr<vren::vk_utils::texture> m_white_texture;

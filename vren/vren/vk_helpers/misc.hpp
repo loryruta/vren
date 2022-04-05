@@ -6,7 +6,6 @@
 #include "vk_raii.hpp"
 #include "base/resource_container.hpp"
 #include "pools/command_pool.hpp"
-#include "pools/fence_pool.hpp"
 
 namespace vren
 {
@@ -32,7 +31,6 @@ namespace vren::vk_utils
 	void immediate_submit(
 		vren::context const& ctx,
 		vren::command_pool& cmd_pool,
-		vren::fence_pool& fence_pool,
 		VkQueue queue,
 		record_commands_func_t const& record_func
 	);

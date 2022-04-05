@@ -1,6 +1,7 @@
 #include "show_lights.hpp"
 
 vren_demo::show_lights::show_lights(vren::context const& ctx, vren::renderer& renderer) :
+	m_context(&ctx),
 	m_renderer(&renderer),
 
 	m_pipeline(vren::vk_utils::create_compute_pipeline(

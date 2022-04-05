@@ -3,8 +3,8 @@
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_color;
 
-layout(location = 0) in mat4 i_transform;
-layout(location = 1) in vec3 i_color;
+layout(location = 16) in mat4 i_transform;
+layout(location = 20) in vec3 i_color;
 
 layout(push_constant) uniform PushConstants
 {
@@ -20,5 +20,5 @@ void main()
     v_position = (i_transform * vec4(a_position, 1)).xyz;
     v_color = a_color * i_color;
 
-    gl_Position = cam_proj * cam_view * vec4(v_position, 1);
+    gl_Position = push_constants.cam_proj * push_constants.cam_view * vec4(v_position, 1);
 }

@@ -51,7 +51,7 @@ vren::vk_render_pass vren::dbg_renderer::create_render_pass()
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 			.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -125,13 +125,13 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::vertex, m_color) },
 
 		// Instance transform
-		{ .location = 0, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 },
-		{ .location = 0, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) },
-		{ .location = 0, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 2 },
-		{ .location = 0, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 3 },
+		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 },
+		{ .location = 17, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) },
+		{ .location = 18, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 2 },
+		{ .location = 19, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = sizeof(glm::vec4) * 3 },
 
 		// Instance color
-		{ .location = 1, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::instance_data, m_transform) },
+		{ .location = 20, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::instance_data, m_transform) },
 	};
 
 	/* Vertex input state */
@@ -150,7 +150,7 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST, // Dynamically set
+		.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST, // Dynamically set
 		.primitiveRestartEnable = false
 	};
 
@@ -253,8 +253,8 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 	};
 
 	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw_line.vert"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.frag")
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.vert.bin"),
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.frag.bin")
 	};
 
 	return vren::vk_utils::create_graphics_pipeline(
@@ -276,6 +276,11 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 
 void vren::dbg_renderer::clear()
 {
+	m_points_vertex_buffer.clear();
+	m_points_vertex_count = 0;
+
+	m_lines_vertex_buffer.clear();
+	m_lines_vertex_count = 0;
 }
 
 void vren::dbg_renderer::draw_point(dbg_renderer::point point)
@@ -300,29 +305,54 @@ void vren::dbg_renderer::draw_line(dbg_renderer::line line)
 void vren::dbg_renderer::render(
 	uint32_t frame_idx,
 	VkCommandBuffer cmd_buf,
-	vren::resource_container& res_container
+	vren::resource_container& res_container,
+	vren::render_target const& target,
+	dbg_renderer::push_constants const& push_constants
 )
 {
+	VkRenderPassBeginInfo begin_info{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		.pNext = nullptr,
+		.renderPass = m_render_pass.m_handle,
+		.framebuffer = target.m_framebuffer,
+		.renderArea = target.m_render_area,
+		.clearValueCount = 0,
+		.pClearValues = nullptr
+	};
+	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
 	// NOTE: The resource container isn't used here (no add_resource(...) call happens), because the dbg_renderer
 	// **is supposed to last the program lifetime** thus its resources are always ensured to exist while being used by GPU.
 
 	m_pipeline.bind(cmd_buf);
 
+	/* Push constants */
+	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(dbg_renderer::push_constants));
+
 	VkDeviceSize offsets[]{0};
 
 	/* Draw points */
-	vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_points_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
-	vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
+	if (m_points_vertex_count > 0)
+	{
+		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_points_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
+		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
 
-	vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+		vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
-	vkCmdDraw(cmd_buf, m_points_vertex_count, 1, 0, 0);
+		vkCmdDraw(cmd_buf, m_points_vertex_count, 1, 0, 0);
+	}
 
 	/* Draw lines */
-	vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_lines_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
-	vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
+	if (m_lines_vertex_count > 0)
+	{
+		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_lines_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
+		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
 
-	vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+		vkCmdSetLineWidth(cmd_buf, 1.0f);
+		//vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
-	vkCmdDraw(cmd_buf, m_lines_vertex_count, 1, 0, 0);
+		vkCmdDraw(cmd_buf, m_lines_vertex_count, 1, 0, 0);
+	}
+
+	vkCmdEndRenderPass(cmd_buf);
 }

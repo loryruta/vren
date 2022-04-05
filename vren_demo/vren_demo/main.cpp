@@ -15,6 +15,7 @@
 #include <vren/utils/profiler.hpp>
 #include <vren/vk_helpers/barrier.hpp>
 #include <vren/utils/shapes.hpp>
+#include <vren/dbg_renderer.hpp>
 
 #include "tinygltf_loader.hpp"
 #include "camera.hpp"
@@ -229,11 +230,15 @@ void launch()
 	vren::renderer renderer(ctx);
 	renderer.m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
+	/* Debug renderer */
+	vren::dbg_renderer dbg_renderer(ctx);
+
 	/* ImGui renderer */
 	vren::imgui_renderer ui_renderer(ctx, g_window);
 
 	vren::render_list render_list;
 	vren::light_array light_array;
+
 
 	/* Point light visualizer */
 	auto& point_light_visualizer = render_list.create_render_object();
@@ -297,6 +302,8 @@ void launch()
 		int win_width, win_height;
 		glfwGetWindowSize(g_window, &win_width, &win_height);
 
+		dbg_renderer.clear();
+
 		presenter.present([&](int frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, vren::render_target const& target)
         {
 			/* Profiles the frame */
@@ -316,6 +323,14 @@ void launch()
 			prof_info.m_frame_profiled = prof_info.m_main_pass_profiled && prof_info.m_ui_pass_profiled;
 			prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
 			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
+
+			/**/
+			dbg_renderer.draw_line({ .m_from = ui.m_scene_ui.m_scene_min, .m_to = ui.m_scene_ui.m_scene_max, .m_color = glm::vec4(1, 0, 0, 1) });
+
+			dbg_renderer.render(frame_idx, cmd_buf, res_container, target, {
+				.m_camera_view = camera.get_view(),
+				.m_camera_projection = camera.get_projection()
+			});
 
 			/* Move lights */
 			move_lights.dispatch(

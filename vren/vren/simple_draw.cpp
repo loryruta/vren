@@ -189,11 +189,7 @@ void vren::simple_draw_pass::record_commands(
 	{
 		auto& render_obj = render_list.m_render_objects.at(i);
 
-		if (!render_obj.is_valid())
-		{
-			fprintf(stderr, "WARNING: Render object %d is invalid\n", render_obj.m_idx);
-			fflush(stderr);
-
+		if (!render_obj.is_valid()) {
 			continue;
 		}
 

@@ -81,10 +81,7 @@ namespace vren
 
 		vren::pooled_object<_t> create_managed_object(_t&& obj)
 		{
-			return vren::pooled_object(
-				std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
-				std::move(obj)
-			);
+			return vren::pooled_object(*this, std::move(obj));
 		}
 
     public:
@@ -115,10 +112,7 @@ namespace vren
 				_t pooled_obj(std::move(m_unused_objects.back()));
 				m_unused_objects.pop_back();
 
-				return vren::pooled_object(
-					std::enable_shared_from_this<object_pool<_t>>::shared_from_this(),
-					std::move(pooled_obj)
-				);
+				return create_managed_object(std::move(pooled_obj));
 			}
 
 			return std::nullopt;

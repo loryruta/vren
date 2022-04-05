@@ -4,6 +4,7 @@
 #include "vk_helpers/vk_raii.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/shader.hpp"
+#include "renderer.hpp"
 
 namespace vren
 {
@@ -41,6 +42,12 @@ namespace vren
 			glm::vec3 m_color;
 		};
 
+		struct push_constants
+		{
+			glm::mat4 m_camera_view;
+			glm::mat4 m_camera_projection;
+		};
+
 	private:
 		vren::context const* m_context;
 
@@ -68,7 +75,9 @@ namespace vren
 		void render(
 			uint32_t frame_idx,
 			VkCommandBuffer cmd_buf,
-			vren::resource_container& res_container
+			vren::resource_container& res_container,
+			vren::render_target const& target,
+			dbg_renderer::push_constants const& push_constants
 		);
 	};
 }

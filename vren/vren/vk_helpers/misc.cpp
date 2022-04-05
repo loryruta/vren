@@ -3,7 +3,6 @@
 #include "context.hpp"
 #include "toolbox.hpp"
 #include "pools/command_pool.hpp"
-#include "pools/fence_pool.hpp"
 
 void vren::vk_utils::check(VkResult result)
 {
@@ -45,7 +44,6 @@ vren::vk_fence vren::vk_utils::create_fence(vren::context const& ctx, bool signa
 void vren::vk_utils::immediate_submit(
 	vren::context const& ctx,
 	vren::command_pool& cmd_pool,
-	vren::fence_pool& fence_pool,
 	VkQueue queue,
 	record_commands_func_t const& record_func
 )
@@ -66,7 +64,7 @@ void vren::vk_utils::immediate_submit(
 
     vren::vk_utils::check(vkEndCommandBuffer(cmd_buf.m_handle));
 
-	auto fence = fence_pool.acquire();
+	auto fence = vren::vk_utils::create_fence(ctx);
 
     VkSubmitInfo submit_info{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -79,9 +77,9 @@ void vren::vk_utils::immediate_submit(
         .signalSemaphoreCount = 0,
         .pSignalSemaphores = nullptr
     };
-    vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, fence.m_handle.m_handle));
+    vren::vk_utils::check(vkQueueSubmit(queue, 1, &submit_info, fence.m_handle));
 
-    vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.m_handle.m_handle, VK_TRUE, UINT64_MAX));
+    vren::vk_utils::check(vkWaitForFences(ctx.m_device, 1, &fence.m_handle, VK_TRUE, UINT64_MAX));
 }
 
 void vren::vk_utils::immediate_graphics_queue_submit(
@@ -92,7 +90,6 @@ void vren::vk_utils::immediate_graphics_queue_submit(
     vren::vk_utils::immediate_submit(
 		ctx,
 		ctx.m_toolbox->m_graphics_command_pool,
-		ctx.m_toolbox->m_fence_pool,
 		ctx.m_graphics_queue,
 		record_func
 	);
@@ -106,7 +103,6 @@ void vren::vk_utils::immediate_transfer_queue_submit(
 	vren::vk_utils::immediate_submit(
 		ctx,
 		ctx.m_toolbox->m_transfer_command_pool,
-		ctx.m_toolbox->m_fence_pool,
 		ctx.m_transfer_queue,
 		record_func
 	);

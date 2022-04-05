@@ -4,8 +4,10 @@
 #include <vector>
 #include <unordered_map>
 #include <span>
+#include <functional>
 
 #include "vk_raii.hpp"
+#include "base/resource_container.hpp"
 
 namespace vren
 {
