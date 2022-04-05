@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "toolbox.hpp"
+#include "vk_helpers/vk_ext.hpp"
 #include "vk_helpers/misc.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
@@ -33,22 +34,6 @@ bool vren::does_support_layers(std::vector<char const*> const& layers)
 	}
 
 	return true;
-}
-
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	} else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		func(instance, debugMessenger, pAllocator);
-	}
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
@@ -87,49 +72,45 @@ VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 
 VkInstance vren::context::create_instance()
 {
-	// Application info
-	VkApplicationInfo app_info{};
-	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	app_info.pApplicationName = m_info.m_app_name;
-	app_info.applicationVersion = m_info.m_app_version;
-	app_info.pEngineName = VREN_NAME;
-	app_info.engineVersion = VREN_VERSION;
-	app_info.apiVersion = VK_API_VERSION_1_2;
+	auto debug_messenger_info = create_debug_messenger_create_info();
 
-	VkInstanceCreateInfo instance_info{};
-	instance_info.pNext = nullptr;
-	instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	instance_info.pApplicationInfo = &app_info;
+	/* App info */
+	VkApplicationInfo app_info{
+		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+		.pNext = nullptr,
+		.pApplicationName = m_info.m_app_name,
+		.applicationVersion = m_info.m_app_version,
+		.pEngineName = VREN_NAME,
+		.engineVersion = VREN_VERSION,
+		.apiVersion = VK_API_VERSION_1_2
+	};
 
-	// Extensions
+	/* Extensions */
 	std::vector<char const*> extensions = m_info.m_extensions;
 	extensions.insert(extensions.end(), {
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 	});
-	instance_info.enabledExtensionCount = (uint32_t) extensions.size();
-	instance_info.ppEnabledExtensionNames = extensions.data();
 
-	// Layers
+	/* Layers */
 	std::vector<char const*> layers = m_info.m_layers;
 	layers.insert(layers.end(), {
 		"VK_LAYER_KHRONOS_validation"
 	});
-	if (!vren::does_support_layers(layers)) {
-		throw std::runtime_error("Layers not supported.");
-	}
-	instance_info.enabledLayerCount = (uint32_t) layers.size();
-	instance_info.ppEnabledLayerNames = layers.data();
 
-	/* Create debug messenger */
-	auto debug_messenger_info = create_debug_messenger_create_info();
-	instance_info.pNext = &debug_messenger_info;
-
-	//
+	/* Instance info */
+	VkInstanceCreateInfo inst_info{
+		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pNext = &debug_messenger_info,
+		.flags = NULL,
+		.pApplicationInfo = &app_info,
+		.enabledLayerCount = (uint32_t) layers.size(),
+		.ppEnabledLayerNames = layers.data(),
+		.enabledExtensionCount = (uint32_t) extensions.size(),
+		.ppEnabledExtensionNames = extensions.data(),
+	};
 	VkInstance instance;
-	vren::vk_utils::check(vkCreateInstance(&instance_info, nullptr, &instance));
-
-	std::cout << "Vulkan instance initialized" << std::endl;
-
+	vren::vk_utils::check(vkCreateInstance(&inst_info, nullptr, &instance));
+	vren::load_instance_extensions(instance);
 	return instance;
 }
 
@@ -138,7 +119,7 @@ VkDebugUtilsMessengerEXT vren::context::create_debug_messenger()
 	auto debug_messenger_info = create_debug_messenger_create_info();
 
 	VkDebugUtilsMessengerEXT debug_messenger;
-	vren::vk_utils::check(CreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
+	vren::vk_utils::check(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
 
 	return debug_messenger;
 }
@@ -214,6 +195,7 @@ VkDevice vren::context::create_logical_device()
 	uint32_t queue_families_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_families_count, nullptr);
 
+	/* Queue infos */
 	std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_families_count);
 	for (int i = 0; i < queue_families_count; i++)
 	{
@@ -224,25 +206,33 @@ VkDevice vren::context::create_logical_device()
 		queue_infos[i].pQueuePriorities = &priority;
 	}
 
-	VkPhysicalDeviceHostQueryResetFeatures host_query_reset_feature{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES,
+	/* Extensions */
+	std::vector<char const*> dev_ext = m_info.m_device_extensions;
+	dev_ext.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+
+	/* Feature: extended dynamic state */
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
 		.pNext = nullptr,
-		.hostQueryReset = VK_TRUE,
+		.extendedDynamicState = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
 	};
 
-	VkDeviceCreateInfo device_info{};
-	device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	device_info.pNext = &host_query_reset_feature,
-	device_info.queueCreateInfoCount = (uint32_t) queue_infos.size();
-	device_info.pQueueCreateInfos = queue_infos.data();
-	device_info.pEnabledFeatures = nullptr;
-	device_info.enabledExtensionCount = (uint32_t) m_info.m_device_extensions.size(); // Device extensions
-	device_info.ppEnabledExtensionNames = m_info.m_device_extensions.data();
-	device_info.enabledLayerCount = 0; // Device layers
-	device_info.ppEnabledLayerNames = nullptr;
-
+	/* Device */
+	VkDeviceCreateInfo dev_info{
+		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.queueCreateInfoCount = (uint32_t) queue_infos.size(),
+		.pQueueCreateInfos = queue_infos.data(),
+		.enabledLayerCount = 0,
+		.ppEnabledLayerNames = nullptr,
+		.enabledExtensionCount = (uint32_t) dev_ext.size(),
+		.ppEnabledExtensionNames = dev_ext.data(),
+		.pEnabledFeatures = nullptr,//&extended_dynamic_state_feature
+	};
 	VkDevice device;
-	vren::vk_utils::check(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
+	vren::vk_utils::check(vkCreateDevice(m_physical_device, &dev_info, nullptr, &device));
+	vren::load_device_extensions(device);
 	return device;
 }
 
@@ -292,10 +282,11 @@ vren::context::context(context_info const& info) :
 	m_graphics_queue(m_queues.at(m_queue_families.m_graphics_idx)),
 	m_transfer_queue(m_queues.at(m_queue_families.m_transfer_idx)),
 	//m_compute_queue(m_queues.at(m_queue_families.m_compute_idx)),
-	m_vma_allocator(create_vma_allocator()),
-
-	m_toolbox(std::make_unique<vren::toolbox>(*this))
-{}
+	m_vma_allocator(create_vma_allocator())
+{
+	m_toolbox = std::make_unique<vren::toolbox>(*this);
+	m_toolbox->lazy_initialize();
+}
 
 vren::context::~context()
 {;
@@ -305,6 +296,6 @@ vren::context::~context()
 
 	vkDestroyDevice(m_device, nullptr);
 
-	DestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
+	vkDestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
 	vkDestroyInstance(m_instance, nullptr);
 }
