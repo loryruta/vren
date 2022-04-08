@@ -234,9 +234,6 @@ void vren_demo::tinygltf_loader::load_model(
 	vren_demo::tinygltf_scene& result
 )
 {
-	result.m_min = glm::vec3(std::numeric_limits<float>::infinity());
-	result.m_max = glm::vec3(-std::numeric_limits<float>::infinity());
-
 	// Textures
 	load_textures(model_dir, gltf_model, result);
 
@@ -333,6 +330,7 @@ void vren_demo::tinygltf_loader::load_model(
 						v.m_position = *reinterpret_cast<glm::vec3 const*>(
 							get_accessor_element_at(gltf_model, pos_accessor.value(), i)
 						);
+						v.m_position.z = -v.m_position.z;
 					}
 
 					if (norm_accessor.has_value()) // normal
@@ -363,6 +361,8 @@ void vren_demo::tinygltf_loader::load_model(
 					);
 				render_obj.set_vertices_buffer(vertices_buf, vertices.size());
 			}
+
+			size_t triangles_count = 0;
 
 			{ // Indices
 				tinygltf::Accessor const& indices_accessor = gltf_model.accessors.at(gltf_primitive.indices);
@@ -405,6 +405,8 @@ void vren_demo::tinygltf_loader::load_model(
 						vren::vk_utils::create_indices_buffer(*m_context, indices.data(), indices.size())
 					);
 				render_obj.set_indices_buffer(indices_buf, indices.size());
+
+				triangles_count = indices.size() / 3;
 			}
 
 			/* Instances */
@@ -416,19 +418,12 @@ void vren_demo::tinygltf_loader::load_model(
 				);
 			render_obj.set_instances_buffer(instances_buf, instances.size());
 
+			triangles_count *= instances.size();
+
+			result.m_triangles_count += triangles_count;
+
 			/* Material */
 			render_obj.m_material = result.m_materials.at(gltf_primitive.material);
-
-			/* AABB computation */
-			glm::vec3
-				mesh_min = parse_gltf_vec3_to_glm_vec3(pos_accessor->get().minValues),
-				mesh_max = parse_gltf_vec3_to_glm_vec3(pos_accessor->get().maxValues);
-
-			for (auto& inst : instances)
-			{
-				result.m_min = glm::min(result.m_min, glm::vec3(inst.m_transform * glm::vec4(mesh_min, 1.f)));
-				result.m_max = glm::max(result.m_max, glm::vec3(inst.m_transform * glm::vec4(mesh_max, 1.f)));
-			}
 
 			/*  */
 			result.m_render_objects.push_back(render_obj.m_idx); // register the id of the render object for the loaded scene
@@ -446,22 +441,24 @@ void vren_demo::tinygltf_loader::load_from_file(
 	tinygltf::Model gltf_model;
 	std::string warn, err;
 
-	bool ret = loader.LoadASCIIFromFile(&gltf_model, &err, &warn, model_file.string());
-
-	if (!warn.empty())
-	{
-		printf("Loading warning: %s\n", warn.c_str());
-		fflush(stderr);
+	bool ret;
+	if (model_file.extension() == ".gltf") {
+		ret = loader.LoadASCIIFromFile(&gltf_model, &err, &warn, model_file.string());
+	} else if (model_file.extension() == ".glb") {
+		ret = loader.LoadBinaryFromFile(&gltf_model, &err, &warn, model_file.string());
+	} else {
+		throw std::runtime_error("Unsupported file extension, expected: .gltf or .glb");
 	}
 
-	if (!err.empty())
-	{
-		printf("Scene loading failed: %s\n", err.c_str());
-		fflush(stderr);
+	if (!warn.empty()) {
+		fprintf(stderr, "Loading warning: %s\n", warn.c_str());
 	}
 
-	if (!ret)
-	{
+	if (!err.empty()) {
+		fprintf(stderr, "Scene loading failed: %s\n", err.c_str());
+	}
+
+	if (!ret) {
 		throw std::runtime_error("Scene loading failed");
 	}
 
@@ -470,5 +467,4 @@ void vren_demo::tinygltf_loader::load_from_file(
 	printf("Loaded %llu textures\n", result.m_textures.size());
 	printf("Loaded %llu materials\n", result.m_materials.size());
 	printf("Loaded %llu render objects\n", result.m_render_objects.size());
-	fflush(stdout);
 }

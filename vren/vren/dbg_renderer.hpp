@@ -18,16 +18,18 @@ namespace vren
 	class dbg_renderer
 	{
 	public:
+		static constexpr float k_point_size = 0.01f;
+
 		struct point
 		{
 			glm::vec3 m_position;
-			glm::vec4 m_color;
+			glm::vec3 m_color;
 		};
 
 		struct line
 		{
 			glm::vec3 m_from, m_to;
-			glm::vec4 m_color;
+			glm::vec3 m_color;
 		};
 
 		struct vertex
@@ -68,6 +70,7 @@ namespace vren
 
 		void clear();
 
+		void draw_point(dbg_renderer::point point);
 		void draw_line(dbg_renderer::line line);
 
 		void render(

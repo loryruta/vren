@@ -24,14 +24,10 @@ namespace vren
 		profiler(vren::context const& ctx, size_t slots_count);
 		~profiler();
 
-		void profile(
-			int slot_idx,
-			VkCommandBuffer cmd_buf,
-			vren::resource_container& res_container,
-			std::function<void()> const& sample_func
-		);
-
+		void profile(uint32_t frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, uint32_t slot_idx, std::function<void()> const& sample_func);
 		bool get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t);
 	};
 
+
+	uint32_t profile(std::function<void()> const& sample_func);
 }

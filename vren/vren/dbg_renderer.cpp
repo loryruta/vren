@@ -279,6 +279,13 @@ void vren::dbg_renderer::clear()
 	m_lines_vertex_count = 0;
 }
 
+void vren::dbg_renderer::draw_point(dbg_renderer::point point)
+{
+	draw_line({ .m_from = point.m_position - glm::vec3(k_point_size, 0, 0), .m_to = point.m_position + glm::vec3(k_point_size, 0, 0), .m_color = point.m_color });
+	draw_line({ .m_from = point.m_position - glm::vec3(0, k_point_size, 0), .m_to = point.m_position + glm::vec3(0, k_point_size, 0), .m_color = point.m_color });
+	draw_line({ .m_from = point.m_position - glm::vec3(0, 0, k_point_size), .m_to = point.m_position + glm::vec3(0, 0, k_point_size), .m_color = point.m_color });
+}
+
 void vren::dbg_renderer::draw_line(dbg_renderer::line line)
 {
 	dbg_renderer::vertex v[]{

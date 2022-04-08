@@ -13,7 +13,6 @@
 #include <vren/vk_helpers/shader.hpp>
 
 #include "tinygltf_loader.hpp"
-#include "comp/move_lights.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
@@ -43,10 +42,8 @@ namespace vren_demo::ui
 		vren_demo::tinygltf_loader m_gltf_loader;
 
 	public:
-		glm::vec3
-			m_scene_min = glm::vec3(0),
-			m_scene_max = glm::vec3(0);
 		float m_speed = 1.0f;
+		size_t m_triangles_count = 0;
 
 		scene_ui(vren::context const& ctx);
 
@@ -108,7 +105,6 @@ namespace vren_demo::ui
 
 		main_ui(vren::context const& ctx, vren::renderer const& renderer);
 
-		void show_vk_pool_info_ui();
 		void show(
 			vren::render_list& render_list,
 			vren::light_array& light_arr

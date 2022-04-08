@@ -19,7 +19,7 @@ namespace vren_demo
 		std::vector<std::shared_ptr<vren::material>> m_materials;
 		std::vector<uint32_t> m_render_objects;
 
-		glm::vec3 m_min, m_max;
+		size_t m_triangles_count = 0;
 	};
 
 	class tinygltf_loader

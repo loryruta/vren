@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/random.hpp>
 
 #include <vren/context.hpp>
 #include <vren/presenter.hpp>
@@ -20,8 +21,6 @@
 #include "tinygltf_loader.hpp"
 #include "camera.hpp"
 #include "ui.hpp"
-#include "comp/move_lights.hpp"
-#include "comp/show_lights.hpp"
 
 #define VREN_DEMO_WINDOW_WIDTH  1280
 #define VREN_DEMO_WINDOW_HEIGHT 720
@@ -186,8 +185,79 @@ void glfw_error_callback(int error_code, const char* description)
 	std::cerr << "[GLFW] (" << error_code << ") " << description << std::endl;
 }
 
+void initialize_point_lights_direction(std::span<glm::vec3> point_lights_dir)
+{
+	for (size_t i = 0; i < point_lights_dir.size(); i++) {
+		point_lights_dir[i] = glm::ballRand(1.0f);
+	}
+}
+
+void move_and_bounce_point_lights(
+	std::span<vren::point_light> point_lights,
+	std::span<glm::vec3> point_lights_dir,
+	glm::vec3 const& sm,
+	glm::vec3 const& sM,
+	float speed,
+	float dt
+)
+{
+	for (size_t i = 0; i < point_lights.size(); i++)
+	{
+		auto& light = point_lights[i];
+
+		glm::vec3 p = light.m_position;
+		p = glm::min(glm::max(p, sm), sM);
+
+		glm::vec3 d = point_lights_dir[i];
+
+		float rem_t = speed * dt;
+
+		for (uint32_t j = 0; j < 256 && rem_t > 0; j++)
+		{
+			float tx1 = (sm.x - p.x) / d.x; tx1 = tx1 <= 0 ? std::numeric_limits<float>::infinity() : tx1;
+			float tx2 = (sM.x - p.x) / d.x; tx2 = tx2 <= 0 ? std::numeric_limits<float>::infinity() : tx2;
+			float ty1 = (sm.y - p.y) / d.y; ty1 = ty1 <= 0 ? std::numeric_limits<float>::infinity() : ty1;
+			float ty2 = (sM.y - p.y) / d.y; ty2 = ty2 <= 0 ? std::numeric_limits<float>::infinity() : ty2;
+			float tz1 = (sm.z - p.z) / d.z; tz1 = tz1 <= 0 ? std::numeric_limits<float>::infinity() : tz1;
+			float tz2 = (sM.z - p.z) / d.z; tz2 = tz2 <= 0 ? std::numeric_limits<float>::infinity() : tz2;
+
+			float min_t = glm::min(tx1, glm::min(tx2, glm::min(ty1, glm::min(ty2, glm::min(tz1, tz2)))));
+
+			float step = glm::min(min_t - std::numeric_limits<float>::epsilon(), rem_t);
+			p += step * d;
+
+			if (min_t < rem_t)
+			{
+				d *= glm::vec3(
+					(tx1 == min_t || tx2 == min_t ? -1.0 : 1.0),
+					(ty1 == min_t || ty2 == min_t ? -1.0 : 1.0),
+					(tz1 == min_t || tz2 == min_t ? -1.0 : 1.0)
+				);
+			}
+
+			rem_t -= step;
+		}
+
+		light.m_position = p;
+		point_lights_dir[i] = d;
+	}
+}
+
+void show_point_lights(
+	std::span<vren::point_light> point_lights,
+	vren::dbg_renderer& dbg_renderer
+)
+{
+	for (auto& light : point_lights)
+	{
+		dbg_renderer.draw_point({ .m_position = light.m_position, .m_color = glm::vec3(1, 1, 0) });
+	}
+}
+
 void launch()
 {
+	setvbuf(stdout, NULL, _IONBF, 0);
+
 	glfwSetErrorCallback(glfw_error_callback);
 
 	if (glfwInit() != GLFW_TRUE)
@@ -239,21 +309,8 @@ void launch()
 	vren::render_list render_list;
 	vren::light_array light_array;
 
-
-	/* Point light visualizer */
-	auto& point_light_visualizer = render_list.create_render_object();
-	vren::utils::create_cube(ctx, point_light_visualizer);
-	point_light_visualizer.m_material = std::make_shared<vren::material>(ctx);
-	point_light_visualizer.m_material->m_base_color_texture = std::make_shared<vren::vk_utils::texture>(
-		vren::vk_utils::create_color_texture(ctx, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.91f * 255.0f, (uint8_t) 0.77f * 255.0f, 255)
-	);
-
-	uint32_t point_light_visualizer_idx = point_light_visualizer.m_idx;
-
-	/* */
-
-	vren_demo::move_lights move_lights(ctx, renderer);
-	vren_demo::show_lights show_lights(ctx, renderer);
+	glm::vec3 point_lights_dir[VREN_MAX_POINT_LIGHTS];
+	initialize_point_lights_direction(point_lights_dir);
 
 	/* Create surface */
 	VkSurfaceKHR surf_handle;
@@ -333,7 +390,7 @@ void launch()
 				target.m_color_buffer,
 				VK_IMAGE_ASPECT_COLOR_BIT
 			);
-			vren::vk_utils::clear_color_image(cmd_buf, target.m_color_buffer, {float(0x1A) / 255.0f, float(0x23) / 255.0f, float(0x7E) / 255.0f, 0});
+			vren::vk_utils::clear_color_image(cmd_buf, target.m_color_buffer, {0.45f, 0.45f, 0.45f, 0.0f});
 			vren::vk_utils::image_barrier(
 				cmd_buf,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -361,89 +418,30 @@ void launch()
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
 			);
 
-			/**/
-			dbg_renderer.draw_line({ .m_from = ui.m_scene_ui.m_scene_min, .m_to = ui.m_scene_ui.m_scene_max, .m_color = glm::vec4(1, 0, 0, 1) });
+			/* Move & show lights host-side */
+			glm::vec3
+				aabb_min = glm::vec3(-1.0f),
+				aabb_max = glm::vec3(5.0f);
+
+			move_and_bounce_point_lights(light_array.m_point_lights, point_lights_dir, aabb_min, aabb_max, ui.m_scene_ui.m_speed, dt);
+			show_point_lights(light_array.m_point_lights, dbg_renderer);
+
+			/* Debug renderer */
+			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
+			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
+			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
+
+			dbg_renderer.draw_point({ .m_position = aabb_min, .m_color = glm::vec4(0) });
+			dbg_renderer.draw_point({ .m_position = aabb_max, .m_color = glm::vec4(1) });
+			dbg_renderer.draw_line({ .m_from = aabb_min, .m_to = aabb_max, .m_color = glm::vec4(1, 1, 1, 1) });
 
 			dbg_renderer.render(frame_idx, cmd_buf, res_container, target, {
 				.m_camera_view = camera.get_view(),
 				.m_camera_projection = camera.get_projection()
 			});
 
-			/* Move lights */
-			move_lights.dispatch(
-				frame_idx,
-				cmd_buf,
-				res_container,
-				{
-					.m_scene_min = ui.m_scene_ui.m_scene_min,
-					.m_scene_max = ui.m_scene_ui.m_scene_max,
-					.m_speed     = ui.m_scene_ui.m_speed,
-					.m_dt        = dt
-				}
-			);
-
-			vren::vk_utils::buffer_barrier(
-				cmd_buf,
-				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_ACCESS_SHADER_WRITE_BIT,
-				VK_ACCESS_TRANSFER_READ_BIT,
-				renderer.m_point_lights_buffers.at(0).m_buffer.m_handle
-			);
-
-			for (int i = 1; i < VREN_MAX_FRAMES_IN_FLIGHT; i++)
-			{
-				VkBufferCopy buf_cpy{
-					.srcOffset = 0,
-					.dstOffset = 0,
-					.size      = VREN_POINT_LIGHTS_BUFFER_SIZE
-				};
-
-				vkCmdCopyBuffer(
-					cmd_buf,
-					renderer.m_point_lights_buffers.at(0).m_buffer.m_handle,
-					renderer.m_point_lights_buffers.at(i).m_buffer.m_handle,
-					1,
-					&buf_cpy
-				);
-			}
-
-			vren::vk_utils::buffer_barrier(
-				cmd_buf,
-				VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-				VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-				VK_ACCESS_SHADER_READ_BIT,
-				renderer.m_point_lights_buffers.at(frame_idx).m_buffer.m_handle
-			);
-
-			/* Show lights */
-			auto& point_lights_visualizer = render_list.get_render_object(point_light_visualizer_idx);
-
-			show_lights.dispatch(
-				frame_idx,
-				cmd_buf,
-				res_container,
-				light_array,
-				point_lights_visualizer,
-				{ .m_visualizer_scale = 0.1f }
-			);
-
-			if (point_lights_visualizer.m_instances_buffer)
-			{
-				vren::vk_utils::buffer_barrier(
-					cmd_buf,
-					VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-					VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-					VK_ACCESS_SHADER_WRITE_BIT,
-					VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-					point_lights_visualizer.m_instances_buffer->m_buffer.m_handle
-				);
-				res_container.add_resource(point_lights_visualizer.m_instances_buffer);
-			}
-
 			/* Renders the scene */
-			profiler.profile(prof_slot + vren_demo::profile_slot::MainPass, cmd_buf, res_container, [&]()
+			profiler.profile(frame_idx, cmd_buf, res_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
 			{
 				auto cam_data = vren::camera{
 					.m_position = camera.m_position,
@@ -463,7 +461,7 @@ void launch()
 			});
 
 			/* Renders the UI */
-			profiler.profile(prof_slot + vren_demo::profile_slot::UiPass, cmd_buf, res_container, [&]()
+			profiler.profile(frame_idx, cmd_buf, res_container, prof_slot + vren_demo::profile_slot::UiPass, [&]()
 			{
 				ui_renderer.render(frame_idx, cmd_buf, res_container, target, [&]()
 				{

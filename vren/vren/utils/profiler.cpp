@@ -1,5 +1,7 @@
 #include "profiler.hpp"
 
+#include <chrono>
+
 #include "context.hpp"
 #include "vk_helpers/misc.hpp"
 
@@ -12,9 +14,10 @@ vren::profiler::~profiler()
 {}
 
 void vren::profiler::profile(
-	int slot_idx,
+	uint32_t frame_idx,
 	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
+	uint32_t slot_idx,
 	std::function<void()> const& sample_func
 )
 {
@@ -53,4 +56,15 @@ bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* e
 	{
 		throw std::runtime_error("Failed to read query results");
 	}
+}
+
+uint32_t vren::profile(std::function<void()> const& sample_func)
+{
+	auto start = std::chrono::system_clock::now();
+
+	sample_func();
+
+	auto end = std::chrono::system_clock::now();
+
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }

@@ -66,35 +66,27 @@ void vren_demo::ui::scene_ui::show(
 		{
 			std::optional<vren_demo::tinygltf_scene> loaded_scene;
 
-			/* Sponza */
-			if (ImGui::Button("Load Sponza##load_scene-scene_ui"))
+			/* Clear scene */
+			if (ImGui::Button("Clear scene##load_scene-scene_ui"))
 			{
 				render_list.clear();
 
-				loaded_scene = vren_demo::tinygltf_scene{};
-				m_gltf_loader.load_from_file("resources/models/Sponza/glTF/Sponza.gltf", render_list, *loaded_scene);
+				m_triangles_count = 0;
 			}
 
-			/* DamagedHelmet */
-			if (ImGui::Button("Load DamagedHelmet##load_scene-scene_ui"))
-			{
-				//render_list.clear();
-
-				loaded_scene = vren_demo::tinygltf_scene{};
-				m_gltf_loader.load_from_file("resources/models/DamagedHelmet/glTF/DamagedHelmet.gltf", render_list, *loaded_scene);
-			}
+			// TODO load scenes externally (as executable argument)
 
 			if (loaded_scene.has_value())
 			{
-				m_scene_min = loaded_scene->m_min;
-				m_scene_max = loaded_scene->m_max;
+				m_triangles_count = loaded_scene->m_triangles_count;
 			}
 
 			ImGui::TreePop();
 		}
 
-		ImGui::Text("Scene min: (%.1f, %.1f, %.1f)", m_scene_min.x, m_scene_min.y, m_scene_min.z);
-		ImGui::Text("Scene max: (%.1f, %.1f, %.1f)", m_scene_max.x, m_scene_max.y, m_scene_max.z);
+		ImGui::Separator();
+
+		ImGui::Text("Triangles count: %lld", m_triangles_count);
 
 		ImGui::Separator();
 
@@ -122,7 +114,7 @@ void vren_demo::ui::scene_ui::show(
 				}
 			}
 
-			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 1.0f);
+			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
 		}
 
 		{ /* Directional lights */
@@ -322,43 +314,6 @@ vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::renderer const& 
 	m_scene_ui(ctx)
 {}
 
-void vren_demo::ui::main_ui::show_vk_pool_info_ui()
-{
-	if (ImGui::Begin("Vulkan objects pool##vk_pool_info"))
-	{
-		if (ImGui::BeginTable("table##vk_pool_info", 4))
-		{
-			/* Headers */
-			ImGui::TableSetupColumn("Pool name");
-			ImGui::TableSetupColumn("Acquired objects");
-			ImGui::TableSetupColumn("Pooled objects");
-			ImGui::TableSetupColumn("Total objects");
-			ImGui::TableHeadersRow();
-
-			/* Body */
-			auto add_row = []<typename _t>(char const* title, vren::object_pool<_t> const& pool){
-				ImGui::TableNextRow();
-				ImGui::TableNextColumn(); ImGui::Text(title);
-				ImGui::TableNextColumn(); ImGui::Text("%d", pool.get_acquired_objects_count());
-				ImGui::TableNextColumn(); ImGui::Text("%d", pool.get_pooled_objects_count());
-				ImGui::TableNextColumn(); ImGui::Text("%d", pool.get_created_objects_count());
-			};
-
-			add_row("Graphics commands", m_context->m_toolbox->m_graphics_command_pool);
-			add_row("Transfer commands", m_context->m_toolbox->m_transfer_command_pool);
-			add_row("Descriptor pool", m_context->m_toolbox->m_descriptor_pool);
-			//add_row("Material descriptors", *m_renderer->m_material_descriptor_pool);
-			//add_row("Light array descriptors", *m_renderer->m_light_array_descriptor_pool);
-
-			/**/
-
-			ImGui::EndTable();
-		}
-	}
-
-	ImGui::End();
-}
-
 void vren_demo::ui::main_ui::show(vren::render_list& render_list, vren::light_array& light_arr)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -404,9 +359,6 @@ void vren_demo::ui::main_ui::show(vren::render_list& render_list, vren::light_ar
 		render_list,
 		light_arr
 	);
-
-	ImGui::SetNextWindowDockID(m_bottom_toolbar_dock_id, ImGuiCond_Once);
-	show_vk_pool_info_ui();
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
