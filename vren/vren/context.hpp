@@ -67,6 +67,7 @@ namespace vren
 
 		VkPhysicalDevice m_physical_device;
 		VkPhysicalDeviceProperties m_physical_device_properties;
+		VkPhysicalDeviceMemoryProperties m_physical_device_memory_properties;
 
 		vren::context::queue_families m_queue_families;
 		VkDevice m_device;

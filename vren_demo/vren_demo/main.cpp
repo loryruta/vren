@@ -254,9 +254,17 @@ void show_point_lights(
 	}
 }
 
-void launch()
+int main(int argc, char* argv[])
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
+	if (argc != (1 + 1))
+	{
+		fprintf(stderr, "Invalid usage: <scene_filepath>");
+		exit(0);
+	}
+	argv++;
 
 	glfwSetErrorCallback(glfw_error_callback);
 
@@ -322,6 +330,14 @@ void launch()
 	vren_demo::ui::main_ui ui(ctx, renderer);
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
+
+
+	vren_demo::tinygltf_scene loaded_scene;
+	vren_demo::tinygltf_loader gltf_loader(ctx);
+
+	printf("Loading scene: %s\n", argv[0]);
+
+	gltf_loader.load_from_file(argv[0], render_list, loaded_scene);
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -477,11 +493,4 @@ void launch()
 
 	//glfwDestroyWindow(g_window); // TODO Terminate only AFTER Vulkan instance destruction!
 	//glfwTerminate();
-}
-
-int main(int argc, char* argv[])
-{
-	launch();
-
-	return 0;
 }

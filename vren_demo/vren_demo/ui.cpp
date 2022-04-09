@@ -50,8 +50,7 @@ void vren_demo::ui::plot::push(float val)
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren_demo::ui::scene_ui::scene_ui(vren::context const& ctx) :
-	m_gltf_loader(ctx)
+vren_demo::ui::scene_ui::scene_ui(vren::context const& ctx)
 {}
 
 void vren_demo::ui::scene_ui::show(
@@ -61,35 +60,6 @@ void vren_demo::ui::scene_ui::show(
 {
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
-		/* Load a scene */
-		if (ImGui::TreeNode("Load a scene##load_scene-scene_ui"))
-		{
-			std::optional<vren_demo::tinygltf_scene> loaded_scene;
-
-			/* Clear scene */
-			if (ImGui::Button("Clear scene##load_scene-scene_ui"))
-			{
-				render_list.clear();
-
-				m_triangles_count = 0;
-			}
-
-			// TODO load scenes externally (as executable argument)
-
-			if (loaded_scene.has_value())
-			{
-				m_triangles_count = loaded_scene->m_triangles_count;
-			}
-
-			ImGui::TreePop();
-		}
-
-		ImGui::Separator();
-
-		ImGui::Text("Triangles count: %lld", m_triangles_count);
-
-		ImGui::Separator();
-
 		/* Lighting */
 		ImGui::Text("Lighting");
 

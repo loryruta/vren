@@ -145,6 +145,7 @@ VkPhysicalDevice vren::context::find_physical_device()
 		throw std::runtime_error("Can't find a physical device that fits requirements.");
 	}
 	vkGetPhysicalDeviceProperties(found, &m_physical_device_properties);
+	vkGetPhysicalDeviceMemoryProperties(found, &m_physical_device_memory_properties);
 
 	if (!m_physical_device_properties.limits.timestampComputeAndGraphics) {
 		throw std::runtime_error("Unsupported timestamp queries for compute and graphics queue families");

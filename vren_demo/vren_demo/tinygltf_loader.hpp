@@ -13,11 +13,16 @@
 
 namespace vren_demo
 {
+	// TODO shouldn't be a vren dependency
+
 	struct tinygltf_scene
 	{
-		std::vector<std::shared_ptr<vren::vk_utils::texture>> m_textures;
-		std::vector<std::shared_ptr<vren::material>> m_materials;
-		std::vector<uint32_t> m_render_objects;
+		std::vector<std::shared_ptr<vren::vk_utils::texture>> m_textures; // TODO no textures
+		std::vector<std::shared_ptr<vren::material>> m_materials; // TODO no materials
+		std::vector<uint32_t> m_render_objects; // TODO no render objects
+
+		std::vector<float> m_vertices;
+		std::vector<uint32_t> m_indices;
 
 		size_t m_triangles_count = 0;
 	};

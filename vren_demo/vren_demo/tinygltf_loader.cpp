@@ -133,24 +133,46 @@ void vren_demo::tinygltf_loader::load_textures(
 			}
 		}
 
-		tinygltf::Sampler const& gltf_sampler = gltf_model.samplers.at(gltf_tex.sampler);
-
-		auto tex = std::make_shared<vren::vk_utils::texture>(
-            vren::vk_utils::create_texture(
-				*m_context,
-                img_w,
-                img_h,
-                img_data,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                parse_filter(gltf_sampler.magFilter),
-                parse_filter(gltf_sampler.minFilter),
-                VK_SAMPLER_MIPMAP_MODE_NEAREST, // todo
-                parse_address_mode(gltf_sampler.wrapR),
-                parse_address_mode(gltf_sampler.wrapS),
-                parse_address_mode(gltf_sampler.wrapT)
-            )
-        );
-		result.m_textures[i] = tex;
+		if (gltf_tex.sampler >= 0)
+		{
+			auto& gltf_sampler = gltf_model.samplers.at(gltf_tex.sampler);
+			auto tex = std::make_shared<vren::vk_utils::texture>(
+				vren::vk_utils::create_texture(
+					*m_context,
+					img_w,
+					img_h,
+					img_data,
+					VK_FORMAT_R8G8B8A8_UNORM,
+					parse_filter(gltf_sampler.magFilter),
+					parse_filter(gltf_sampler.minFilter),
+					VK_SAMPLER_MIPMAP_MODE_NEAREST, // todo
+					parse_address_mode(gltf_sampler.wrapR),
+					parse_address_mode(gltf_sampler.wrapS),
+					parse_address_mode(gltf_sampler.wrapT)
+				)
+			);
+			result.m_textures[i] = tex;
+		}
+		else
+		{
+			// No pre-defined sampler, use default values.
+			auto tex = std::make_shared<vren::vk_utils::texture>(
+				vren::vk_utils::create_texture(
+					*m_context,
+					img_w,
+					img_h,
+					img_data,
+					VK_FORMAT_R8G8B8A8_UNORM,
+					VK_FILTER_NEAREST,
+					VK_FILTER_NEAREST,
+					VK_SAMPLER_MIPMAP_MODE_NEAREST, // todo
+					VK_SAMPLER_ADDRESS_MODE_REPEAT,
+					VK_SAMPLER_ADDRESS_MODE_REPEAT,
+					VK_SAMPLER_ADDRESS_MODE_REPEAT
+				)
+			);
+			result.m_textures[i] = tex;
+		}
 
 		stbi_image_free(img_data);
 	}

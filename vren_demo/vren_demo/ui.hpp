@@ -38,12 +38,8 @@ namespace vren_demo::ui
 	// TODO should this class manage rendering?
 	class scene_ui
 	{
-	private:
-		vren_demo::tinygltf_loader m_gltf_loader;
-
 	public:
 		float m_speed = 1.0f;
-		size_t m_triangles_count = 0;
 
 		scene_ui(vren::context const& ctx);
 

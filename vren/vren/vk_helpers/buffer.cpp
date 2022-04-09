@@ -27,7 +27,7 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 
 	VmaAllocationCreateInfo alloc_info{};
 	alloc_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	alloc_info.preferredFlags = NULL;
 	alloc_info.flags = persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL;
 
 	VkBuffer buf;
