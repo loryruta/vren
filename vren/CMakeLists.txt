@@ -88,3 +88,7 @@ target_link_libraries(vren PUBLIC implot::implot)
 # spirv-reflect
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC unofficial::spirv-reflect::spirv-reflect)
+
+# meshoptimizer
+find_package(meshoptimizer CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC meshoptimizer::meshoptimizer)

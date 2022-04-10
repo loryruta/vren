@@ -17,6 +17,7 @@
         "implot",
         "stb",
         "spirv-reflect",
+        "meshoptimizer",
 
         "tinyfiledialogs",
         "tinygltf",
