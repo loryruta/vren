@@ -136,7 +136,7 @@ std::string composed_shader_stage_name(VkShaderStageFlags shader_stages)
 	return "[" + result + "]";
 }
 
-void print_bindings(std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings_by_set_idx)
+void print_descriptor_slots(std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings_by_set_idx)
 {
 	for (auto const& [set_idx, bindings] : bindings_by_set_idx)
 	{
@@ -176,7 +176,7 @@ vren::vk_utils::load_shader(
 	std::vector<SpvReflectDescriptorSet*> spv_refl_desc_sets(num);
 	spirv_reflect_check(spvReflectEnumerateDescriptorSets(&module, &num, spv_refl_desc_sets.data()));
 
-	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> descriptors_by_set_idx;
+	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> desc_slots;
 
 	for (int i = 0; i < spv_refl_desc_sets.size(); i++)
 	{
@@ -198,7 +198,7 @@ vren::vk_utils::load_shader(
 			});
 		}
 
-		descriptors_by_set_idx.emplace(spv_refl_desc_sets.at(i)->set, bindings);
+		desc_slots.emplace(spv_refl_desc_sets.at(i)->set, bindings);
 	}
 
 	/* Push constants */
@@ -220,20 +220,13 @@ vren::vk_utils::load_shader(
 
 	/* */
 
-	printf("----------------------------------------------------------------\n");
-	printf("Shader: %s (type: %s)\n", module.source_file, shader_stage_name(module.shader_stage));
-	printf("----------------------------------------------------------------\n");
-	print_bindings(descriptors_by_set_idx);
-
-	/* */
-
 	spvReflectDestroyShaderModule(&module);
 
 	return {
 		.m_module = create_shader_module(ctx, spv_code_size, spv_code),
 		.m_stage = shader_stage,
 		.m_entry_point = "main",
-		.m_bindings = std::move(descriptors_by_set_idx),
+		.m_descriptor_slots = std::move(desc_slots),
 		.m_push_constant_ranges = std::move(push_constant_ranges)
 	};
 }
@@ -290,11 +283,11 @@ void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(
 	res_container.add_resources(desc_set);
 }
 
-void merge_shader_bindings(std::span<vren::vk_utils::shader> const& shaders, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& merged_bindings)
+void vren::vk_utils::merge_shader_descriptor_slots(std::span<shader> const& shaders, descriptor_slots_t& merged_bindings)
 {
 	for (auto& shader : shaders)
 	{
-		for (auto const& [desc_set_idx, bindings] : shader.m_bindings)
+		for (auto const& [desc_set_idx, bindings] : shader.m_descriptor_slots)
 		{
 			for (auto const& binding : bindings)
 			{
@@ -341,11 +334,11 @@ void merge_shader_bindings(std::span<vren::vk_utils::shader> const& shaders, std
 	}
 }
 
-std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> create_descriptor_set_layouts(vren::context const& ctx, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings)
+std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> create_descriptor_set_layouts(vren::context const& ctx, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& desc_slots)
 {
 	std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> desc_set_layouts;
 
-	for (auto& [desc_set_idx, bindings] : bindings)
+	for (auto& [desc_set_idx, bindings] : desc_slots)
 	{
 		VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -370,7 +363,7 @@ vren::vk_utils::pipeline
 vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& comp_shader)
 {
 	/* Descriptor set layouts */
-	auto desc_set_layouts = create_descriptor_set_layouts(ctx, comp_shader.m_bindings);
+	auto desc_set_layouts = create_descriptor_set_layouts(ctx, comp_shader.m_descriptor_slots);
 
 	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
 	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
@@ -444,17 +437,14 @@ vren::vk_utils::create_graphics_pipeline(
 )
 {
 	/* Descriptor set layouts */
-	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> merged_bindings;
-	merge_shader_bindings(shaders, merged_bindings);
+	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> desc_slots;
+	merge_shader_descriptor_slots(shaders, desc_slots);
 
-	printf("Merged bindings:\n");
-	print_bindings(merged_bindings);
+	auto desc_set_layouts = create_descriptor_set_layouts(ctx, desc_slots);
 
-	auto desc_set_layouts = create_descriptor_set_layouts(ctx, merged_bindings);
-
-	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
+	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts(desc_set_layouts.size());
 	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
-		raw_desc_set_layouts.push_back(desc_set_layout.m_handle);
+		raw_desc_set_layouts[set_idx] = desc_set_layout.m_handle;
 	}
 
 	/* Shader stages */

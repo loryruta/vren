@@ -32,12 +32,14 @@ namespace vren::vk_utils
 	// Shader
 	// ------------------------------------------------------------------------------------------------
 
+	using descriptor_slots_t = std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>;
+
 	struct shader
 	{
 		vren::vk_shader_module m_module;
 		VkShaderStageFlags m_stage;
 		std::string m_entry_point;
-		std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> m_bindings_by_set_idx;
+		descriptor_slots_t m_descriptor_slots;
 		std::vector<VkPushConstantRange> m_push_constant_ranges;
 	};
 
@@ -63,10 +65,9 @@ namespace vren::vk_utils
 
 		VkPipelineBindPoint m_bind_point;
 
-		using descriptor_set_layout_table_t = std::unordered_map<VkShaderStageFlags, std::unordered_map<uint32_t, vren::vk_descriptor_set_layout>>;
-		descriptor_set_layout_table_t m_descriptor_set_layouts_table;
+		std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> m_descriptor_set_layouts;
 
-		VkDescriptorSetLayout get_descriptor_set_layout(VkShaderStageFlags shader_stage, uint32_t desc_set_idx);
+		VkDescriptorSetLayout get_descriptor_set_layout(uint32_t desc_set_idx);
 
 		void bind(VkCommandBuffer cmd_buf);
 		void bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set);
@@ -82,8 +83,9 @@ namespace vren::vk_utils
 		);
 	};
 
-	pipeline create_compute_pipeline(vren::context const& ctx, shader const& comp_shad);
+	void merge_shader_descriptor_slots(std::span<shader> const& shaders, descriptor_slots_t& result);
 
+	pipeline create_compute_pipeline(vren::context const& ctx, shader const& comp_shad);
 	pipeline create_graphics_pipeline(
 		vren::context const& ctx,
 		std::span<shader> const& shaders,
