@@ -18,6 +18,7 @@
         "stb",
         "spirv-reflect",
         "meshoptimizer",
+        "fmt",
 
         "tinyfiledialogs",
         "tinygltf",

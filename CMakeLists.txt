@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.21)
 
 project(vren)
 
@@ -10,8 +10,7 @@ option(BUILD_TEST "Should build unit tests?" ON)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
-# ${Vulkan_INCLUDE_DIRS}
-# ${Vulkan_LIBRARIES}
+message($ENV{VULKAN_SDK})
 
 if (MSVC)
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /fsanitize=address")

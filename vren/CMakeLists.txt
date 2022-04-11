@@ -13,6 +13,7 @@ set(SRC
         vren/utils/profiler.hpp
         vren/utils/profiler.cpp
         vren/utils/shapes.hpp
+        vren/utils/log.hpp
 
         vren/vk_helpers/buffer.hpp
         vren/vk_helpers/buffer.cpp
@@ -26,6 +27,9 @@ set(SRC
         vren/vk_helpers/image_layout_transitions.hpp
         vren/vk_helpers/image_layout_transitions.cpp
 
+        vren/mesh.cpp
+        vren/mesh.hpp
+        vren/texture.hpp
         vren/imgui_renderer.hpp
         vren/imgui_renderer.cpp
         vren/toolbox.hpp
@@ -52,8 +56,6 @@ set(SRC
         vren/material.cpp
         vren/light_array.cpp
         vren/light_array.hpp
-
-
 )
 
 add_library(vren ${SRC})
@@ -92,3 +94,7 @@ target_link_libraries(vren PUBLIC unofficial::spirv-reflect::spirv-reflect)
 # meshoptimizer
 find_package(meshoptimizer CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC meshoptimizer::meshoptimizer)
+
+# fmt
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC fmt::fmt)

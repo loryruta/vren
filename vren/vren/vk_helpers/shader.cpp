@@ -72,33 +72,86 @@ VkDescriptorType parse_descriptor_type(SpvReflectDescriptorType spv_refl_desc_ty
 	return static_cast<VkDescriptorType>(spv_refl_desc_type);
 }
 
-std::unordered_map<uint32_t, vren::vk_descriptor_set_layout>
-create_descriptor_set_layouts(
-	vren::context const& ctx,
-	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings_by_set_idx
-)
+char const* descriptor_type_name(VkDescriptorType desc_type)
 {
-	std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> desc_set_layout_by_idx;
-
-	for (auto& [desc_set_idx, bindings] : bindings_by_set_idx)
+	switch (desc_type)
 	{
-		VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = NULL,
-			.bindingCount = (uint32_t) bindings.size(),
-			.pBindings = bindings.data(),
-		};
-		VkDescriptorSetLayout desc_set_layout;
-		vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout);
-
-		desc_set_layout_by_idx.emplace(
-			desc_set_idx,
-			vren::vk_descriptor_set_layout(ctx, desc_set_layout)
-		);
+	case VK_DESCRIPTOR_TYPE_SAMPLER: return "VK_DESCRIPTOR_TYPE_SAMPLER";
+	case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return "VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER";
+	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return "VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER";
+	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER";
+	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC";
+	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC";
+	case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT";
+	default: return "?";
 	}
+}
 
-	return desc_set_layout_by_idx;
+char const* shader_stage_name(VkShaderStageFlags shader_stage)
+{
+	switch (shader_stage)
+	{
+	case VK_SHADER_STAGE_VERTEX_BIT: return "VK_SHADER_STAGE_VERTEX_BIT";
+	case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return "VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT";
+	case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return "VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT";
+	case VK_SHADER_STAGE_GEOMETRY_BIT: return "VK_SHADER_STAGE_GEOMETRY_BIT";
+	case VK_SHADER_STAGE_FRAGMENT_BIT: return "VK_SHADER_STAGE_FRAGMENT_BIT";
+	case VK_SHADER_STAGE_COMPUTE_BIT: return "VK_SHADER_STAGE_COMPUTE_BIT";
+	case VK_SHADER_STAGE_ALL_GRAPHICS: return "VK_SHADER_STAGE_ALL_GRAPHICS";
+	case VK_SHADER_STAGE_ALL: return "VK_SHADER_STAGE_ALL";
+	case VK_SHADER_STAGE_RAYGEN_BIT_KHR: return "VK_SHADER_STAGE_RAYGEN_BIT_KHR";
+	case VK_SHADER_STAGE_ANY_HIT_BIT_KHR: return "VK_SHADER_STAGE_ANY_HIT_BIT_KHR";
+	case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR: return "VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR";
+	case VK_SHADER_STAGE_MISS_BIT_KHR: return "VK_SHADER_STAGE_MISS_BIT_KHR";
+	case VK_SHADER_STAGE_INTERSECTION_BIT_KHR: return "VK_SHADER_STAGE_INTERSECTION_BIT_KHR";
+	case VK_SHADER_STAGE_CALLABLE_BIT_KHR: return "VK_SHADER_STAGE_CALLABLE_BIT_KHR";
+	case VK_SHADER_STAGE_TASK_BIT_NV: return "VK_SHADER_STAGE_TASK_BIT_NV";
+	case VK_SHADER_STAGE_MESH_BIT_NV: return "VK_SHADER_STAGE_MESH_BIT_NV";
+	//case VK_SHADER_STAGE_SUBPASS_SHADING_BIT_HUAWEI: return "VK_SHADER_STAGE_SUBPASS_SHADING_BIT_HUAWEI";
+	default: return "?";
+	}
+}
+
+std::string composed_shader_stage_name(VkShaderStageFlags shader_stages)
+{
+	std::string result;
+	uint8_t i = 0;
+	while (shader_stages > 0)
+	{
+		if (shader_stages & 1)
+		{
+			result += shader_stage_name(1 << i);
+			result += ", ";
+		}
+		shader_stages >>= 1;
+		i++;
+	}
+	if (result.size() > 0) {
+		result.resize(result.size() - 2);
+	}
+	return "[" + result + "]";
+}
+
+void print_bindings(std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings_by_set_idx)
+{
+	for (auto const& [set_idx, bindings] : bindings_by_set_idx)
+	{
+		for (auto const& binding : bindings)
+		{
+			auto shader_stages_name = composed_shader_stage_name(binding.stageFlags);
+
+			printf("%d.%d) stages: %s, type: %s[%d]\n",
+				   set_idx, binding.binding,
+				   shader_stages_name.c_str(),
+				   descriptor_type_name(binding.descriptorType),
+				   binding.descriptorCount
+			);
+		}
+	}
 }
 
 vren::vk_utils::shader
@@ -117,10 +170,6 @@ vren::vk_utils::load_shader(
 
 	uint32_t num;
 
-	printf("----------------------------------------------------------------\n");
-	printf("Shader: %s (type: %d)\n", module.source_file, module.shader_stage);
-	printf("----------------------------------------------------------------\n");
-
 	/* Descriptor sets */
 	spirv_reflect_check(spvReflectEnumerateDescriptorSets(&module, &num, nullptr));
 
@@ -133,21 +182,20 @@ vren::vk_utils::load_shader(
 	{
 		auto spv_refl_desc_set = spv_refl_desc_sets.at(i);
 
-		printf("Descriptor set #%d (bindings: %d)\n", spv_refl_desc_set->set, spv_refl_desc_set->binding_count);
-
 		std::vector<VkDescriptorSetLayoutBinding> bindings{};
 		for (uint32_t j = 0; j < spv_refl_desc_set->binding_count; j++)
 		{
 			auto binding = spv_refl_desc_set->bindings[j];
+
+			VkDescriptorType desc_type = parse_descriptor_type(binding->descriptor_type);
+
 			bindings.push_back({
 				.binding = binding->binding,
-				.descriptorType = parse_descriptor_type(binding->descriptor_type),
+				.descriptorType = desc_type,
 				.descriptorCount = binding->count,
 				.stageFlags = shader_stage,
 				.pImmutableSamplers = nullptr
 			});
-
-			printf("- Binding #%d (count: %d): %s\n", binding->binding, binding->count, binding->name);
 		}
 
 		descriptors_by_set_idx.emplace(spv_refl_desc_sets.at(i)->set, bindings);
@@ -172,13 +220,20 @@ vren::vk_utils::load_shader(
 
 	/* */
 
+	printf("----------------------------------------------------------------\n");
+	printf("Shader: %s (type: %s)\n", module.source_file, shader_stage_name(module.shader_stage));
+	printf("----------------------------------------------------------------\n");
+	print_bindings(descriptors_by_set_idx);
+
+	/* */
+
 	spvReflectDestroyShaderModule(&module);
 
 	return {
 		.m_module = create_shader_module(ctx, spv_code_size, spv_code),
 		.m_stage = shader_stage,
 		.m_entry_point = "main",
-		.m_bindings_by_set_idx = std::move(descriptors_by_set_idx),
+		.m_bindings = std::move(descriptors_by_set_idx),
 		.m_push_constant_ranges = std::move(push_constant_ranges)
 	};
 }
@@ -198,9 +253,9 @@ vren::vk_utils::load_shader_from_file(
 // Pipeline
 // --------------------------------------------------------------------------------------------------------------------------------
 
-VkDescriptorSetLayout vren::vk_utils::pipeline::get_descriptor_set_layout(VkShaderStageFlags shader_stage, uint32_t desc_set_idx)
+VkDescriptorSetLayout vren::vk_utils::pipeline::get_descriptor_set_layout(uint32_t desc_set_idx)
 {
-	return m_descriptor_set_layouts_table.at(shader_stage).at(desc_set_idx).m_handle;
+	return m_descriptor_set_layouts.at(desc_set_idx).m_handle;
 }
 
 void vren::vk_utils::pipeline::bind(VkCommandBuffer cmd_buf)
@@ -228,25 +283,98 @@ void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(
 )
 {
 	auto desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-		ctx.m_toolbox->m_descriptor_pool.acquire(get_descriptor_set_layout(shader_stage, desc_set_idx))
+		ctx.m_toolbox->m_descriptor_pool.acquire(get_descriptor_set_layout(desc_set_idx))
 	);
 	update_func(desc_set->m_handle.m_descriptor_set);
 	bind_descriptor_set(cmd_buf, desc_set_idx, desc_set->m_handle.m_descriptor_set);
 	res_container.add_resources(desc_set);
 }
 
+void merge_shader_bindings(std::span<vren::vk_utils::shader> const& shaders, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& merged_bindings)
+{
+	for (auto& shader : shaders)
+	{
+		for (auto const& [desc_set_idx, bindings] : shader.m_bindings)
+		{
+			for (auto const& binding : bindings)
+			{
+				bool added = false;
+				if (merged_bindings.contains(desc_set_idx))
+				{
+					for (auto& added_binding : merged_bindings.at(desc_set_idx))
+					{
+						if (added_binding.binding == binding.binding)
+						{
+							bool desc_type_match = added_binding.descriptorType == binding.descriptorType;
+							bool desc_count_match = added_binding.descriptorCount == binding.descriptorCount;
+
+							if (!desc_type_match || !desc_count_match)
+							{
+								auto desc_type_validation = std::string(" != ") + descriptor_type_name(added_binding.descriptorType);
+								auto desc_count_validation = std::string(" != ") + std::to_string(added_binding.descriptorCount);
+
+								fprintf(stderr, "Invalid binding %d.%d: descriptorType %s%s, descriptorCount %d%s\n",
+										desc_set_idx, added_binding.binding,
+										descriptor_type_name(binding.descriptorType),
+										desc_type_match ? "" : desc_type_validation.c_str(),
+										binding.descriptorCount,
+										desc_count_match ? "" : desc_count_validation.c_str()
+										);
+								throw std::invalid_argument("Failed to merge shader bindings");
+							}
+
+							added_binding.stageFlags |= shader.m_stage;
+
+							added = true;
+							break;
+						}
+					}
+				}
+
+				if (!added)
+				{
+					merged_bindings.emplace(desc_set_idx, std::vector<VkDescriptorSetLayoutBinding>{});
+					merged_bindings.at(desc_set_idx).push_back(binding);
+				}
+			}
+		}
+	}
+}
+
+std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> create_descriptor_set_layouts(vren::context const& ctx, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& bindings)
+{
+	std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> desc_set_layouts;
+
+	for (auto& [desc_set_idx, bindings] : bindings)
+	{
+		VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = NULL,
+			.bindingCount = (uint32_t) bindings.size(),
+			.pBindings = bindings.data(),
+		};
+		VkDescriptorSetLayout desc_set_layout;
+		vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout);
+
+		desc_set_layouts.emplace(
+			desc_set_idx,
+			vren::vk_descriptor_set_layout(ctx, desc_set_layout)
+		);
+	}
+
+	return desc_set_layouts;
+}
+
 vren::vk_utils::pipeline
 vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& comp_shader)
 {
 	/* Descriptor set layouts */
-	pipeline::descriptor_set_layout_table_t desc_set_layouts_table;
-	desc_set_layouts_table.emplace(VK_SHADER_STAGE_COMPUTE_BIT, create_descriptor_set_layouts(ctx, comp_shader.m_bindings_by_set_idx));
+	auto desc_set_layouts = create_descriptor_set_layouts(ctx, comp_shader.m_bindings);
 
-	std::vector<VkDescriptorSetLayout> desc_set_layouts;
-	for (auto& [shader_stage, row] : desc_set_layouts_table) {
-		for (auto& [desc_set_idx, desc_set_layout] : row) {
-			desc_set_layouts.push_back(desc_set_layout.m_handle);
-		}
+	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
+	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
+		raw_desc_set_layouts.push_back(desc_set_layout.m_handle);
 	}
 
 	/* Push constant ranges */
@@ -257,8 +385,8 @@ vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& 
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
-		.pSetLayouts = desc_set_layouts.data(),
+		.setLayoutCount = (uint32_t) raw_desc_set_layouts.size(),
+		.pSetLayouts = raw_desc_set_layouts.data(),
 		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
 		.pPushConstantRanges = push_const_ranges.data(),
 	};
@@ -294,7 +422,7 @@ vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& 
 		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
 		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
 		.m_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE,
-		.m_descriptor_set_layouts_table = std::move(desc_set_layouts_table),
+		.m_descriptor_set_layouts = std::move(desc_set_layouts),
 	};
 }
 
@@ -316,15 +444,17 @@ vren::vk_utils::create_graphics_pipeline(
 )
 {
 	/* Descriptor set layouts */
-	pipeline::descriptor_set_layout_table_t desc_set_layouts_table;
-	for (auto& shader : shaders) {
-		desc_set_layouts_table.emplace(shader.m_stage, create_descriptor_set_layouts(ctx, shader.m_bindings_by_set_idx));
-	}
-	std::vector<VkDescriptorSetLayout> desc_set_layouts;
-	for (auto& [shader_stage, row] : desc_set_layouts_table) {
-		for (auto& [desc_set_idx, desc_set_layout] : row) {
-			desc_set_layouts.push_back(desc_set_layout.m_handle);
-		}
+	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> merged_bindings;
+	merge_shader_bindings(shaders, merged_bindings);
+
+	printf("Merged bindings:\n");
+	print_bindings(merged_bindings);
+
+	auto desc_set_layouts = create_descriptor_set_layouts(ctx, merged_bindings);
+
+	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
+	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
+		raw_desc_set_layouts.push_back(desc_set_layout.m_handle);
 	}
 
 	/* Shader stages */
@@ -356,8 +486,8 @@ vren::vk_utils::create_graphics_pipeline(
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
-		.pSetLayouts = desc_set_layouts.data(),
+		.setLayoutCount = (uint32_t) raw_desc_set_layouts.size(),
+		.pSetLayouts = raw_desc_set_layouts.data(),
 		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
 		.pPushConstantRanges = push_const_ranges.data(),
 	};
@@ -393,6 +523,6 @@ vren::vk_utils::create_graphics_pipeline(
 		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
 		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
 		.m_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.m_descriptor_set_layouts_table = std::move(desc_set_layouts_table)
+		.m_descriptor_set_layouts = std::move(desc_set_layouts)
 	};
 }
