@@ -10,21 +10,22 @@ layout(triangles, max_vertices = 64, max_primitives = 126) out;
 
 layout(push_constant) uniform PushConstants
 {
+    vec4 cam_pos;
     mat4 cam_view;
     mat4 cam_proj;
 } push_constants;
 
-layout(binding = 0) buffer Meshlets
+layout(set = 2, binding = 0) buffer readonly Meshlets
 {
     Meshlet meshlets[];
 };
 
-layout(binding = 1) buffer VertexBuffer
+layout(set = 2, binding = 1) buffer readonly VertexBuffer
 {
     Vertex vertices[];
 };
 
-layout(binding = 2) buffer IndexBuffer
+layout(set = 2, binding = 2) buffer readonly IndexBuffer
 {
     uint indices[];
 };

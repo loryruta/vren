@@ -1,5 +1,6 @@
 #include "dbg_renderer.hpp"
 
+#include <volk.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "vk_helpers/buffer.hpp"
@@ -252,10 +253,9 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 	};
 
 	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.vert.bin"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.frag.bin")
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.vert.spv"),
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/dbg_draw.frag.spv")
 	};
-
 	return vren::vk_utils::create_graphics_pipeline(
 		*m_context,
 		shaders,

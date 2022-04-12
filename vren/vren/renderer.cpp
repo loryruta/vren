@@ -212,7 +212,10 @@ void vren::renderer::render(
 	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
 	vren::render_target const& target,
-	vren::render_list const& render_list,
+	VkBuffer vertex_buffer,
+	VkBuffer index_buffer,
+	VkBuffer meshlet_buffer,
+	size_t meshlet_count,
 	vren::light_array const& lights_arr,
 	vren::camera const& camera
 )
@@ -235,7 +238,7 @@ void vren::renderer::render(
 	upload_light_array(frame_idx, lights_arr);
 
 	/* Subpass recording */
-	m_simple_draw_pass.record_commands(frame_idx, cmd_buf, res_container, render_list, lights_arr, camera);
+	m_simple_draw_pass.record_commands(frame_idx, cmd_buf, res_container, vertex_buffer, index_buffer, meshlet_buffer, meshlet_count, lights_arr, camera);
 
 	/* Render pass end */
 	vkCmdEndRenderPass(cmd_buf);

@@ -4,8 +4,8 @@
 
 #include "context.hpp"
 #include "renderer.hpp"
-#include "vk_helpers/misc.hpp"
 #include "vk_helpers/shader.hpp"
+#include "vk_helpers/debug_utils.hpp"
 
 vren::simple_draw_pass::simple_draw_pass(
 	vren::context const& ctx,
@@ -140,8 +140,9 @@ vren::vk_utils::pipeline vren::simple_draw_pass::create_graphics_pipeline()
 	/* */
 
 	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.vert.bin"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.bin")
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/draw.task.spv"),
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/draw.mesh.spv"),
+		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv")
 	};
 	return vren::vk_utils::create_graphics_pipeline(
 		*m_context,
@@ -160,11 +161,46 @@ vren::vk_utils::pipeline vren::simple_draw_pass::create_graphics_pipeline()
 	);
 }
 
+
+void write_meshlet_buffer_descriptor_set(vren::context const& ctx, VkDescriptorSet desc_set, VkBuffer vertex_buffer, VkBuffer index_buffer, VkBuffer meshlet_buffer)
+{
+	VkDescriptorBufferInfo buffer_info[]{
+		{
+			.buffer = vertex_buffer,
+			.offset = 0,
+			.range = VK_WHOLE_SIZE,
+		},
+		{
+			.buffer = index_buffer,
+			.offset = 0,
+			.range = VK_WHOLE_SIZE,
+		},
+		{
+			.buffer = meshlet_buffer,
+			.offset = 0,
+			.range = VK_WHOLE_SIZE
+		}
+	};
+	VkWriteDescriptorSet write_desc_set{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = desc_set,
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = 3,
+		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		.pBufferInfo = buffer_info
+	};
+	vkUpdateDescriptorSets(ctx.m_device, 1, &write_desc_set, 0, nullptr);
+}
+
 void vren::simple_draw_pass::record_commands(
     int frame_idx,
     VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
-	vren::render_list const& render_list,
+	VkBuffer vertex_buffer,
+	VkBuffer index_buffer,
+	VkBuffer meshlet_buffer,
+	size_t meshlet_count,
 	vren::light_array const& light_arr,
 	vren::camera const& camera
 )
@@ -172,52 +208,31 @@ void vren::simple_draw_pass::record_commands(
 	m_pipeline.bind(cmd_buf);
 
 	/* Camera */
-	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
+	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
+
+	/* Vertex, index & meshlet buffer */
+	m_pipeline.acquire_and_bind_descriptor_set(
+		*m_context,
+		cmd_buf,
+		res_container,
+		k_position_buffer_descriptor_set_idx,
+		[&](VkDescriptorSet desc_set) {
+			vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) desc_set, "meshlet_buffer");
+			write_meshlet_buffer_descriptor_set(*m_context, desc_set, vertex_buffer, index_buffer, meshlet_buffer);
+		}
+	);
 
 	/* Light array */
 	m_pipeline.acquire_and_bind_descriptor_set(
 		*m_context,
 		cmd_buf,
 		res_container,
-		VK_SHADER_STAGE_FRAGMENT_BIT, k_light_array_descriptor_set_idx,
+		k_light_array_descriptor_set_idx,
 		[&](VkDescriptorSet desc_set){
+			vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) desc_set, "light_array");
 			m_renderer->write_light_array_descriptor_set(frame_idx, desc_set);
 		});
 
-	/* Render objects */
-	for (size_t i = 0; i < render_list.m_render_objects.size(); i++)
-	{
-		auto& render_obj = render_list.m_render_objects.at(i);
-
-		if (!render_obj.is_valid()) {
-			continue;
-		}
-
-		VkDeviceSize offsets[] = { 0 };
-
-		/* Vertex buffer */
-		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &render_obj.m_vertices_buffer->m_buffer.m_handle, offsets);
-		res_container.add_resource(render_obj.m_vertices_buffer);
-
-		/* Index buffer */
-		vkCmdBindIndexBuffer(cmd_buf, render_obj.m_indices_buffer->m_buffer.m_handle, 0, vren::render_object::s_index_type);
-		res_container.add_resource(render_obj.m_indices_buffer);
-
-		/* Instance buffer */
-		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &render_obj.m_instances_buffer->m_buffer.m_handle, offsets);
-		res_container.add_resource(render_obj.m_instances_buffer);
-
-		/* Material */
-		m_pipeline.acquire_and_bind_descriptor_set(
-			*m_context,
-			cmd_buf,
-			res_container,
-			VK_SHADER_STAGE_FRAGMENT_BIT, k_material_descriptor_set_idx,
-			[&](VkDescriptorSet desc_set){
-				vren::update_material_descriptor_set(*m_context, *render_obj.m_material, desc_set);
-			});
-		res_container.add_resources(render_obj.m_material);
-
-		vkCmdDrawIndexed(cmd_buf, render_obj.m_indices_count, render_obj.m_instances_count, 0, 0, 0);
-	}
+	/* */
+	vkCmdDrawMeshTasksNV(cmd_buf, (uint32_t) meshlet_count, 0);
 }

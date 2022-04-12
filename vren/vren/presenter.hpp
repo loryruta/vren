@@ -3,7 +3,7 @@
 #include <vector>
 #include <functional>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "renderer.hpp"
 #include "vk_helpers/image.hpp"

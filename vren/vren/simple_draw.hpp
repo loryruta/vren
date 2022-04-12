@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <vk_mem_alloc.h>
 
 #include "base/resource_container.hpp"
@@ -26,6 +26,7 @@ namespace vren
 	public:
 		static constexpr uint32_t k_material_descriptor_set_idx = 0;
 		static constexpr uint32_t k_light_array_descriptor_set_idx = 1;
+		static constexpr uint32_t k_position_buffer_descriptor_set_idx = 2;
 
 	private:
 		vren::context const* m_context;
@@ -45,7 +46,10 @@ namespace vren
             int frame_idx,
             VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
-			vren::render_list const& render_list,
+			VkBuffer vertex_buffer,
+			VkBuffer index_buffer,
+			VkBuffer meshlet_buffer,
+			size_t meshlet_count,
 			vren::light_array const& lights_array,
 			vren::camera const& camera
 		);

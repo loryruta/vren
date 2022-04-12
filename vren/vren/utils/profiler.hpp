@@ -30,4 +30,6 @@ namespace vren
 
 
 	uint32_t profile(std::function<void()> const& sample_func);
+	double profile_us(std::function<void()> const& sample_func);
+	double profile_ms(std::function<void()> const& sample_func);
 }

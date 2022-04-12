@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "toolbox.hpp"
-#include "vk_helpers/vk_ext.hpp"
 #include "vk_helpers/misc.hpp"
 
 void vren::get_supported_layers(std::vector<VkLayerProperties>& layers)
@@ -55,6 +54,27 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 // context
 // --------------------------------------------------------------------------------------------------------------------------------
 
+void vren::context::print_nv_mesh_shader_info(VkPhysicalDeviceMeshShaderPropertiesNV const& props)
+{
+	printf("----------------------------------------------------------------\n");
+	printf("NV_mesh_shader\n");
+	printf("----------------------------------------------------------------\n");
+
+	printf("maxDrawMeshTasksCount: %d\n", props.maxDrawMeshTasksCount);
+	printf("maxTaskWorkGroupInvocations: %d\n", props.maxTaskWorkGroupInvocations);
+	printf("maxTaskWorkGroupSize: (%d, %d, %d)\n", props.maxTaskWorkGroupSize[0], props.maxTaskWorkGroupSize[1], props.maxTaskWorkGroupSize[2]);
+	printf("maxTaskTotalMemorySize: %d\n", props.maxTaskTotalMemorySize);
+	printf("maxTaskOutputCount: %d\n", props.maxTaskOutputCount);
+	printf("maxMeshWorkGroupInvocations: %d\n", props.maxMeshWorkGroupInvocations);
+	printf("maxMeshWorkGroupSize: (%d, %d, %d)\n", props.maxMeshWorkGroupSize[0], props.maxMeshWorkGroupSize[1], props.maxMeshWorkGroupSize[2]);
+	printf("maxMeshTotalMemorySize: %d\n", props.maxMeshTotalMemorySize);
+	printf("maxMeshOutputVertices: %d\n", props.maxMeshOutputVertices);
+	printf("maxMeshOutputPrimitives: %d\n", props.maxMeshOutputPrimitives);
+	printf("maxMeshMultiviewViewCount: %d\n", props.maxMeshMultiviewViewCount);
+	printf("meshOutputPerVertexGranularity: %d\n", props.meshOutputPerVertexGranularity);
+	printf("meshOutputPerPrimitiveGranularity: %d\n", props.meshOutputPerPrimitiveGranularity);
+}
+
 VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 {
 	return VkDebugUtilsMessengerCreateInfoEXT{
@@ -72,6 +92,9 @@ VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 
 VkInstance vren::context::create_instance()
 {
+	/* volk */
+	vren::vk_utils::check(volkInitialize());
+
 	auto debug_messenger_info = create_debug_messenger_create_info();
 
 	/* App info */
@@ -88,7 +111,7 @@ VkInstance vren::context::create_instance()
 	/* Extensions */
 	std::vector<char const*> extensions = m_info.m_extensions;
 	extensions.insert(extensions.end(), {
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	});
 
 	/* Layers */
@@ -110,7 +133,9 @@ VkInstance vren::context::create_instance()
 	};
 	VkInstance instance;
 	vren::vk_utils::check(vkCreateInstance(&inst_info, nullptr, &instance));
-	vren::load_instance_extensions(instance);
+
+	volkLoadInstance(instance);
+
 	return instance;
 }
 
@@ -210,11 +235,19 @@ VkDevice vren::context::create_logical_device()
 	/* Extensions */
 	std::vector<char const*> dev_ext = m_info.m_device_extensions;
 	dev_ext.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+	dev_ext.push_back(VK_NV_MESH_SHADER_EXTENSION_NAME);
 
-	/* Feature: extended dynamic state */
+	/* Features */
+	VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader_feature{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV,
+		.pNext = nullptr,
+		.taskShader = VK_TRUE,
+		.meshShader = VK_TRUE
+	};
+
 	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
-		.pNext = nullptr,
+		.pNext = &mesh_shader_feature,
 		.extendedDynamicState = VK_TRUE,
 	};
 
@@ -237,7 +270,18 @@ VkDevice vren::context::create_logical_device()
 	};
 	VkDevice device;
 	vren::vk_utils::check(vkCreateDevice(m_physical_device, &dev_info, nullptr, &device));
-	vren::load_device_extensions(device);
+
+	m_physical_device_mesh_shader_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV;
+	m_physical_device_mesh_shader_properties.pNext = nullptr;
+
+	VkPhysicalDeviceProperties2 physical_device_properties2{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+		.pNext = &m_physical_device_mesh_shader_properties,
+		.properties = {}
+	};
+	vkGetPhysicalDeviceProperties2(m_physical_device, &physical_device_properties2);
+	print_nv_mesh_shader_info(m_physical_device_mesh_shader_properties);
+
 	return device;
 }
 

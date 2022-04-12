@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "material.hpp"
 #include "vk_helpers/image.hpp"
@@ -63,48 +63,22 @@ namespace vren
 
 		static constexpr auto get_vbo_attrib_desc()
 		{
-			std::array<VkVertexInputAttributeDescription, 5> attrib_desc{};
+			std::array<VkVertexInputAttributeDescription, 5> attrib_desc = {{
+				// Position
+				{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_position) },
 
-			// Position
-			attrib_desc[0] = {
-				.location = 0,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = offsetof(vren::vertex, m_position)
-			};
+				// Normal
+				{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_normal) },
 
-			// Normal
-			attrib_desc[1] = {
-				.location = 1,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = offsetof(vren::vertex, m_normal)
-			};
+				// Tangent
+				{ .location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_tangent) },
 
-			// Tangent
-			attrib_desc[2] = {
-				.location = 2,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32B32A32_SFLOAT,
-				.offset = offsetof(vren::vertex, m_tangent)
-			};
+				// Texcoord
+				{ .location = 3, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_texcoord) },
 
-			// Texcoord
-			attrib_desc[3] = {
-				.location = 3,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32_SFLOAT,
-				.offset = offsetof(vren::vertex, m_texcoord)
-			};
-
-			// Color
-			attrib_desc[4] = {
-				.location = 4,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32B32A32_SFLOAT,
-				.offset = offsetof(vren::vertex, m_color)
-			};
-
+				// Color
+				{ .location = 4, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_color) }
+			}};
 			return attrib_desc;
 		}
 

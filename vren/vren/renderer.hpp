@@ -2,8 +2,8 @@
 
 #include <memory>
 
+#include <volk.h>
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
 
 #include "config.hpp"
 #include "simple_draw.hpp"
@@ -81,7 +81,10 @@ namespace vren
 			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
 			vren::render_target const& target,
-			vren::render_list const& render_list,
+			VkBuffer vertex_buffer,
+			VkBuffer index_buffer,
+			VkBuffer meshlet_buffer,
+			size_t meshlet_count,
 			vren::light_array const& lights_arr,
 			vren::camera const& camera
 		);

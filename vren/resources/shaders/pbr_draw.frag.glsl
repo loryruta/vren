@@ -4,11 +4,12 @@
 
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
-layout(location = 3) in vec2 v_tex_coords;
+layout(location = 2) in vec3 v_color;
+layout(location = 3) in vec2 v_texcoords;
 
 // https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#reference-material-pbrmetallicroughness
-layout(set = 0, binding = 0) uniform sampler2D u_mat_base_color_tex;
-layout(set = 0, binding = 1) uniform sampler2D u_mat_metallic_roughness_tex;
+//layout(set = 0, binding = 0) uniform sampler2D u_mat_base_color_tex; TODO
+//layout(set = 0, binding = 1) uniform sampler2D u_mat_metallic_roughness_tex;
 
 layout(push_constant) uniform PushConstants
 {
@@ -100,8 +101,11 @@ vec3 apply_light(
     vec3 surf_col
 )
 {
-    float roughness = texture(u_mat_metallic_roughness_tex, v_tex_coords).g;
-    float metallic = texture(u_mat_metallic_roughness_tex, v_tex_coords).b;
+    float roughness = 0.6; // TODO
+    float metallic = 0.3;
+
+    //float roughness = texture(u_mat_metallic_roughness_tex, v_texcoords).g;
+    //float metallic = texture(u_mat_metallic_roughness_tex, v_texcoords).b;
 
     vec3 H = normalize(V + -L);
 
@@ -154,43 +158,13 @@ vec3 apply_point_lights(
     return Lo;
 }
 
-/*
-vec3 apply_directional_lights(
-    vec3 frag_pos,
-    vec3 V,
-    vec3 N,
-    vec3 surf_col
-)
-{
-    vec3 Lo = vec3(0);
-
-    for (int i = 0; i < b_directional_lights.num; i++)
-    {
-        DirectionalLight light = b_directional_lights.data[i];
-
-        vec3 L = light.direction.xyz;
-        vec3 radiance = light.color.rgb;
-
-        Lo += apply_light(
-            V,
-            N,
-            L,
-            radiance,
-            surf_col
-        );
-    }
-
-    return Lo;
-}
-*/
-
 void main()
 {
     vec3 frag_pos = v_position;
     vec3 N = v_normal;
     vec3 V = normalize(push_constants.camera_pos.xyz - frag_pos);
 
-    vec3 albedo = texture(u_mat_base_color_tex, v_tex_coords).rgb;
+    vec3 albedo = vec3(1, 0, 0);//texture(u_mat_base_color_tex, v_texcoords).rgb;
 
     vec3 Lo = vec3(0.0);
     Lo += apply_point_lights(frag_pos, V, N, albedo);

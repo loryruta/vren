@@ -1,13 +1,20 @@
+
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+
 #include <memory>
 #include <iostream>
 #include <optional>
 #include <numeric>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/random.hpp>
+#include <meshoptimizer.h>
+
+#define VREN_LOG_LEVEL VREN_LOG_LEVEL_DEBUG
+#include "vren/utils/log.hpp"
 
 #include <vren/context.hpp>
 #include <vren/presenter.hpp>
@@ -331,13 +338,38 @@ int main(int argc, char* argv[])
 
 	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
 
+	/* */
+	std::vector<vren_demo::vertex> vertices;
+	std::vector<uint32_t> indices;
+	std::vector<vren_demo::mesh_instance> mesh_instances;
+	vren::texture_manager texture_manager;
+	std::vector<vren_demo::material> materials;
+	std::vector<vren_demo::mesh> meshes;
 
 	vren_demo::tinygltf_scene loaded_scene;
 	vren_demo::tinygltf_loader gltf_loader(ctx);
 
 	printf("Loading scene: %s\n", argv[0]);
 
-	gltf_loader.load_from_file(argv[0], render_list, loaded_scene);
+	gltf_loader.load_from_file(argv[0], vertices, indices, mesh_instances, texture_manager, materials, meshes);
+
+	printf("Building meshlets...\n");
+
+	const size_t max_vertices = 64;
+	const size_t max_triangles = 124;
+	const float cone_weight = 0.0f;
+
+	size_t max_meshlets = meshopt_buildMeshletsBound(indices.size(), max_vertices, max_triangles);
+	std::vector<meshopt_Meshlet> meshlets(max_meshlets);
+	std::vector<unsigned int> meshlet_vertices(max_meshlets * max_vertices);
+	std::vector<unsigned char> meshlet_triangles(max_meshlets * max_triangles * 3);
+
+	size_t meshlet_count = meshopt_buildMeshlets(meshlets.data(), meshlet_vertices.data(), meshlet_triangles.data(), indices.data(),
+												 indices.size(), reinterpret_cast<float*>(vertices.data()), vertices.size(), sizeof(vren_demo::vertex), max_vertices, max_triangles, cone_weight);
+
+	auto vertex_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vertices.data(), vertices.size() * sizeof(vren_demo::vertex));
+	auto index_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_vertices.data(), meshlet_vertices.size() * sizeof(unsigned int));
+	auto meshlet_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets.data(), meshlets.size() * sizeof(meshopt_Meshlet));
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -470,7 +502,10 @@ int main(int argc, char* argv[])
 					cmd_buf,
 					res_container,
 					target,
-					render_list,
+					vertex_buffer.m_buffer.m_handle,
+					index_buffer.m_buffer.m_handle,
+					meshlet_buffer.m_buffer.m_handle,
+					meshlets.size(),
 					light_array,
 					cam_data
 				);

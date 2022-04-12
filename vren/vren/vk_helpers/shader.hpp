@@ -39,7 +39,10 @@ namespace vren::vk_utils
 		vren::vk_shader_module m_module;
 		VkShaderStageFlags m_stage;
 		std::string m_entry_point;
+
 		descriptor_slots_t m_descriptor_slots;
+		int32_t m_max_descriptor_set_idx;
+
 		std::vector<VkPushConstantRange> m_push_constant_ranges;
 	};
 
@@ -60,30 +63,34 @@ namespace vren::vk_utils
 
 	struct pipeline
 	{
-		vren::vk_pipeline m_pipeline;
+		vren::context const* m_context;
+
+		std::vector<VkDescriptorSetLayout> m_descriptor_set_layouts;
+
 		vren::vk_pipeline_layout m_pipeline_layout;
+		vren::vk_pipeline m_pipeline;
 
 		VkPipelineBindPoint m_bind_point;
 
-		std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> m_descriptor_set_layouts;
+		~pipeline();
 
-		VkDescriptorSetLayout get_descriptor_set_layout(uint32_t desc_set_idx);
+		VkDescriptorSetLayout get_descriptor_set_layout(uint32_t desc_set_idx) const;
 
-		void bind(VkCommandBuffer cmd_buf);
-		void bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set);
-		void push_constants(VkCommandBuffer cmd_buf, VkShaderStageFlags shader_stage, void const* val, uint32_t val_size, uint32_t val_off = 0);
+		void bind(VkCommandBuffer cmd_buf) const;
+		void bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set) const;
+		void push_constants(VkCommandBuffer cmd_buf, VkShaderStageFlags shader_stage, void const* val, uint32_t val_size, uint32_t val_off = 0) const;
 
 		void acquire_and_bind_descriptor_set(
 			vren::context const& ctx,
 			VkCommandBuffer cmd_buf,
 			vren::resource_container& res_container,
-			VkShaderStageFlags shader_stage,
 			uint32_t desc_set_idx,
 			std::function<void(VkDescriptorSet desc_set)> const& update_func
 		);
 	};
 
 	void merge_shader_descriptor_slots(std::span<shader> const& shaders, descriptor_slots_t& result);
+	void create_descriptor_set_layouts(vren::context const& ctx, uint32_t desc_set_count, descriptor_slots_t const& desc_slots, std::vector<VkDescriptorSetLayout>& desc_set_layouts);
 
 	pipeline create_compute_pipeline(vren::context const& ctx, shader const& comp_shad);
 	pipeline create_graphics_pipeline(

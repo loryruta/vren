@@ -1,7 +1,7 @@
 #pragma once
 
-#include <fmt/format.h>
-#include <fmt/color.h>
+#include "fmt/format.h"
+#include "fmt/color.h"
 
 #define VREN_LOG_LEVEL_DEBUG 3
 #define VREN_LOG_LEVEL_INFO  2

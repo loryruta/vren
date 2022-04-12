@@ -60,11 +60,22 @@ bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* e
 
 uint32_t vren::profile(std::function<void()> const& sample_func)
 {
-	auto start = std::chrono::system_clock::now();
+	auto start = std::chrono::steady_clock::now();
 
 	sample_func();
 
-	auto end = std::chrono::system_clock::now();
+	auto end = std::chrono::steady_clock::now();
 
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
+
+double vren::profile_us(std::function<void()> const& sample_func)
+{
+	return double(profile(sample_func)) / 1000;
+}
+
+double vren::profile_ms(std::function<void()> const& sample_func)
+{
+	return double(profile(sample_func)) / (1000 * 1000);
+}
+

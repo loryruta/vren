@@ -2,12 +2,12 @@
 
 #include <memory>
 #include <stdexcept>
-#include <iostream>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <vk_mem_alloc.h>
 
 #include "context.hpp"
+#include "utils/log.hpp"
 
 #define VREN_DEFINE_VK_RAII(_raii_t, _t, _dtor_lambda) \
     namespace vren { \
@@ -56,7 +56,7 @@ namespace vren
 		{
 			if (m_handle != VK_NULL_HANDLE)
 			{
-				//std::cout << "Destroying " << typeid(_t).name() << std::endl;
+				//VREN_DEBUG("Destroying {}\n", typeid(_t).name());
 
 				vren::destroy_vk_handle<_t>(*m_context, m_handle);
 				m_handle = VK_NULL_HANDLE;

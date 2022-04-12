@@ -5,7 +5,7 @@
 #include <vector>
 #include <filesystem>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 
@@ -51,6 +51,8 @@ namespace vren
 		};
 
 	private:
+		void print_nv_mesh_shader_info(VkPhysicalDeviceMeshShaderPropertiesNV const& props);
+
 		VkInstance create_instance();
 		VkDebugUtilsMessengerEXT create_debug_messenger();
 		VkPhysicalDevice find_physical_device();
@@ -68,6 +70,7 @@ namespace vren
 		VkPhysicalDevice m_physical_device;
 		VkPhysicalDeviceProperties m_physical_device_properties;
 		VkPhysicalDeviceMemoryProperties m_physical_device_memory_properties;
+		VkPhysicalDeviceMeshShaderPropertiesNV m_physical_device_mesh_shader_properties;
 
 		vren::context::queue_families m_queue_families;
 		VkDevice m_device;

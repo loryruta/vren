@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "object_pool.hpp"
 #include "vk_helpers/vk_raii.hpp"

@@ -177,6 +177,7 @@ vren::vk_utils::load_shader(
 	spirv_reflect_check(spvReflectEnumerateDescriptorSets(&module, &num, spv_refl_desc_sets.data()));
 
 	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> desc_slots;
+	int32_t max_desc_set_idx = -1;
 
 	for (int i = 0; i < spv_refl_desc_sets.size(); i++)
 	{
@@ -199,6 +200,7 @@ vren::vk_utils::load_shader(
 		}
 
 		desc_slots.emplace(spv_refl_desc_sets.at(i)->set, bindings);
+		max_desc_set_idx = std::max(max_desc_set_idx, (int32_t) spv_refl_desc_sets.at(i)->set);
 	}
 
 	/* Push constants */
@@ -227,6 +229,7 @@ vren::vk_utils::load_shader(
 		.m_stage = shader_stage,
 		.m_entry_point = "main",
 		.m_descriptor_slots = std::move(desc_slots),
+		.m_max_descriptor_set_idx = max_desc_set_idx,
 		.m_push_constant_ranges = std::move(push_constant_ranges)
 	};
 }
@@ -246,22 +249,29 @@ vren::vk_utils::load_shader_from_file(
 // Pipeline
 // --------------------------------------------------------------------------------------------------------------------------------
 
-VkDescriptorSetLayout vren::vk_utils::pipeline::get_descriptor_set_layout(uint32_t desc_set_idx)
+vren::vk_utils::pipeline::~pipeline()
 {
-	return m_descriptor_set_layouts.at(desc_set_idx).m_handle;
+	for (VkDescriptorSetLayout desc_set_layout : m_descriptor_set_layouts) {
+		vkDestroyDescriptorSetLayout(m_context->m_device, desc_set_layout, nullptr);
+	}
 }
 
-void vren::vk_utils::pipeline::bind(VkCommandBuffer cmd_buf)
+VkDescriptorSetLayout vren::vk_utils::pipeline::get_descriptor_set_layout(uint32_t desc_set_idx) const
+{
+	return m_descriptor_set_layouts.at(desc_set_idx);
+}
+
+void vren::vk_utils::pipeline::bind(VkCommandBuffer cmd_buf) const
 {
 	vkCmdBindPipeline(cmd_buf, m_bind_point, m_pipeline.m_handle);
 }
 
-void vren::vk_utils::pipeline::bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set)
+void vren::vk_utils::pipeline::bind_descriptor_set(VkCommandBuffer cmd_buf, uint32_t desc_set_idx, VkDescriptorSet desc_set) const
 {
 	vkCmdBindDescriptorSets(cmd_buf, m_bind_point, m_pipeline_layout.m_handle, desc_set_idx, 1, &desc_set, 0, nullptr);
 }
 
-void vren::vk_utils::pipeline::push_constants(VkCommandBuffer cmd_buf, VkShaderStageFlags shader_stage, void const* val, uint32_t val_size, uint32_t val_off)
+void vren::vk_utils::pipeline::push_constants(VkCommandBuffer cmd_buf, VkShaderStageFlags shader_stage, void const* val, uint32_t val_size, uint32_t val_off) const
 {
 	vkCmdPushConstants(cmd_buf, m_pipeline_layout.m_handle, shader_stage, val_off, val_size, val);
 }
@@ -270,7 +280,6 @@ void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(
 	vren::context const& ctx,
 	VkCommandBuffer cmd_buf,
 	vren::resource_container& res_container,
-	VkShaderStageFlags shader_stage,
 	uint32_t desc_set_idx,
 	std::function<void(VkDescriptorSet)> const& update_func
 )
@@ -316,7 +325,7 @@ void vren::vk_utils::merge_shader_descriptor_slots(std::span<shader> const& shad
 								throw std::invalid_argument("Failed to merge shader bindings");
 							}
 
-							added_binding.stageFlags |= shader.m_stage;
+							added_binding.stageFlags = VK_SHADER_STAGE_ALL;
 
 							added = true;
 							break;
@@ -334,41 +343,30 @@ void vren::vk_utils::merge_shader_descriptor_slots(std::span<shader> const& shad
 	}
 }
 
-std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> create_descriptor_set_layouts(vren::context const& ctx, std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> const& desc_slots)
+void vren::vk_utils::create_descriptor_set_layouts(vren::context const& ctx, uint32_t desc_set_count, descriptor_slots_t const& desc_slots, std::vector<VkDescriptorSetLayout>& result)
 {
-	std::unordered_map<uint32_t, vren::vk_descriptor_set_layout> desc_set_layouts;
-
-	for (auto& [desc_set_idx, bindings] : desc_slots)
+	for (uint32_t desc_set_idx = 0; desc_set_idx <= desc_set_count; desc_set_idx++)
 	{
+		auto bindings = desc_slots.contains(desc_set_idx) ? std::make_optional(desc_slots.at(desc_set_idx)) : std::nullopt;
+
 		VkDescriptorSetLayoutCreateInfo desc_set_layout_info{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = NULL,
-			.bindingCount = (uint32_t) bindings.size(),
-			.pBindings = bindings.data(),
+			.bindingCount = bindings.has_value() ? (uint32_t) bindings->size() : 0,
+			.pBindings = bindings.has_value() ? bindings->data() : nullptr,
 		};
 		VkDescriptorSetLayout desc_set_layout;
 		vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout);
 
-		desc_set_layouts.emplace(
-			desc_set_idx,
-			vren::vk_descriptor_set_layout(ctx, desc_set_layout)
-		);
+		result.push_back(desc_set_layout);
 	}
-
-	return desc_set_layouts;
 }
 
 vren::vk_utils::pipeline
 vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& comp_shader)
 {
 	/* Descriptor set layouts */
-	auto desc_set_layouts = create_descriptor_set_layouts(ctx, comp_shader.m_descriptor_slots);
-
-	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts;
-	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
-		raw_desc_set_layouts.push_back(desc_set_layout.m_handle);
-	}
+	std::vector<VkDescriptorSetLayout> desc_set_layouts;
+	create_descriptor_set_layouts(ctx, (int32_t) comp_shader.m_max_descriptor_set_idx + 1, comp_shader.m_descriptor_slots, desc_set_layouts);
 
 	/* Push constant ranges */
 	auto& push_const_ranges = comp_shader.m_push_constant_ranges;
@@ -378,8 +376,8 @@ vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& 
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.setLayoutCount = (uint32_t) raw_desc_set_layouts.size(),
-		.pSetLayouts = raw_desc_set_layouts.data(),
+		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
+		.pSetLayouts = desc_set_layouts.data(),
 		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
 		.pPushConstantRanges = push_const_ranges.data(),
 	};
@@ -412,10 +410,11 @@ vren::vk_utils::create_compute_pipeline(vren::context const& ctx, shader const& 
 	);
 
 	return vren::vk_utils::pipeline{
-		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
-		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
-		.m_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE,
+		.m_context = &ctx,
 		.m_descriptor_set_layouts = std::move(desc_set_layouts),
+		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
+		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
+		.m_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE,
 	};
 }
 
@@ -440,12 +439,12 @@ vren::vk_utils::create_graphics_pipeline(
 	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> desc_slots;
 	merge_shader_descriptor_slots(shaders, desc_slots);
 
-	auto desc_set_layouts = create_descriptor_set_layouts(ctx, desc_slots);
-
-	std::vector<VkDescriptorSetLayout> raw_desc_set_layouts(desc_set_layouts.size());
-	for (auto& [set_idx, desc_set_layout]  : desc_set_layouts) {
-		raw_desc_set_layouts[set_idx] = desc_set_layout.m_handle;
+	int32_t max_desc_set_idx = -1;
+	for (auto const& shader : shaders) {
+		max_desc_set_idx = std::max(shader.m_max_descriptor_set_idx, max_desc_set_idx);
 	}
+	std::vector<VkDescriptorSetLayout> desc_set_layouts;
+	create_descriptor_set_layouts(ctx, (uint32_t) max_desc_set_idx + 1, desc_slots, desc_set_layouts);
 
 	/* Shader stages */
 	std::vector<VkPipelineShaderStageCreateInfo> shader_stages{};
@@ -476,8 +475,8 @@ vren::vk_utils::create_graphics_pipeline(
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.setLayoutCount = (uint32_t) raw_desc_set_layouts.size(),
-		.pSetLayouts = raw_desc_set_layouts.data(),
+		.setLayoutCount = (uint32_t) desc_set_layouts.size(),
+		.pSetLayouts = desc_set_layouts.data(),
 		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
 		.pPushConstantRanges = push_const_ranges.data(),
 	};
@@ -510,9 +509,10 @@ vren::vk_utils::create_graphics_pipeline(
 	/* */
 
 	return {
-		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
+		.m_context = &ctx,
+		.m_descriptor_set_layouts = std::move(desc_set_layouts),
 		.m_pipeline_layout = vren::vk_pipeline_layout(ctx, pipeline_layout),
-		.m_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.m_descriptor_set_layouts = std::move(desc_set_layouts)
+		.m_pipeline = vren::vk_pipeline(ctx, pipeline),
+		.m_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS
 	};
 }

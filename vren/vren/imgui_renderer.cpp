@@ -1,6 +1,7 @@
 #include "imgui_renderer.hpp"
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
@@ -12,7 +13,7 @@
 // References:
 // - https://github.com/ocornut/imgui/blob/master/examples/example_glfw_vulkan/main.cpp
 // - https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_vulkan.h
-// -https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_vulkan.cpp
+// - https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_vulkan.cpp
 
 struct ImGui_ImplVulkanH_FrameRenderBuffers
 {
@@ -83,6 +84,10 @@ vren::imgui_renderer::imgui_renderer(vren::context const& ctx, GLFWwindow* windo
 	io.IniFilename = nullptr;
 
 	ImPlot::CreateContext();
+
+	ImGui_ImplVulkan_LoadFunctions([](char const* func_name, void* user_data) {
+		return (PFN_vkVoidFunction)vkGetInstanceProcAddr((VkInstance) user_data, func_name);
+	}, ctx.m_instance);
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
