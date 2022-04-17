@@ -9,22 +9,9 @@ namespace vren
 {
 	// Forward decl
 	class context;
+	class mesh_buffer;
 
 	//
-
-	struct mesh_buffer
-	{
-		vren::vk_utils::buffer m_vertex_buffer;
-		size_t m_vertex_count = 0;
-
-		vren::vk_utils::buffer m_index_buffer;
-		size_t m_index_count = 0;
-
-		vren::vk_utils::buffer m_instance_buffer;
-		size_t m_instance_count = 0;
-
-		vren::vk_utils::buffer m_material_index_buffer;
-	};
 
 	class vertex_pipeline_draw_pass
 	{
@@ -34,14 +21,15 @@ namespace vren
 
 	private:
 		vren::context const* m_context;
-
 		vren::vk_utils::pipeline m_pipeline;
-
-		vren::vk_utils::pipeline create_graphics_pipeline(VkRenderPass render_pass, uint32_t subpass_idx);
 
 	public:
 		vertex_pipeline_draw_pass(vren::context const& context, VkRenderPass render_pass, uint32_t subpass_idx);
 
+	private:
+		vren::vk_utils::pipeline create_graphics_pipeline(VkRenderPass render_pass, uint32_t subpass_idx);
+
+	public:
 		void draw(
 			uint32_t frame_idx,
 			VkCommandBuffer command_buffer,

@@ -15,9 +15,10 @@ namespace vren
 
 	struct vertex
 	{
-		glm::vec3 m_position;  float _pad;
-		glm::vec3 m_normal;    float _pad1;
-		glm::vec2 m_texcoords; float _pad2[2];
+		glm::vec3 m_position;    float _pad;
+		glm::vec3 m_normal;      float _pad1;
+		glm::vec2 m_texcoords;   float _pad2[2];
+		uint32_t m_material_idx; float _pad3[3];
 	};
 
 	struct mesh_instance

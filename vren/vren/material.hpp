@@ -42,18 +42,23 @@ namespace vren
 
 		vren::vk_descriptor_set_layout m_descriptor_set_layout;
 		vren::vk_descriptor_pool m_descriptor_pool;
+		vren::vk_utils::buffer m_staging_buffer;
+
+	public:
+		vren::material* m_materials;
+		size_t m_material_count = 0;
+
+	private:
 		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_buffers;
 		std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_descriptor_sets;
 
 	public:
-		std::array<vren::material, k_max_material_count> m_materials;
-		size_t m_material_count = 0;
-
 		explicit material_manager(vren::context const& context);
 
 	private:
 		vren::vk_descriptor_set_layout create_descriptor_set_layout();
 		vren::vk_descriptor_pool create_descriptor_pool();
+		vren::vk_utils::buffer create_staging_buffer();
 		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> create_buffers();
 		std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> allocate_descriptor_sets();
 
@@ -61,7 +66,7 @@ namespace vren
 
 	public:
 		void request_buffer_sync();
-		void sync_buffer(uint32_t frame_idx);
+		void sync_buffer(uint32_t frame_idx, VkCommandBuffer command_buffer);
 
 		VkDescriptorSet get_descriptor_set(uint32_t frame_idx) const;
 	};

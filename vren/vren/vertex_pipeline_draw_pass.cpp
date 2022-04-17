@@ -1,32 +1,30 @@
 #include "vertex_pipeline_draw_pass.hpp"
 
-#include "mesh.hpp"
 #include "context.hpp"
 #include "toolbox.hpp"
+#include "mesh.hpp"
+#include "renderer.hpp"
 
 vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline(VkRenderPass render_pass, uint32_t subpass_idx)
 {
 	/* Vertex input state */
 	VkVertexInputBindingDescription vertex_input_binding_descriptions[]{
 		{ .binding = 0, .stride = sizeof(vren::vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },          // Vertex buffer
-		{ .binding = 1, .stride = 0, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },                             // Material index buffer
-		{ .binding = 2, .stride = sizeof(vren::mesh_instance), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE }, // Instance buffer
+		{ .binding = 1, .stride = sizeof(vren::mesh_instance), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE }, // Instance buffer
 	};
 
 	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[]{
 		// Vertex buffer
-		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_position) },  // Position
-		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_normal) },    // Normal
-		{ .location = 2, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,    .offset = (uint32_t) offsetof(vren::vertex, m_texcoords) }, // Texcoords
-
-		// Material buffer
-		{ .location = 8, .binding = 1, .format = VK_FORMAT_R32_UINT, .offset = (uint32_t) 0 },
+		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_position) },     // Position
+		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_normal) },       // Normal
+		{ .location = 2, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,    .offset = (uint32_t) offsetof(vren::vertex, m_texcoords) },    // Texcoords
+		{ .location = 3, .binding = 0, .format = VK_FORMAT_R32_UINT,         .offset = (uint32_t) offsetof(vren::vertex, m_material_idx) }, // Material index
 
 		// Instance buffer
-		{ .location = 16, .binding = 2, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) 0 },                     // Transform 0
-		{ .location = 17, .binding = 2, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) },     // Transform 1
-		{ .location = 18, .binding = 2, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) * 2 }, // Transform 2
-		{ .location = 19, .binding = 2, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) * 3 }, // Transform 3
+		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) 0 },                     // Transform 0
+		{ .location = 17, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) },     // Transform 1
+		{ .location = 18, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) * 2 }, // Transform 2
+		{ .location = 19, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) sizeof(glm::vec4) * 3 }, // Transform 3
 	};
 
 	VkPipelineVertexInputStateCreateInfo vertex_input_state_info{
@@ -207,8 +205,7 @@ void vren::vertex_pipeline_draw_pass::draw(
 	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(camera));
 
 	m_pipeline.bind_vertex_buffer(command_buffer, 0, mesh_buffer.m_vertex_buffer.m_buffer.m_handle); // Vertex buffer
-	m_pipeline.bind_vertex_buffer(command_buffer, 1, mesh_buffer.m_material_index_buffer.m_buffer.m_handle); // Material index buffer
-	m_pipeline.bind_vertex_buffer(command_buffer, 2, mesh_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
+	m_pipeline.bind_vertex_buffer(command_buffer, 1, mesh_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
 	m_pipeline.bind_index_buffer(command_buffer, mesh_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32); // Index buffer
 
 	// Texture manager

@@ -10,9 +10,10 @@ struct Camera
 
 struct Vertex
 {
-    vec3 position; float _pad;
-    vec3 normal;   float _pad1;
-    vec2 texcoord; float _pad2[2];
+    vec3 position;     float _pad;
+    vec3 normal;       float _pad1;
+    vec2 texcoord;     float _pad2[2];
+	uint material_idx; float _pad3[3];
 };
 
 struct Material

@@ -43,10 +43,11 @@ set(SRC
         vren/debug_renderer.cpp
         vren/context.hpp
         vren/context.cpp
+        vren/basic_renderer.cpp
+        vren/mesh_shader_renderer.cpp
         vren/renderer.hpp
-        vren/renderer.cpp
-        vren/simple_draw.hpp
-        vren/simple_draw.cpp
+        vren/mesh_shader_draw_pass.hpp
+        vren/mesh_shader_draw_pass.cpp
         vren/config.hpp
         vren/presenter.cpp
         vren/presenter.hpp

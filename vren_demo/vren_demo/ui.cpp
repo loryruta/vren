@@ -255,7 +255,7 @@ void vren_demo::ui::fps_ui::show()
 	ImGui::End();
 }
 
-vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::renderer const& renderer) :
+vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::basic_renderer const& renderer) :
 	m_context(&ctx),
 	m_renderer(&renderer),
 	m_scene_ui(ctx)

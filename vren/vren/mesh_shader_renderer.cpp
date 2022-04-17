@@ -3,13 +3,11 @@
 #include <array>
 
 #include "context.hpp"
-#include "vk_helpers/image.hpp"
 #include "vk_helpers/misc.hpp"
-#include "base/base.hpp"
 
-vren::vk_render_pass vren::renderer::create_render_pass()
+vren::vk_render_pass vren::mesh_shader_renderer::create_render_pass()
 {
-	/* Attachments */
+	// Attachments
 	VkAttachmentDescription attachments[]{
 		{ // Color attachment
 			.flags = NULL,
@@ -35,7 +33,7 @@ vren::vk_render_pass vren::renderer::create_render_pass()
 		}
 	};
 
-	/* Subpass */
+	// Subpasses
 	VkAttachmentReference color_attachment_ref{
 		.attachment = 0,
 		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -58,7 +56,7 @@ vren::vk_render_pass vren::renderer::create_render_pass()
 		}
 	};
 
-	/* Subpass dependencies */
+	// Subpasses dependencies
 	VkSubpassDependency dependencies[]{
 		{
 			.srcSubpass = VK_SUBPASS_EXTERNAL,
@@ -71,7 +69,7 @@ vren::vk_render_pass vren::renderer::create_render_pass()
 		}
 	};
 
-	/* */
+	//
 	VkRenderPassCreateInfo render_pass_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 		.pNext = nullptr,
@@ -88,25 +86,25 @@ vren::vk_render_pass vren::renderer::create_render_pass()
 	return vren::vk_render_pass(*m_context, render_pass);
 }
 
-vren::renderer::renderer(vren::context const& context) :
+vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context) :
 	m_context(&context),
 	m_render_pass(create_render_pass()),
-	m_vertex_pipeline_draw_pass(context, m_render_pass.m_handle, 0),
+	m_mesh_shader_draw_pass(context, m_render_pass.m_handle, 0),
 	m_light_array(context)
 {}
 
-void vren::renderer::render(
+void vren::mesh_shader_renderer::render(
 	uint32_t frame_idx,
 	VkCommandBuffer command_buffer,
 	vren::resource_container& resource_container,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
-	std::vector<vren::mesh_buffer> const& mesh_buffers
+	vren::draw_buffer const& draw_buffer
 )
 {
 	m_light_array.sync_buffers(frame_idx);
 
-	/* Render pass begin */
+	// Render pass begin
 	VkRenderPassBeginInfo render_pass_begin_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
@@ -121,12 +119,9 @@ void vren::renderer::render(
 	vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-	/* Recording */
-	for (auto const& mesh_buffer : mesh_buffers)
-	{
-		m_vertex_pipeline_draw_pass.draw(frame_idx, command_buffer, resource_container, camera, mesh_buffer, m_light_array);
-	}
+	// Recording
+	m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera, draw_buffer, m_light_array);
 
-	/* Render pass end */
+	// Render pass end
 	vkCmdEndRenderPass(command_buffer);
 }

@@ -13,8 +13,7 @@
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
 layout(location = 2) in vec2 v_texcoords;
-
-layout(location = 8) in flat uint v_material_idx;
+layout(location = 3) in flat uint v_material_idx;
 
 layout(push_constant) uniform PushConstants
 {

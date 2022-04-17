@@ -25,6 +25,7 @@ namespace vren::vk_utils
 	{
 		vren::vk_buffer m_buffer;
 		vren::vma_allocation m_allocation;
+		VmaAllocationInfo m_allocation_info;
 	};
 
 	vren::vk_utils::buffer alloc_host_visible_buffer(

@@ -4,7 +4,7 @@
 
 namespace vren::vk_utils
 {
-	void buffer_barrier(
+	inline void buffer_barrier(
 		VkCommandBuffer cmd_buf,
 		VkPipelineStageFlags src_stage_flags,
 		VkPipelineStageFlags dst_stage_flags,
@@ -35,7 +35,7 @@ namespace vren::vk_utils
 		);
 	}
 
-	void image_barrier(
+	inline void image_barrier(
 		VkCommandBuffer cmd_buf,
 		VkPipelineStageFlags src_stage_flags,
 		VkPipelineStageFlags dst_stage_flags,

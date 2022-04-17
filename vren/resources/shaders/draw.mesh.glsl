@@ -43,12 +43,10 @@ in taskNV Task
     uint meshlet_idx;
 } task_in;
 
-layout(location = 0) out vec3 v_positions[];
-layout(location = 1) out vec3 v_normals[];
+layout(location = 0) out vec3 v_position[];
+layout(location = 1) out vec3 v_normal[];
 layout(location = 2) out vec2 v_texcoords[];
-layout(location = 3) out vec3 v_colors[];
-
-layout(location = 16) out flat uint v_meshlet_idx[];
+layout(location = 3) out flat uint v_material_idx[];
 
 uint hash(uint a)
 {
@@ -76,15 +74,14 @@ void main()
 
     for (int i = 0; i < meshlet.vertex_count; i++)
     {
-        Vertex vtx = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
+        Vertex vertex = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
 
-        gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * vec4(vtx.position, 1.0);
+        gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * vec4(vertex.position, 1.0);
 
-        v_positions[i] = vtx.position;
-        v_normals[i] = vtx.normal;
-        v_colors[i] = meshlet_color;
-        v_texcoords[i] = vtx.texcoord;
-        v_meshlet_idx[i] = meshlet_idx;
+        v_position[i] = vertex.position;
+        v_normal[i] = vertex.normal;
+        v_texcoords[i] = vertex.texcoord;
+        v_material_idx[i] = vertex.material_idx;
     }
 
     for (int i = 0; i < meshlet.triangle_count * 3; i++)

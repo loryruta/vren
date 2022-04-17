@@ -24,18 +24,20 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 	buf_info.size = size;
 	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VmaAllocationCreateInfo alloc_info{};
-	alloc_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	alloc_info.flags = persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL;
+	VmaAllocationCreateInfo alloc_create_info{};
+	alloc_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	alloc_create_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	alloc_create_info.flags = persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL;
 
 	VkBuffer buf;
 	VmaAllocation alloc;
-	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr), &ctx);
+	VmaAllocationInfo alloc_info;
+	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_create_info, &buf, &alloc, &alloc_info), &ctx);
 
 	return vren::vk_utils::buffer{
 		.m_buffer = vren::vk_buffer(ctx, buf),
-		.m_allocation = vren::vma_allocation(ctx, alloc)
+		.m_allocation = vren::vma_allocation(ctx, alloc),
+		.m_allocation_info = alloc_info
 	};
 }
 
@@ -51,16 +53,18 @@ vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 	buf_info.size = size;
 	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VmaAllocationCreateInfo alloc_info{};
-	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VmaAllocationCreateInfo alloc_create_info{};
+	alloc_create_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	VkBuffer buf;
 	VmaAllocation alloc;
-	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr), &ctx);
+	VmaAllocationInfo alloc_info;
+	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_create_info, &buf, &alloc, &alloc_info), &ctx);
 
 	return vren::vk_utils::buffer{
 		.m_buffer = vren::vk_buffer(ctx, buf),
-		.m_allocation = vren::vma_allocation(ctx, alloc)
+		.m_allocation = vren::vma_allocation(ctx, alloc),
+		.m_allocation_info = alloc_info
 	};
 }
 

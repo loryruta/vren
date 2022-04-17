@@ -84,7 +84,7 @@ namespace vren_demo::ui
 	{
 	private:
 		vren::context const* m_context;
-		vren::renderer const* m_renderer;
+		vren::basic_renderer const* m_renderer;
 
 		ImGuiID
 			m_main_dock_id,
@@ -96,7 +96,7 @@ namespace vren_demo::ui
 		vren_demo::ui::fps_ui m_fps_ui;
 		vren_demo::ui::scene_ui m_scene_ui;
 
-		main_ui(vren::context const& ctx, vren::renderer const& renderer);
+		main_ui(vren::context const& ctx, vren::basic_renderer const& renderer);
 
 		void show(vren::light_array& light_arr);
 	};

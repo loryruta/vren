@@ -160,6 +160,16 @@ void show_point_lights(
 	}
 }
 
+class renderer_type
+{
+public:
+	enum enum_t
+	{
+		BASIC_RENDERER,
+		MESH_SHADER_RENDERER,
+	};
+};
+
 int main(int argc, char* argv[])
 {
 	setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
@@ -215,7 +225,8 @@ int main(int argc, char* argv[])
 	vren::context context(context_info);
 
 	/* Renderer init */
-	auto renderer = std::make_unique<vren::renderer>(context);
+	auto basic_renderer = std::make_unique<vren::basic_renderer>(context);
+	auto mesh_shader_renderer = std::make_unique<vren::mesh_shader_renderer>(context);
 	auto debug_renderer = std::make_unique<vren::debug_renderer>(context);
 	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(context, window);
 
@@ -226,6 +237,7 @@ int main(int argc, char* argv[])
 
 	/* Framebuffers */
 	std::vector<vren::vk_framebuffer> renderer_framebuffers;
+	std::vector<vren::vk_framebuffer> mesh_shader_renderer_framebuffers;
 	std::vector<vren::vk_framebuffer> debug_renderer_framebuffers;
 	std::vector<vren::vk_framebuffer> imgui_renderer_framebuffers;
 
@@ -244,7 +256,10 @@ int main(int argc, char* argv[])
 				swapchain.m_depth_buffer.m_image_view.m_handle
 			};
 			renderer_framebuffers.push_back(
-				vren::vk_utils::create_framebuffer(context, renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
+				vren::vk_utils::create_framebuffer(context, basic_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
+			);
+			mesh_shader_renderer_framebuffers.push_back(
+				vren::vk_utils::create_framebuffer(context, mesh_shader_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
 			);
 			debug_renderer_framebuffers.push_back(
 				vren::vk_utils::create_framebuffer(context, debug_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
@@ -255,7 +270,7 @@ int main(int argc, char* argv[])
 		}
 	});
 
-	vren_demo::ui::main_ui ui(context, *renderer);
+	vren_demo::ui::main_ui ui(context, *basic_renderer);
 
 	/* Profiler */
 	vren::profiler profiler(context, VREN_MAX_FRAME_IN_FLIGHT_COUNT * vren_demo::profile_slot::count);
@@ -276,7 +291,6 @@ int main(int argc, char* argv[])
 
 	gltf_loader.load_from_file(argv[0], vertices, indices, meshes, mesh_instances);
 
-	/*
 	printf("Building meshlets...\n");
 
 	const size_t max_vertices = 64;
@@ -315,7 +329,6 @@ int main(int argc, char* argv[])
 		.m_meshlet_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets.data(), meshlets.size() * sizeof(meshopt_Meshlet)),
 		.m_meshlet_count = meshlet_count
 	};
-	*/
 
 	/* */
 	std::vector<vren::mesh_buffer> mesh_buffers;
@@ -328,7 +341,6 @@ int main(int argc, char* argv[])
 			.m_index_count     = mesh.m_index_count,
 			.m_instance_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &mesh_instances.data()[mesh.m_instance_offset], mesh.m_instance_count * sizeof(vren::mesh_instance)),
 			.m_instance_count  = mesh.m_instance_count,
-			.m_material_index_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &mesh.m_material_idx, sizeof(uint32_t))
 		};
 		mesh_buffers.push_back(std::move(mesh_buffer));
 	}
@@ -336,6 +348,8 @@ int main(int argc, char* argv[])
 	// ---------------------------------------------------------------- Game loop
 
 	printf("Game loop! (ノ ゜Д゜)ノ ︵ ┻━┻\n");
+
+	auto renderer_type = renderer_type::BASIC_RENDERER;
 
 	vren_demo::camera camera{};
 	glfwSetKeyCallback(window, on_key_press);
@@ -347,8 +361,8 @@ int main(int argc, char* argv[])
 	{
 		glfwPollEvents();
 
-		VmaBudget budget;
-		vmaGetBudget(context.m_vma_allocator, &budget);
+		if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)      renderer_type = renderer_type::BASIC_RENDERER;
+		else if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS) renderer_type = renderer_type::MESH_SHADER_RENDERER;
 
 		int cur_fb_width, cur_fb_height;
 		glfwGetFramebufferSize(window, &cur_fb_width, &cur_fb_height);
@@ -381,7 +395,7 @@ int main(int argc, char* argv[])
         {
 			vkCmdSetCheckpointNV(command_buffer, "Frame start");
 
-			context.m_toolbox->m_material_manager.sync_buffer(frame_idx);
+			context.m_toolbox->m_material_manager.sync_buffer(frame_idx, command_buffer);
 
 			vren::render_target render_target{
 				.m_render_area = {
@@ -489,8 +503,18 @@ int main(int argc, char* argv[])
 					.m_view = camera.get_view(),
 					.m_projection = camera.get_projection()
 				};
-				render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
-				renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_buffers);
+
+				if (renderer_type == renderer_type::BASIC_RENDERER)
+				{
+					render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
+					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_buffers);
+				}
+				else if (renderer_type == renderer_type::MESH_SHADER_RENDERER)
+				{
+					render_target.m_framebuffer = mesh_shader_renderer_framebuffers.at(swapchain_image_idx).m_handle;
+					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, draw_buffer);
+				}
+
 				vkCmdSetCheckpointNV(command_buffer, "Scene drawn");
 			});
 
@@ -501,7 +525,7 @@ int main(int argc, char* argv[])
 				{
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
 
-					ui.show(renderer->m_light_array);
+					ui.show(basic_renderer->m_light_array);
 				});
 				vkCmdSetCheckpointNV(command_buffer, "ImGui drawn");
 			});

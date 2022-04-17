@@ -268,6 +268,7 @@ void vren_demo::tinygltf_loader::load_meshes(
 				if (texcoord_accessor.has_value()) {
 					vtx.m_texcoords = *reinterpret_cast<glm::vec2 const*>(get_accessor_element_at(gltf_model, texcoord_accessor.value(), vtx_idx));
 				}
+				vtx.m_material_idx = material_offset + gltf_primitive.material;
 				vertices.push_back(vtx);
 			}
 

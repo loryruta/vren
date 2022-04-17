@@ -1,13 +1,17 @@
 #include "material.hpp"
 
 #include "base/base.hpp"
+#include "vk_helpers/buffer.hpp"
 #include "vk_helpers/misc.hpp"
 #include "vk_helpers/debug_utils.hpp"
+#include "vk_helpers/barrier.hpp"
 
 vren::material_manager::material_manager(vren::context const& context) :
 	m_context(&context),
 	m_descriptor_set_layout(create_descriptor_set_layout()),
 	m_descriptor_pool(create_descriptor_pool()),
+	m_staging_buffer(create_staging_buffer()),
+	m_materials(static_cast<vren::material*>(m_staging_buffer.m_allocation_info.pMappedData)),
 	m_buffers(create_buffers()),
 	m_descriptor_sets(allocate_descriptor_sets())
 {
@@ -56,6 +60,11 @@ vren::vk_descriptor_pool vren::material_manager::create_descriptor_pool()
 	VkDescriptorPool descriptor_pool;
 	VREN_CHECK(vkCreateDescriptorPool(m_context->m_device, &descriptor_pool_info, nullptr, &descriptor_pool), m_context);
 	return vren::vk_descriptor_pool(*m_context, descriptor_pool);
+}
+
+vren::vk_utils::buffer vren::material_manager::create_staging_buffer()
+{
+	return vren::vk_utils::alloc_host_visible_buffer(*m_context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, k_max_material_buffer_size, true);
 }
 
 std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::create_buffers()
@@ -115,13 +124,29 @@ void vren::material_manager::request_buffer_sync()
 	m_buffers_dirty_flags = UINT32_MAX;
 }
 
-void vren::material_manager::sync_buffer(uint32_t frame_idx)
+void vren::material_manager::sync_buffer(uint32_t frame_idx, VkCommandBuffer command_buffer)
 {
 	if ((m_buffers_dirty_flags >> frame_idx) & 1)
 	{
-		if (m_material_count > 0) {
-			vren::vk_utils::update_device_only_buffer(*m_context, m_buffers.at(frame_idx), m_materials.data(), m_material_count * sizeof(vren::material), 0);
+		if (m_material_count > 0)
+		{
+			// Copy the staging buffer to the device only buffers used for drawing
+			VkBufferCopy buffer_copy{
+				.srcOffset = 0,
+				.dstOffset = 0,
+				.size = m_material_count * sizeof(vren::material)
+			};
+			vkCmdCopyBuffer(command_buffer, m_staging_buffer.m_buffer.m_handle, m_buffers.at(frame_idx).m_buffer.m_handle, 1, &buffer_copy);
+
+			// Barrier
+			vren::vk_utils::buffer_barrier(
+				command_buffer,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+				m_buffers.at(frame_idx).m_buffer.m_handle
+			);
 		}
+
 		write_descriptor_set(frame_idx);
 
 		m_buffers_dirty_flags &= ~(1 << frame_idx);
