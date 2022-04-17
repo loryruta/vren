@@ -6,7 +6,6 @@
 #include <vk_mem_alloc.h>
 
 #include "context.hpp"
-#include "render_object.hpp"
 #include "vk_helpers/misc.hpp"
 
 // References:
@@ -27,12 +26,12 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 
 	VmaAllocationCreateInfo alloc_info{};
 	alloc_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	alloc_info.preferredFlags = NULL;
+	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	alloc_info.flags = persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL;
 
 	VkBuffer buf;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr));
+	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr), &ctx);
 
 	return vren::vk_utils::buffer{
 		.m_buffer = vren::vk_buffer(ctx, buf),
@@ -57,7 +56,7 @@ vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 
 	VkBuffer buf;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr));
+	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_info, &buf, &alloc, nullptr), &ctx);
 
 	return vren::vk_utils::buffer{
 		.m_buffer = vren::vk_buffer(ctx, buf),
@@ -96,37 +95,21 @@ void vren::vk_utils::update_host_visible_buffer(
 	}
 }
 
-void vren::vk_utils::update_device_only_buffer(
-	vren::context const& ctx,
-	vren::vk_utils::buffer& buf,
-	void const* data,
-	size_t size,
-	size_t dst_offset
-)
+void vren::vk_utils::update_device_only_buffer(vren::context const& context, vren::vk_utils::buffer& buffer, void const* data, size_t size, size_t dst_offset)
 {
-	vren::vk_utils::buffer staging_buf = alloc_host_visible_buffer(ctx, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
-	update_host_visible_buffer(ctx, staging_buf, data, size, 0);
+	vren::vk_utils::buffer staging_buffer = alloc_host_visible_buffer(context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size, false);
+	update_host_visible_buffer(context, staging_buffer, data, size, 0);
 
-    copy_buffer(ctx, staging_buf.m_buffer.m_handle, buf.m_buffer.m_handle, size, 0, dst_offset);
+    copy_buffer(context, staging_buffer.m_buffer.m_handle, buffer.m_buffer.m_handle, size, 0, dst_offset);
 }
 
-void vren::vk_utils::copy_buffer(
-	vren::context const& ctx,
-	VkBuffer src_buf,
-	VkBuffer dst_buf,
-	size_t size,
-	size_t src_off,
-	size_t dst_off
-)
+void vren::vk_utils::copy_buffer(vren::context const& context, VkBuffer src_buffer, VkBuffer dst_buffer, size_t size, size_t src_offset, size_t dst_offset)
 {
-    vren::vk_utils::immediate_transfer_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+    vren::vk_utils::immediate_transfer_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
-        VkBufferCopy copy_region{
-			.srcOffset = src_off,
-			.dstOffset = dst_off,
-			.size = size
-		};
-        vkCmdCopyBuffer(cmd_buf, src_buf, dst_buf, 1, &copy_region);
+		VkBufferCopy copy_region{ .srcOffset = src_offset, .dstOffset = dst_offset, .size = size };
+		vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);
+		vkCmdSetCheckpointNV(command_buffer, "Buffer copied");
     });
 }
 
@@ -137,49 +120,19 @@ vren::vk_utils::buffer vren::vk_utils::create_device_only_buffer(
 	size_t size
 )
 {
-	auto buf = vren::vk_utils::alloc_device_only_buffer(ctx, buffer_usage, size);
+	auto buf = vren::vk_utils::alloc_device_only_buffer(ctx, buffer_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, size);
 	if (data != nullptr) {
 		vren::vk_utils::update_device_only_buffer(ctx, buf, data, size, 0);
 	}
 	return buf;
 }
 
-vren::vk_utils::buffer vren::vk_utils::create_vertex_buffer(
-	vren::context const& ctx,
-	vren::vertex const* vertices,
-	size_t vertices_count
-)
-{
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof(vren::vertex) * vertices_count);
-}
-
-vren::vk_utils::buffer vren::vk_utils::create_indices_buffer(
-	vren::context const& ctx,
-	uint32_t const* indices,
-	size_t indices_count
-)
-{
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof(uint32_t) * indices_count);
-}
-
-vren::vk_utils::buffer vren::vk_utils::create_instances_buffer(
-	vren::context const& ctx,
-	vren::instance_data const* instances,
-	size_t instances_count
-)
-{
-	return vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, instances, sizeof(vren::instance_data) * instances_count);
-}
-
 // --------------------------------------------------------------------------------------------------------------------------------
-// resizable_buffer
+// Resizable buffer
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::resizable_buffer::resizable_buffer(
-	vren::context const& ctx,
-	VkBufferUsageFlags buffer_usage
-) :
-	m_context(&ctx),
+vren::vk_utils::resizable_buffer::resizable_buffer(vren::context const& context, VkBufferUsageFlags buffer_usage) :
+	m_context(&context),
 	m_buffer_usage(buffer_usage)
 {}
 
@@ -191,41 +144,37 @@ void vren::vk_utils::resizable_buffer::clear()
 	m_offset = 0;
 }
 
-void vren::vk_utils::resizable_buffer::push_value(void const* data, size_t length)
+void vren::vk_utils::resizable_buffer::append_data(void const* data, size_t length)
 {
 	if (length == 0) {
 		return;
 	}
 
-	size_t req_size = m_offset + length;
-	if (req_size > m_size)
+	size_t required_size = m_offset + length;
+	if (required_size > m_size)
 	{
-		size_t alloc_size = (size_t) glm::ceil(req_size / (float) k_block_size) * k_block_size;
+		size_t alloc_size = (size_t) glm::ceil(required_size / (float) k_block_size) * k_block_size;
 
-		auto new_buf = std::make_shared<vren::vk_utils::buffer>(
-			vren::vk_utils::alloc_host_visible_buffer(
-				*m_context,
-				m_buffer_usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-				alloc_size,
-				false
-			)
+		auto new_buffer = std::make_shared<vren::vk_utils::buffer>(
+			vren::vk_utils::alloc_host_visible_buffer(*m_context, m_buffer_usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, alloc_size, false)
 		);
 
 		if (m_buffer) {
-			vren::vk_utils::copy_buffer(
-				*m_context,
-				m_buffer->m_buffer.m_handle,
-				new_buf->m_buffer.m_handle,
-				m_size,
-				0,
-				0
-			);
+			vren::vk_utils::copy_buffer(*m_context, m_buffer->m_buffer.m_handle, new_buffer->m_buffer.m_handle, m_size, 0, 0);
 		}
 
-		m_buffer = new_buf;
+		m_buffer = new_buffer;
 		m_size = alloc_size;
 	}
 
-	vren::vk_utils::update_host_visible_buffer(*m_context, *m_buffer, data, length, m_offset);
+	if (data) {
+		vren::vk_utils::update_host_visible_buffer(*m_context, *m_buffer, data, length, m_offset);
+	}
 	m_offset += length;
+}
+
+void vren::vk_utils::resizable_buffer::set_data(void const* data, size_t length)
+{
+	clear();
+	append_data(data, length);
 }

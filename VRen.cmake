@@ -35,12 +35,12 @@ function (setup_resources TARGET_NAME)
     # Shaders
     set(SHADERS "")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.vert.glsl" "${VREN_SHADERS_DIR}/dbg_draw.vert.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/dbg_draw.frag.glsl" "${VREN_SHADERS_DIR}/dbg_draw.frag.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.vert.glsl" "${VREN_SHADERS_DIR}/pbr_draw.vert.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag.glsl" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task.glsl" "${VREN_SHADERS_DIR}/draw.task.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/basic_draw.vert.glsl" "${VREN_SHADERS_DIR}/basic_draw.vert.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.vert.glsl" "${VREN_SHADERS_DIR}/debug_draw.vert.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.frag.glsl" "${VREN_SHADERS_DIR}/debug_draw.frag.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.mesh.glsl" "${VREN_SHADERS_DIR}/draw.mesh.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task.glsl" "${VREN_SHADERS_DIR}/draw.task.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag.glsl" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
 
     add_custom_target(vren_shaders DEPENDS ${SHADERS})
 

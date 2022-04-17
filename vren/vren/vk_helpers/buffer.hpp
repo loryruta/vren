@@ -40,30 +40,10 @@ namespace vren::vk_utils
 		size_t size
 	);
 
-	void update_host_visible_buffer(
-		vren::context const& ctx,
-		vren::vk_utils::buffer& buf,
-		void const* data,
-		size_t size,
-		size_t dst_offset
-	);
+	void update_host_visible_buffer(vren::context const& context, vren::vk_utils::buffer& buffer, void const* data, size_t size, size_t dst_offset);
+	void update_device_only_buffer(vren::context const& context, vren::vk_utils::buffer& buffer, void const* data, size_t size, size_t dst_offset);
 
-	void update_device_only_buffer(
-		vren::context const& ctx,
-		vren::vk_utils::buffer& buf,
-		void const* data,
-		size_t size,
-		size_t dst_offset
-	);
-
-	void copy_buffer(
-		vren::context const& ctx,
-		VkBuffer src_buf,
-		VkBuffer dst_buf,
-		size_t size,
-		size_t src_offset,
-		size_t dst_offset
-	);
+	void copy_buffer(vren::context const& context, VkBuffer src_buffer, VkBuffer dst_buffer, size_t size, size_t src_offset, size_t dst_offset);
 
 	vren::vk_utils::buffer create_device_only_buffer(
 		vren::context const& ctx,
@@ -72,26 +52,8 @@ namespace vren::vk_utils
 		size_t size
 	);
 
-	vren::vk_utils::buffer create_vertex_buffer(
-		vren::context const& ctx,
-		vren::vertex const* vertices,
-		size_t vertices_count
-	);
-
-	vren::vk_utils::buffer create_indices_buffer(
-		vren::context const& ctx,
-		uint32_t const* indices,
-		size_t indices_count
-	);
-
-	vren::vk_utils::buffer create_instances_buffer(
-		vren::context const& ctx,
-		vren::instance_data const* instances,
-		size_t instances_count
-	);
-
 	// ------------------------------------------------------------------------------------------------
-	// resizable_buffer
+	// Resizable buffer
 	// ------------------------------------------------------------------------------------------------
 
 	class resizable_buffer
@@ -100,22 +62,19 @@ namespace vren::vk_utils
 		static constexpr size_t k_block_size = 1024 * 1024; // 1MB
 
 	private:
+		vren::context const* m_context;
 		VkBufferUsageFlags m_buffer_usage;
 
 	public:
-		vren::context const* m_context;
-
 		std::shared_ptr<vren::vk_utils::buffer> m_buffer;
 		size_t m_size = 0;
 		size_t m_offset = 0;
 
-		resizable_buffer(
-			vren::context const& ctx,
-			VkBufferUsageFlags buffer_usage
-		);
+		resizable_buffer(vren::context const& context, VkBufferUsageFlags buffer_usage);
 		~resizable_buffer();
 
 		void clear();
-		void push_value(void const* data, size_t length);
+		void append_data(void const* data, size_t length);
+		void set_data(void const* data, size_t length);
 	};
 }

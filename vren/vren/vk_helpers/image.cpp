@@ -41,7 +41,7 @@ vren::vk_utils::create_image(
 
 	VkImage image;
 	VmaAllocation alloc;
-	vren::vk_utils::check(vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, nullptr));
+	VREN_CHECK(vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, nullptr), &ctx);
 
 	return {
 		.m_image = vren::vk_image(ctx, image),
@@ -67,7 +67,7 @@ void vren::vk_utils::upload_image_data(
     res_container.add_resource(staging_buffer);
 
 	void* mapped_img_data;
-	vren::vk_utils::check(vmaMapMemory(ctx.m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data));
+	VREN_CHECK(vmaMapMemory(ctx.m_vma_allocator, staging_buffer->m_allocation.m_handle, &mapped_img_data), &ctx);
 		std::memcpy(mapped_img_data, img_data, img_size);
 	vmaUnmapMemory(ctx.m_vma_allocator, staging_buffer->m_allocation.m_handle);
 
@@ -135,7 +135,7 @@ vren::vk_image_view vren::vk_utils::create_image_view(
 	image_view_info.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	vren::vk_utils::check(vkCreateImageView(ctx.m_device, &image_view_info, nullptr, &image_view));
+	VREN_CHECK(vkCreateImageView(ctx.m_device, &image_view_info, nullptr, &image_view), &ctx);
 	return vren::vk_image_view(ctx, image_view);
 }
 
@@ -174,7 +174,7 @@ vren::vk_sampler vren::vk_utils::create_sampler(
 	sampler_info.unnormalizedCoordinates = VK_FALSE;
 
 	VkSampler sampler;
-	vren::vk_utils::check(vkCreateSampler(ctx.m_device, &sampler_info, nullptr, &sampler));
+	VREN_CHECK(vkCreateSampler(ctx.m_device, &sampler_info, nullptr, &sampler), &ctx);
 	return vren::vk_sampler(ctx, sampler);
 }
 
@@ -257,6 +257,24 @@ vren::vk_utils::texture vren::vk_utils::create_color_texture(
 		VK_SAMPLER_ADDRESS_MODE_REPEAT,
 		VK_SAMPLER_ADDRESS_MODE_REPEAT
 	);
+}
+
+vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& context, VkRenderPass render_pass, std::span<VkImageView> const& attachments, uint32_t width, uint32_t height)
+{
+	VkFramebufferCreateInfo framebuffer_info{
+		.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.renderPass = render_pass,
+		.attachmentCount = (uint32_t) attachments.size(),
+		.pAttachments = attachments.data(),
+		.width = width,
+		.height = height,
+		.layers = 1
+	};
+	VkFramebuffer framebuffer;
+	VREN_CHECK(vkCreateFramebuffer(context.m_device, &framebuffer_info, nullptr, &framebuffer), &context);
+	return vren::vk_framebuffer(context, framebuffer);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -351,7 +369,7 @@ vren::vk_utils::custom_framebuffer::create_framebuffer(
 	fb_info.layers = 1;
 
 	VkFramebuffer fb;
-	vren::vk_utils::check(vkCreateFramebuffer(ctx.m_device, &fb_info, nullptr, &fb));
+	VREN_CHECK(vkCreateFramebuffer(ctx.m_device, &fb_info, nullptr, &fb), &ctx);
 	return vren::vk_framebuffer(ctx, fb);
 }
 

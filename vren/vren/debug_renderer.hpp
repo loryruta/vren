@@ -15,7 +15,7 @@ namespace vren
 	// Debug renderer
 	// ------------------------------------------------------------------------------------------------
 
-	class dbg_renderer
+	class debug_renderer
 	{
 	public:
 		static constexpr float k_point_size = 0.01f;
@@ -53,11 +53,15 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
+	public:
+		vren::vk_render_pass m_render_pass;
+
+	private:
 		vren::vk_utils::buffer m_identity_instance_buffer;
 
-		vren::vk_utils::resizable_buffer m_lines_vertex_buffer;  size_t m_lines_vertex_count = 0;
+		vren::vk_utils::resizable_buffer m_lines_vertex_buffer;
+		size_t m_lines_vertex_count = 0;
 
-		vren::vk_render_pass m_render_pass;
 		vren::vk_utils::pipeline m_pipeline;
 
 		vren::vk_utils::buffer create_identity_instance_buffer();
@@ -66,19 +70,19 @@ namespace vren
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
-		dbg_renderer(vren::context const& ctx);
+		debug_renderer(vren::context const& context);
 
 		void clear();
 
-		void draw_point(dbg_renderer::point point);
-		void draw_line(dbg_renderer::line line);
+		void draw_point(vren::debug_renderer::point point);
+		void draw_line(vren::debug_renderer::line line);
 
 		void render(
 			uint32_t frame_idx,
-			VkCommandBuffer cmd_buf,
-			vren::resource_container& res_container,
-			vren::render_target const& target,
-			dbg_renderer::push_constants const& push_constants
+			VkCommandBuffer command_buffer,
+			vren::resource_container& resource_container,
+			vren::render_target const& render_target,
+			vren::debug_renderer::push_constants const& push_constants
 		);
 	};
 }

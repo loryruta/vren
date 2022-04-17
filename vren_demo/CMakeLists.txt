@@ -1,4 +1,4 @@
-set(VREN_HOME ".." CACHE PATH "The path to the vren project repository")
+set(VREN_HOME "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "The path to the vren project repository")
 
 add_executable(vren_demo
         vren_demo/main.cpp
@@ -18,6 +18,8 @@ add_executable(vren_demo
 target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren_demo/vren_demo")
 
 # vren
+target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
+
 target_include_directories(vren_demo PUBLIC "${VREN_HOME}/vren")
 target_link_libraries(vren_demo PUBLIC vren)
 

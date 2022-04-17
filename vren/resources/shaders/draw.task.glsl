@@ -1,16 +1,12 @@
 #version 460
 
-#extension GL_GOOGLE_include_directive: require
-#extension GL_NV_mesh_shader: require
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_NV_mesh_shader : require
 
 #include "common.glsl"
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-
-layout(set = 2, binding = 0) buffer readonly Meshlets
-{
-    Meshlet meshlets[];
-};
 
 out taskNV Task
 {
@@ -19,13 +15,6 @@ out taskNV Task
 
 void main()
 {
-    gl_TaskCountNV = 0;
-
-    uint meshlet_idx = gl_WorkGroupID.x;
-    if (meshlet_idx < meshlets.length())
-    {
-        task_out.meshlet_idx = meshlet_idx;
-        gl_TaskCountNV = 1;
-    }
+    task_out.meshlet_idx = gl_WorkGroupID.x;
+    gl_TaskCountNV = 1;
 }
-

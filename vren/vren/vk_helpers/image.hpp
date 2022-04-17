@@ -3,6 +3,7 @@
 #include <memory>
 #include <filesystem>
 #include <functional>
+#include <span>
 
 #include <volk.h>
 #include <vk_mem_alloc.h>
@@ -109,6 +110,8 @@ namespace vren::vk_utils
 		uint8_t b,
 		uint8_t a
 	);
+
+	vren::vk_framebuffer create_framebuffer(vren::context const& context, VkRenderPass render_pass, std::span<VkImageView> const& attachments, uint32_t width, uint32_t height);
 
 	// ------------------------------------------------------------------------------------------------
 	// Custom framebuffer

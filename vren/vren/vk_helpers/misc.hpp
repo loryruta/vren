@@ -7,6 +7,8 @@
 #include "base/resource_container.hpp"
 #include "pools/command_pool.hpp"
 
+#define VREN_CHECK(...) vren::vk_utils::check(__VA_ARGS__)
+
 namespace vren
 {
 	// Forward decl
@@ -15,11 +17,12 @@ namespace vren
 
 namespace vren::vk_utils
 {
+	void check(VkResult result, vren::context const* context);
 	void check(VkResult result);
 
 	vren::vk_semaphore create_semaphore(vren::context const& ctx);
 
-	vren::vk_fence create_fence(vren::context const& ctx,bool signaled = false);
+	vren::vk_fence create_fence(vren::context const& ctx, bool signaled = false);
 
 	// ------------------------------------------------------------------------------------------------
 	// Immediate submission

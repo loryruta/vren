@@ -1,33 +1,41 @@
 #version 460
 
-#extension GL_GOOGLE_include_directive: require
-#extension GL_NV_mesh_shader: require
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_NV_mesh_shader : require
+
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_16bit_storage : require
 
 #include "common.glsl"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
-layout(triangles, max_vertices = 64, max_primitives = 126) out;
+
+layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 layout(push_constant) uniform PushConstants
 {
-    vec4 cam_pos;
-    mat4 cam_view;
-    mat4 cam_proj;
-} push_constants;
-
-layout(set = 2, binding = 0) buffer readonly Meshlets
-{
-    Meshlet meshlets[];
+    Camera camera;
 };
 
-layout(set = 2, binding = 1) buffer readonly VertexBuffer
+layout(set = 2, binding = 0) buffer readonly VertexBuffer
 {
     Vertex vertices[];
 };
 
-layout(set = 2, binding = 2) buffer readonly IndexBuffer
+layout(set = 2, binding = 1) buffer readonly MeshletVertexBuffer
 {
-    uint indices[];
+    uint meshlet_vertices[];
+};
+
+layout(set = 2, binding = 2) buffer readonly MeshletTriangleBuffer
+{
+    uint8_t meshlet_triangles[];
+};
+
+layout(set = 2, binding = 3) buffer readonly MeshletBuffer
+{
+    Meshlet meshlets[];
 };
 
 in taskNV Task
@@ -37,8 +45,10 @@ in taskNV Task
 
 layout(location = 0) out vec3 v_positions[];
 layout(location = 1) out vec3 v_normals[];
-layout(location = 2) out vec3 v_colors[];
-layout(location = 3) out vec2 v_texcoords[];
+layout(location = 2) out vec2 v_texcoords[];
+layout(location = 3) out vec3 v_colors[];
+
+layout(location = 16) out flat uint v_meshlet_idx[];
 
 uint hash(uint a)
 {
@@ -53,38 +63,34 @@ uint hash(uint a)
 
 void main()
 {
-    uint mi = task_in.meshlet_idx;
-    Meshlet meshlet = meshlets[mi];
-
-	uint mhash = hash(mi);
-    vec3 mcolor = vec3(float(mhash & 255), float((mhash >> 8) & 255), float((mhash >> 16) & 255)) / 255.0;
-
-    uint ti = gl_LocalInvocationIndex.x;
-    if (ti < meshlet.triangle_count)
+    if (gl_LocalInvocationIndex.x > 0)
     {
-        for (int vi = 0; vi < 3; vi++)
-        {
-            Vertex vtx = vertices[indices[meshlet.vertex_offset + vi]];
-
-            uint vtx_idx = ti * 3 + vi;
-            vec3 vtx_pos = (push_constants.cam_proj * push_constants.cam_view * vec4(vtx.position, 1.0)).xyz;
-
-            gl_MeshVerticesNV[vtx_idx].gl_Position = vec4(vtx_pos, 1.0); // TODO OPTIMIZE!
-            gl_PrimitiveIndicesNV[vtx_idx] = vtx_idx;
-
-            v_positions[vtx_idx] = vtx_pos;
-            v_normals[vtx_idx] = vtx.normal;
-            v_colors[vtx_idx] = mcolor;
-            v_texcoords[vtx_idx] = vtx.texcoord;
-        }
+        return;// todo
     }
 
-    if (ti == 0)
+    uint meshlet_idx = task_in.meshlet_idx;
+    Meshlet meshlet = meshlets[meshlet_idx];
+
+    uint meshlet_hash = hash(meshlet_idx);
+    vec3 meshlet_color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
+
+    for (int i = 0; i < meshlet.vertex_count; i++)
     {
-        gl_PrimitiveCountNV = meshlet.vertex_count;
+        Vertex vtx = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
+
+        gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * vec4(vtx.position, 1.0);
+
+        v_positions[i] = vtx.position;
+        v_normals[i] = vtx.normal;
+        v_colors[i] = meshlet_color;
+        v_texcoords[i] = vtx.texcoord;
+        v_meshlet_idx[i] = meshlet_idx;
     }
+
+    for (int i = 0; i < meshlet.triangle_count * 3; i++)
+    {
+        gl_PrimitiveIndicesNV[i] = uint(meshlet_triangles[meshlet.triangle_offset + i]);
+    }
+
+    gl_PrimitiveCountNV = meshlet.triangle_count;
 }
-
-
-
-

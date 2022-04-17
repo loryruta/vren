@@ -7,39 +7,43 @@
 // Descriptor pool
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::descriptor_pool::descriptor_pool(vren::context const& ctx) :
-	m_context(&ctx)
+vren::descriptor_pool::descriptor_pool(
+	vren::context const& context,
+	uint32_t max_sets,
+	std::span<VkDescriptorPoolSize> const& pool_sizes
+) :
+	m_context(&context),
+	m_max_sets(max_sets),
+	m_pool_sizes(pool_sizes.begin(), pool_sizes.end())
 {}
 
-vren::vk_descriptor_pool vren::descriptor_pool::create_descriptor_pool(uint32_t max_sets)
+vren::vk_descriptor_pool vren::descriptor_pool::create_descriptor_pool()
 {
-	// Currently every descriptor set can use at most 32 descriptors per resource type.
-
-	VkDescriptorPoolSize pool_sizes[]{
-		{ VK_DESCRIPTOR_TYPE_SAMPLER, 32 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 32 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 32 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 32 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 32 },
-		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 32 }
-	};
-
-	VkDescriptorPoolCreateInfo desc_pool_info{
+	VkDescriptorPoolCreateInfo descriptor_pool_info{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		.maxSets = max_sets,
-		.poolSizeCount = std::size(pool_sizes),
-		.pPoolSizes = pool_sizes
+		.maxSets = m_max_sets,
+		.poolSizeCount = (uint32_t) m_pool_sizes.size(),
+		.pPoolSizes = m_pool_sizes.data()
 	};
-	VkDescriptorPool desc_pool;
-	vren::vk_utils::check(vkCreateDescriptorPool(m_context->m_device, &desc_pool_info, nullptr, &desc_pool));
-	return vren::vk_descriptor_pool(*m_context, desc_pool);
+	VkDescriptorPool descriptor_pool;
+	VREN_CHECK(vkCreateDescriptorPool(m_context->m_device, &descriptor_pool_info, nullptr, &descriptor_pool), m_context);
+	return vren::vk_descriptor_pool(*m_context, descriptor_pool);
+}
+
+VkDescriptorSet vren::descriptor_pool::allocate_descriptor_set(VkDescriptorPool descriptor_pool, VkDescriptorSetLayout descriptor_set_layout)
+{
+	VkDescriptorSetAllocateInfo descriptor_set_alloc_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.descriptorPool = descriptor_pool,
+		.descriptorSetCount = 1,
+		.pSetLayouts = &descriptor_set_layout
+	};
+	VkDescriptorSet descriptor_set;
+	VREN_CHECK(vkAllocateDescriptorSets(m_context->m_device, &descriptor_set_alloc_info, &descriptor_set), m_context);
+	return descriptor_set;
 }
 
 vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLayout desc_set_layout)
@@ -71,12 +75,12 @@ vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLay
 
 		desc_pool = desc_set.m_descriptor_pool;
 	}
-	else if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= VREN_DESCRIPTOR_POOL_SIZE)
+	else if (m_descriptor_pools.empty() || m_last_pool_allocated_count >= m_max_sets)
 	{
 		// If there's no unused object and the descriptor pool is full, we need to create a new descriptor pool
 		// and allocate the new descriptor set from there.
 
-		m_descriptor_pools.push_back(create_descriptor_pool(VREN_DESCRIPTOR_POOL_SIZE));
+		m_descriptor_pools.push_back(create_descriptor_pool());
 		desc_pool = m_descriptor_pools.back().m_handle;
 
 		m_last_pool_allocated_count = 0;
@@ -86,21 +90,13 @@ vren::pooled_vk_descriptor_set vren::descriptor_pool::acquire(VkDescriptorSetLay
 		desc_pool = m_descriptor_pools.back().m_handle;
 	}
 
-	VkDescriptorSetAllocateInfo alloc_info{};
-	alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	alloc_info.pNext = nullptr;
-	alloc_info.descriptorPool = desc_pool;
-	alloc_info.descriptorSetCount = 1;
-	alloc_info.pSetLayouts = &desc_set_layout;
-
-	VkDescriptorSet desc_set;
-	vren::vk_utils::check(vkAllocateDescriptorSets(m_context->m_device, &alloc_info, &desc_set));
-
 	m_last_pool_allocated_count++;
+
+	VkDescriptorSet descriptor_set = allocate_descriptor_set(desc_pool, desc_set_layout);
 
 	return create_managed_object({
 		.m_descriptor_set_layout = desc_set_layout,
 		.m_descriptor_pool = desc_pool,
-		.m_descriptor_set = desc_set,
+		.m_descriptor_set = descriptor_set,
 	});
 }

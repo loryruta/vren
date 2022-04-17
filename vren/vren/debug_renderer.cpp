@@ -1,4 +1,4 @@
-#include "dbg_renderer.hpp"
+#include "debug_renderer.hpp"
 
 #include <volk.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -6,22 +6,21 @@
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/misc.hpp"
 
-vren::dbg_renderer::dbg_renderer(vren::context const& ctx) :
+vren::debug_renderer::debug_renderer(vren::context const& ctx) :
 	m_context(&ctx),
 
-	m_identity_instance_buffer(create_identity_instance_buffer()),
-
-	m_lines_vertex_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-
 	m_render_pass(create_render_pass()),
-	m_pipeline(create_graphics_pipeline())
+	m_pipeline(create_graphics_pipeline()),
+
+	m_identity_instance_buffer(create_identity_instance_buffer()),
+	m_lines_vertex_buffer(ctx, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
 {}
 
-vren::vk_utils::buffer vren::dbg_renderer::create_identity_instance_buffer()
+vren::vk_utils::buffer vren::debug_renderer::create_identity_instance_buffer()
 {
-	auto buf = vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(dbg_renderer::instance_data));
+	auto buf = vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(debug_renderer::instance_data));
 
-	dbg_renderer::instance_data inst_data{
+	debug_renderer::instance_data inst_data{
 		.m_transform = glm::identity<glm::mat4>(),
 		.m_color = glm::vec4(1, 1, 1, 1)
 	};
@@ -30,7 +29,7 @@ vren::vk_utils::buffer vren::dbg_renderer::create_identity_instance_buffer()
 	return buf;
 }
 
-vren::vk_render_pass vren::dbg_renderer::create_render_pass()
+vren::vk_render_pass vren::debug_renderer::create_render_pass()
 {
 	/* Attachments */
 	VkAttachmentDescription attachments[]{
@@ -106,23 +105,23 @@ vren::vk_render_pass vren::dbg_renderer::create_render_pass()
 	};
 
 	VkRenderPass render_pass;
-	vren::vk_utils::check(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass));
+	VREN_CHECK(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass), m_context);
 	return vren::vk_render_pass(*m_context, render_pass);
 }
 
-vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
+vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 {
 	VkVertexInputBindingDescription vtx_bindings[]{
-		{ .binding = 0, .stride = sizeof(dbg_renderer::vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX, },        // Vertex buffer
-		{ .binding = 1, .stride = sizeof(dbg_renderer::instance_data), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE } // Instance buffer
+		{ .binding = 0, .stride = sizeof(debug_renderer::vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX, },        // Vertex buffer
+		{ .binding = 1, .stride = sizeof(debug_renderer::instance_data), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE } // Instance buffer
 	};
 
 	VkVertexInputAttributeDescription vtx_attribs[]{
 		// Vertex position
-		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::vertex, m_position) },
+		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(debug_renderer::vertex, m_position) },
 
 		// Vertex color
-		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::vertex, m_color) },
+		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(debug_renderer::vertex, m_color) },
 
 		// Instance transform
 		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = 0 },
@@ -131,7 +130,7 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 		{ .location = 19, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(glm::vec4) * 3 },
 
 		// Instance color
-		{ .location = 20, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(dbg_renderer::instance_data, m_color) },
+		{ .location = 20, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(debug_renderer::instance_data, m_color) },
 	};
 
 	/* Vertex input state */
@@ -273,72 +272,72 @@ vren::vk_utils::pipeline vren::dbg_renderer::create_graphics_pipeline()
 	);
 }
 
-void vren::dbg_renderer::clear()
+void vren::debug_renderer::clear()
 {
 	m_lines_vertex_buffer.clear();
 	m_lines_vertex_count = 0;
 }
 
-void vren::dbg_renderer::draw_point(dbg_renderer::point point)
+void vren::debug_renderer::draw_point(debug_renderer::point point)
 {
 	draw_line({ .m_from = point.m_position - glm::vec3(k_point_size, 0, 0), .m_to = point.m_position + glm::vec3(k_point_size, 0, 0), .m_color = point.m_color });
 	draw_line({ .m_from = point.m_position - glm::vec3(0, k_point_size, 0), .m_to = point.m_position + glm::vec3(0, k_point_size, 0), .m_color = point.m_color });
 	draw_line({ .m_from = point.m_position - glm::vec3(0, 0, k_point_size), .m_to = point.m_position + glm::vec3(0, 0, k_point_size), .m_color = point.m_color });
 }
 
-void vren::dbg_renderer::draw_line(dbg_renderer::line line)
+void vren::debug_renderer::draw_line(debug_renderer::line line)
 {
-	dbg_renderer::vertex v[]{
+	debug_renderer::vertex v[]{
 		{ .m_position = line.m_from, .m_color = line.m_color },
 		{ .m_position = line.m_to, .m_color = line.m_color }
 	};
-	m_lines_vertex_buffer.push_value(v, sizeof(v));
+	m_lines_vertex_buffer.append_data(v, sizeof(v));
 	m_lines_vertex_count += 2;
 }
 
-void vren::dbg_renderer::render(
+void vren::debug_renderer::render(
 	uint32_t frame_idx,
-	VkCommandBuffer cmd_buf,
-	vren::resource_container& res_container,
-	vren::render_target const& target,
-	dbg_renderer::push_constants const& push_constants
+	VkCommandBuffer command_buffer,
+	vren::resource_container& resource_container,
+	vren::render_target const& render_target,
+	debug_renderer::push_constants const& push_constants
 )
 {
 	VkRenderPassBeginInfo begin_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
 		.renderPass = m_render_pass.m_handle,
-		.framebuffer = target.m_framebuffer,
-		.renderArea = target.m_render_area,
+		.framebuffer = render_target.m_framebuffer,
+		.renderArea = render_target.m_render_area,
 		.clearValueCount = 0,
 		.pClearValues = nullptr
 	};
-	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
 	// NOTE: The resource container isn't used here (no add_resource(...) call happens), because the dbg_renderer
 	// **is supposed to last the program lifetime** thus its resources are always ensured to exist while being used by GPU.
 
-	m_pipeline.bind(cmd_buf);
+	m_pipeline.bind(command_buffer);
 
-	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+	vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
+	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
 	/* Push constants */
-	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(dbg_renderer::push_constants));
+	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(debug_renderer::push_constants));
 
 	VkDeviceSize offsets[]{0};
 
 	/* Draw lines */
 	if (m_lines_vertex_count > 0)
 	{
-		vkCmdBindVertexBuffers(cmd_buf, 0, 1, &m_lines_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
-		vkCmdBindVertexBuffers(cmd_buf, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, &m_lines_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
+		vkCmdBindVertexBuffers(command_buffer, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
 
-		vkCmdSetLineWidth(cmd_buf, 1.0f);
-		vkCmdSetPrimitiveTopologyEXT(cmd_buf, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+		vkCmdSetLineWidth(command_buffer, 1.0f);
+		vkCmdSetPrimitiveTopologyEXT(command_buffer, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
-		vkCmdDraw(cmd_buf, m_lines_vertex_count, 1, 0, 0);
+		vkCmdDraw(command_buffer, m_lines_vertex_count, 1, 0, 0);
 	}
 
-	vkCmdEndRenderPass(cmd_buf);
+	vkCmdEndRenderPass(command_buffer);
 }

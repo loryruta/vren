@@ -1,99 +1,134 @@
 #include "material.hpp"
 
-#include "context.hpp"
-#include "toolbox.hpp"
+#include "base/base.hpp"
 #include "vk_helpers/misc.hpp"
+#include "vk_helpers/debug_utils.hpp"
 
-// --------------------------------------------------------------------------------------------------------------------------------
-// Material
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::material::material(vren::context const& ctx) :
-	m_base_color_texture(ctx.m_toolbox->m_white_texture),
-	m_metallic_roughness_texture(ctx.m_toolbox->m_white_texture),
-	m_base_color_factor(1.0f),
-	m_metallic_factor(0.0f),
-	m_roughness_factor(0.0f)
-{}
-
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::vk_descriptor_set_layout vren::create_material_descriptor_set_layout(vren::context const& ctx)
+vren::material_manager::material_manager(vren::context const& context) :
+	m_context(&context),
+	m_descriptor_set_layout(create_descriptor_set_layout()),
+	m_descriptor_pool(create_descriptor_pool()),
+	m_buffers(create_buffers()),
+	m_descriptor_sets(allocate_descriptor_sets())
 {
-	std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-	// Base color texture
-	bindings.push_back({
-		.binding = VREN_MATERIAL_BASE_COLOR_TEXTURE_BINDING,
-		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.pImmutableSamplers = nullptr
-	});
-
-	// Metallic roughness texture
-	bindings.push_back({
-		.binding = VREN_MATERIAL_METALLIC_ROUGHNESS_TEXTURE_BINDING,
-		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.pImmutableSamplers = nullptr
-    });
-
-	VkDescriptorSetLayoutCreateInfo desc_set_layout_info{};
-	desc_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	desc_set_layout_info.pNext = nullptr;
-	desc_set_layout_info.flags = 0;
-	desc_set_layout_info.bindingCount = bindings.size();
-	desc_set_layout_info.pBindings = bindings.data();
-
-	VkDescriptorSetLayout desc_set_layout;
-	vren::vk_utils::check(vkCreateDescriptorSetLayout(ctx.m_device, &desc_set_layout_info, nullptr, &desc_set_layout));
-	return vren::vk_descriptor_set_layout(ctx, desc_set_layout);
+	for (uint32_t i = 0; i < m_descriptor_sets.size(); i++) {
+		write_descriptor_set(i);
+	}
 }
 
-void vren::update_material_descriptor_set(vren::context const& ctx, vren::material const& mat, VkDescriptorSet desc_set)
+vren::vk_descriptor_set_layout vren::material_manager::create_descriptor_set_layout()
 {
-	std::vector<VkWriteDescriptorSet> desc_set_writes;
-	VkWriteDescriptorSet desc_set_write{};
+	VkDescriptorSetLayoutBinding bindings[]{
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+	};
 
-	// Base color texture
-	VkDescriptorImageInfo base_col_tex_info{};
-	base_col_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	base_col_tex_info.imageView = mat.m_base_color_texture->m_image_view.m_handle;
-	base_col_tex_info.sampler = mat.m_base_color_texture->m_sampler.m_handle;
+	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.bindingCount = std::size(bindings),
+		.pBindings = bindings
+	};
+	VkDescriptorSetLayout descriptor_set_layout;
+	VREN_CHECK(vkCreateDescriptorSetLayout(m_context->m_device, &descriptor_set_layout_info, nullptr, &descriptor_set_layout), m_context);
+	return vren::vk_descriptor_set_layout(*m_context, descriptor_set_layout);
+}
 
-	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	desc_set_write.pNext = nullptr;
-	desc_set_write.dstSet = desc_set;
-	desc_set_write.dstBinding = VREN_MATERIAL_BASE_COLOR_TEXTURE_BINDING;
-	desc_set_write.dstArrayElement = 0;
-	desc_set_write.descriptorCount = 1;
-	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	desc_set_write.pImageInfo = &base_col_tex_info;
-	desc_set_write.pBufferInfo = nullptr;
-	desc_set_write.pTexelBufferView = nullptr;
+vren::vk_descriptor_pool vren::material_manager::create_descriptor_pool()
+{
+	VkDescriptorPoolSize pool_sizes[]{
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VREN_MAX_FRAME_IN_FLIGHT_COUNT },
+	};
+	VkDescriptorPoolCreateInfo descriptor_pool_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.maxSets = VREN_MAX_FRAME_IN_FLIGHT_COUNT,
+		.poolSizeCount = std::size(pool_sizes),
+		.pPoolSizes = pool_sizes
+	};
+	VkDescriptorPool descriptor_pool;
+	VREN_CHECK(vkCreateDescriptorPool(m_context->m_device, &descriptor_pool_info, nullptr, &descriptor_pool), m_context);
+	return vren::vk_descriptor_pool(*m_context, descriptor_pool);
+}
 
-	desc_set_writes.push_back(desc_set_write);
+std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::create_buffers()
+{
+	return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&]() {
+		return vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, k_max_material_buffer_size);
+	});
+}
 
-	// Metallic roughness texture
-	VkDescriptorImageInfo met_rough_tex_info{};
-	met_rough_tex_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	met_rough_tex_info.imageView = mat.m_metallic_roughness_texture->m_image_view.m_handle;
-	met_rough_tex_info.sampler = mat.m_metallic_roughness_texture->m_sampler.m_handle;
+std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::allocate_descriptor_sets()
+{
+	std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> descriptor_sets;
 
-	desc_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	desc_set_write.pNext = nullptr;
-	desc_set_write.dstSet = desc_set;
-	desc_set_write.dstBinding = VREN_MATERIAL_METALLIC_ROUGHNESS_TEXTURE_BINDING;
-	desc_set_write.dstArrayElement = 0;
-	desc_set_write.descriptorCount = 1;
-	desc_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	desc_set_write.pImageInfo = &met_rough_tex_info;
-	desc_set_write.pBufferInfo = nullptr;
-	desc_set_write.pTexelBufferView = nullptr;
+	std::array<VkDescriptorSetLayout, VREN_MAX_FRAME_IN_FLIGHT_COUNT> descriptor_set_layouts;
+	std::fill(descriptor_set_layouts.begin(), descriptor_set_layouts.end(), m_descriptor_set_layout.m_handle);
 
-	desc_set_writes.push_back(desc_set_write);
+	VkDescriptorSetAllocateInfo descriptor_set_alloc_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.descriptorPool = m_descriptor_pool.m_handle,
+		.descriptorSetCount = std::size(descriptor_sets),
+		.pSetLayouts = descriptor_set_layouts.data()
+	};
+	VREN_CHECK(vkAllocateDescriptorSets(m_context->m_device, &descriptor_set_alloc_info, descriptor_sets.data()), m_context);
 
-	vkUpdateDescriptorSets(ctx.m_device, desc_set_writes.size(), desc_set_writes.data(), 0, nullptr);
+	for (auto const& descriptor_set : descriptor_sets) {
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "material_manager");
+	}
+
+	return descriptor_sets;
+}
+
+void vren::material_manager::write_descriptor_set(uint32_t frame_idx)
+{
+	VkDescriptorBufferInfo buffer_info{
+		.buffer = m_buffers.at(frame_idx).m_buffer.m_handle,
+		.offset = 0,
+		.range = m_material_count > 0 ? m_material_count * sizeof(vren::material) : 1
+	};
+	VkWriteDescriptorSet descriptor_set_write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.pNext = nullptr,
+		.dstSet = m_descriptor_sets.at(frame_idx),
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		.pImageInfo = nullptr,
+		.pBufferInfo = &buffer_info,
+		.pTexelBufferView = nullptr
+	};
+	vkUpdateDescriptorSets(m_context->m_device, 1, &descriptor_set_write, 0, nullptr);
+}
+
+void vren::material_manager::request_buffer_sync()
+{
+	m_buffers_dirty_flags = UINT32_MAX;
+}
+
+void vren::material_manager::sync_buffer(uint32_t frame_idx)
+{
+	if ((m_buffers_dirty_flags >> frame_idx) & 1)
+	{
+		if (m_material_count > 0) {
+			vren::vk_utils::update_device_only_buffer(*m_context, m_buffers.at(frame_idx), m_materials.data(), m_material_count * sizeof(vren::material), 0);
+		}
+		write_descriptor_set(frame_idx);
+
+		m_buffers_dirty_flags &= ~(1 << frame_idx);
+	}
+}
+
+VkDescriptorSet vren::material_manager::get_descriptor_set(uint32_t frame_idx) const
+{
+	return m_descriptor_sets.at(frame_idx);
 }

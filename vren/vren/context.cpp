@@ -1,6 +1,7 @@
 #include "context.hpp"
 
 #include <iostream>
+#include <span>
 
 #include "toolbox.hpp"
 #include "vk_helpers/misc.hpp"
@@ -35,19 +36,37 @@ bool vren::does_support_layers(std::vector<char const*> const& layers)
 	return true;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
-	VkDebugUtilsMessageTypeFlagsEXT msg_type,
-	VkDebugUtilsMessengerCallbackDataEXT const* data,
-	void* user_data
-)
+char const* debug_utils_message_type_display_name(VkDebugUtilsMessageTypeFlagsEXT message_type)
 {
-	if ((msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) || (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) {
-		std::cerr << "[VK] " << data->pMessage << std::endl;
-	} else {
-		std::cout << "[VK] " << data->pMessage << std::endl;
+	switch (message_type)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT: return "General";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT: return "Validation";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT: return "Performance";
+	default: return "-";
 	}
-	return VK_FALSE;
+}
+
+char const* debug_utils_message_severity_display_name(VkDebugUtilsMessageSeverityFlagsEXT message_severity)
+{
+	switch (message_severity)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: return "Verbose";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: return "Info";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: return "Warning";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: return "Error";
+	default: return "-";
+	}
+}
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, VkDebugUtilsMessengerCallbackDataEXT const* data, void* user_data)
+{
+	if ((msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) || (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
+	{
+		VREN_ERROR("[Vulkan] [{}] [{}] {}\n", debug_utils_message_type_display_name(msg_type), debug_utils_message_severity_display_name(msg_severity), data->pMessage);
+	}
+
+	return false;
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -81,10 +100,8 @@ VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 		.pNext = nullptr,
 		.flags = NULL,
-		.messageSeverity =
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
-		.messageType =
-		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+		.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+		.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 		.pfnUserCallback = debug_messenger_callback,
 		.pUserData = nullptr,
 	};
@@ -93,9 +110,7 @@ VkDebugUtilsMessengerCreateInfoEXT create_debug_messenger_create_info()
 VkInstance vren::context::create_instance()
 {
 	/* volk */
-	vren::vk_utils::check(volkInitialize());
-
-	auto debug_messenger_info = create_debug_messenger_create_info();
+	VREN_CHECK(volkInitialize());
 
 	/* App info */
 	VkApplicationInfo app_info{
@@ -111,7 +126,8 @@ VkInstance vren::context::create_instance()
 	/* Extensions */
 	std::vector<char const*> extensions = m_info.m_extensions;
 	extensions.insert(extensions.end(), {
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME
 	});
 
 	/* Layers */
@@ -121,6 +137,11 @@ VkInstance vren::context::create_instance()
 	});
 
 	/* Instance info */
+
+	// Debug utils
+	auto debug_messenger_info = create_debug_messenger_create_info();
+	debug_messenger_info.pNext = nullptr;
+
 	VkInstanceCreateInfo inst_info{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pNext = &debug_messenger_info,
@@ -132,7 +153,7 @@ VkInstance vren::context::create_instance()
 		.ppEnabledExtensionNames = extensions.data(),
 	};
 	VkInstance instance;
-	vren::vk_utils::check(vkCreateInstance(&inst_info, nullptr, &instance));
+	VREN_CHECK(vkCreateInstance(&inst_info, nullptr, &instance));
 
 	volkLoadInstance(instance);
 
@@ -144,7 +165,7 @@ VkDebugUtilsMessengerEXT vren::context::create_debug_messenger()
 	auto debug_messenger_info = create_debug_messenger_create_info();
 
 	VkDebugUtilsMessengerEXT debug_messenger;
-	vren::vk_utils::check(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
+	VREN_CHECK(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_messenger_info, nullptr, &debug_messenger));
 
 	return debug_messenger;
 }
@@ -216,6 +237,33 @@ vren::context::queue_families vren::context::get_queue_families(VkPhysicalDevice
 	return queue_families;
 }
 
+int does_physical_device_support(VkPhysicalDevice physical_device, std::span<char const*> const& extensions)
+{
+	uint32_t extension_count;
+	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
+
+	std::vector<VkExtensionProperties> supported_extensions(extension_count);
+	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, supported_extensions.data());
+
+	for (int i = 0; i < extensions.size(); i++)
+	{
+		char const* ext_name = extensions[i];
+		bool supported = false;
+		for (auto const& supported_extension : supported_extensions)
+		{
+			if (strcmp(supported_extension.extensionName, ext_name) == 0) {
+				supported = true;
+				break;
+			}
+		}
+		if (!supported) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 VkDevice vren::context::create_logical_device()
 {
 	uint32_t queue_families_count = 0;
@@ -235,20 +283,57 @@ VkDevice vren::context::create_logical_device()
 	/* Extensions */
 	std::vector<char const*> dev_ext = m_info.m_device_extensions;
 	dev_ext.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+	dev_ext.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+	dev_ext.push_back(VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
+	dev_ext.push_back(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
 	dev_ext.push_back(VK_NV_MESH_SHADER_EXTENSION_NAME);
+	dev_ext.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+
+	int unsupported_ext = does_physical_device_support(m_physical_device, dev_ext);
+	if (unsupported_ext >= 0)
+	{
+		VREN_ERROR("Required device extension not supported: {}", dev_ext.at(unsupported_ext));
+		exit(1);
+	}
 
 	/* Features */
-	VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader_feature{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV,
+	VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
 		.pNext = nullptr,
-		.taskShader = VK_TRUE,
-		.meshShader = VK_TRUE
+		.descriptorBindingPartiallyBound = true,
+		.descriptorBindingVariableDescriptorCount = true,
+		.runtimeDescriptorArray = true,
 	};
 
-	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature{
+	VkPhysicalDevice8BitStorageFeatures khr_8bit_storage_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES,
+		.pNext = &descriptor_indexing_features,
+		.storageBuffer8BitAccess = true,
+		.uniformAndStorageBuffer8BitAccess = true,
+		.storagePushConstant8 = true,
+	};
+
+	/*
+	VkPhysicalDevice16BitStorageFeatures khr_16bit_storage_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
+		.pNext = &khr_8bit_storage_features,
+		.storageBuffer16BitAccess = true,
+		.uniformAndStorageBuffer16BitAccess = true,
+		.storagePushConstant16 = true,
+		.storageInputOutput16 = true,
+	};*/
+
+	VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV,
+		.pNext = &khr_8bit_storage_features,
+		.taskShader = true,
+		.meshShader = true
+	};
+
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
-		.pNext = &mesh_shader_feature,
-		.extendedDynamicState = VK_TRUE,
+		.pNext = &mesh_shader_features,
+		.extendedDynamicState = true,
 	};
 
 	VkPhysicalDeviceFeatures features{
@@ -256,9 +341,9 @@ VkDevice vren::context::create_logical_device()
 	};
 
 	/* Device */
-	VkDeviceCreateInfo dev_info{
+	VkDeviceCreateInfo device_info{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = &extended_dynamic_state_feature,
+		.pNext = &extended_dynamic_state_features,
 		.flags = NULL,
 		.queueCreateInfoCount = (uint32_t) queue_infos.size(),
 		.pQueueCreateInfos = queue_infos.data(),
@@ -269,7 +354,7 @@ VkDevice vren::context::create_logical_device()
 		.pEnabledFeatures = &features
 	};
 	VkDevice device;
-	vren::vk_utils::check(vkCreateDevice(m_physical_device, &dev_info, nullptr, &device));
+	VREN_CHECK(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
 
 	m_physical_device_mesh_shader_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV;
 	m_physical_device_mesh_shader_properties.pNext = nullptr;
@@ -280,7 +365,7 @@ VkDevice vren::context::create_logical_device()
 		.properties = {}
 	};
 	vkGetPhysicalDeviceProperties2(m_physical_device, &physical_device_properties2);
-	print_nv_mesh_shader_info(m_physical_device_mesh_shader_properties);
+	//print_nv_mesh_shader_info(m_physical_device_mesh_shader_properties);
 
 	return device;
 }
@@ -315,7 +400,7 @@ VmaAllocator vren::context::create_vma_allocator()
 	};
 
 	VmaAllocator allocator;
-	vren::vk_utils::check(vmaCreateAllocator(&allocator_info, &allocator));
+	VREN_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
 	return allocator;
 }
 

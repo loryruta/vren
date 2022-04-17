@@ -1,59 +1,47 @@
 #version 460
 
-#define PI 3.1415926538
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "common.glsl"
+
+#define PI 3.14
+#define EPSILON 0.0001
+#define INFINITE 1e35
 
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
-layout(location = 2) in vec3 v_color;
-layout(location = 3) in vec2 v_texcoords;
+layout(location = 2) in vec2 v_texcoords;
 
-// https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#reference-material-pbrmetallicroughness
-//layout(set = 0, binding = 0) uniform sampler2D u_mat_base_color_tex; TODO
-//layout(set = 0, binding = 1) uniform sampler2D u_mat_metallic_roughness_tex;
+layout(location = 8) in flat uint v_material_idx;
 
 layout(push_constant) uniform PushConstants
 {
-    vec4 camera_pos;
-    mat4 camera_view;
-    mat4 camera_projection;
-} push_constants;
-
-struct PointLight
-{
-    vec4 position;
-    vec4 color;
+    Camera camera;
 };
 
-struct DirectionalLight
+layout(set = 0, binding = 0) uniform sampler2D textures[];
+
+layout(set = 1, binding = 0) buffer readonly PointLightBuffer
 {
-    vec4 direction;
-    vec4 color;
+    PointLight point_lights[];
 };
 
-struct SpotLight
+layout(set = 1, binding = 1) buffer readonly DirectionalLightBuffer
 {
-    vec4 direction;
-    vec3 color;
-    float radius;
+    DirectionalLight directional_lights[];
 };
 
-layout(set = 1, binding = 0) buffer readonly LightArray_PointLights
+layout(set = 1, binding = 2) buffer readonly SpotLightBuffer
 {
-    uint num; float _pad[3];
-    PointLight data[];
-} b_point_lights;
+    PointLight spot_lights[];
+};
 
-layout(set = 1, binding = 1) buffer readonly LightArray_DirectionalLights
+layout(set = 3, binding = 0) buffer readonly MaterialBuffer
 {
-    uint num; float _pad[3];
-    DirectionalLight data[];
-} b_dir_lights;
-
-layout(set = 1, binding = 2) buffer readonly LightArray_SpotLights
-{
-    uint num; float _pad[3];
-    PointLight data[];
-} b_spot_lights;
+    Material materials[];
+};
 
 layout(location = 0) out vec4 f_color;
 
@@ -93,24 +81,14 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-vec3 apply_light(
-    vec3 V,
-    vec3 N,
-    vec3 L,
-    vec3 radiance,
-    vec3 surf_col
-)
+vec3 apply_light(vec3 eye, vec3 p, vec3 N, vec3 L, vec3 radiance, vec3 albedo, float metallic, float roughness)
 {
-    float roughness = 0.6; // TODO
-    float metallic = 0.3;
-
-    //float roughness = texture(u_mat_metallic_roughness_tex, v_texcoords).g;
-    //float metallic = texture(u_mat_metallic_roughness_tex, v_texcoords).b;
+    vec3 V = normalize(eye - p);
 
     vec3 H = normalize(V + -L);
 
     vec3 F0 = vec3(0.04); // Base reflectivity
-    F0 = mix(F0, surf_col, metallic);
+    F0 = mix(F0, albedo, metallic);
 
     float NDF = DistributionGGX(N, H, roughness);
     float G = GeometrySmith(N, V, -L, roughness);
@@ -125,53 +103,40 @@ vec3 apply_light(
     float specular = num / denom;
 
     float NdotL = max(dot(N, -L), 0.0);
-    return max((kD * surf_col / PI + kS * specular) * radiance * NdotL, 0);
+    return max((kD * albedo / PI + kS * specular) * radiance * NdotL, 0);
 }
 
-vec3 apply_point_lights(
-    vec3 frag_pos,
-    vec3 V,
-    vec3 N,
-    vec3 surf_col
-)
+vec3 apply_point_light(vec3 eye, vec3 p, vec3 N, PointLight point_light, vec3 albedo, float metallic, float roughness)
 {
-    vec3 Lo = vec3(0);
+    vec3 d = p - point_light.position;
+    vec3 L = normalize(d);
+    float intensity = 1.0 / pow(length(d), 0.81);
+    vec3 radiance = point_light.color * intensity;
 
-    for (int i = 0; i < b_point_lights.num; i++)
-    {
-        PointLight light = b_point_lights.data[i];
+    return apply_light(eye, p, N, L, radiance, albedo, metallic, roughness);
+}
 
-        float d = length(light.position.xyz - frag_pos);
-        vec3 L = normalize(frag_pos - light.position.xyz);
-        float intensity = 1.0 / pow(d, 0.81); // attenuation
-        vec3 radiance = light.color.rgb * intensity;
-
-        Lo += apply_light(
-            V,
-            N,
-            L,
-            radiance,
-            surf_col
-        );
-    }
-
-    return Lo;
+vec3 gamma_correction(vec3 color)
+{
+    return pow(color, vec3(1.0 / 2.2));
 }
 
 void main()
 {
-    vec3 frag_pos = v_position;
-    vec3 N = v_normal;
-    vec3 V = normalize(push_constants.camera_pos.xyz - frag_pos);
+    Material material = materials[v_material_idx];
 
-    vec3 albedo = vec3(1, 0, 0);//texture(u_mat_base_color_tex, v_texcoords).rgb;
+    vec3 albedo = texture(textures[material.base_color_texture_idx], v_texcoords).rgb;
+    float metallic = texture(textures[material.metallic_roughness_texture_idx], v_texcoords).b;
+    float roughness = texture(textures[material.metallic_roughness_texture_idx], v_texcoords).g;
 
     vec3 Lo = vec3(0.0);
-    Lo += apply_point_lights(frag_pos, V, N, albedo);
-    //Lo += apply_directional_lights(frag_pos, V, N, albedo);
 
-    vec3 ambient = vec3(0.03) * albedo; // * ao
+    for (int i = 0; i < point_lights.length(); i++) {
+        Lo += apply_point_light(camera.position, v_position, v_normal, point_lights[i], albedo, metallic, roughness);
+    }
+
+    vec3 ambient = vec3(0.03) * albedo;
     vec3 color = ambient + Lo;
-    color = pow(color, vec3(1.0 / 2.2));
+    color = gamma_correction(color);
     f_color = vec4(color, 1.0);
 }

@@ -13,7 +13,6 @@ set(SRC
         vren/utils/command_graph.cpp
         vren/utils/profiler.hpp
         vren/utils/profiler.cpp
-        vren/utils/shapes.hpp
         vren/utils/log.hpp
 
         vren/vk_helpers/debug_utils.hpp
@@ -29,7 +28,10 @@ set(SRC
 
         vren/mesh.cpp
         vren/mesh.hpp
-        vren/texture.hpp
+        vren/material.cpp
+        vren/material.hpp
+        vren/texture_manager.cpp
+        vren/texture_manager.hpp
         vren/imgui_renderer.hpp
         vren/imgui_renderer.cpp
         vren/toolbox.hpp
@@ -37,12 +39,8 @@ set(SRC
         vren/vk_helpers/shader.hpp
         vren/vk_helpers/shader.cpp
         vren/vk_helpers/barrier.hpp
-        vren/dbg_renderer.hpp
-        vren/dbg_renderer.cpp
-        vren/render_list.cpp
-        vren/render_list.hpp
-        vren/render_object.cpp
-        vren/render_object.hpp
+        vren/debug_renderer.hpp
+        vren/debug_renderer.cpp
         vren/context.hpp
         vren/context.cpp
         vren/renderer.hpp
@@ -52,10 +50,11 @@ set(SRC
         vren/config.hpp
         vren/presenter.cpp
         vren/presenter.hpp
-        vren/material.hpp
-        vren/material.cpp
-        vren/light_array.cpp
-        vren/light_array.hpp
+        vren/light.cpp
+        vren/light.hpp
+
+        vren/vertex_pipeline_draw_pass.cpp
+        vren/vertex_pipeline_draw_pass.hpp
 )
 
 add_library(vren ${SRC})

@@ -1,6 +1,3 @@
-
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-
 #include <memory>
 #include <iostream>
 #include <optional>
@@ -13,120 +10,22 @@
 #include <glm/gtc/random.hpp>
 #include <meshoptimizer.h>
 
-#define VREN_LOG_LEVEL VREN_LOG_LEVEL_DEBUG
-#include "vren/utils/log.hpp"
+#include <vren/utils/log.hpp>
 
+#include <vren/mesh.hpp>
 #include <vren/context.hpp>
 #include <vren/presenter.hpp>
 #include <vren/vk_helpers/buffer.hpp>
 #include <vren/imgui_renderer.hpp>
 #include <vren/utils/profiler.hpp>
 #include <vren/vk_helpers/barrier.hpp>
-#include <vren/utils/shapes.hpp>
-#include <vren/dbg_renderer.hpp>
+#include <vren/debug_renderer.hpp>
 
 #include "tinygltf_loader.hpp"
 #include "camera.hpp"
 #include "ui.hpp"
 
-#define VREN_DEMO_WINDOW_WIDTH  1280
-#define VREN_DEMO_WINDOW_HEIGHT 720
-
-GLFWwindow* g_window;
-
-void create_cube(
-	vren::context const& ctx,
-	vren::render_object& render_obj,
-	glm::vec3 position,
-	glm::vec3 rotation,
-	glm::vec3 scale,
-	std::shared_ptr<vren::material> const& material
-)
-{
-	vren::utils::create_cube(ctx, render_obj);
-
-	{ // Instances
-		auto transf = glm::identity<glm::mat4>();
-
-		// Translation
-		transf = glm::translate(transf, position);
-
-		// Rotation
-		transf = glm::translate(transf, glm::vec3(-0.5f));
-		transf = glm::rotate(transf, rotation.x, glm::vec3(1, 0, 0));
-		transf = glm::rotate(transf, rotation.y, glm::vec3(0, 1, 0));
-		transf = glm::rotate(transf, rotation.z, glm::vec3(0, 0, 1));
-		transf = glm::translate(transf, glm::vec3(0.5f));
-
-		// Scaling
-		transf = glm::scale(transf, scale);
-
-		vren::instance_data inst{};
-		inst.m_transform = transf;
-
-		auto instances_buf =
-			std::make_shared<vren::vk_utils::buffer>(
-				vren::vk_utils::create_instances_buffer(ctx, &inst, 1)
-			);
-		render_obj.set_indices_buffer(instances_buf, 1);
-	}
-
-	render_obj.m_material = material;
-}
-
-void create_cube_scene(vren::context const& ctx, vren::render_list& render_list)
-{
-	float const surface_y = 1;
-	float const surface_side = 30;
-	float const r = 10;
-	int const n = 50;
-
-	{ // Surface
-		auto& surface = render_list.create_render_object();
-
-		auto mat = std::make_shared<vren::material>(ctx);
-		mat->m_base_color_texture = ctx.m_toolbox->m_green_texture;
-		mat->m_metallic_roughness_texture = ctx.m_toolbox->m_green_texture;
-		surface.m_material = mat;
-
-		create_cube(
-			ctx,
-			surface,
-			glm::vec3(-surface_side / 2.0f, 0, -surface_side / 2.0f),
-			glm::vec3(0),
-			glm::vec3(surface_side, surface_y, surface_side),
-			mat
-		);
-	}
-
-	// Cubes
-	for (int i = 1; i <= n; i++)
-	{
-		auto& cube = render_list.create_render_object();
-
-		float cos_i = glm::cos(2 * glm::pi<float>() / (float) n * (float) i);
-		float sin_i = glm::sin(2 * glm::pi<float>() / (float) n * (float) i);
-
-		auto mat = std::make_shared<vren::material>(ctx);
-		mat->m_base_color_texture = ctx.m_toolbox->m_red_texture;
-		mat->m_metallic_roughness_texture = ctx.m_toolbox->m_green_texture;
-
-		create_cube(
-			ctx,
-			cube,
-			glm::vec3(
-				cos_i * r,
-				surface_y + 0.1f,
-				sin_i * r
-			),
-			glm::vec3(0),
-			glm::vec3(1),
-			mat
-		);
-	}
-}
-
-void update_camera(float dt, vren_demo::camera& camera)
+void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera)
 {
 	const glm::vec4 k_world_up = glm::vec4(0, 1, 0, 0);
 
@@ -134,15 +33,15 @@ void update_camera(float dt, vren_demo::camera& camera)
 	const float k_speed = 4.0f; // m/s
 
 	glm::vec3 dir{};
-	if (glfwGetKey(g_window, GLFW_KEY_W) == GLFW_PRESS) dir += -camera.get_forward();
-	if (glfwGetKey(g_window, GLFW_KEY_S) == GLFW_PRESS) dir += camera.get_forward();
-	if (glfwGetKey(g_window, GLFW_KEY_A) == GLFW_PRESS) dir += -camera.get_right();
-	if (glfwGetKey(g_window, GLFW_KEY_D) == GLFW_PRESS) dir += camera.get_right();
-	if (glfwGetKey(g_window, GLFW_KEY_SPACE) == GLFW_PRESS) dir += camera.get_up();
-	if (glfwGetKey(g_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) dir += -camera.get_up();
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) dir += -camera.get_forward();
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) dir += camera.get_forward();
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) dir += -camera.get_right();
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) dir += camera.get_right();
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) dir += camera.get_up();
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) dir += -camera.get_up();
 
 	float inc = k_speed * dt;
-	if (glfwGetKey(g_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		inc *= 100;
 	}
 
@@ -153,7 +52,7 @@ void update_camera(float dt, vren_demo::camera& camera)
 	const glm::vec2 k_sensitivity = glm::radians(glm::vec2(90.0f)); // rad/(pixel * s)
 
 	glm::dvec2 cur_pos{};
-	glfwGetCursorPos(g_window, &cur_pos.x, &cur_pos.y);
+	glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
 
 	if (last_cur_pos.has_value())
 	{
@@ -172,15 +71,15 @@ void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mod
 		switch (key)
 		{
 		case GLFW_KEY_ESCAPE:
-			if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
-				glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			} else {
-				glfwSetWindowShouldClose(g_window, true);
+				glfwSetWindowShouldClose(window, true);
 			}
 			break;
 		case GLFW_KEY_ENTER:
-			if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL) {
-				glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL) {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
 			break;
 		}
@@ -252,7 +151,7 @@ void move_and_bounce_point_lights(
 
 void show_point_lights(
 	std::span<vren::point_light> point_lights,
-	vren::dbg_renderer& dbg_renderer
+	vren::debug_renderer& dbg_renderer
 )
 {
 	for (auto& light : point_lights)
@@ -263,96 +162,121 @@ void show_point_lights(
 
 int main(int argc, char* argv[])
 {
-	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
 	setvbuf(stderr, NULL, _IONBF, 0);
 
 	if (argc != (1 + 1))
 	{
-		fprintf(stderr, "Invalid usage: <scene_filepath>");
-		exit(0);
+		VREN_ERROR("Invalid usage: <scene_filepath>\n");
+		exit(1);
 	}
 	argv++;
 
+	/* GLFW window init */
 	glfwSetErrorCallback(glfw_error_callback);
 
 	if (glfwInit() != GLFW_TRUE)
 	{
-		throw std::runtime_error("Couldn't create GLFW.");
+		VREN_ERROR("Failed to initialize GLFW\n");
+		exit(1);
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
-	g_window = glfwCreateWindow(VREN_DEMO_WINDOW_WIDTH, VREN_DEMO_WINDOW_HEIGHT, "VRen", nullptr, nullptr);
-	if (g_window == nullptr)
+	GLFWwindow* window = glfwCreateWindow(1024, 720, "vren_demo", nullptr, nullptr);
+	if (window == nullptr)
 	{
-		throw std::runtime_error("Couldn't create the window.");
+		VREN_ERROR("Failed to create window\n");
+		exit(1);
 	}
 
-	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	// ---------------------------------------------------------------- Context initialization
-
-	vren::context_info ctx_info;
-	ctx_info.m_app_name = "vren_demo";
-	ctx_info.m_app_version = VK_MAKE_VERSION(1, 0, 0);
-	ctx_info.m_layers = {};
+	/* Context init */
+	vren::context_info context_info{
+		.m_app_name = "vren_demo",
+		.m_app_version = VK_MAKE_VERSION(1, 0, 0),
+		.m_layers = {},
+		.m_extensions = {},
+		.m_device_extensions = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		},
+	};
 
 	uint32_t glfw_extensions_count = 0;
 	char const** glfw_extensions;
 	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
 	for (int i = 0; i < glfw_extensions_count; i++) {
-		ctx_info.m_extensions.push_back(glfw_extensions[i]);
+		context_info.m_extensions.push_back(glfw_extensions[i]);
 	}
 
-	ctx_info.m_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	ctx_info.m_device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // For debug printf in shaders
+	vren::context context(context_info);
 
-	vren::context ctx(ctx_info);
+	/* Renderer init */
+	auto renderer = std::make_unique<vren::renderer>(context);
+	auto debug_renderer = std::make_unique<vren::debug_renderer>(context);
+	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(context, window);
 
-	/* Renderer */
-	vren::renderer renderer(ctx);
-	renderer.m_clear_color = { 0.7f, 0.7f, 0.7f, 1.0f };
+	/* Presenter init */
+	VkSurfaceKHR surface_handle;
+	VREN_CHECK(glfwCreateWindowSurface(context.m_instance, window, nullptr, &surface_handle), &context);
+	auto surface = std::make_shared<vren::vk_surface_khr>(context, surface_handle);
 
-	/* Debug renderer */
-	vren::dbg_renderer dbg_renderer(ctx);
+	/* Framebuffers */
+	std::vector<vren::vk_framebuffer> renderer_framebuffers;
+	std::vector<vren::vk_framebuffer> debug_renderer_framebuffers;
+	std::vector<vren::vk_framebuffer> imgui_renderer_framebuffers;
 
-	/* ImGui renderer */
-	vren::imgui_renderer ui_renderer(ctx, g_window);
+	vren::presenter presenter(context, surface, [&](vren::swapchain const& swapchain)
+	{
+		size_t image_count = swapchain.m_images.size();
 
-	vren::render_list render_list;
-	vren::light_array light_array;
+		renderer_framebuffers.clear();
+		debug_renderer_framebuffers.clear();
+		imgui_renderer_framebuffers.clear();
 
-	glm::vec3 point_lights_dir[VREN_MAX_POINT_LIGHTS];
-	initialize_point_lights_direction(point_lights_dir);
+		for (uint32_t image_idx = 0; image_idx < image_count; image_idx++)
+		{
+			VkImageView attachments[]{
+				swapchain.m_color_buffers.at(image_idx).m_image_view.m_handle,
+				swapchain.m_depth_buffer.m_image_view.m_handle
+			};
+			renderer_framebuffers.push_back(
+				vren::vk_utils::create_framebuffer(context, renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
+			);
+			debug_renderer_framebuffers.push_back(
+				vren::vk_utils::create_framebuffer(context, debug_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
+			);
+			imgui_renderer_framebuffers.push_back(
+				vren::vk_utils::create_framebuffer(context, imgui_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
+			);
+		}
+	});
 
-	/* Create surface */
-	VkSurfaceKHR surf_handle;
-	vren::vk_utils::check(glfwCreateWindowSurface(ctx.m_instance, g_window, nullptr, &surf_handle));
-	auto surf = std::make_shared<vren::vk_surface_khr>(ctx, surf_handle);
+	vren_demo::ui::main_ui ui(context, *renderer);
 
-	vren::presenter presenter(ctx, surf);
+	/* Profiler */
+	vren::profiler profiler(context, VREN_MAX_FRAME_IN_FLIGHT_COUNT * vren_demo::profile_slot::count);
 
-	vren_demo::ui::main_ui ui(ctx, renderer);
-
-	vren::profiler profiler(ctx, VREN_MAX_FRAMES_IN_FLIGHT * vren_demo::profile_slot::count);
+	//glm::vec3 point_lights_dir[VREN_MAX_POINT_LIGHTS];
+	//initialize_point_lights_direction(point_lights_dir);
 
 	/* */
-	std::vector<vren_demo::vertex> vertices;
+	std::vector<vren::vertex> vertices;
 	std::vector<uint32_t> indices;
-	std::vector<vren_demo::mesh_instance> mesh_instances;
-	vren::texture_manager texture_manager;
-	std::vector<vren_demo::material> materials;
-	std::vector<vren_demo::mesh> meshes;
+	std::vector<vren::mesh> meshes;
+	std::vector<vren::mesh_instance> mesh_instances;
 
 	vren_demo::tinygltf_scene loaded_scene;
-	vren_demo::tinygltf_loader gltf_loader(ctx);
+	vren_demo::tinygltf_loader gltf_loader(context);
 
 	printf("Loading scene: %s\n", argv[0]);
 
-	gltf_loader.load_from_file(argv[0], vertices, indices, mesh_instances, texture_manager, materials, meshes);
+	gltf_loader.load_from_file(argv[0], vertices, indices, meshes, mesh_instances);
 
+	/*
 	printf("Building meshlets...\n");
 
 	const size_t max_vertices = 64;
@@ -361,36 +285,79 @@ int main(int argc, char* argv[])
 
 	size_t max_meshlets = meshopt_buildMeshletsBound(indices.size(), max_vertices, max_triangles);
 	std::vector<meshopt_Meshlet> meshlets(max_meshlets);
-	std::vector<unsigned int> meshlet_vertices(max_meshlets * max_vertices);
-	std::vector<unsigned char> meshlet_triangles(max_meshlets * max_triangles * 3);
+	std::vector<uint32_t> meshlet_vertices(max_meshlets * max_vertices);
+	std::vector<uint8_t> meshlet_triangles(max_meshlets * max_triangles * 3);
 
-	size_t meshlet_count = meshopt_buildMeshlets(meshlets.data(), meshlet_vertices.data(), meshlet_triangles.data(), indices.data(),
-												 indices.size(), reinterpret_cast<float*>(vertices.data()), vertices.size(), sizeof(vren_demo::vertex), max_vertices, max_triangles, cone_weight);
+	size_t meshlet_count = meshopt_buildMeshlets(
+		meshlets.data(),
+		meshlet_vertices.data(),
+		meshlet_triangles.data(),
+		indices.data(),
+		indices.size(),
+		reinterpret_cast<float*>(vertices.data()),
+		vertices.size(),
+		sizeof(vren::vertex),
+		max_vertices,
+		max_triangles,
+		cone_weight
+	);
 
-	auto vertex_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vertices.data(), vertices.size() * sizeof(vren_demo::vertex));
-	auto index_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_vertices.data(), meshlet_vertices.size() * sizeof(unsigned int));
-	auto meshlet_buffer = vren::vk_utils::create_device_only_buffer(ctx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets.data(), meshlets.size() * sizeof(meshopt_Meshlet));
+	meshopt_Meshlet const& last = meshlets[meshlet_count - 1];
+
+	meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
+	meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+	meshlets.resize(meshlet_count);
+
+	vren::draw_buffer draw_buffer{
+		.m_vertex_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vertices.data(), vertices.size() * sizeof(vren::vertex)),
+		.m_meshlet_vertex_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_vertices.data(), meshlet_vertices.size() * sizeof(uint32_t)),
+		.m_meshlet_triangle_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_triangles.data(), meshlet_triangles.size() * sizeof(uint8_t)),
+		.m_meshlet_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets.data(), meshlets.size() * sizeof(meshopt_Meshlet)),
+		.m_meshlet_count = meshlet_count
+	};
+	*/
+
+	/* */
+	std::vector<vren::mesh_buffer> mesh_buffers;
+	for (auto const& mesh : meshes)
+	{
+		vren::mesh_buffer mesh_buffer{
+			.m_vertex_buffer   = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vertices.data()[mesh.m_vertex_offset], mesh.m_vertex_count * sizeof(vren::vertex)),
+			.m_vertex_count    = mesh.m_vertex_count,
+			.m_index_buffer    = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, &indices.data()[mesh.m_index_offset], mesh.m_index_count * sizeof(uint32_t)),
+			.m_index_count     = mesh.m_index_count,
+			.m_instance_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &mesh_instances.data()[mesh.m_instance_offset], mesh.m_instance_count * sizeof(vren::mesh_instance)),
+			.m_instance_count  = mesh.m_instance_count,
+			.m_material_index_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &mesh.m_material_idx, sizeof(uint32_t))
+		};
+		mesh_buffers.push_back(std::move(mesh_buffer));
+	}
 
 	// ---------------------------------------------------------------- Game loop
 
+	printf("Game loop! (ノ ゜Д゜)ノ ︵ ┻━┻\n");
+
 	vren_demo::camera camera{};
-	glfwSetKeyCallback(g_window, on_key_press);
+	glfwSetKeyCallback(window, on_key_press);
 
 	int fb_width = -1, fb_height = -1;
 
 	float last_time = -1.0;
-	while (!glfwWindowShouldClose(g_window))
+	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
 
+		VmaBudget budget;
+		vmaGetBudget(context.m_vma_allocator, &budget);
+
 		int cur_fb_width, cur_fb_height;
-		glfwGetFramebufferSize(g_window, &cur_fb_width, &cur_fb_height);
+		glfwGetFramebufferSize(window, &cur_fb_width, &cur_fb_height);
 
 		camera.m_aspect_ratio = float(cur_fb_width) / float(cur_fb_height);
 
 		if (cur_fb_width != fb_width || cur_fb_height != fb_height)
 		{
-			presenter.recreate_swapchain(cur_fb_width, cur_fb_height, renderer.m_render_pass);
+			presenter.recreate_swapchain(cur_fb_width, cur_fb_height);
 
 			fb_width = cur_fb_width;
 			fb_height = cur_fb_height;
@@ -400,18 +367,41 @@ int main(int argc, char* argv[])
 		float dt = last_time >= 0 ? (cur_time - last_time) : 0;
 		last_time = cur_time;
 
-		if (glfwGetInputMode(g_window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
-			update_camera(dt, camera);
+		if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+		{
+			update_camera(window, dt, camera);
 		}
 
 		int win_width, win_height;
-		glfwGetWindowSize(g_window, &win_width, &win_height);
+		glfwGetWindowSize(window, &win_width, &win_height);
 
-		dbg_renderer.clear();
+		debug_renderer->clear();
 
-		presenter.present([&](int frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, vren::render_target const& target)
+		presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
         {
-			/* Profiles the frame */
+			vkCmdSetCheckpointNV(command_buffer, "Frame start");
+
+			context.m_toolbox->m_material_manager.sync_buffer(frame_idx);
+
+			vren::render_target render_target{
+				.m_render_area = {
+					.offset = {0, 0},
+					.extent = {swapchain.m_image_width, swapchain.m_image_height}
+				},
+				.m_viewport = {
+					.x = 0,
+					.y = (float) swapchain.m_image_height,
+					.width = (float) swapchain.m_image_width,
+					.height = -((float) swapchain.m_image_height),
+					.minDepth = 0.0f,
+					.maxDepth = 1.0f
+				},
+				.m_scissor {
+					.offset = {0,0},
+					.extent = {0,0}
+				}
+			};
+
 			int prof_slot = frame_idx * vren_demo::profile_slot::count;
 
 			vren_demo::profile_info prof_info{};
@@ -429,103 +419,101 @@ int main(int argc, char* argv[])
 			prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
 			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 
-			/* Clear */
+			VkImage color_buffer = swapchain.m_color_buffers.at(swapchain_image_idx).m_image;
 			vren::vk_utils::image_barrier(
-				cmd_buf,
+				command_buffer,
 				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
 				NULL, VK_ACCESS_TRANSFER_WRITE_BIT,
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				target.m_color_buffer,
+				color_buffer,
 				VK_IMAGE_ASPECT_COLOR_BIT
 			);
-			vren::vk_utils::clear_color_image(cmd_buf, target.m_color_buffer, {0.45f, 0.45f, 0.45f, 0.0f});
+			vren::vk_utils::clear_color_image(command_buffer, color_buffer, {0.45f, 0.45f, 0.45f, 0.0f});
 			vren::vk_utils::image_barrier(
-				cmd_buf,
+				command_buffer,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				target.m_color_buffer,
+				color_buffer,
 				VK_IMAGE_ASPECT_COLOR_BIT
 			);
+			vkCmdSetCheckpointNV(command_buffer, "Color buffer cleared");
 
+			VkImage depth_buffer = swapchain.m_depth_buffer.m_image.m_image.m_handle;
 			vren::vk_utils::image_barrier(
-				cmd_buf,
+				command_buffer,
 				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
 				NULL, VK_ACCESS_TRANSFER_WRITE_BIT,
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				target.m_depth_buffer,
+				depth_buffer,
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
 			);
-			vren::vk_utils::clear_depth_image(cmd_buf, target.m_depth_buffer, { .depth = 1, .stencil = 0 });
+			vren::vk_utils::clear_depth_image(command_buffer, depth_buffer, { .depth = 1, .stencil = 0 });
 			vren::vk_utils::image_barrier(
-				cmd_buf,
+				command_buffer,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-				target.m_depth_buffer,
+				depth_buffer,
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
 			);
+			vkCmdSetCheckpointNV(command_buffer, "Depth buffer cleared");
 
-			/* Move & show lights host-side */
 			glm::vec3
 				aabb_min = glm::vec3(-1.0f),
 				aabb_max = glm::vec3(5.0f);
 
-			move_and_bounce_point_lights(light_array.m_point_lights, point_lights_dir, aabb_min, aabb_max, ui.m_scene_ui.m_speed, dt);
-			show_point_lights(light_array.m_point_lights, dbg_renderer);
+			//move_and_bounce_point_lights(light_array.m_point_lights, point_lights_dir, aabb_min, aabb_max, ui.m_scene_ui.m_speed, dt);
+			//show_point_lights(light_array.m_point_lights, dbg_renderer);
 
-			/* Debug renderer */
-			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
-			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
-			dbg_renderer.draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
+			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
+			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
+			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
 
-			dbg_renderer.draw_point({ .m_position = aabb_min, .m_color = glm::vec4(0) });
-			dbg_renderer.draw_point({ .m_position = aabb_max, .m_color = glm::vec4(1) });
-			dbg_renderer.draw_line({ .m_from = aabb_min, .m_to = aabb_max, .m_color = glm::vec4(1, 1, 1, 1) });
+			debug_renderer->draw_point({ .m_position = aabb_min, .m_color = glm::vec4(0) });
+			debug_renderer->draw_point({ .m_position = aabb_max, .m_color = glm::vec4(1) });
+			debug_renderer->draw_line({ .m_from = aabb_min, .m_to = aabb_max, .m_color = glm::vec4(1, 1, 1, 1) });
 
-			dbg_renderer.render(frame_idx, cmd_buf, res_container, target, {
+			render_target.m_framebuffer = debug_renderer_framebuffers.at(swapchain_image_idx).m_handle;
+			debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, {
 				.m_camera_view = camera.get_view(),
 				.m_camera_projection = camera.get_projection()
 			});
+			vkCmdSetCheckpointNV(command_buffer, "Debug renderer drawn");
 
-			/* Renders the scene */
-			profiler.profile(frame_idx, cmd_buf, res_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
+			// Render scene
+			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
 			{
 				auto cam_data = vren::camera{
 					.m_position = camera.m_position,
 					.m_view = camera.get_view(),
 					.m_projection = camera.get_projection()
 				};
-
-				renderer.render(
-					frame_idx,
-					cmd_buf,
-					res_container,
-					target,
-					vertex_buffer.m_buffer.m_handle,
-					index_buffer.m_buffer.m_handle,
-					meshlet_buffer.m_buffer.m_handle,
-					meshlets.size(),
-					light_array,
-					cam_data
-				);
+				render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
+				renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_buffers);
+				vkCmdSetCheckpointNV(command_buffer, "Scene drawn");
 			});
 
-			/* Renders the UI */
-			profiler.profile(frame_idx, cmd_buf, res_container, prof_slot + vren_demo::profile_slot::UiPass, [&]()
+			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::UiPass, [&]()
 			{
-				ui_renderer.render(frame_idx, cmd_buf, res_container, target, [&]()
+				render_target.m_framebuffer = imgui_renderer_framebuffers.at(swapchain_image_idx).m_handle;
+				imgui_renderer->render(frame_idx, command_buffer, resource_container, render_target, [&]()
 				{
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
 
-					ui.show(render_list, light_array);
+					ui.show(renderer->m_light_array);
 				});
+				vkCmdSetCheckpointNV(command_buffer, "ImGui drawn");
 			});
+
+			vkCmdSetCheckpointNV(command_buffer, "Frame end");
 		});
 	}
 
-	vkDeviceWaitIdle(ctx.m_device);
+	vkDeviceWaitIdle(context.m_device);
 
 	//glfwDestroyWindow(g_window); // TODO Terminate only AFTER Vulkan instance destruction!
 	//glfwTerminate();
+
+	return 0;
 }

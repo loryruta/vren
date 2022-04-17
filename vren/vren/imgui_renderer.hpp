@@ -26,18 +26,19 @@ namespace vren
 		vren::context const* m_context;
 
 		VkDescriptorPool m_descriptor_pool;
-		VkRenderPass m_render_pass;
 
-		void init_render_pass();
+		vren::vk_render_pass create_render_pass();
 
 	public:
+		vren::vk_render_pass m_render_pass;
+
 		GLFWwindow* m_window;
 
 		explicit imgui_renderer(vren::context const& ctx, GLFWwindow* window);
 		~imgui_renderer();
 
 		void render(
-			int frame_idx,
+			uint32_t frame_idx,
 			VkCommandBuffer cmd_buf,
             vren::resource_container& res_container,
 			vren::render_target const& target,

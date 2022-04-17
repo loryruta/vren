@@ -56,7 +56,7 @@ namespace vren
 		{
 			if (m_handle != VK_NULL_HANDLE)
 			{
-				//VREN_DEBUG("Destroying {}\n", typeid(_t).name());
+				//VREN_DEBUG("Destroying {} ({:#x})\n", typeid(_t).name(), (uint64_t) m_handle);
 
 				vren::destroy_vk_handle<_t>(*m_context, m_handle);
 				m_handle = VK_NULL_HANDLE;

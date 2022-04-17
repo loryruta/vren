@@ -7,35 +7,35 @@
 
 #include "config.hpp"
 #include "simple_draw.hpp"
-#include "render_list.hpp"
-#include "light_array.hpp"
+#include "light.hpp"
 #include "pools/command_pool.hpp"
 #include "base/resource_container.hpp"
+#include "vertex_pipeline_draw_pass.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
 
-	// ------------------------------------------------------------------------------------------------
+	class renderer;
 
-	struct camera
-	{
-		glm::vec3 m_position;
-		float _pad;
-		glm::mat4 m_view;
-		glm::mat4 m_projection;
-	};
+	// ------------------------------------------------------------------------------------------------
 
 	struct render_target
 	{
-		VkImage m_color_buffer;
-		VkImage m_depth_buffer;
 		VkFramebuffer m_framebuffer;
-
 		VkRect2D m_render_area;
 		VkViewport m_viewport;
 		VkRect2D m_scissor;
+	};
+
+	struct draw_buffer
+	{
+		vren::vk_utils::buffer m_vertex_buffer;
+		vren::vk_utils::buffer m_meshlet_vertex_buffer;
+		vren::vk_utils::buffer m_meshlet_triangle_buffer;
+		vren::vk_utils::buffer m_meshlet_buffer;
+		size_t m_meshlet_count;
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -44,49 +44,29 @@ namespace vren
 
 	class renderer
 	{
-	public:
-		static constexpr size_t k_max_point_lights_count = VREN_POINT_LIGHTS_BUFFER_SIZE / sizeof(vren::point_light);
-		static constexpr size_t k_max_directional_lights_count = VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE / sizeof(vren::directional_light);
-		static constexpr size_t k_max_spot_lights_count = VREN_SPOT_LIGHTS_BUFFER_SIZE / sizeof(vren::spot_light);
-
 	private:
 		vren::context const* m_context;
 
+	public:
+		vren::vk_render_pass m_render_pass;
+
+	private:
+		vren::vertex_pipeline_draw_pass m_vertex_pipeline_draw_pass;
+
         vren::vk_render_pass create_render_pass();
 
-        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> create_point_lights_buffers();
-        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> create_directional_lights_buffers();
-        std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> create_spot_lights_buffers();
-
-		void upload_light_array(int frame_idx, vren::light_array const& lights_arr);
-
 	public:
-		std::shared_ptr<vren::vk_render_pass> m_render_pass;
+		vren::light_array m_light_array;
 
-		VkClearColorValue m_clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
-
-		vren::simple_draw_pass m_simple_draw_pass;
-
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_point_lights_buffers;
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_directional_lights_buffers;
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAMES_IN_FLIGHT> m_spot_lights_buffers;
-
-		explicit renderer(vren::context const& ctx);
-		~renderer();
-
-		void write_light_array_descriptor_set(uint32_t frame_idx, VkDescriptorSet desc_set);
+		explicit renderer(vren::context const& context);
 
 		void render(
-			int frame_idx,
-			VkCommandBuffer cmd_buf,
-			vren::resource_container& res_container,
-			vren::render_target const& target,
-			VkBuffer vertex_buffer,
-			VkBuffer index_buffer,
-			VkBuffer meshlet_buffer,
-			size_t meshlet_count,
-			vren::light_array const& lights_arr,
-			vren::camera const& camera
+			uint32_t frame_idx,
+			VkCommandBuffer command_buffer,
+			vren::resource_container& resource_container,
+			vren::render_target const& render_target,
+			vren::camera const& camera,
+			std::vector<vren::mesh_buffer> const& mesh_buffers
 		);
 	};
 }

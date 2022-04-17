@@ -43,10 +43,7 @@ namespace vren_demo::ui
 
 		scene_ui(vren::context const& ctx);
 
-		void show(
-			vren::render_list& render_list,
-			vren::light_array& light_arr
-		);
+		void show(vren::light_array& light_arr);
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -60,8 +57,8 @@ namespace vren_demo::ui
 		uint32_t m_fps;
 		double m_last_fps_time = -1.0;
 
-		uint64_t m_frame_start_t[VREN_MAX_FRAMES_IN_FLIGHT];
-		uint64_t m_frame_end_t[VREN_MAX_FRAMES_IN_FLIGHT];
+		uint64_t m_frame_start_t[VREN_MAX_FRAME_IN_FLIGHT_COUNT];
+		uint64_t m_frame_end_t[VREN_MAX_FRAME_IN_FLIGHT_COUNT];
 
 		bool m_paused = false;
 
@@ -101,9 +98,6 @@ namespace vren_demo::ui
 
 		main_ui(vren::context const& ctx, vren::renderer const& renderer);
 
-		void show(
-			vren::render_list& render_list,
-			vren::light_array& light_arr
-		);
+		void show(vren::light_array& light_arr);
 	};
 }

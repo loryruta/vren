@@ -2,10 +2,12 @@
 .idea
 .vs
 .vscode
+CMakeSettings.json
 
 # CMake build folders
 .build
 build
+out
 cmake-build-debug
 
 # python

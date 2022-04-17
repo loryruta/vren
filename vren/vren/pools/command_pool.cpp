@@ -30,7 +30,7 @@ vren::pooled_vk_command_buffer vren::command_pool::acquire()
     alloc_info.commandBufferCount = 1;
 
     VkCommandBuffer cmd_buf;
-    vren::vk_utils::check(vkAllocateCommandBuffers(m_context->m_device, &alloc_info, &cmd_buf));
+	VREN_CHECK(vkAllocateCommandBuffers(m_context->m_device, &alloc_info, &cmd_buf), m_context);
     return create_managed_object(std::move(cmd_buf));
 }
 

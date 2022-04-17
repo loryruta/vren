@@ -53,57 +53,34 @@ void vren_demo::ui::plot::push(float val)
 vren_demo::ui::scene_ui::scene_ui(vren::context const& ctx)
 {}
 
-void vren_demo::ui::scene_ui::show(
-	vren::render_list& render_list,
-	vren::light_array& light_arr
-)
+void vren_demo::ui::scene_ui::show(vren::light_array& light_array)
 {
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
 		/* Lighting */
 		ImGui::Text("Lighting");
 
-		{ /* Point lights */
-			ImGui::Text("Point lights");
+		/* Point lights */
+		ImGui::Text("Point lights");
 
-			auto& pt_lights = light_arr.m_point_lights;
+		int point_light_count = (int) light_array.m_point_light_count;
+		ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS);
 
-			int pt_lights_num = (int) pt_lights.size();
-			ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &pt_lights_num, 0, VREN_MAX_POINT_LIGHTS);
-
-			if (pt_lights.size() != pt_lights_num)
+		if (light_array.m_point_light_count != point_light_count)
+		{
+			for (uint32_t i = light_array.m_point_light_count; i < point_light_count; i++)
 			{
-				int i = pt_lights.size();
-
-				pt_lights.resize(pt_lights_num);
-
-				for (; i < pt_lights.size(); i++) {
-					auto& pt = pt_lights[i];
-					pt.m_position = {0, 0, 0};
-					pt.m_color    = {0.91f, 0.91f, 0.77f};
-				}
+				light_array.m_point_lights[i] = {
+					.m_position = {0, 0, 0},
+					.m_color = {0.91f, 0.91f, 0.77f}
+				};
 			}
+			light_array.m_point_light_count = point_light_count;
 
-			ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
+			light_array.request_point_light_buffer_sync();
 		}
 
-		{ /* Directional lights */
-			ImGui::Text("Dir. lights");
-
-			int dir_lights_num = (int) light_arr.m_directional_lights.size();
-			ImGui::SliderInt("Num.##dir_lights-lighting-scene_ui", &dir_lights_num, 0, VREN_MAX_DIRECTIONAL_LIGHTS);
-
-			// todo
-		}
-
-		{ /* Spot lights */
-			ImGui::Text("Spot lights");
-
-			int spot_lights_num = (int) light_arr.m_spot_lights.size();
-			ImGui::SliderInt("Num.##spot_lights-lighting-scene_ui", &spot_lights_num, 0, VREN_MAX_SPOT_LIGHTS);
-
-			// todo
-		}
+		ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
 	}
 
 	ImGui::End();
@@ -284,7 +261,7 @@ vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::renderer const& 
 	m_scene_ui(ctx)
 {}
 
-void vren_demo::ui::main_ui::show(vren::render_list& render_list, vren::light_array& light_arr)
+void vren_demo::ui::main_ui::show(vren::light_array& light_array)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
@@ -325,10 +302,7 @@ void vren_demo::ui::main_ui::show(vren::render_list& render_list, vren::light_ar
 	ImGui::End();
 
 	ImGui::SetNextWindowDockID(m_right_sidebar_dock_id, ImGuiCond_Once);
-	m_scene_ui.show(
-		render_list,
-		light_arr
-	);
+	m_scene_ui.show(light_array);
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
