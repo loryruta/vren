@@ -26,23 +26,24 @@ namespace vren
 	{
 		glm::vec3 m_position;  float _pad;
 		glm::vec3 m_normal;    float _pad1;
-		glm::vec2 m_texcoords;
+		glm::vec2 m_texcoords; float _pad2[2];
 	};
 
 	using index_t = uint32_t;
 
 	using meshlet_t = meshopt_Meshlet;
 
-	struct mesh_instance
-	{
-		glm::mat4 m_transform;
-	};
-
 	struct instanced_meshlet
 	{
 		uint32_t m_meshlet_idx;
 		uint32_t m_instance_idx;
 		uint32_t m_material_idx;
+		float _pad;
+	};
+
+	struct mesh_instance
+	{
+		glm::mat4 m_transform;
 	};
 
 	// ------------------------------------------------------------------------------------------------

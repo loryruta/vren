@@ -233,5 +233,5 @@ void vren::mesh_shader_draw_pass::render(
 	m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set);
 
 	// Draw
-	vkCmdDrawMeshTasksNV(command_buffer, (uint32_t) draw_buffer.m_instanced_meshlet_count, 0);
+	vkCmdDrawMeshTasksNV(command_buffer, draw_buffer.m_instanced_meshlet_count, 0);
 }

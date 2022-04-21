@@ -4,6 +4,17 @@
 
 #include "context.hpp"
 #include "vk_helpers/misc.hpp"
+#include "vk_helpers/debug_utils.hpp"
+
+void vren::set_object_names(vren::context const& context, vren::mesh_shader_renderer_draw_buffer const& draw_buffer)
+{
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_vertex_buffer.m_buffer.m_handle, "vertex_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_meshlet_vertex_buffer.m_buffer.m_handle, "meshlet_vertex_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_meshlet_triangle_buffer.m_buffer.m_handle, "meshlet_triangle_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_meshlet_buffer.m_buffer.m_handle, "meshlet_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_instanced_meshlet_buffer.m_buffer.m_handle, "instanced_meshlet_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_instance_buffer.m_buffer.m_handle, "instance_buffer");
+}
 
 vren::vk_render_pass vren::mesh_shader_renderer::create_render_pass()
 {

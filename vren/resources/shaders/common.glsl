@@ -14,16 +14,16 @@ struct Camera
 
 struct Vertex
 {
-    vec3 position;     float _pad;
-    vec3 normal;       float _pad1;
-    vec2 texcoord;
+    vec3 position; float _pad;
+    vec3 normal;   float _pad1;
+    vec2 texcoord; float _pad2[2];
 };
 
 struct Meshlet
 {
 	uint vertex_offset;
-	uint vertex_count;
 	uint triangle_offset;
+	uint vertex_count;
 	uint triangle_count;
 };
 
@@ -32,6 +32,7 @@ struct InstancedMeshlet
 	uint meshlet_idx;
 	uint instance_idx;
 	uint material_idx;
+	float _pad;
 };
 
 struct MeshInstance
@@ -47,6 +48,7 @@ struct Material
 {
 	uint base_color_texture_idx;
 	uint metallic_roughness_texture_idx;
+	float _pad[2];
 };
 
 // ------------------------------------------------------------------------------------------------

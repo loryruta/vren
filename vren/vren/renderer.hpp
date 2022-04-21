@@ -50,6 +50,8 @@ namespace vren
 		std::vector<mesh> m_meshes;
 	};
 
+	void set_object_names(vren::context const& context, vren::basic_renderer_draw_buffer const& draw_buffer);
+
 	class basic_renderer
 	{
 	private:
@@ -92,6 +94,8 @@ namespace vren
 		size_t m_instanced_meshlet_count;
 		vren::vk_utils::buffer m_instance_buffer;
 	};
+
+	void set_object_names(vren::context const& context, vren::mesh_shader_renderer_draw_buffer const& draw_buffer);
 
 	class mesh_shader_renderer
 	{

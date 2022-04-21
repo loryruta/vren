@@ -41,18 +41,5 @@ target_include_directories(vren_demo PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 include("${VREN_HOME}/VRen.cmake")
 setup_resources(vren_demo)
 
-set(SHADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders")
-
-add_custom_target(create_vren_demo_dirs COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR})
-
-# Shaders
-#compile_shader(SHADERS "${VREN_HOME}/vren_demo/resources/shaders/move_lights.comp" "${SHADERS_DIR}/move_lights.comp.bin")
-#compile_shader(SHADERS "${VREN_HOME}/vren_demo/resources/shaders/show_lights.comp" "${SHADERS_DIR}/show_lights.comp.bin")
-
-#add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})
-
-#add_dependencies(vren_demo_shaders create_vren_demo_dirs)
-#add_dependencies(vren_demo vren_demo_shaders)
-
 # Models
 copy_resources(vren_demo "resources/models" "resources/models")

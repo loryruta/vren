@@ -16,12 +16,16 @@ vren::basic_renderer_draw_buffer vren_demo::upload_scene_for_basic_renderer(
 	// TODO save the obtained buffers on a cache
 
 	// Uploading
-	return vren::basic_renderer_draw_buffer{
+	vren::basic_renderer_draw_buffer draw_buffer{
 		.m_vertex_buffer   = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, intermediate_scene.m_vertices.data(), intermediate_scene.m_vertices.size() * sizeof(vren::vertex)),
 		.m_index_buffer    = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, intermediate_scene.m_indices.data(), intermediate_scene.m_indices.size() * sizeof(vren::index_t)),
 		.m_instance_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, intermediate_scene.m_instances.data(), intermediate_scene.m_instances.size() * sizeof(vren::mesh_instance)),
 		.m_meshes          = std::move(meshes)
 	};
+
+	vren::set_object_names(context, draw_buffer);
+
+	return draw_buffer;
 }
 
 vren::mesh_shader_renderer_draw_buffer vren_demo::upload_scene_for_mesh_shader_renderer(
@@ -64,35 +68,53 @@ vren::mesh_shader_renderer_draw_buffer vren_demo::upload_scene_for_mesh_shader_r
 			mesh.m_index_count,
 			reinterpret_cast<float const*>(intermediate_scene.m_vertices.data() + mesh.m_vertex_offset),
 			mesh.m_vertex_count,
-			sizeof(vren_demo::intermediate_scene::vertex_t),
+			sizeof(vren::vertex),
 			k_max_vertices,
 			k_max_triangles,
 			k_cone_weight
 		);
 
-		auto const& last_meshlet = meshlets.at(meshlet_offset + meshlet_count - 1);
-		meshlet_vertex_offset += last_meshlet.vertex_offset + last_meshlet.vertex_count;
-		meshlet_triangle_offset += last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3);
-		meshlet_offset += meshlet_count;
+		// The meshlet vertex_offset and triangle_offset are local to the sub-portion of the meshlet_vertex_buffer and meshlet_triangle_buffer
+		// dedicated to the current mesh. We have to make those indices global as the final buffers will contain multiple meshes with multiple meshlets.
+		for (uint32_t i = 0; i < meshlet_count; i++)
+		{
+			auto& meshlet = meshlets[meshlet_offset + i];
+			meshlet.vertex_offset += meshlet_vertex_offset;
+			meshlet.triangle_offset += meshlet_triangle_offset;
+		}
 
-		uint32_t i = 0;
+		// Now we have to iterate over all the meshlets and instances in order to create the final instanced_meshlet_buffer that will be the input
+		// for the task shader + mesh shader pipeline.
 		for (uint32_t instance_idx = 0; instance_idx < mesh.m_instance_count; instance_idx++)
 		{
 			for (uint32_t meshlet_idx = 0; meshlet_idx < meshlet_count; meshlet_idx++)
 			{
-				instanced_meshlets[i] = {
+				uint32_t i = instance_idx * meshlet_count + meshlet_idx;
+				instanced_meshlets[instanced_meshlet_offset + i] = {
 					.m_meshlet_idx  = (uint32_t) meshlet_offset + meshlet_idx,
 					.m_instance_idx = mesh.m_instance_offset + instance_idx,
 					.m_material_idx = mesh.m_material_idx
 				};
-				i++;
 			}
 		}
 
+		size_t from_vertex_offset = meshlet_vertex_offset;
+
+		// Take the last generated meshlet to see how many vertices and primitives it has generated. Account them to update the meshlet_vertex_buffer and
+		// the meshlet_triangle_buffer.
+		auto const& last_meshlet = meshlets.at(meshlet_offset + meshlet_count - 1);
+		meshlet_vertex_offset = last_meshlet.vertex_offset + last_meshlet.vertex_count;
+		meshlet_triangle_offset = last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3);
+		meshlet_offset += meshlet_count;
 		instanced_meshlet_offset += mesh.m_instance_count * meshlet_count;
+
+		// Finally we have to offset the meshlet_vertex_buffer entries, therefore the indices of the meshlet pointing to the vertex buffer.
+		for (uint32_t i = from_vertex_offset; i < meshlet_vertex_offset; i++)
+		{
+			meshlet_vertices[i] += mesh.m_vertex_offset;
+		}
 	}
 
-	auto const& last_meshlet = meshlets.at(meshlet_offset - 1);
 	meshlet_vertices.resize(meshlet_vertex_offset);
 	meshlet_triangles.resize(meshlet_triangle_offset);
 	meshlets.resize(meshlet_offset);
@@ -119,7 +141,7 @@ vren::mesh_shader_renderer_draw_buffer vren_demo::upload_scene_for_mesh_shader_r
 	auto instance_buffer =
 		vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, intermediate_scene.m_instances.data(), intermediate_scene.m_instances.size() * sizeof(vren::mesh_instance));
 
-	return vren::mesh_shader_renderer_draw_buffer{
+	vren::mesh_shader_renderer_draw_buffer draw_buffer{
 		.m_vertex_buffer            = std::move(vertex_buffer),
 		.m_meshlet_vertex_buffer    = std::move(meshlet_vertex_buffer),
 		.m_meshlet_triangle_buffer  = std::move(meshlet_triangle_buffer),
@@ -128,4 +150,8 @@ vren::mesh_shader_renderer_draw_buffer vren_demo::upload_scene_for_mesh_shader_r
 		.m_instanced_meshlet_count  = instanced_meshlets.size(),
 		.m_instance_buffer          = std::move(instance_buffer)
 	};
+
+	vren::set_object_names(context, draw_buffer);
+
+	return std::move(draw_buffer);
 }

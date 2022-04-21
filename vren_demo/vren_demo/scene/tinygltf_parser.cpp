@@ -166,7 +166,8 @@ void vren_demo::tinygltf_parser::load_materials(tinygltf::Model const& gltf_mode
 			//.m_metallic_factor = (float) gltf_pbr.metallicFactor,
 			//.m_roughness_factor = (float) gltf_pbr.roughnessFactor
 		};
-		material_manager.m_materials[material_manager.m_material_count++] = material;
+		material_manager.m_materials[material_manager.m_material_count] = material;
+		material_manager.m_material_count++;
 	}
 }
 
