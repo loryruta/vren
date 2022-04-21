@@ -38,16 +38,27 @@ layout(set = 2, binding = 3) buffer readonly MeshletBuffer
     Meshlet meshlets[];
 };
 
+layout(set = 2, binding = 4) buffer readonly InstancedMeshletBuffer
+{
+    InstancedMeshlet instanced_meshlets[];
+};
+
+layout(set = 2, binding = 5) buffer readonly MeshInstanceBuffer
+{
+    MeshInstance mesh_instances[];
+};
+
 in taskNV Task
 {
-    uint meshlet_idx;
+    uint instanced_meshlet_idx;
 } task_in;
 
-layout(location = 0) out vec3 v_position[];
+layout(location = 0) out vec3 v_pos ition[];
 layout(location = 1) out vec3 v_normal[];
 layout(location = 2) out vec2 v_texcoords[];
 layout(location = 3) out flat uint v_material_idx[];
 
+/*
 uint hash(uint a)
 {
    a = (a+0x7ed55d16) + (a<<12);
@@ -58,30 +69,34 @@ uint hash(uint a)
    a = (a^0xb55a4f09) ^ (a>>16);
    return a;
 }
+*/
 
 void main()
 {
     if (gl_LocalInvocationIndex.x > 0)
     {
-        return;// todo
+        return; // todo
     }
 
-    uint meshlet_idx = task_in.meshlet_idx;
-    Meshlet meshlet = meshlets[meshlet_idx];
+    InstancedMeshlet instanced_meshlet = instanced_meshlets[task_in.instanced_meshlet_idx];
 
-    uint meshlet_hash = hash(meshlet_idx);
-    vec3 meshlet_color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
+    Meshlet meshlet = meshlets[instanced_meshlet.meshlet_idx];
+    MeshInstance mesh_instance = mesh_instances[instanced_meshlet.instance_idx];
+    uint material_idx = instanced_meshlet.material_idx;
+
+    //uint meshlet_hash = hash(meshlet_idx);
+    //vec3 meshlet_color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
 
     for (int i = 0; i < meshlet.vertex_count; i++)
     {
         Vertex vertex = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
 
-        gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * vec4(vertex.position, 1.0);
+        gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * mesh_instance.transform * vec4(vertex.position, 1.0);
 
         v_position[i] = vertex.position;
         v_normal[i] = vertex.normal;
         v_texcoords[i] = vertex.texcoord;
-        v_material_idx[i] = vertex.material_idx;
+        v_material_idx[i] = material_idx;
     }
 
     for (int i = 0; i < meshlet.triangle_count * 3; i++)

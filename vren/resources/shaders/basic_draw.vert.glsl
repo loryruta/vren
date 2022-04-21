@@ -7,7 +7,6 @@
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
 layout(location = 2) in vec2 a_texcoords;
-layout(location = 3) in uint a_material_idx;
 
 layout(location = 16) in mat4 i_transform;
 
@@ -30,5 +29,5 @@ void main()
     v_position = p.xyz;
     v_normal = a_normal;
     v_texcoords = a_texcoords;
-    v_material_idx = a_material_idx;
+    v_material_idx = 0;
 }

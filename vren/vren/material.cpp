@@ -157,3 +157,8 @@ VkDescriptorSet vren::material_manager::get_descriptor_set(uint32_t frame_idx) c
 {
 	return m_descriptor_sets.at(frame_idx);
 }
+
+VkBuffer vren::material_manager::get_buffer(uint32_t frame_idx) const
+{
+	return m_buffers.at(frame_idx).m_buffer.m_handle;
+}

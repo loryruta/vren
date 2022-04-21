@@ -8,30 +8,50 @@ struct Camera
 	mat4 projection;
 };
 
+// ------------------------------------------------------------------------------------------------
+// Geometry
+// ------------------------------------------------------------------------------------------------
+
 struct Vertex
 {
     vec3 position;     float _pad;
     vec3 normal;       float _pad1;
-    vec2 texcoord;     float _pad2[2];
-	uint material_idx; float _pad3[3];
-};
-
-struct Material
-{
-	uint base_color_texture_idx;         float _pad[3];
-	uint metallic_roughness_texture_idx; float _pad1[3];
-	vec3 base_color_factor; float _pad2;
-	float metallic_factor;  float _pad3[3];
-	float roughness_factor; float _pad4[3];
+    vec2 texcoord;
 };
 
 struct Meshlet
 {
 	uint vertex_offset;
-	uint triangle_offset;
 	uint vertex_count;
+	uint triangle_offset;
 	uint triangle_count;
 };
+
+struct InstancedMeshlet
+{
+	uint meshlet_idx;
+	uint instance_idx;
+	uint material_idx;
+};
+
+struct MeshInstance
+{
+	mat4 transform;
+};
+
+// ------------------------------------------------------------------------------------------------
+// Material
+// ------------------------------------------------------------------------------------------------
+
+struct Material
+{
+	uint base_color_texture_idx;
+	uint metallic_roughness_texture_idx;
+};
+
+// ------------------------------------------------------------------------------------------------
+// Lighting
+// ------------------------------------------------------------------------------------------------
 
 struct PointLight
 {

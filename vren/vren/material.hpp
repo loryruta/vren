@@ -4,26 +4,14 @@
 
 #include <glm/glm.hpp>
 
-#include "vk_helpers/buffer.hpp"
 #include "base/resource_container.hpp"
+#include "vk_helpers/buffer.hpp"
+#include "gpu_repr.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
-
-	// ------------------------------------------------------------------------------------------------
-	// Material
-	// ------------------------------------------------------------------------------------------------
-
-	struct material
-	{
-		uint32_t m_base_color_texture_idx;         float _pad[3];
-		uint32_t m_metallic_roughness_texture_idx; float _pad1[3];
-		glm::vec3 m_base_color_factor; float _pad2;
-		float m_metallic_factor;       float _pad3[3];
-		float m_roughness_factor;      float _pad4[3];
-	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Material manager
@@ -32,8 +20,8 @@ namespace vren
 	class material_manager
 	{
 	public:
-		static constexpr size_t k_max_material_count = 8192;
-		static constexpr size_t k_max_material_buffer_size = k_max_material_count * sizeof(material); // ~656 KB
+		static constexpr size_t k_max_material_count = 16384;
+		static constexpr size_t k_max_material_buffer_size = k_max_material_count * sizeof(vren::material); // ~656 KB
 
 	private:
 		vren::context const* m_context;
@@ -69,5 +57,6 @@ namespace vren
 		void sync_buffer(uint32_t frame_idx, VkCommandBuffer command_buffer);
 
 		VkDescriptorSet get_descriptor_set(uint32_t frame_idx) const;
+		VkBuffer get_buffer(uint32_t frame_idx) const;
 	};
 }

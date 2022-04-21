@@ -12,7 +12,7 @@
 #include <vren/toolbox.hpp>
 #include <vren/vk_helpers/shader.hpp>
 
-#include "tinygltf_loader.hpp"
+#include "scene/tinygltf_parser.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 

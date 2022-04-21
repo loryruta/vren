@@ -4,10 +4,13 @@ add_executable(vren_demo
         vren_demo/main.cpp
         vren_demo/camera.hpp
         vren_demo/camera.cpp
-        vren_demo/tinygltf_loader.hpp
-        vren_demo/tinygltf_loader.cpp
         vren_demo/ui.hpp
         vren_demo/ui.cpp
+        vren_demo/scene/intermediate_scene.hpp
+        vren_demo/scene/scene_gpu_uploader.cpp
+        vren_demo/scene/scene_gpu_uploader.hpp
+        vren_demo/scene/tinygltf_parser.hpp
+        vren_demo/scene/tinygltf_parser.cpp
 )
 
 # ------------------------------------------------------------------------------------------------

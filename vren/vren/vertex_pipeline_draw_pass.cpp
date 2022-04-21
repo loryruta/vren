@@ -2,7 +2,6 @@
 
 #include "context.hpp"
 #include "toolbox.hpp"
-#include "mesh.hpp"
 #include "renderer.hpp"
 
 vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline(VkRenderPass render_pass, uint32_t subpass_idx)
@@ -15,10 +14,9 @@ vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeli
 
 	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[]{
 		// Vertex buffer
-		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_position) },     // Position
-		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_normal) },       // Normal
-		{ .location = 2, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,    .offset = (uint32_t) offsetof(vren::vertex, m_texcoords) },    // Texcoords
-		{ .location = 3, .binding = 0, .format = VK_FORMAT_R32_UINT,         .offset = (uint32_t) offsetof(vren::vertex, m_material_idx) }, // Material index
+		{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_position) },  // Position
+		{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = (uint32_t) offsetof(vren::vertex, m_normal) },    // Normal
+		{ .location = 2, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,    .offset = (uint32_t) offsetof(vren::vertex, m_texcoords) }, // Texcoords
 
 		// Instance buffer
 		{ .location = 16, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = (uint32_t) 0 },                     // Transform 0
@@ -169,25 +167,28 @@ vren::vertex_pipeline_draw_pass::vertex_pipeline_draw_pass(vren::context const& 
 	m_pipeline(create_graphics_pipeline(render_pass, subpass_idx))
 {}
 
-void write_material_buffer_descriptor_set(vren::context const& context, VkDescriptorSet descriptor_set, VkBuffer material_buffer)
+void write_material_descriptor_set(vren::context const& context, VkDescriptorSet descriptor_set, VkBuffer material_buffer, uint32_t material_idx)
 {
+	// Don't use the already written material_manager's descriptor set and writes a new one (acquired from the general purpose descriptor pool) where
+	// only the material_idx is written. It will therefore appear as materials[0] in the fragment shader.
+
 	VkDescriptorBufferInfo buffer_info[]{
 		{
 			.buffer = material_buffer,
-			.offset = 0,
-			.range = VK_WHOLE_SIZE,
+			.offset = material_idx * sizeof(vren::material),
+			.range = sizeof(vren::material),
 		}
 	};
-	VkWriteDescriptorSet write_desc_set{
+	VkWriteDescriptorSet write_descriptor_set{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = descriptor_set,
-		.dstBinding = 4,
+		.dstBinding = 0,
 		.dstArrayElement = 0,
 		.descriptorCount = std::size(buffer_info),
 		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		.pBufferInfo = buffer_info
 	};
-	vkUpdateDescriptorSets(context.m_device, 1, &write_desc_set, 0, nullptr);
+	vkUpdateDescriptorSets(context.m_device, 1, &write_descriptor_set, 0, nullptr);
 }
 
 void vren::vertex_pipeline_draw_pass::draw(
@@ -195,7 +196,7 @@ void vren::vertex_pipeline_draw_pass::draw(
 	VkCommandBuffer command_buffer,
 	vren::resource_container& resource_container,
 	vren::camera const& camera,
-	vren::mesh_buffer const& mesh_buffer,
+	vren::basic_renderer_draw_buffer const& draw_buffer,
 	vren::light_array const& light_array
 )
 {
@@ -204,21 +205,34 @@ void vren::vertex_pipeline_draw_pass::draw(
 	// Camera
 	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(camera));
 
-	m_pipeline.bind_vertex_buffer(command_buffer, 0, mesh_buffer.m_vertex_buffer.m_buffer.m_handle); // Vertex buffer
-	m_pipeline.bind_vertex_buffer(command_buffer, 1, mesh_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
-	m_pipeline.bind_index_buffer(command_buffer, mesh_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32); // Index buffer
+	m_pipeline.bind_vertex_buffer(command_buffer, 0, draw_buffer.m_vertex_buffer.m_buffer.m_handle); // Vertex buffer
+	m_pipeline.bind_vertex_buffer(command_buffer, 1, draw_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
+	m_pipeline.bind_index_buffer(command_buffer, draw_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32); // Index buffer
 
-	// Texture manager
-	m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);
-	resource_container.add_resource(m_context->m_toolbox->m_texture_manager.m_descriptor_set);
+	for (auto const& mesh : draw_buffer.m_meshes)
+	{
+		// Texture manager
+		m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);
+		resource_container.add_resource(m_context->m_toolbox->m_texture_manager.m_descriptor_set);
 
-	// Light array
-	auto light_array_descriptor_set = light_array.get_descriptor_set(frame_idx);
-	m_pipeline.bind_descriptor_set(command_buffer, 1, light_array_descriptor_set);
+		// Light array
+		auto light_array_descriptor_set = light_array.get_descriptor_set(frame_idx);
+		m_pipeline.bind_descriptor_set(command_buffer, 1, light_array_descriptor_set);
 
-	// Material manager
-	auto material_descriptor_set = m_context->m_toolbox->m_material_manager.get_descriptor_set(frame_idx);
-	m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set);
+		// Material manager
+		auto material_descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(3))
+		);
+		write_material_descriptor_set(
+			*m_context,
+			material_descriptor_set->m_handle.m_descriptor_set,
+			m_context->m_toolbox->m_material_manager.get_buffer(frame_idx),
+			mesh.m_material_idx
+		);
+		m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set->m_handle.m_descriptor_set);
+		resource_container.add_resource(material_descriptor_set);
 
-	vkCmdDrawIndexed(command_buffer, mesh_buffer.m_index_count, mesh_buffer.m_instance_count, 0, 0, 0);
+		//
+		vkCmdDrawIndexed(command_buffer, mesh.m_index_count, mesh.m_instance_count, mesh.m_index_offset, mesh.m_vertex_offset, mesh.m_instance_offset);
+	}
 }

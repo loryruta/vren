@@ -8,13 +8,13 @@
 
 #include "base/resource_container.hpp"
 #include "light.hpp"
+#include "gpu_repr.hpp"
 #include "vk_helpers/shader.hpp"
 
 namespace vren
 {
 	// Forward decl
-	struct camera;
-	struct draw_buffer;
+	struct mesh_shader_renderer_draw_buffer;
 
 	// ------------------------------------------------------------------------------------------------
 	// Mesh shader draw pass
@@ -36,11 +36,11 @@ namespace vren
 
 	public:
 		void render(
-			uint32_t frame_idx,
+			uint32_t descriptor_set,
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::draw_buffer const& draw_buffer,
+			vren::mesh_shader_renderer_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array
 		);
 	};

@@ -100,12 +100,12 @@ void vren::basic_renderer::render(
 	vren::resource_container& resource_container,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
-	std::vector<vren::mesh_buffer> const& mesh_buffers
+	vren::basic_renderer_draw_buffer const& draw_buffer
 )
 {
 	m_light_array.sync_buffers(frame_idx);
 
-	/* Render pass begin */
+	// Render pass begin
 	VkRenderPassBeginInfo render_pass_begin_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
@@ -120,12 +120,9 @@ void vren::basic_renderer::render(
 	vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-	/* Recording */
-	for (auto const& mesh_buffer : mesh_buffers)
-	{
-		m_vertex_pipeline_draw_pass.draw(frame_idx, command_buffer, resource_container, camera, mesh_buffer, m_light_array);
-	}
+	// Recording
+	m_vertex_pipeline_draw_pass.draw(frame_idx, command_buffer, resource_container, camera, draw_buffer, m_light_array);
 
-	/* Render pass end */
+	// Render pass end
 	vkCmdEndRenderPass(command_buffer);
 }

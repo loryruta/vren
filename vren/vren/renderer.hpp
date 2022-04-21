@@ -28,30 +28,27 @@ namespace vren
 		VkRect2D m_scissor;
 	};
 
-	struct mesh_buffer
-	{
-		vren::vk_utils::buffer m_vertex_buffer;
-		size_t m_vertex_count = 0;
-
-		vren::vk_utils::buffer m_index_buffer;
-		size_t m_index_count = 0;
-
-		vren::vk_utils::buffer m_instance_buffer;
-		size_t m_instance_count = 0;
-	};
-
-	struct draw_buffer
-	{
-		vren::vk_utils::buffer m_vertex_buffer;
-		vren::vk_utils::buffer m_meshlet_vertex_buffer;
-		vren::vk_utils::buffer m_meshlet_triangle_buffer;
-		vren::vk_utils::buffer m_meshlet_buffer;
-		size_t m_meshlet_count;
-	};
-
 	// ------------------------------------------------------------------------------------------------
 	// Basic renderer
 	// ------------------------------------------------------------------------------------------------
+
+	class basic_renderer_draw_buffer
+	{
+	public:
+		struct mesh
+		{
+			uint32_t m_vertex_offset, m_vertex_count;
+			uint32_t m_index_offset, m_index_count;
+			uint32_t m_instance_offset, m_instance_count;
+			uint32_t m_material_idx;
+		};
+
+	public:
+		vren::vk_utils::buffer m_vertex_buffer;
+		vren::vk_utils::buffer m_index_buffer;
+		vren::vk_utils::buffer m_instance_buffer;
+		std::vector<mesh> m_meshes;
+	};
 
 	class basic_renderer
 	{
@@ -77,13 +74,24 @@ namespace vren
 			vren::resource_container& resource_container,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
-			std::vector<vren::mesh_buffer> const& mesh_buffers
+			vren::basic_renderer_draw_buffer const& draw_buffer
 		);
 	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Mesh shader renderer
 	// ------------------------------------------------------------------------------------------------
+
+	struct mesh_shader_renderer_draw_buffer
+	{
+		vren::vk_utils::buffer m_vertex_buffer;
+		vren::vk_utils::buffer m_meshlet_vertex_buffer;
+		vren::vk_utils::buffer m_meshlet_triangle_buffer;
+		vren::vk_utils::buffer m_meshlet_buffer;
+		vren::vk_utils::buffer m_instanced_meshlet_buffer;
+		size_t m_instanced_meshlet_count;
+		vren::vk_utils::buffer m_instance_buffer;
+	};
 
 	class mesh_shader_renderer
 	{
@@ -109,7 +117,7 @@ namespace vren
 			vren::resource_container& resource_container,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
-			vren::draw_buffer const& draw_buffer
+			vren::mesh_shader_renderer_draw_buffer const& draw_buffer
 		);
 	};
 }

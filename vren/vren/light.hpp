@@ -6,32 +6,12 @@
 
 #include "pools/descriptor_pool.hpp"
 #include "vk_helpers/buffer.hpp"
+#include "gpu_repr.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
-
-	// ------------------------------------------------------------------------------------------------
-
-	struct point_light
-	{
-		glm::vec3 m_position; float _pad;
-		glm::vec3 m_color;    float _pad1;
-	};
-
-	struct directional_light
-	{
-		glm::vec3 m_direction; float _pad;
-		glm::vec3 m_color;     float _pad1;
-	};
-
-	struct spot_light
-	{
-		glm::vec3 m_direction; float _pad;
-		glm::vec3 m_color;
-		float m_radius;
-	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Light array

@@ -2,14 +2,14 @@
 
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/buffer.hpp"
-#include "mesh.hpp"
 #include "light.hpp"
+#include "gpu_repr.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
-	class mesh_buffer;
+	class basic_renderer_draw_buffer;
 
 	//
 
@@ -35,7 +35,7 @@ namespace vren
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::mesh_buffer const& mesh_buffer,
+			vren::basic_renderer_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array
 		);
 	};

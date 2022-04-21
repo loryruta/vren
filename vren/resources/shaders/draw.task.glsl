@@ -6,15 +6,27 @@
 
 #include "common.glsl"
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 2, binding = 4) buffer readonly InstancedMeshletBuffer
+{
+    InstancedMeshlet instanced_meshlets[];
+};
 
 out taskNV Task
 {
-    uint meshlet_idx;
+    uint instanced_meshlet_idx;
 } task_out;
 
 void main()
 {
-    task_out.meshlet_idx = gl_WorkGroupID.x;
-    gl_TaskCountNV = 1;
+    if (gl_GlobalInvocationID.x < instanced_meshlets.length())
+    {
+        task_out.instanced_meshlet_idx = gl_GlobalInvocationID.x;
+        gl_TaskCountNV = 1;
+    }
+    else
+    {
+        gl_TaskCountNV = 0;
+    }
 }

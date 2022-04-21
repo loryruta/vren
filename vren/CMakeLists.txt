@@ -26,8 +26,7 @@ set(SRC
         vren/vk_helpers/image_layout_transitions.hpp
         vren/vk_helpers/image_layout_transitions.cpp
 
-        vren/mesh.cpp
-        vren/mesh.hpp
+        vren/gpu_repr.hpp
         vren/material.cpp
         vren/material.hpp
         vren/texture_manager.cpp

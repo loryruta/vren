@@ -99,7 +99,7 @@ void vren::mesh_shader_renderer::render(
 	vren::resource_container& resource_container,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
-	vren::draw_buffer const& draw_buffer
+	vren::mesh_shader_renderer_draw_buffer const& draw_buffer
 )
 {
 	m_light_array.sync_buffers(frame_idx);

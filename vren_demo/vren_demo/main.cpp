@@ -12,7 +12,7 @@
 
 #include <vren/utils/log.hpp>
 
-#include <vren/mesh.hpp>
+#include <vren/gpu_repr.hpp>
 #include <vren/context.hpp>
 #include <vren/presenter.hpp>
 #include <vren/vk_helpers/buffer.hpp>
@@ -21,7 +21,8 @@
 #include <vren/vk_helpers/barrier.hpp>
 #include <vren/debug_renderer.hpp>
 
-#include "tinygltf_loader.hpp"
+#include "scene/tinygltf_parser.hpp"
+#include "scene/scene_gpu_uploader.hpp"
 #include "camera.hpp"
 #include "ui.hpp"
 
@@ -279,71 +280,18 @@ int main(int argc, char* argv[])
 	//initialize_point_lights_direction(point_lights_dir);
 
 	/* */
-	std::vector<vren::vertex> vertices;
-	std::vector<uint32_t> indices;
-	std::vector<vren::mesh> meshes;
-	std::vector<vren::mesh_instance> mesh_instances;
+	vren_demo::intermediate_scene parsed_scene;
 
-	vren_demo::tinygltf_scene loaded_scene;
-	vren_demo::tinygltf_loader gltf_loader(context);
+	printf("Parsing scene: %s\n", argv[0]);
 
-	printf("Loading scene: %s\n", argv[0]);
+	vren_demo::tinygltf_parser gltf_parser(context);
+	gltf_parser.load_from_file(argv[0], parsed_scene);
 
-	gltf_loader.load_from_file(argv[0], vertices, indices, meshes, mesh_instances);
+	printf("Uploading scene for basic renderer...\n");
+	auto basic_renderer_draw_buffer = vren_demo::upload_scene_for_basic_renderer(context, parsed_scene);
 
-	printf("Building meshlets...\n");
-
-	const size_t max_vertices = 64;
-	const size_t max_triangles = 124;
-	const float cone_weight = 0.0f;
-
-	size_t max_meshlets = meshopt_buildMeshletsBound(indices.size(), max_vertices, max_triangles);
-	std::vector<meshopt_Meshlet> meshlets(max_meshlets);
-	std::vector<uint32_t> meshlet_vertices(max_meshlets * max_vertices);
-	std::vector<uint8_t> meshlet_triangles(max_meshlets * max_triangles * 3);
-
-	size_t meshlet_count = meshopt_buildMeshlets(
-		meshlets.data(),
-		meshlet_vertices.data(),
-		meshlet_triangles.data(),
-		indices.data(),
-		indices.size(),
-		reinterpret_cast<float*>(vertices.data()),
-		vertices.size(),
-		sizeof(vren::vertex),
-		max_vertices,
-		max_triangles,
-		cone_weight
-	);
-
-	meshopt_Meshlet const& last = meshlets[meshlet_count - 1];
-
-	meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
-	meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
-	meshlets.resize(meshlet_count);
-
-	vren::draw_buffer draw_buffer{
-		.m_vertex_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vertices.data(), vertices.size() * sizeof(vren::vertex)),
-		.m_meshlet_vertex_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_vertices.data(), meshlet_vertices.size() * sizeof(uint32_t)),
-		.m_meshlet_triangle_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_triangles.data(), meshlet_triangles.size() * sizeof(uint8_t)),
-		.m_meshlet_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets.data(), meshlets.size() * sizeof(meshopt_Meshlet)),
-		.m_meshlet_count = meshlet_count
-	};
-
-	/* */
-	std::vector<vren::mesh_buffer> mesh_buffers;
-	for (auto const& mesh : meshes)
-	{
-		vren::mesh_buffer mesh_buffer{
-			.m_vertex_buffer   = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vertices.data()[mesh.m_vertex_offset], mesh.m_vertex_count * sizeof(vren::vertex)),
-			.m_vertex_count    = mesh.m_vertex_count,
-			.m_index_buffer    = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, &indices.data()[mesh.m_index_offset], mesh.m_index_count * sizeof(uint32_t)),
-			.m_index_count     = mesh.m_index_count,
-			.m_instance_buffer = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &mesh_instances.data()[mesh.m_instance_offset], mesh.m_instance_count * sizeof(vren::mesh_instance)),
-			.m_instance_count  = mesh.m_instance_count,
-		};
-		mesh_buffers.push_back(std::move(mesh_buffer));
-	}
+	printf("Uploading scene for mesh shader renderer...\n");
+	auto mesh_shader_renderer_draw_buffer = vren_demo::upload_scene_for_mesh_shader_renderer(context, parsed_scene);
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -507,12 +455,12 @@ int main(int argc, char* argv[])
 				if (renderer_type == renderer_type::BASIC_RENDERER)
 				{
 					render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_buffers);
+					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, basic_renderer_draw_buffer);
 				}
 				else if (renderer_type == renderer_type::MESH_SHADER_RENDERER)
 				{
 					render_target.m_framebuffer = mesh_shader_renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, draw_buffer);
+					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_shader_renderer_draw_buffer);
 				}
 
 				vkCmdSetCheckpointNV(command_buffer, "Scene drawn");
