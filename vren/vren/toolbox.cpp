@@ -65,9 +65,6 @@ void vren::toolbox::lazy_initialize()
 {
 	// Initialize here things that needs m_context->m_toolbox to be set and therefore can't be initialized in the `toolbox` constructor.
 
-	m_white_texture = std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*m_context, 255, 255, 255, 255));
-	m_black_texture = std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*m_context, 0, 0, 0, 255));
-	m_red_texture   = std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*m_context, 255, 0, 0, 255));
-	m_green_texture = std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*m_context, 0, 255, 0, 255));
-	m_blue_texture  = std::make_shared<vren::vk_utils::texture>(vren::vk_utils::create_color_texture(*m_context, 0, 0, 255, 255));
+	m_texture_manager.lazy_initialize();
+	m_material_manager.lazy_initialize();
 }

@@ -21,7 +21,8 @@ out taskNV TaskData
 
 void main()
 {
-    // If the ID points to a valid instanced meshlet then we can send it to the mesh shader in order to draw it.
+    // If at least one index within the current workgroup points to a valid instanced meshlet, then
+    // we can generate the workgroups for it. Otherwise the task size is defaulted to 0.
     if (gl_GlobalInvocationID.x < instanced_meshlets.length())
     {
         task_out.instanced_meshlet_indices[gl_LocalInvocationIndex] = gl_GlobalInvocationID.x;
@@ -29,6 +30,6 @@ void main()
     }
     else
     {
-
+        task_out.instanced_meshlet_indices[gl_LocalInvocationIndex] = UINT32_MAX;
     }
 }

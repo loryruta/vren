@@ -14,6 +14,7 @@ layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
 layout(location = 2) in vec2 v_texcoords;
 layout(location = 3) in flat uint v_material_idx;
+layout(location = 4) in vec3 v_color;
 
 layout(push_constant) uniform PushConstants
 {
@@ -124,7 +125,7 @@ void main()
 {
     Material material = materials[v_material_idx];
 
-    vec3 albedo = texture(textures[material.base_color_texture_idx], v_texcoords).rgb;
+    vec3 albedo = texture(textures[material.base_color_texture_idx], v_texcoords).rgb * v_color;
     float metallic = texture(textures[material.metallic_roughness_texture_idx], v_texcoords).b;
     float roughness = texture(textures[material.metallic_roughness_texture_idx], v_texcoords).g;
 

@@ -20,6 +20,9 @@ namespace vren
 	class material_manager
 	{
 	public:
+		friend vren::toolbox;
+
+	public:
 		static constexpr size_t k_max_material_count = 16384;
 		static constexpr size_t k_max_material_buffer_size = k_max_material_count * sizeof(vren::material); // ~656 KB
 
@@ -49,6 +52,8 @@ namespace vren
 		vren::vk_utils::buffer create_staging_buffer();
 		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> create_buffers();
 		std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> allocate_descriptor_sets();
+
+		void lazy_initialize();
 
 		void write_descriptor_set(uint32_t frame_idx);
 

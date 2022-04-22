@@ -100,8 +100,7 @@ vren::vk_render_pass vren::mesh_shader_renderer::create_render_pass()
 vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context) :
 	m_context(&context),
 	m_render_pass(create_render_pass()),
-	m_mesh_shader_draw_pass(context, m_render_pass.m_handle, 0),
-	m_light_array(context)
+	m_mesh_shader_draw_pass(context, m_render_pass.m_handle, 0)
 {}
 
 void vren::mesh_shader_renderer::render(
@@ -110,11 +109,10 @@ void vren::mesh_shader_renderer::render(
 	vren::resource_container& resource_container,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
+	vren::light_array const& light_array,
 	vren::mesh_shader_renderer_draw_buffer const& draw_buffer
 )
 {
-	m_light_array.sync_buffers(frame_idx);
-
 	// Render pass begin
 	VkRenderPassBeginInfo render_pass_begin_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -131,7 +129,7 @@ void vren::mesh_shader_renderer::render(
 	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
 	// Recording
-	m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera, draw_buffer, m_light_array);
+	m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera, draw_buffer, light_array);
 
 	// Render pass end
 	vkCmdEndRenderPass(command_buffer);

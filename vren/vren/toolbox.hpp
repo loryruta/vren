@@ -38,12 +38,6 @@ namespace vren
 		vren::texture_manager m_texture_manager;
 		vren::material_manager m_material_manager;
 
-		std::shared_ptr<vren::vk_utils::texture> m_white_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_black_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_red_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_green_texture;
-		std::shared_ptr<vren::vk_utils::texture> m_blue_texture;
-
 		explicit toolbox(vren::context const& ctx);
 	};
 }

@@ -1,6 +1,7 @@
 #include "material.hpp"
 
 #include "base/base.hpp"
+#include "texture_manager.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/misc.hpp"
 #include "vk_helpers/debug_utils.hpp"
@@ -95,6 +96,14 @@ std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manag
 	}
 
 	return descriptor_sets;
+}
+
+void vren::material_manager::lazy_initialize()
+{
+	m_materials[m_material_count++] = { // Default material
+		.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
+		.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
+	};
 }
 
 void vren::material_manager::write_descriptor_set(uint32_t frame_idx)

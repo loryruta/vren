@@ -231,6 +231,8 @@ int main(int argc, char* argv[])
 	auto debug_renderer = std::make_unique<vren::debug_renderer>(context);
 	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(context, window);
 
+	auto light_array = std::make_unique<vren::light_array>(context);
+
 	/* Presenter init */
 	VkSurfaceKHR surface_handle;
 	VREN_CHECK(glfwCreateWindowSurface(context.m_instance, window, nullptr, &surface_handle), &context);
@@ -344,6 +346,7 @@ int main(int argc, char* argv[])
 			vkCmdSetCheckpointNV(command_buffer, "Frame start");
 
 			context.m_toolbox->m_material_manager.sync_buffer(frame_idx, command_buffer);
+			light_array->sync_buffers(frame_idx);
 
 			vren::render_target render_target{
 				.m_render_area = {
@@ -455,12 +458,12 @@ int main(int argc, char* argv[])
 				if (renderer_type == renderer_type::BASIC_RENDERER)
 				{
 					render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, basic_renderer_draw_buffer);
+					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, *light_array, basic_renderer_draw_buffer);
 				}
 				else if (renderer_type == renderer_type::MESH_SHADER_RENDERER)
 				{
 					render_target.m_framebuffer = mesh_shader_renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, mesh_shader_renderer_draw_buffer);
+					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, *light_array, mesh_shader_renderer_draw_buffer);
 				}
 
 				vkCmdSetCheckpointNV(command_buffer, "Scene drawn");
@@ -473,7 +476,7 @@ int main(int argc, char* argv[])
 				{
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
 
-					ui.show(basic_renderer->m_light_array);
+					ui.show(*light_array);
 				});
 				vkCmdSetCheckpointNV(command_buffer, "ImGui drawn");
 			});

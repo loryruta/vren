@@ -66,8 +66,6 @@ namespace vren
 		vren::vk_render_pass create_render_pass();
 
 	public:
-		vren::light_array m_light_array;
-
 		explicit basic_renderer(vren::context const& context);
 
 		void render(
@@ -76,6 +74,7 @@ namespace vren
 			vren::resource_container& resource_container,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
+			vren::light_array const& light_array,
 			vren::basic_renderer_draw_buffer const& draw_buffer
 		);
 	};
@@ -111,8 +110,6 @@ namespace vren
 		vren::vk_render_pass create_render_pass();
 
 	public:
-		vren::light_array m_light_array;
-
 		explicit mesh_shader_renderer(vren::context const& context);
 
 		void render(
@@ -121,6 +118,7 @@ namespace vren
 			vren::resource_container& resource_container,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
+			vren::light_array const& light_array,
 			vren::mesh_shader_renderer_draw_buffer const& draw_buffer
 		);
 	};
