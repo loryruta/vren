@@ -239,38 +239,17 @@ int main(int argc, char* argv[])
 	auto surface = std::make_shared<vren::vk_surface_khr>(context, surface_handle);
 
 	/* Framebuffers */
-	std::vector<vren::vk_framebuffer> renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> mesh_shader_renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> debug_renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> imgui_renderer_framebuffers;
+	auto basic_renderer_framebuffer = vren::swapchain_framebuffer(context, basic_renderer->m_render_pass.m_handle);
+	auto mesh_shader_renderer_framebuffer = vren::swapchain_framebuffer(context, mesh_shader_renderer->m_render_pass.m_handle);
+	auto debug_renderer_framebuffer = vren::swapchain_framebuffer(context, debug_renderer->m_render_pass.m_handle);
+	auto imgui_renderer_framebuffer = vren::swapchain_framebuffer(context, imgui_renderer->m_render_pass.m_handle);
 
 	vren::presenter presenter(context, surface, [&](vren::swapchain const& swapchain)
 	{
-		size_t image_count = swapchain.m_images.size();
-
-		renderer_framebuffers.clear();
-		debug_renderer_framebuffers.clear();
-		imgui_renderer_framebuffers.clear();
-
-		for (uint32_t image_idx = 0; image_idx < image_count; image_idx++)
-		{
-			VkImageView attachments[]{
-				swapchain.m_color_buffers.at(image_idx).m_image_view.m_handle,
-				swapchain.m_depth_buffer.m_image_view.m_handle
-			};
-			renderer_framebuffers.push_back(
-				vren::vk_utils::create_framebuffer(context, basic_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
-			);
-			mesh_shader_renderer_framebuffers.push_back(
-				vren::vk_utils::create_framebuffer(context, mesh_shader_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
-			);
-			debug_renderer_framebuffers.push_back(
-				vren::vk_utils::create_framebuffer(context, debug_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
-			);
-			imgui_renderer_framebuffers.push_back(
-				vren::vk_utils::create_framebuffer(context, imgui_renderer->m_render_pass.m_handle, attachments, swapchain.m_image_width, swapchain.m_image_height)
-			);
-		}
+		basic_renderer_framebuffer.on_swapchain_recreate(swapchain);
+		mesh_shader_renderer_framebuffer.on_swapchain_recreate(swapchain);
+		debug_renderer_framebuffer.on_swapchain_recreate(swapchain);
+		imgui_renderer_framebuffer.on_swapchain_recreate(swapchain);
 	});
 
 	vren_demo::ui::main_ui ui(context, *basic_renderer);
@@ -348,25 +327,6 @@ int main(int argc, char* argv[])
 			context.m_toolbox->m_material_manager.sync_buffer(frame_idx, command_buffer);
 			light_array->sync_buffers(frame_idx);
 
-			vren::render_target render_target{
-				.m_render_area = {
-					.offset = {0, 0},
-					.extent = {swapchain.m_image_width, swapchain.m_image_height}
-				},
-				.m_viewport = {
-					.x = 0,
-					.y = (float) swapchain.m_image_height,
-					.width = (float) swapchain.m_image_width,
-					.height = -((float) swapchain.m_image_height),
-					.minDepth = 0.0f,
-					.maxDepth = 1.0f
-				},
-				.m_scissor {
-					.offset = {0,0},
-					.extent = {0,0}
-				}
-			};
-
 			int prof_slot = frame_idx * vren_demo::profile_slot::count;
 
 			vren_demo::profile_info prof_info{};
@@ -424,46 +384,45 @@ int main(int argc, char* argv[])
 			);
 			vkCmdSetCheckpointNV(command_buffer, "Depth buffer cleared");
 
-			glm::vec3
-				aabb_min = glm::vec3(-1.0f),
-				aabb_max = glm::vec3(5.0f);
-
-			//move_and_bounce_point_lights(light_array.m_point_lights, point_lights_dir, aabb_min, aabb_max, ui.m_scene_ui.m_speed, dt);
-			//show_point_lights(light_array.m_point_lights, dbg_renderer);
-
 			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
 			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
 			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
 
-			debug_renderer->draw_point({ .m_position = aabb_min, .m_color = glm::vec4(0) });
-			debug_renderer->draw_point({ .m_position = aabb_max, .m_color = glm::vec4(1) });
-			debug_renderer->draw_line({ .m_from = aabb_min, .m_to = aabb_max, .m_color = glm::vec4(1, 1, 1, 1) });
-
-			render_target.m_framebuffer = debug_renderer_framebuffers.at(swapchain_image_idx).m_handle;
-			debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, {
-				.m_camera_view = camera.get_view(),
-				.m_camera_projection = camera.get_projection()
-			});
+			debug_renderer->render(
+				frame_idx,
+				command_buffer,
+				resource_container,
+				vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
+				{ .m_camera_view = camera.get_view(), .m_camera_projection = camera.get_projection() }
+			);
 			vkCmdSetCheckpointNV(command_buffer, "Debug renderer drawn");
 
 			// Render scene
 			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
 			{
-				auto cam_data = vren::camera{
-					.m_position = camera.m_position,
-					.m_view = camera.get_view(),
-					.m_projection = camera.get_projection()
-				};
-
 				if (renderer_type == renderer_type::BASIC_RENDERER)
 				{
-					render_target.m_framebuffer = renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					basic_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, *light_array, basic_renderer_draw_buffer);
+					basic_renderer->render(
+						frame_idx,
+						command_buffer,
+						resource_container,
+						vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, basic_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
+						{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() },
+						*light_array,
+						basic_renderer_draw_buffer
+					);
 				}
 				else if (renderer_type == renderer_type::MESH_SHADER_RENDERER)
 				{
-					render_target.m_framebuffer = mesh_shader_renderer_framebuffers.at(swapchain_image_idx).m_handle;
-					mesh_shader_renderer->render(frame_idx, command_buffer, resource_container, render_target, cam_data, *light_array, mesh_shader_renderer_draw_buffer);
+					mesh_shader_renderer->render(
+						frame_idx,
+						command_buffer,
+						resource_container,
+						vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, mesh_shader_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
+						{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() },
+						*light_array,
+						mesh_shader_renderer_draw_buffer
+					);
 				}
 
 				vkCmdSetCheckpointNV(command_buffer, "Scene drawn");
@@ -471,13 +430,16 @@ int main(int argc, char* argv[])
 
 			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::UiPass, [&]()
 			{
-				render_target.m_framebuffer = imgui_renderer_framebuffers.at(swapchain_image_idx).m_handle;
-				imgui_renderer->render(frame_idx, command_buffer, resource_container, render_target, [&]()
-				{
-					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
+				imgui_renderer->render(
+					frame_idx,
+					command_buffer,
+					resource_container,
+					vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, mesh_shader_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
+					[&]() {
+						ui.m_fps_ui.notify_frame_profiling_data(prof_info);
+						ui.show(*light_array);
+					});
 
-					ui.show(*light_array);
-				});
 				vkCmdSetCheckpointNV(command_buffer, "ImGui drawn");
 			});
 

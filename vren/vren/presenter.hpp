@@ -104,6 +104,25 @@ namespace vren
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------
+	// Swapchain framebuffer
+	// --------------------------------------------------------------------------------------------------------------------------------
+
+	class swapchain_framebuffer
+	{
+	private:
+		vren::context const* m_context;
+		VkRenderPass m_render_pass;
+		std::vector<vren::vk_framebuffer> m_framebuffers;
+
+	public:
+		swapchain_framebuffer(vren::context const& context, VkRenderPass render_pass);
+
+		void on_swapchain_recreate(vren::swapchain const& swapchain);
+
+		VkFramebuffer get_framebuffer(uint32_t swapchain_image_idx) const;
+	};
+
+	// --------------------------------------------------------------------------------------------------------------------------------
 	// Presenter
 	// --------------------------------------------------------------------------------------------------------------------------------
 

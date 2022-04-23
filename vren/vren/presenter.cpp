@@ -139,6 +139,36 @@ vren::swapchain& vren::swapchain::operator=(swapchain&& other)
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
+// Swapchain framebuffer
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::swapchain_framebuffer::swapchain_framebuffer(vren::context const& context, VkRenderPass render_pass) :
+	m_context(&context),
+	m_render_pass(render_pass)
+{}
+
+void vren::swapchain_framebuffer::on_swapchain_recreate(vren::swapchain const& swapchain)
+{
+	m_framebuffers.clear();
+
+	for (uint32_t image_idx = 0; image_idx < swapchain.m_images.size(); image_idx++)
+	{
+		VkImageView attachments[]{
+			swapchain.m_color_buffers.at(image_idx).m_image_view.m_handle,
+			swapchain.m_depth_buffer.m_image_view.m_handle
+		};
+		m_framebuffers.push_back(
+			vren::vk_utils::create_framebuffer(*m_context, m_render_pass, attachments, swapchain.m_image_width, swapchain.m_image_height)
+		);
+	}
+}
+
+VkFramebuffer vren::swapchain_framebuffer::get_framebuffer(uint32_t swapchain_image_idx) const
+{
+	return m_framebuffers.at(swapchain_image_idx).m_handle;
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
 // Presenter
 // --------------------------------------------------------------------------------------------------------------------------------
 
