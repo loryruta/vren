@@ -9,6 +9,9 @@ set(SRC
         vren/pools/descriptor_pool.cpp
         vren/pools/object_pool.hpp
 
+        vren/mesh/mesh.hpp
+        vren/mesh/mesh_clusterizer.cpp
+
         vren/utils/command_graph.hpp
         vren/utils/command_graph.cpp
         vren/utils/profiler.hpp
