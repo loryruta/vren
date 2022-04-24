@@ -233,5 +233,6 @@ void vren::mesh_shader_draw_pass::render(
 	m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set);
 
 	// Draw
-	vkCmdDrawMeshTasksNV(command_buffer, draw_buffer.m_instanced_meshlet_count, 0);
+	uint32_t workgroups_num = (uint32_t) glm::ceil(draw_buffer.m_instanced_meshlet_count / (float) 32);
+	vkCmdDrawMeshTasksNV(command_buffer, workgroups_num, 0);
 }

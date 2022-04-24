@@ -13,7 +13,7 @@
 #endif
 
 #if VREN_LOG_LEVEL >= VREN_LOG_LEVEL_DEBUG
-#	define VREN_DEBUG(m, ...) fmt::print(fmt::fg(fmt::color::gray), m, __VA_ARGS__)
+#	define VREN_DEBUG(m, ...) fmt::print(m, __VA_ARGS__)
 #else
 #	define VREN_DEBUG(m, ...)
 #endif

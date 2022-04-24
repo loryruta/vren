@@ -9,10 +9,6 @@ namespace vren_demo
 	class intermediate_scene
 	{
 	public:
-		using vertex_t = vren::vertex;
-		using index_t = vren::index_t;
-		using instance_t = vren::mesh_instance;
-
 		struct mesh
 		{
 			uint32_t m_vertex_offset, m_vertex_count;
@@ -22,9 +18,9 @@ namespace vren_demo
 		};
 
 	public:
-		std::vector<vertex_t> m_vertices;
-		std::vector<index_t> m_indices;
-		std::vector<instance_t> m_instances;
+		std::vector<vren::vertex> m_vertices;
+		std::vector<uint32_t> m_indices;
+		std::vector<vren::mesh_instance> m_instances;
 
 		std::vector<mesh> m_meshes;
 	};

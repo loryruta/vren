@@ -64,18 +64,21 @@ namespace vren
 
 		vren::vk_utils::pipeline m_pipeline;
 
-		vren::vk_utils::buffer create_identity_instance_buffer();
+	public:
+		debug_renderer(vren::context const& context);
 
+	private:
+		vren::vk_utils::buffer create_identity_instance_buffer();
 		vren::vk_render_pass create_render_pass();
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
-		debug_renderer(vren::context const& context);
-
 		void clear();
 
-		void draw_point(vren::debug_renderer::point point);
-		void draw_line(vren::debug_renderer::line line);
+		void draw_point(vren::debug_renderer::point const& point);
+
+		void draw_lines(vren::debug_renderer::line const* lines, size_t line_count);
+		void draw_line(vren::debug_renderer::line const& line);
 
 		void render(
 			uint32_t frame_idx,

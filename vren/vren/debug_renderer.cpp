@@ -1,5 +1,7 @@
 #include "debug_renderer.hpp"
 
+#include <execution>
+
 #include <volk.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -278,21 +280,30 @@ void vren::debug_renderer::clear()
 	m_lines_vertex_count = 0;
 }
 
-void vren::debug_renderer::draw_point(debug_renderer::point point)
+void vren::debug_renderer::draw_point(vren::debug_renderer::point const& point)
 {
 	draw_line({ .m_from = point.m_position - glm::vec3(k_point_size, 0, 0), .m_to = point.m_position + glm::vec3(k_point_size, 0, 0), .m_color = point.m_color });
 	draw_line({ .m_from = point.m_position - glm::vec3(0, k_point_size, 0), .m_to = point.m_position + glm::vec3(0, k_point_size, 0), .m_color = point.m_color });
 	draw_line({ .m_from = point.m_position - glm::vec3(0, 0, k_point_size), .m_to = point.m_position + glm::vec3(0, 0, k_point_size), .m_color = point.m_color });
 }
 
-void vren::debug_renderer::draw_line(debug_renderer::line line)
+void vren::debug_renderer::draw_lines(vren::debug_renderer::line const* lines, size_t line_count)
 {
-	debug_renderer::vertex v[]{
-		{ .m_position = line.m_from, .m_color = line.m_color },
-		{ .m_position = line.m_to, .m_color = line.m_color }
-	};
-	m_lines_vertex_buffer.append_data(v, sizeof(v));
-	m_lines_vertex_count += 2;
+	std::vector<vren::debug_renderer::vertex> vertices(line_count * 2);
+
+	std::for_each(std::execution::par, lines, lines + line_count, [&](vren::debug_renderer::line const& line) {
+		uint32_t i = &line - lines;
+		vertices[i * 2 + 0] = { .m_position = line.m_from, .m_color = line.m_color };
+		vertices[i * 2 + 1] = { .m_position = line.m_to, .m_color = line.m_color };
+	});
+
+	m_lines_vertex_buffer.append_data(vertices.data(), vertices.size() * sizeof(vren::debug_renderer::vertex));
+	m_lines_vertex_count += vertices.size();
+}
+
+void vren::debug_renderer::draw_line(debug_renderer::line const& line)
+{
+	draw_lines(&line, 1);
 }
 
 void vren::debug_renderer::render(
@@ -303,6 +314,7 @@ void vren::debug_renderer::render(
 	debug_renderer::push_constants const& push_constants
 )
 {
+	// Render pass begin
 	VkRenderPassBeginInfo begin_info{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
@@ -314,23 +326,23 @@ void vren::debug_renderer::render(
 	};
 	vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	// NOTE: The resource container isn't used here (no add_resource(...) call happens), because the dbg_renderer
-	// **is supposed to last the program lifetime** thus its resources are always ensured to exist while being used by GPU.
-
-	m_pipeline.bind(command_buffer);
-
 	vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-	/* Push constants */
+	m_pipeline.bind(command_buffer);
+
+
+	// Push constants
 	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(debug_renderer::push_constants));
 
 	VkDeviceSize offsets[]{0};
 
-	/* Draw lines */
+	// Draw lines
 	if (m_lines_vertex_count > 0)
 	{
 		vkCmdBindVertexBuffers(command_buffer, 0, 1, &m_lines_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
+		resource_container.add_resource(m_lines_vertex_buffer.m_buffer);
+
 		vkCmdBindVertexBuffers(command_buffer, 1, 1, &m_identity_instance_buffer.m_buffer.m_handle, offsets);
 
 		vkCmdSetLineWidth(command_buffer, 1.0f);
@@ -339,5 +351,6 @@ void vren::debug_renderer::render(
 		vkCmdDraw(command_buffer, m_lines_vertex_count, 1, 0, 0);
 	}
 
+	// Render pass end
 	vkCmdEndRenderPass(command_buffer);
 }

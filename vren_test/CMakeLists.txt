@@ -13,7 +13,7 @@ target_include_directories(vren_test PRIVATE "${CMAKE_SOURCE_DIR}")
 #target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
 
 target_include_directories(vren_test PUBLIC "${VREN_HOME}/vren")
-target_link_libraries(vren_test PRIVATE vren)
+target_link_libraries(vren_test PUBLIC vren)
 
 # GoogleTest
 find_package(GTest CONFIG REQUIRED)

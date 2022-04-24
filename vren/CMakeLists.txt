@@ -1,6 +1,9 @@
 include(FetchContent)
 
 set(SRC
+        vren/base/base.hpp
+        vren/base/bounding_shape.cpp
+        vren/base/kd_tree.cpp
         vren/base/resource_container.hpp
 
         vren/pools/command_pool.hpp

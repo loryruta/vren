@@ -26,29 +26,43 @@
 #include "camera.hpp"
 #include "ui.hpp"
 
-void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera)
+class renderer_type
+{
+public:
+	enum enum_t
+	{
+		NONE,
+		BASIC_RENDERER,
+		MESH_SHADER_RENDERER,
+
+		Count
+	};
+};
+
+auto g_renderer_type = renderer_type::BASIC_RENDERER;
+bool g_debug_renderer = true;
+
+void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera, float camera_speed)
 {
 	const glm::vec4 k_world_up = glm::vec4(0, 1, 0, 0);
 
-	/* Movement */
-	const float k_speed = 4.0f; // m/s
+	// Movement
+	glm::vec3 direction{};
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) direction += -camera.get_forward();
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) direction += camera.get_forward();
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) direction += -camera.get_right();
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) direction += camera.get_right();
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) direction += camera.get_up();
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) direction += -camera.get_up();
 
-	glm::vec3 dir{};
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) dir += -camera.get_forward();
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) dir += camera.get_forward();
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) dir += -camera.get_right();
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) dir += camera.get_right();
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) dir += camera.get_up();
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) dir += -camera.get_up();
-
-	float inc = k_speed * dt;
+	float step = camera_speed * dt;
 	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-		inc *= 100;
+		step *= 100;
 	}
 
-	camera.m_position += dir * inc;
+	camera.m_position += direction * step;
 
-	/* Rotation */
+	// Rotation
 	static std::optional<glm::dvec2> last_cur_pos;
 	const glm::vec2 k_sensitivity = glm::radians(glm::vec2(90.0f)); // rad/(pixel * s)
 
@@ -67,6 +81,15 @@ void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera)
 
 void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+	if (key == GLFW_KEY_F1 && action == GLFW_PRESS)
+	{
+		g_debug_renderer = !g_debug_renderer;
+	}
+	else if (key == GLFW_KEY_F2 && action == GLFW_PRESS)
+	{
+		g_renderer_type = static_cast<renderer_type::enum_t>((g_renderer_type + 1) % renderer_type::enum_t::Count);
+	}
+
 	if (action == GLFW_PRESS)
 	{
 		switch (key)
@@ -161,19 +184,115 @@ void show_point_lights(
 	}
 }
 
-class renderer_type
+vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(
+	vren::context const& context,
+	vren_demo::intermediate_scene const& parsed_scene,
+	vren::debug_renderer& debug_renderer // Also uploads a debug representation of the geometry not to depend on the main pipeline
+)
 {
-public:
-	enum enum_t
-	{
-		BASIC_RENDERER,
-		MESH_SHADER_RENDERER,
-	};
-};
+	// Allocation
+	size_t
+		meshlet_vertex_buffer_size,
+		meshlet_triangle_buffer_size,
+		meshlet_buffer_size,
+		instanced_meshlet_buffer_size;
+
+	vren_demo::get_clusterized_scene_requested_buffer_sizes(
+		parsed_scene.m_vertices.data(),
+		parsed_scene.m_indices.data(),
+		parsed_scene.m_instances.data(),
+		parsed_scene.m_meshes.data(),
+		parsed_scene.m_meshes.size(),
+		meshlet_vertex_buffer_size,
+		meshlet_triangle_buffer_size,
+		meshlet_buffer_size,
+		instanced_meshlet_buffer_size
+	);
+
+	// Clustering
+	std::vector<uint32_t> meshlet_vertices(meshlet_vertex_buffer_size);
+	std::vector<uint8_t> meshlet_triangles(meshlet_triangle_buffer_size);
+	std::vector<vren::meshlet> meshlets(meshlet_buffer_size);
+	std::vector<vren::instanced_meshlet> instanced_meshlets(instanced_meshlet_buffer_size);
+	size_t
+		meshlet_vertex_count,
+		meshlet_triangle_count,
+		meshlet_count,
+		instanced_meshlet_count;
+
+	vren_demo::clusterize_scene(
+		parsed_scene.m_vertices.data(),
+		parsed_scene.m_indices.data(),
+		parsed_scene.m_instances.data(),
+		parsed_scene.m_meshes.data(),
+		parsed_scene.m_meshes.size(),
+		meshlet_vertices.data(),
+		meshlet_vertex_count,
+		meshlet_triangles.data(),
+		meshlet_triangle_count,
+		meshlets.data(),
+		meshlet_count,
+		instanced_meshlets.data(),
+		instanced_meshlet_count
+	);
+
+	meshlet_vertices.resize(meshlet_vertex_count);
+	meshlet_triangles.resize(meshlet_triangle_count);
+	meshlets.resize(meshlet_count);
+	instanced_meshlets.resize(instanced_meshlet_count);
+
+	// Allocation for debug draw
+	size_t debug_line_buffer_size;
+
+	vren_demo::get_clusterized_scene_debug_draw_requested_buffer_sizes(
+		meshlet_triangles.data(),
+		meshlets.data(),
+		instanced_meshlets.data(),
+		instanced_meshlet_count,
+		debug_line_buffer_size
+	);
+
+	// Debug draw
+	std::vector<vren::debug_renderer::line> debug_lines(debug_line_buffer_size);
+	size_t debug_line_count;
+
+	vren_demo::write_clusterized_scene_debug_information(
+		parsed_scene.m_vertices.data(),
+		meshlet_vertices.data(),
+		meshlet_triangles.data(),
+		meshlets.data(),
+		instanced_meshlets.data(),
+		instanced_meshlet_count,
+		parsed_scene.m_instances.data(),
+		debug_lines.data(),
+		debug_line_count
+	);
+
+	debug_renderer.draw_lines(debug_lines.data(), debug_line_count);
+
+	// Uploading
+	auto draw_buffer = vren_demo::upload_scene_for_mesh_shader_renderer(
+		context,
+		parsed_scene.m_vertices.data(),
+		parsed_scene.m_vertices.size(),
+		meshlet_vertices.data(),
+		meshlet_vertices.size(),
+		meshlet_triangles.data(),
+		meshlet_triangles.size(),
+		meshlets.data(),
+		meshlet_count,
+		instanced_meshlets.data(),
+		instanced_meshlet_count,
+		parsed_scene.m_instances.data(),
+		parsed_scene.m_instances.size()
+	);
+	return std::move(draw_buffer);
+}
+
 
 int main(int argc, char* argv[])
 {
-	setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
+	//setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
 	setvbuf(stderr, NULL, _IONBF, 0);
 
 	if (argc != (1 + 1))
@@ -272,13 +391,16 @@ int main(int argc, char* argv[])
 	auto basic_renderer_draw_buffer = vren_demo::upload_scene_for_basic_renderer(context, parsed_scene);
 
 	printf("Uploading scene for mesh shader renderer...\n");
-	auto mesh_shader_renderer_draw_buffer = vren_demo::upload_scene_for_mesh_shader_renderer(context, parsed_scene);
+	auto mesh_shader_renderer_draw_buffer = upload_scene_for_mesh_shader_renderer(context, parsed_scene, *debug_renderer);
+
+	// Cartesian axes
+	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
+	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
+	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
 
 	// ---------------------------------------------------------------- Game loop
 
 	printf("Game loop! (ノ ゜Д゜)ノ ︵ ┻━┻\n");
-
-	auto renderer_type = renderer_type::BASIC_RENDERER;
 
 	vren_demo::camera camera{};
 	glfwSetKeyCallback(window, on_key_press);
@@ -289,9 +411,6 @@ int main(int argc, char* argv[])
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
-		if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)      renderer_type = renderer_type::BASIC_RENDERER;
-		else if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS) renderer_type = renderer_type::MESH_SHADER_RENDERER;
 
 		int cur_fb_width, cur_fb_height;
 		glfwGetFramebufferSize(window, &cur_fb_width, &cur_fb_height);
@@ -312,13 +431,11 @@ int main(int argc, char* argv[])
 
 		if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
 		{
-			update_camera(window, dt, camera);
+			update_camera(window, dt, camera, 0.1f);
 		}
 
 		int win_width, win_height;
 		glfwGetWindowSize(window, &win_width, &win_height);
-
-		debug_renderer->clear();
 
 		presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
         {
@@ -384,23 +501,22 @@ int main(int argc, char* argv[])
 			);
 			vkCmdSetCheckpointNV(command_buffer, "Depth buffer cleared");
 
-			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
-			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
-			debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
-
-			debug_renderer->render(
-				frame_idx,
-				command_buffer,
-				resource_container,
-				vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
-				{ .m_camera_view = camera.get_view(), .m_camera_projection = camera.get_projection() }
-			);
-			vkCmdSetCheckpointNV(command_buffer, "Debug renderer drawn");
+			if (g_debug_renderer)
+			{
+				debug_renderer->render(
+					frame_idx,
+					command_buffer,
+					resource_container,
+					vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
+					{ .m_camera_view = camera.get_view(), .m_camera_projection = camera.get_projection() }
+				);
+				vkCmdSetCheckpointNV(command_buffer, "Debug renderer drawn");
+			}
 
 			// Render scene
 			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
 			{
-				if (renderer_type == renderer_type::BASIC_RENDERER)
+				if (g_renderer_type == renderer_type::BASIC_RENDERER)
 				{
 					basic_renderer->render(
 						frame_idx,
@@ -412,7 +528,7 @@ int main(int argc, char* argv[])
 						basic_renderer_draw_buffer
 					);
 				}
-				else if (renderer_type == renderer_type::MESH_SHADER_RENDERER)
+				else if (g_renderer_type == renderer_type::MESH_SHADER_RENDERER)
 				{
 					mesh_shader_renderer->render(
 						frame_idx,

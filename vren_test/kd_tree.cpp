@@ -3,7 +3,7 @@
 #include <random>
 #include <chrono>
 
-#include <vren/base/kd_tree.hpp>
+#include <vren/base/base.hpp>
 
 void linear_nearest_neighbour_search(float const* points, size_t point_stride, uint32_t* indices, size_t count, float const* sample, uint32_t& best_point, float& best_distance_squared)
 {
@@ -13,8 +13,10 @@ void linear_nearest_neighbour_search(float const* points, size_t point_stride, u
 	for (uint32_t i = 0; i < count; i++)
 	{
 		float const* point = &points[indices[i] * point_stride];
-
-		float distance_squared = point[0] * sample[0] + point[1] * sample[1] + point[2] * sample[2];
+		float distance_squared =
+			(sample[0] - point[0]) * (sample[0] - point[0]) +
+			(sample[1] - point[1]) * (sample[1] - point[1]) +
+			(sample[2] - point[2]) * (sample[2] - point[2]);
 		if (distance_squared < best_distance_squared)
 		{
 			best_distance_squared = distance_squared;
@@ -53,8 +55,8 @@ TEST(KDTree, NearestNeigborSearch)
 	}
 
 	// Build KD-tree
-	std::vector<vren::kdtree_node> kd_tree(k_max_point_count * 2);
-	vren::kdtree_build(points.data(), k_point_stride, indices.data(), indices.size(), kd_tree.data(), 0, 8);
+	std::vector<vren::kd_tree_node> kd_tree(k_max_point_count * 2);
+	vren::kd_tree_build(points.data(), k_point_stride, indices.data(), indices.size(), kd_tree.data(), 0, 8);
 
 	// Samples
 	std::vector<float> samples(k_sample_count * k_point_stride);
@@ -79,29 +81,29 @@ TEST(KDTree, NearestNeigborSearch)
 
 		linear_nearest_neighbour_search(points.data(), k_point_stride, indices.data(), k_max_point_count, &samples[i * k_point_stride], best_point_1, best_distance_1);
 
-		elapsed_time_1 += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_at).count();
+		elapsed_time_1 += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start_at).count();
 
 		// KD-tree search
 		start_at = std::chrono::steady_clock::now();
 
 		best_distance_2 = std::numeric_limits<float>::infinity();
 		best_point_2 = UINT32_MAX;
-		vren::kd_tree_search(points.data(), k_point_stride, indices.data(), k_max_point_count, kd_tree.data(), 0, &samples[i * k_point_stride], best_point_2, best_distance_2);
+		vren::kd_tree_search(points.data(), k_point_stride, indices.data(), k_max_point_count, kd_tree.data(), 0, &samples[i * k_point_stride], vren::k_kd_tree_default_search_filter, best_point_2, best_distance_2);
 
-		elapsed_time_2 += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_at).count();
+		elapsed_time_2 += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start_at).count();
 
-		//
+		// ads asdd s
 		EXPECT_EQ(best_distance_1, best_distance_2);
 		EXPECT_EQ(best_point_1, best_point_2);
 	}
 
-	printf("Linear search - Point count: %lld, Searches: %lld, Elapsed time: %lld ms\n",
+	printf("Linear search - Point count: %lld, Searches: %lld, Elapsed time: %lld ns\n",
 		   k_max_point_count,
 		   k_sample_count,
 		   elapsed_time_1
 	);
 
-	printf("KD-tree search - Point count: %lld, Searches: %lld, Elapsed time: %lld ms\n",
+	printf("KD-tree search - Point count: %lld, Searches: %lld, Elapsed time: %lld ns\n",
 		   k_max_point_count,
 		   k_sample_count,
 		   elapsed_time_2

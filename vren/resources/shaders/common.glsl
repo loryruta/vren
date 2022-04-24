@@ -12,6 +12,13 @@ struct Camera
 // Geometry
 // ------------------------------------------------------------------------------------------------
 
+struct BoundingSphere
+{
+	vec3 center;
+	float radius;
+	float _pad[2];
+};
+
 struct Vertex
 {
     vec3 position; float _pad;
@@ -21,10 +28,12 @@ struct Vertex
 
 struct Meshlet
 {
-	uint vertex_offset;
-	uint triangle_offset;
-	uint vertex_count;
-	uint triangle_count;
+	uint vertex_offset;   uint vertex_count;
+	uint triangle_offset; uint triangle_count;
+
+	float _pad[4];
+
+	BoundingSphere bounding_sphere;
 };
 
 struct InstancedMeshlet

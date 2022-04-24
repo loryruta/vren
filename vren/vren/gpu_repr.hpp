@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <glm/glm.hpp>
-#include <meshoptimizer.h>
+#include "mesh/mesh.hpp"
 
 namespace vren
 {
@@ -28,10 +28,6 @@ namespace vren
 		glm::vec3 m_normal;    float _pad1;
 		glm::vec2 m_texcoords; float _pad2[2];
 	};
-
-	using index_t = uint32_t;
-
-	using meshlet_t = meshopt_Meshlet;
 
 	struct instanced_meshlet
 	{
