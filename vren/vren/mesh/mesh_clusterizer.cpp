@@ -111,9 +111,9 @@ bool pick_triangle(float const* vertices, size_t vertex_stride, uint32_t const* 
 		ci = pick_vertex(c, meshlet_vertices, meshlet);
 	}
 
-	meshlet_triangles[meshlet.m_triangle_offset * 3 + meshlet.m_triangle_count * 3 + 0] = ai;
-	meshlet_triangles[meshlet.m_triangle_offset * 3 + meshlet.m_triangle_count * 3 + 1] = bi;
-	meshlet_triangles[meshlet.m_triangle_offset * 3 + meshlet.m_triangle_count * 3 + 2] = ci;
+	meshlet_triangles[meshlet.m_triangle_offset + meshlet.m_triangle_count * 3 + 0] = ai;
+	meshlet_triangles[meshlet.m_triangle_offset + meshlet.m_triangle_count * 3 + 1] = bi;
+	meshlet_triangles[meshlet.m_triangle_offset + meshlet.m_triangle_count * 3 + 2] = ci;
 	meshlet.m_triangle_count++;
 
 	glm::vec3 p0, p1, p2;
@@ -148,14 +148,14 @@ size_t vren::clusterize_mesh(
 		triangle_midpoints[triangle] = midpoint;
 	}
 
-	std::vector<uint32_t> triangle_indices(triangle_count); // Temporary vector used to build the KD-tree
-	for (uint32_t i = 0; i < triangle_indices.size(); i++)
+	std::vector<uint32_t> kd_tree_triangle_indices(triangle_count); // Temporary vector used to build the KD-tree
+	for (uint32_t i = 0; i < triangle_count; i++)
 	{
-		triangle_indices[i] = i;
+		kd_tree_triangle_indices[i] = i;
 	}
 
 	std::vector<kd_tree_node> kd_tree(triangle_count * 2); // TODO max size?
-	vren::kd_tree_build(reinterpret_cast<float const*>(triangle_midpoints.data()), 3, triangle_indices.data(), triangle_indices.size(), kd_tree.data(), 0, 8);
+	vren::kd_tree_build(reinterpret_cast<float const*>(triangle_midpoints.data()), sizeof(glm::vec3) / sizeof(float), kd_tree_triangle_indices.data(), kd_tree_triangle_indices.size(), kd_tree.data(), 0, 8);
 
 	// 0 = triangle not picked
 	// 1 = triangle picked and put in nearby queue
@@ -167,6 +167,8 @@ size_t vren::clusterize_mesh(
 	size_t meshlet_count = 0;
 	for (uint32_t triangle = 0; triangle < triangle_count; triangle++)
 	{
+		assert(triangle_picked[triangle] != 1);
+
 		if (triangle_picked.at(triangle)) { // We're searching for the first non-picked triangle
 			continue;
 		}
@@ -174,7 +176,7 @@ size_t vren::clusterize_mesh(
 		vren::meshlet& meshlet = meshlets[meshlet_count];
 		meshlet.m_vertex_offset = meshlet_count > 0 ? meshlets[meshlet_count - 1].m_vertex_offset + meshlets[meshlet_count - 1].m_vertex_count : 0;
 		meshlet.m_vertex_count = 0;
-		meshlet.m_triangle_offset = meshlet_count > 0 ? meshlets[meshlet_count - 1].m_triangle_offset + meshlets[meshlet_count - 1].m_triangle_count : 0;
+		meshlet.m_triangle_offset = meshlet_count > 0 ? meshlets[meshlet_count - 1].m_triangle_offset + meshlets[meshlet_count - 1].m_triangle_count * 3 : 0;
 		meshlet.m_triangle_count = 0;
 		meshlet.m_bounding_sphere = {}; // Degenerate bounding sphere (radius = 0)
 
@@ -193,8 +195,20 @@ size_t vren::clusterize_mesh(
 			float nearest_triangle_distance = std::numeric_limits<float>::infinity();
 			uint32_t nearest_triangle = UINT32_MAX;
 
+			// Search for the nearest non-picked triangle using the built KD-tree
 			auto can_pick = [&](uint32_t triangle) -> bool { return triangle_picked[triangle] == 0; };
-			kd_tree_search(vertices, vertex_stride, indices, index_count, kd_tree.data(), 0, (float const*) &sample, can_pick, nearest_triangle, nearest_triangle_distance);
+			kd_tree_search(
+				reinterpret_cast<float const*>(triangle_midpoints.data()),
+				sizeof(glm::vec3) / sizeof(float),
+				kd_tree_triangle_indices.data(),
+				kd_tree_triangle_indices.size(),
+				kd_tree.data(),
+				0,
+				(float const*) &sample,
+				can_pick,
+				nearest_triangle,
+				nearest_triangle_distance
+			);
 
 			if (nearest_triangle < UINT32_MAX)
 			{
@@ -261,8 +275,9 @@ size_t vren::clusterize_mesh(
 		// EMPTY QUEUE
 		for (uint32_t i = 0; i < nearby_triangle_count; i++)
 		{
-			if (triangle_picked[nearby_triangle_queue[i]] == 1) {
-				triangle_picked[i] = 0;
+			uint32_t nearby_triangle = nearby_triangle_queue[i];
+			if (triangle_picked[nearby_triangle] == 1) {
+				triangle_picked[nearby_triangle] = 0;
 			}
 		}
 

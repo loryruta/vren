@@ -2,13 +2,12 @@
 
 #include <execution>
 
-
 #include <vren/mesh/mesh.hpp>
 #include <vren/vk_helpers/buffer.hpp>
 #include <vren/gpu_repr.hpp>
 #include <vren/utils/log.hpp>
 
-//#define VREN_USE_MESH_OPTIMIZER
+#define VREN_USE_MESH_OPTIMIZER
 
 #ifdef VREN_USE_MESH_OPTIMIZER
 #	include <meshoptimizer.h>
@@ -223,23 +222,7 @@ void vren_demo::clusterize_scene(
 	instanced_meshlet_count = instanced_meshlet_offset;
 }
 
-void vren_demo::get_clusterized_scene_debug_draw_requested_buffer_sizes(
-	uint8_t const* meshlet_triangles,
-	vren::meshlet const* meshlets,
-	vren::instanced_meshlet const* instanced_meshlets,
-	size_t instanced_meshlet_count,
-	size_t& line_buffer_size
-)
-{
-	line_buffer_size = 0;
-	for (uint32_t i = 0; i < instanced_meshlet_count; i++)
-	{
-		vren::meshlet const& meshlet = meshlets[instanced_meshlets[i].m_meshlet_idx];
-		line_buffer_size += meshlet.m_triangle_count * 3;
-	}
-}
-
-void vren_demo::write_clusterized_scene_debug_information(
+void vren_demo::write_debug_information_for_meshlet_geometry(
 	vren::vertex const* vertices,
 	uint32_t const* meshlet_vertices,
 	uint8_t const* meshlet_triangles,
@@ -247,21 +230,14 @@ void vren_demo::write_clusterized_scene_debug_information(
 	vren::instanced_meshlet const* instanced_meshlets,
 	size_t instanced_meshlet_count,
 	vren::mesh_instance const* instances,
-	vren::debug_renderer::line* lines, // Write
-	size_t& line_count // Write
+	std::vector<vren::debug_renderer_line>& lines // Write
 )
 {
-	line_count = 0;
 	for (uint32_t i = 0; i < instanced_meshlet_count; i++)
 	{
 		vren::instanced_meshlet const& instanced_meshlet = instanced_meshlets[i];
 
-		uint32_t color_hash = std::hash<uint32_t>()(i);
-		glm::vec3 color = glm::vec3(
-			(color_hash & 0xff) / (float) 255.0f,
-			((color_hash & 0xff00) >> 8) / (float) 255.0f,
-			((color_hash & 0xff0000) >> 16) / (float) 255.0f
-		);
+		uint32_t color = std::hash<uint32_t>()(i);
 
 		vren::mesh_instance const& instance = instances[instanced_meshlet.m_instance_idx];
 		vren::meshlet const& meshlet = meshlets[instanced_meshlet.m_meshlet_idx];
@@ -276,10 +252,32 @@ void vren_demo::write_clusterized_scene_debug_information(
 			glm::vec3 p1 = glm::vec3(instance.m_transform * glm::vec4(v1.m_position, 1.0f));
 			glm::vec3 p2 = glm::vec3(instance.m_transform * glm::vec4(v2.m_position, 1.0f));
 
-			lines[line_count++] = { .m_from = p0, .m_to = p1, .m_color = color };
-			lines[line_count++] = { .m_from = p1, .m_to = p2, .m_color = color };
-			lines[line_count++] = { .m_from = p2, .m_to = p0, .m_color = color };
+			lines.push_back({ .m_from = p0, .m_to = p1, .m_color = color });
+			lines.push_back({ .m_from = p1, .m_to = p2, .m_color = color });
+			lines.push_back({ .m_from = p2, .m_to = p0, .m_color = color });
 		}
+	}
+}
+
+void vren_demo::write_debug_information_for_meshlet_bounds(
+	vren::meshlet const* meshlets,
+	vren::instanced_meshlet const* instanced_meshlets,
+	size_t instanced_meshlet_count,
+	vren::mesh_instance const* instances,
+	std::vector<vren::debug_renderer_sphere>& spheres // Write
+)
+{
+	for (uint32_t i = 0; i < instanced_meshlet_count; i++)
+	{
+		vren::instanced_meshlet const& instanced_meshlet = instanced_meshlets[i];
+
+		uint32_t color = std::hash<uint32_t>()(i);
+
+		vren::mesh_instance const& instance = instances[instanced_meshlet.m_instance_idx];
+		vren::meshlet const& meshlet = meshlets[instanced_meshlet.m_meshlet_idx];
+
+		glm::vec3 center = glm::vec3(instance.m_transform * glm::vec4(meshlet.m_bounding_sphere.m_center, 1.0f));
+		spheres.push_back({ .m_center = center, .m_radius = meshlet.m_bounding_sphere.m_radius, .m_color = color });
 	}
 }
 

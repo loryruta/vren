@@ -40,7 +40,8 @@ public:
 };
 
 auto g_renderer_type = renderer_type::BASIC_RENDERER;
-bool g_debug_renderer = true;
+bool g_show_meshlets = false;
+bool g_show_meshlet_bounds = false;
 
 void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera, float camera_speed)
 {
@@ -81,12 +82,15 @@ void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera, floa
 
 void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_F1 && action == GLFW_PRESS)
-	{
-		g_debug_renderer = !g_debug_renderer;
+	if (key == GLFW_KEY_1 && action == GLFW_PRESS) {
+		g_show_meshlets = !g_show_meshlets;
 	}
-	else if (key == GLFW_KEY_F2 && action == GLFW_PRESS)
-	{
+
+	if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
+		g_show_meshlet_bounds = !g_show_meshlet_bounds;
+	}
+
+	if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
 		g_renderer_type = static_cast<renderer_type::enum_t>((g_renderer_type + 1) % renderer_type::enum_t::Count);
 	}
 
@@ -173,21 +177,11 @@ void move_and_bounce_point_lights(
 	}
 }
 
-void show_point_lights(
-	std::span<vren::point_light> point_lights,
-	vren::debug_renderer& dbg_renderer
-)
-{
-	for (auto& light : point_lights)
-	{
-		dbg_renderer.draw_point({ .m_position = light.m_position, .m_color = glm::vec3(1, 1, 0) });
-	}
-}
-
 vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(
 	vren::context const& context,
 	vren_demo::intermediate_scene const& parsed_scene,
-	vren::debug_renderer& debug_renderer // Also uploads a debug representation of the geometry not to depend on the main pipeline
+	vren::debug_renderer_draw_buffer& meshlet_debug_draw_buffer,
+	vren::debug_renderer_draw_buffer& meshlet_bounds_debug_draw_buffer
 )
 {
 	// Allocation
@@ -241,22 +235,9 @@ vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(
 	meshlets.resize(meshlet_count);
 	instanced_meshlets.resize(instanced_meshlet_count);
 
-	// Allocation for debug draw
-	size_t debug_line_buffer_size;
-
-	vren_demo::get_clusterized_scene_debug_draw_requested_buffer_sizes(
-		meshlet_triangles.data(),
-		meshlets.data(),
-		instanced_meshlets.data(),
-		instanced_meshlet_count,
-		debug_line_buffer_size
-	);
-
-	// Debug draw
-	std::vector<vren::debug_renderer::line> debug_lines(debug_line_buffer_size);
-	size_t debug_line_count;
-
-	vren_demo::write_clusterized_scene_debug_information(
+	// Debug for meshlet geometry
+	std::vector<vren::debug_renderer_line> debug_lines;
+	vren_demo::write_debug_information_for_meshlet_geometry(
 		parsed_scene.m_vertices.data(),
 		meshlet_vertices.data(),
 		meshlet_triangles.data(),
@@ -264,11 +245,24 @@ vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(
 		instanced_meshlets.data(),
 		instanced_meshlet_count,
 		parsed_scene.m_instances.data(),
-		debug_lines.data(),
-		debug_line_count
+		debug_lines
 	);
 
-	debug_renderer.draw_lines(debug_lines.data(), debug_line_count);
+	meshlet_debug_draw_buffer.clear();
+	meshlet_debug_draw_buffer.add_lines(debug_lines.data(), debug_lines.size());
+
+	// Debug for meshlet bounds
+	std::vector<vren::debug_renderer_sphere> debug_spheres;
+	vren_demo::write_debug_information_for_meshlet_bounds(
+		meshlets.data(),
+		instanced_meshlets.data(),
+		instanced_meshlet_count,
+		parsed_scene.m_instances.data(),
+		debug_spheres
+	);
+
+	meshlet_bounds_debug_draw_buffer.clear();
+	meshlet_bounds_debug_draw_buffer.add_spheres(debug_spheres.data(), debug_spheres.size());
 
 	// Uploading
 	auto draw_buffer = vren_demo::upload_scene_for_mesh_shader_renderer(
@@ -350,6 +344,8 @@ int main(int argc, char* argv[])
 	auto debug_renderer = std::make_unique<vren::debug_renderer>(context);
 	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(context, window);
 
+	vren::debug_renderer_draw_buffer debug_draw_buffer(context); // General purpose debug draw buffer
+
 	auto light_array = std::make_unique<vren::light_array>(context);
 
 	/* Presenter init */
@@ -391,12 +387,16 @@ int main(int argc, char* argv[])
 	auto basic_renderer_draw_buffer = vren_demo::upload_scene_for_basic_renderer(context, parsed_scene);
 
 	printf("Uploading scene for mesh shader renderer...\n");
-	auto mesh_shader_renderer_draw_buffer = upload_scene_for_mesh_shader_renderer(context, parsed_scene, *debug_renderer);
+
+	vren::debug_renderer_draw_buffer meshlet_debug_draw_buffer(context);
+	vren::debug_renderer_draw_buffer meshlet_bounds_debug_draw_buffer(context);
+
+	auto mesh_shader_renderer_draw_buffer = upload_scene_for_mesh_shader_renderer(context, parsed_scene, meshlet_debug_draw_buffer, meshlet_bounds_debug_draw_buffer);
 
 	// Cartesian axes
-	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = glm::vec4(1, 0, 0, 1) });
-	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = glm::vec4(0, 1, 0, 1) });
-	debug_renderer->draw_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = glm::vec4(0, 0, 1, 1) });
+	debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
+	debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
+	debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
 	// ---------------------------------------------------------------- Game loop
 
@@ -436,6 +436,8 @@ int main(int argc, char* argv[])
 
 		int win_width, win_height;
 		glfwGetWindowSize(window, &win_width, &win_height);
+
+		vren::camera camera_data{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() };
 
 		presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
         {
@@ -501,16 +503,19 @@ int main(int argc, char* argv[])
 			);
 			vkCmdSetCheckpointNV(command_buffer, "Depth buffer cleared");
 
-			if (g_debug_renderer)
+			// Render debug elements
 			{
-				debug_renderer->render(
-					frame_idx,
-					command_buffer,
-					resource_container,
-					vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
-					{ .m_camera_view = camera.get_view(), .m_camera_projection = camera.get_projection() }
-				);
-				vkCmdSetCheckpointNV(command_buffer, "Debug renderer drawn");
+				auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx));
+
+				debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, debug_draw_buffer);
+
+				if (g_show_meshlets) {
+					debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, meshlet_debug_draw_buffer);
+				}
+
+				if (g_show_meshlet_bounds) {
+					debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, meshlet_bounds_debug_draw_buffer);
+				}
 			}
 
 			// Render scene

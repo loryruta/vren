@@ -85,7 +85,7 @@ void vren::kd_tree_search(
 	kd_tree_node* kd_tree,
 	size_t node_offset,
 	float const* sample,
-	vren::kd_tree_search_filter_t const& filter_func,
+	vren::kd_tree_search_filter_t const& filter_predicate,
 	uint32_t& best_point,
 	float& best_distance_squared
 )
@@ -98,7 +98,7 @@ void vren::kd_tree_search(
 		{
 			kd_tree_node& leaf_node = kd_tree[node_offset + i];
 
-			if (!filter_func(leaf_node.m_index)) {
+			if (!filter_predicate(leaf_node.m_index)) {
 				continue;
 			}
 
@@ -120,10 +120,10 @@ void vren::kd_tree_search(
 		size_t first_node_offset  = d <= 0 ? node_offset + 1 : node_offset + node.m_right_child_distance;
 		size_t second_node_offset = d <= 0 ? node_offset + node.m_right_child_distance : node_offset + 1;
 
-		kd_tree_search(points, point_stride, indices, count, kd_tree, first_node_offset, sample, filter_func, best_point, best_distance_squared);
+		kd_tree_search(points, point_stride, indices, count, kd_tree, first_node_offset, sample, filter_predicate, best_point, best_distance_squared);
 		if (best_distance_squared > (d * d))
 		{
-			kd_tree_search(points, point_stride, indices, count, kd_tree, second_node_offset, sample, filter_func, best_point, best_distance_squared);
+			kd_tree_search(points, point_stride, indices, count, kd_tree, second_node_offset, sample, filter_predicate, best_point, best_distance_squared);
 		}
 	}
 }

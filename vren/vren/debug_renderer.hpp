@@ -10,6 +10,77 @@ namespace vren
 {
 	// Forward decl
 	class context;
+	class debug_renderer;
+
+	// ------------------------------------------------------------------------------------------------
+	// Debug renderer geometry
+	// ------------------------------------------------------------------------------------------------
+
+	constexpr float k_debug_renderer_point_size = 0.01f;
+	constexpr uint32_t k_debug_sphere_segment_count = 16;
+
+#pragma pack(push, 4) // Force the alignment to be 4 so the final struct size will be 16 instead of 24
+	struct debug_renderer_vertex
+	{
+		glm::vec3 m_position;
+		uint32_t m_color; // ARGB (e.g. 0xFF0000 is red)
+	};
+#pragma pack(pop)
+
+	struct debug_renderer_point
+	{
+		glm::vec3 m_position;
+		uint32_t m_color;
+	};
+
+	struct debug_renderer_line
+	{
+		glm::vec3 m_from, m_to;
+		uint32_t m_color;
+	};
+
+	struct debug_renderer_sphere
+	{
+		glm::vec3 m_center;
+		float m_radius;
+		uint32_t m_color;
+	};
+
+	// ------------------------------------------------------------------------------------------------
+	// Debug renderer draw buffer
+	// ------------------------------------------------------------------------------------------------
+
+	class debug_renderer_draw_buffer
+	{
+		friend vren::debug_renderer;
+
+	private:
+		vren::vk_utils::resizable_buffer m_vertex_buffer;
+		size_t m_vertex_count = 0;
+
+	public:
+		explicit debug_renderer_draw_buffer(vren::context const& context);
+
+		void clear();
+
+		void add_lines(vren::debug_renderer_line const* lines, size_t line_count);
+
+		inline void add_line(vren::debug_renderer_line const& line) {
+			add_lines(&line, 1);
+		}
+
+		void add_points(vren::debug_renderer_point const* points, size_t point_count);
+
+		inline void add_point(vren::debug_renderer_point const& point) {
+			add_points(&point, 1);
+		}
+
+		void add_spheres(vren::debug_renderer_sphere const* spheres, size_t sphere_count);
+
+		inline void add_sphere(vren::debug_renderer_sphere const& sphere) {
+			add_spheres(&sphere, 1);
+		}
+	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Debug renderer
@@ -17,37 +88,10 @@ namespace vren
 
 	class debug_renderer
 	{
-	public:
-		static constexpr float k_point_size = 0.01f;
-
-		struct point
-		{
-			glm::vec3 m_position;
-			glm::vec3 m_color;
-		};
-
-		struct line
-		{
-			glm::vec3 m_from, m_to;
-			glm::vec3 m_color;
-		};
-
-		struct vertex
-		{
-			glm::vec3 m_position;
-			glm::vec3 m_color;
-		};
-
 		struct instance_data
 		{
 			glm::mat4 m_transform;
 			glm::vec3 m_color;
-		};
-
-		struct push_constants
-		{
-			glm::mat4 m_camera_view;
-			glm::mat4 m_camera_projection;
 		};
 
 	private:
@@ -57,35 +101,23 @@ namespace vren
 		vren::vk_render_pass m_render_pass;
 
 	private:
-		vren::vk_utils::buffer m_identity_instance_buffer;
-
-		vren::vk_utils::resizable_buffer m_lines_vertex_buffer;
-		size_t m_lines_vertex_count = 0;
-
 		vren::vk_utils::pipeline m_pipeline;
 
 	public:
-		debug_renderer(vren::context const& context);
+		explicit debug_renderer(vren::context const& context);
 
 	private:
-		vren::vk_utils::buffer create_identity_instance_buffer();
 		vren::vk_render_pass create_render_pass();
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
-		void clear();
-
-		void draw_point(vren::debug_renderer::point const& point);
-
-		void draw_lines(vren::debug_renderer::line const* lines, size_t line_count);
-		void draw_line(vren::debug_renderer::line const& line);
-
 		void render(
 			uint32_t frame_idx,
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::render_target const& render_target,
-			vren::debug_renderer::push_constants const& push_constants
+			vren::camera const& camera,
+			vren::debug_renderer_draw_buffer const& draw_buffer
 		);
 	};
 }

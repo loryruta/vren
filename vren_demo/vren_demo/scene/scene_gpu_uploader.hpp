@@ -59,15 +59,7 @@ namespace vren_demo
 		size_t& instanced_meshlet_count // Write
 	);
 
-	void get_clusterized_scene_debug_draw_requested_buffer_sizes(
-		uint8_t const* meshlet_triangles,
-		vren::meshlet const* meshlets,
-		vren::instanced_meshlet const* instanced_meshlets,
-		size_t instanced_meshlet_count,
-		size_t& line_buffer_size // The number of vren::debug_renderer::line requested to represent the clusterized scene
-	);
-
-	void write_clusterized_scene_debug_information(
+	void write_debug_information_for_meshlet_geometry(
 		vren::vertex const* vertices,
 		uint32_t const* meshlet_vertices,
 		uint8_t const* meshlet_triangles,
@@ -75,8 +67,15 @@ namespace vren_demo
 		vren::instanced_meshlet const* instanced_meshlets,
 		size_t instanced_meshlet_count,
 		vren::mesh_instance const* instances,
-		vren::debug_renderer::line* lines, // Write
-		size_t& line_count // Write
+		std::vector<vren::debug_renderer_line>& lines // Write
+	);
+
+	void write_debug_information_for_meshlet_bounds(
+		vren::meshlet const* meshlets,
+		vren::instanced_meshlet const* instanced_meshlets,
+		size_t instanced_meshlet_count,
+		vren::mesh_instance const* instances,
+		std::vector<vren::debug_renderer_sphere>& spheres // Write
 	);
 
 	vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(

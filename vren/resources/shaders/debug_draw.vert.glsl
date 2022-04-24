@@ -1,24 +1,24 @@
 #version 460
 
-layout(location = 0) in vec3 a_position;
-layout(location = 1) in vec3 a_color;
+#extension GL_GOOGLE_include_directive : require
 
-layout(location = 16) in mat4 i_transform;
-layout(location = 20) in vec3 i_color;
+#include "common.glsl"
+
+layout(location = 0) in vec3 a_position;
+layout(location = 1) in uint a_color;
 
 layout(push_constant) uniform PushConstants
 {
-    mat4 cam_view;
-    mat4 cam_proj;
-} push_constants;
+    Camera camera;
+};
 
 layout(location = 0) out vec3 v_position;
-layout(location = 1) out vec3 v_color;
+layout(location = 1) out flat uint v_color;
 
 void main()
 {
-    v_position = (i_transform * vec4(a_position, 1)).xyz;
-    v_color = a_color * i_color;
+    v_position = a_position;
+    v_color = a_color;
 
-    gl_Position = push_constants.cam_proj * push_constants.cam_view * vec4(v_position, 1);
+    gl_Position = camera.projection * camera.view * vec4(v_position, 1);
 }

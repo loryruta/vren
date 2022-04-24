@@ -81,7 +81,7 @@ namespace vren
 		kd_tree_node* kd_tree,
 		size_t node_offset,
 		float const* sample,
-		kd_tree_search_filter_t const& filter_func,
+		kd_tree_search_filter_t const& filter_predicate,
 		uint32_t& best_point,
 		float& best_distance_squared
 	);
