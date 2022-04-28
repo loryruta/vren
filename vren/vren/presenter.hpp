@@ -41,36 +41,12 @@ namespace vren
 
 	class swapchain
 	{
-	public:
-		struct color_buffer
-		{
-			VkImage m_image; // The image lifetime is bound to the swapchain lifetime
-			vren::vk_image_view m_image_view;
-
-			color_buffer(VkImage image, vren::vk_image_view&& image_view) :
-				m_image(image),
-				m_image_view(std::move(image_view))
-			{}
-		};
-
-		struct depth_buffer
-		{
-			vren::vk_utils::image m_image;
-			vren::vk_image_view m_image_view;
-
-			depth_buffer(vren::vk_utils::image&& image, vren::vk_image_view&& image_view) :
-				m_image(std::move(image)),
-				m_image_view(std::move(image_view))
-			{}
-		};
-
 	private:
 		vren::context const* m_context;
 
 		void swap(swapchain& other);
 
 		std::vector<VkImage> get_swapchain_images();
-		depth_buffer create_depth_buffer();
 
 	public:
 		VkSwapchainKHR m_handle;
@@ -81,8 +57,7 @@ namespace vren
 		VkPresentModeKHR m_present_mode;
 
 		std::vector<VkImage> m_images;
-		std::vector<color_buffer> m_color_buffers;
-		depth_buffer m_depth_buffer;
+		std::vector<vren::vk_image_view> m_image_views;
 
 		std::vector<vren::swapchain_frame_data> m_frame_data;
 
@@ -101,25 +76,6 @@ namespace vren
 
 		swapchain& operator=(swapchain const& other) = delete;
 		swapchain& operator=(swapchain&& other);
-	};
-
-	// --------------------------------------------------------------------------------------------------------------------------------
-	// Swapchain framebuffer
-	// --------------------------------------------------------------------------------------------------------------------------------
-
-	class swapchain_framebuffer
-	{
-	private:
-		vren::context const* m_context;
-		VkRenderPass m_render_pass;
-		std::vector<vren::vk_framebuffer> m_framebuffers;
-
-	public:
-		swapchain_framebuffer(vren::context const& context, VkRenderPass render_pass);
-
-		void on_swapchain_recreate(vren::swapchain const& swapchain);
-
-		VkFramebuffer get_framebuffer(uint32_t swapchain_image_idx) const;
 	};
 
 	// --------------------------------------------------------------------------------------------------------------------------------

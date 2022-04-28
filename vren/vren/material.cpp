@@ -70,7 +70,7 @@ vren::vk_utils::buffer vren::material_manager::create_staging_buffer()
 
 std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::create_buffers()
 {
-	return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&]() {
+	return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
 		return vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, k_max_material_buffer_size);
 	});
 }

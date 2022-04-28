@@ -2,6 +2,25 @@
 
 #include <volk.h>
 
+#define VREN_DECLARE_IMAGE_BARRIER(_function_name) \
+\
+void _function_name(VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, VkImageSubresourceRange subresource_range); \
+\
+inline void  _function_name(VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, VkImageAspectFlags image_aspect, uint32_t mipmap_level, uint32_t layer) \
+{ \
+	_function_name(command_buffer, image, old_layout, new_layout, { .aspectMask = image_aspect, .baseMipLevel = mipmap_level, .levelCount = 1, .baseArrayLayer = layer, .layerCount = 1 });\
+}; \
+\
+inline void _function_name(VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, VkImageAspectFlags image_aspect, uint32_t mipmap_level) \
+{ \
+	_function_name(command_buffer, image, old_layout, new_layout, image_aspect, mipmap_level, 0); \
+} \
+\
+inline void _function_name(VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, VkImageAspectFlags image_aspect) \
+{ \
+	_function_name(command_buffer, image, old_layout, new_layout, image_aspect, 0); \
+}
+
 namespace vren::vk_utils
 {
 	inline void buffer_barrier(
@@ -76,4 +95,17 @@ namespace vren::vk_utils
 		);
 	}
 
+	void image_barrier();
+
+
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_before_transfer_stage);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_transfer_stage);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_compute_stage);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_before_color_attachment_output);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_color_attachment_output_stage_before_transfer_stage)
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_transfer_stage_before_color_attachment_output_stage);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_late_fragment_tests_stage_before_compute_stage);
+	VREN_DECLARE_IMAGE_BARRIER(image_barrier_after_late_fragment_tests_stage);
+
+	VREN_DECLARE_IMAGE_BARRIER(ensure_depth_buffer_visibility_for_compute_stage);
 }

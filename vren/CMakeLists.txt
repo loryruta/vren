@@ -32,6 +32,7 @@ set(SRC
         vren/vk_helpers/image_layout_transitions.hpp
         vren/vk_helpers/image_layout_transitions.cpp
 
+        vren/depth_buffer_pyramid.cpp
         vren/gpu_repr.hpp
         vren/material.cpp
         vren/material.hpp
@@ -43,6 +44,7 @@ set(SRC
         vren/toolbox.cpp
         vren/vk_helpers/shader.hpp
         vren/vk_helpers/shader.cpp
+        vren/vk_helpers/barrier.cpp
         vren/vk_helpers/barrier.hpp
         vren/debug_renderer.hpp
         vren/debug_renderer.cpp

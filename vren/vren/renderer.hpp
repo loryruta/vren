@@ -10,6 +10,7 @@
 #include "base/resource_container.hpp"
 #include "mesh_shader_draw_pass.hpp"
 #include "vertex_pipeline_draw_pass.hpp"
+#include "vk_helpers/image.hpp"
 
 namespace vren
 {
@@ -17,7 +18,10 @@ namespace vren
 	class context;
 
 	class basic_renderer;
+	class depth_buffer_pyramid;
 
+	// ------------------------------------------------------------------------------------------------
+	// Render target
 	// ------------------------------------------------------------------------------------------------
 
 	struct render_target

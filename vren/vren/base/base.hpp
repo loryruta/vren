@@ -9,14 +9,14 @@ namespace vren
 	namespace detail
 	{
 		template<typename _t, size_t... _is>
-		auto create_array(std::function<_t()> const& create_entry_func, std::index_sequence<_is...> _)
+		auto create_array(std::function<_t(uint32_t index)> const& create_entry_func, std::index_sequence<_is...> _)
 		{
-			return std::array{ (_is, create_entry_func())... };
+			return std::array{ (_is, create_entry_func(_is))... };
 		}
 	}
 
 	template<typename _t, size_t _size>
-	auto create_array(std::function<_t()> const& create_entry_func)
+	auto create_array(std::function<_t(uint32_t index)> const& create_entry_func)
 	{
 		return detail::create_array(create_entry_func, std::make_index_sequence<_size>());
 	}
@@ -26,6 +26,13 @@ namespace vren
 	{
 		return create_array<_t, _size>([&]() { return value; });
 	}
+
+	inline uint32_t round_to_nearest_multiple_of_power_of_2(uint32_t value, uint32_t power_of_2)
+	{
+		assert(power_of_2 > 0 && (power_of_2 & (power_of_2 - 1)) == 0);
+		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
+	}
+
 
 	// ------------------------------------------------------------------------------------------------
 	// Bounding sphere

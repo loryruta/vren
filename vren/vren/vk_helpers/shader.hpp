@@ -81,6 +81,8 @@ namespace vren::vk_utils
 		void push_constants(VkCommandBuffer command_buffer, VkShaderStageFlags shader_stage, void const* data, uint32_t length, uint32_t offset = 0) const;
 
 		void acquire_and_bind_descriptor_set(vren::context const& context, VkCommandBuffer command_buffer, vren::resource_container& resource_container, uint32_t descriptor_set_idx, std::function<void(VkDescriptorSet desc_set)> const& update_func);
+
+		void dispatch(VkCommandBuffer command_buffer, uint32_t workgroup_count_x, uint32_t workgroup_count_y, uint32_t workgroup_count_z) const;
 	};
 
 	void create_descriptor_set_layouts(vren::context const& context, std::span<shader const> const& shaders, std::vector<VkDescriptorSetLayout>& descriptor_set_layouts);

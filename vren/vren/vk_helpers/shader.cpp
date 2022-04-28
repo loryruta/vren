@@ -274,6 +274,11 @@ void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(vren::context con
 	resource_container.add_resources(desc_set);
 }
 
+void vren::vk_utils::pipeline::dispatch(VkCommandBuffer command_buffer, uint32_t workgroup_count_x, uint32_t workgroup_count_y, uint32_t workgroup_count_z) const
+{
+	vkCmdDispatch(command_buffer, workgroup_count_x, workgroup_count_y, workgroup_count_z);
+}
+
 void vren::vk_utils::create_descriptor_set_layouts(vren::context const& context, std::span<shader const> const& shaders, std::vector<VkDescriptorSetLayout>& descriptor_set_layouts)
 {
 	/* Merging */

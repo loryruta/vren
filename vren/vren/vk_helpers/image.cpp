@@ -278,6 +278,32 @@ vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& con
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
+// Depth buffer
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::vk_utils::color_buffer vren::vk_utils::create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
+{
+	VkFormat image_format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
+	auto image      = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | image_usage);
+	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
+	return {
+		.m_image = std::move(image),
+		.m_image_view = std::move(image_view)
+	};
+}
+
+vren::vk_utils::depth_buffer vren::vk_utils::create_depth_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
+{
+	VkFormat image_format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT;
+	auto image      = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | image_usage);
+	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+	return {
+		.m_image = std::move(image),
+		.m_image_view = std::move(image_view)
+	};
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
 // Custom framebuffer
 // --------------------------------------------------------------------------------------------------------------------------------
 

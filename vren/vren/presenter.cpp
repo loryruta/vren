@@ -26,8 +26,7 @@ void vren::swapchain::swap(swapchain& other)
 	std::swap(m_handle, other.m_handle);
 
 	std::swap(m_images, other.m_images);
-	std::swap(m_color_buffers, other.m_color_buffers);
-	std::swap(m_depth_buffer, other.m_depth_buffer);
+	std::swap(m_image_views, other.m_image_views);
 
 	std::swap(m_image_width, other.m_image_width);
 	std::swap(m_image_height, other.m_image_height);
@@ -53,27 +52,6 @@ std::vector<VkImage> vren::swapchain::get_swapchain_images()
 	return images;
 }
 
-vren::swapchain::depth_buffer vren::swapchain::create_depth_buffer()
-{
-	auto img = vren::vk_utils::create_image(
-		*m_context,
-		m_image_width, m_image_height,
-		VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-	);
-
-	vren::vk_utils::immediate_graphics_queue_submit(*m_context, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
-	{
-		vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
-	});
-
-	return vren::swapchain::depth_buffer(
-		std::move(img),
-		vren::vk_utils::create_image_view(*m_context, img.m_image.m_handle, VREN_DEPTH_BUFFER_OUTPUT_FORMAT, VK_IMAGE_ASPECT_DEPTH_BIT)
-	);
-}
-
 vren::swapchain::swapchain(
 	vren::context const& context,
 	VkSwapchainKHR handle,
@@ -92,13 +70,13 @@ vren::swapchain::swapchain(
     m_surface_format(surface_format),
     m_present_mode(present_mode),
 
-	m_images(get_swapchain_images()),
-	m_depth_buffer(create_depth_buffer())
+	m_images(get_swapchain_images())
 {
 	for (VkImage image : m_images)
 	{
-		color_buffer color_buffer(image, vren::vk_utils::create_image_view(*m_context, image, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT));
-		m_color_buffers.push_back(std::move(color_buffer));
+		m_image_views.push_back(
+			vren::vk_utils::create_image_view(*m_context, image, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT)
+		);
 
 		vren::swapchain_frame_data frame_data(*m_context);
 		m_frame_data.emplace_back(std::move(frame_data));
@@ -116,8 +94,7 @@ vren::swapchain::swapchain(swapchain&& other) :
 	m_present_mode(other.m_present_mode),
 
 	m_images(std::move(other.m_images)),
-	m_color_buffers(std::move(other.m_color_buffers)),
-	m_depth_buffer(std::move(other.m_depth_buffer)),
+	m_image_views(std::move(other.m_image_views)),
 
 	m_frame_data(std::move(other.m_frame_data))
 {
@@ -126,8 +103,9 @@ vren::swapchain::swapchain(swapchain&& other) :
 
 vren::swapchain::~swapchain()
 {
-	if (m_handle != VK_NULL_HANDLE)
-	{
+	m_image_views.clear(); // Delete image views before deleting swapchain images!
+
+	if (m_handle != VK_NULL_HANDLE) {
 		vkDestroySwapchainKHR(m_context->m_device, m_handle, nullptr);
 	}
 }
@@ -136,36 +114,6 @@ vren::swapchain& vren::swapchain::operator=(swapchain&& other)
 {
 	swapchain(std::move(other)).swap(*this);
 	return *this;
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
-// Swapchain framebuffer
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::swapchain_framebuffer::swapchain_framebuffer(vren::context const& context, VkRenderPass render_pass) :
-	m_context(&context),
-	m_render_pass(render_pass)
-{}
-
-void vren::swapchain_framebuffer::on_swapchain_recreate(vren::swapchain const& swapchain)
-{
-	m_framebuffers.clear();
-
-	for (uint32_t image_idx = 0; image_idx < swapchain.m_images.size(); image_idx++)
-	{
-		VkImageView attachments[]{
-			swapchain.m_color_buffers.at(image_idx).m_image_view.m_handle,
-			swapchain.m_depth_buffer.m_image_view.m_handle
-		};
-		m_framebuffers.push_back(
-			vren::vk_utils::create_framebuffer(*m_context, m_render_pass, attachments, swapchain.m_image_width, swapchain.m_image_height)
-		);
-	}
-}
-
-VkFramebuffer vren::swapchain_framebuffer::get_framebuffer(uint32_t swapchain_image_idx) const
-{
-	return m_framebuffers.at(swapchain_image_idx).m_handle;
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

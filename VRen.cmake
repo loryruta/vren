@@ -41,6 +41,7 @@ function (setup_resources TARGET)
 
     set(SHADERS "")
 
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_reduce.comp.glsl" "${VREN_SHADERS_DIR}/depth_buffer_reduce.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/basic_draw.vert.glsl" "${VREN_SHADERS_DIR}/basic_draw.vert.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.vert.glsl" "${VREN_SHADERS_DIR}/debug_draw.vert.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.frag.glsl" "${VREN_SHADERS_DIR}/debug_draw.frag.spv")

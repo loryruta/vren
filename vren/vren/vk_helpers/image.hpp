@@ -114,6 +114,25 @@ namespace vren::vk_utils
 	vren::vk_framebuffer create_framebuffer(vren::context const& context, VkRenderPass render_pass, std::span<VkImageView> const& attachments, uint32_t width, uint32_t height);
 
 	// ------------------------------------------------------------------------------------------------
+	// Depth buffer
+	// ------------------------------------------------------------------------------------------------
+
+	struct color_buffer
+	{
+		vren::vk_utils::image m_image;
+		vren::vk_image_view m_image_view;
+	};
+
+	struct depth_buffer
+	{
+		vren::vk_utils::image m_image;
+		vren::vk_image_view m_image_view;
+	};
+
+	color_buffer create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage);
+	depth_buffer create_depth_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage);
+
+	// ------------------------------------------------------------------------------------------------
 	// Custom framebuffer
 	// ------------------------------------------------------------------------------------------------
 
