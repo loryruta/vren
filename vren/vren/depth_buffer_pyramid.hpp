@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "render_graph.hpp"
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/image.hpp"
 
@@ -38,21 +39,13 @@ namespace vren
 
 		vren::vk_sampler create_depth_buffer_sampler();
 
-	public:
-		void copy_depth_buffer_at_depth_buffer_pyramid_base(
-			uint32_t frame_idx,
-			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
-			VkImageView depth_buffer,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid
-		) const;
+	private:
+		vren::render_graph_node* copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph_node* reduce_step(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t current_level) const;
+		vren::render_graph_node* reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 
-		void reduce(
-			uint32_t frame_idx,
-			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid
-		) const;
+	public:
+		vren::render_graph_node* copy_and_reduce(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 	};
 
 	// ------------------------------------------------------------------------------------------------

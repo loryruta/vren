@@ -48,6 +48,8 @@ set(SRC
         vren/vk_helpers/barrier.hpp
         vren/debug_renderer.hpp
         vren/debug_renderer.cpp
+        vren/render_graph.hpp
+        vren/render_graph.cpp
         vren/context.hpp
         vren/context.cpp
         vren/basic_renderer.cpp

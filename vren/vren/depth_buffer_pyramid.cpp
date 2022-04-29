@@ -243,46 +243,38 @@ void write_reduce_pipeline_descriptor_set(
 	vkUpdateDescriptorSets(context.m_device, 1, &write_descriptor_set, 0, nullptr);
 }
 
-void vren::depth_buffer_reductor::copy_depth_buffer_at_depth_buffer_pyramid_base(
-	uint32_t frame_idx,
-	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container,
-	VkImageView depth_buffer,
-	vren::depth_buffer_pyramid const& depth_buffer_pyramid
-) const
+vren::render_graph_node* vren::depth_buffer_reductor::copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const
 {
-	// Copy
-	m_copy_pipeline.bind(command_buffer);
+	auto node = new vren::render_graph_node();
+	node->set_in_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	node->add_image(vren::describe_image(depth_buffer.m_image.m_image.m_handle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT), VK_ACCESS_SHADER_READ_BIT);
+	node->add_image(vren::describe_image(depth_buffer_pyramid.get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0), VK_ACCESS_SHADER_WRITE_BIT);
+	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		m_copy_pipeline.bind(command_buffer);
 
-	auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-		m_context->m_toolbox->m_descriptor_pool.acquire(m_copy_pipeline.m_descriptor_set_layouts.at(0))
-	);
-	resource_container.add_resource(descriptor_set);
-	write_copy_pipeline_descriptor_set(*m_context, descriptor_set->m_handle.m_descriptor_set, depth_buffer, m_depth_buffer_sampler.m_handle, depth_buffer_pyramid.m_image_views.at(0).m_handle);
-	m_copy_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
+		auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+			m_context->m_toolbox->m_descriptor_pool.acquire(m_copy_pipeline.m_descriptor_set_layouts.at(0))
+		);
+		resource_container.add_resource(descriptor_set);
+		write_copy_pipeline_descriptor_set(*m_context, descriptor_set->m_handle.m_descriptor_set, depth_buffer.m_image_view.m_handle, m_depth_buffer_sampler.m_handle, depth_buffer_pyramid.m_image_views.at(0).m_handle);
+		m_copy_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-	m_copy_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> 5, depth_buffer_pyramid.m_base_height >> 5, 1);
-
-	// Barrier
-	vren::vk_utils::ensure_image_visibility_after_compute_stage(
-		command_buffer,
-		depth_buffer_pyramid.m_image.m_image.m_handle,
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_GENERAL,
-		{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1 }
-	);
+		m_copy_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> 5, depth_buffer_pyramid.m_base_height >> 5, 1);
+	});
+	return node;
 }
 
-void vren::depth_buffer_reductor::reduce(
-	uint32_t frame_idx,
-	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container,
-	vren::depth_buffer_pyramid const& depth_buffer_pyramid
-) const
+vren::render_graph_node* vren::depth_buffer_reductor::reduce_step(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t current_level) const
 {
-	for (uint32_t i = 0; i < depth_buffer_pyramid.m_level_count - 1; i++)
+	auto node = new vren::render_graph_node();
+	node->set_in_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	node->add_image(vren::describe_image(depth_buffer_pyramid.get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, current_level), VK_ACCESS_SHADER_READ_BIT);
+	node->add_image(vren::describe_image(depth_buffer_pyramid.get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, current_level + 1), VK_ACCESS_SHADER_WRITE_BIT);
+	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
-		// Reduction
 		m_reduce_pipeline.bind(command_buffer);
 
 		auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
@@ -292,21 +284,39 @@ void vren::depth_buffer_reductor::reduce(
 		write_reduce_pipeline_descriptor_set(
 			*m_context,
 			descriptor_set->m_handle.m_descriptor_set,
-			depth_buffer_pyramid.m_image_views.at(i).m_handle,
-			depth_buffer_pyramid.m_image_views.at(i + 1).m_handle
+			depth_buffer_pyramid.m_image_views.at(current_level).m_handle,
+			depth_buffer_pyramid.m_image_views.at(current_level + 1).m_handle
 		);
 		m_reduce_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-		m_reduce_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> (5 + i), depth_buffer_pyramid.m_base_height >> (5 + i), 1);
-
-		// Barrier
-		vren::vk_utils::ensure_image_visibility_after_compute_stage( // Ensure the destination image writes are completed before the next iteration will read from it
-			command_buffer,
-			depth_buffer_pyramid.m_image.m_image.m_handle,
-			VK_IMAGE_LAYOUT_GENERAL,
-			VK_IMAGE_LAYOUT_GENERAL,
-			{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = i + 1, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1 }
-		);
-	}
+		m_reduce_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> (5 + current_level), depth_buffer_pyramid.m_base_height >> (5 + current_level), 1);
+	});
+	return node;
 }
 
+vren::render_graph_node* vren::depth_buffer_reductor::reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const
+{
+	vren::render_graph_node* head = nullptr;
+	if (depth_buffer_pyramid.m_level_count > 1)
+	{
+		head = reduce_step(depth_buffer_pyramid, 0);
+
+		vren::render_graph_node* current = head;
+		for (uint32_t i = 1; i < depth_buffer_pyramid.m_level_count - 1; i++)
+		{
+			auto following = reduce_step(depth_buffer_pyramid, i);
+			current->add_following(following);
+			current = following;
+		}
+	}
+	return head;
+}
+
+vren::render_graph_node* vren::depth_buffer_reductor::copy_and_reduce(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const
+{
+	auto head = copy_depth_buffer_to_depth_buffer_pyramid_base(depth_buffer, depth_buffer_pyramid);
+	head->add_following(
+		reduce(depth_buffer_pyramid)
+	);
+	return head;
+}
