@@ -438,8 +438,7 @@ vren::vk_utils::create_graphics_pipeline(
 	VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
 	VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
 	VkPipelineDynamicStateCreateInfo* dynamic_state_info,
-	VkRenderPass render_pass,
-	uint32_t subpass
+	VkPipelineRenderingCreateInfoKHR* pipeline_rendering_info
 )
 {
 	/* Descriptor set layouts */
@@ -483,11 +482,10 @@ vren::vk_utils::create_graphics_pipeline(
 	VkPipelineLayout pipeline_layout;
 	VREN_CHECK(vkCreatePipelineLayout(context.m_device, &pipeline_layout_info, nullptr, &pipeline_layout), &context);
 
-	/* Graphics pipeline */
+	// Graphics pipeline
 	VkGraphicsPipelineCreateInfo pipeline_info{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = NULL,
+		.pNext = pipeline_rendering_info,
 		.stageCount = (uint32_t) shader_stages.size(),
 		.pStages = shader_stages.data(),
 		.pVertexInputState = vtx_input_state_info,
@@ -499,9 +497,7 @@ vren::vk_utils::create_graphics_pipeline(
 		.pDepthStencilState = depth_stencil_state_info,
 		.pColorBlendState = color_blend_state_info,
 		.pDynamicState = dynamic_state_info,
-		.layout = pipeline_layout,
-		.renderPass = render_pass, // Shouldn't render_pass lifetime be managed ALSO by the graphics pipeline class?
-		.subpass = subpass
+		.layout = pipeline_layout
 	};
 	VkPipeline pipeline;
 	VREN_CHECK(vkCreateGraphicsPipelines(context.m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), &context);

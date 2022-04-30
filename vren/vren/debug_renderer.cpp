@@ -94,90 +94,8 @@ void vren::debug_renderer_draw_buffer::add_spheres(vren::debug_renderer_sphere c
 
 vren::debug_renderer::debug_renderer(vren::context const& ctx) :
 	m_context(&ctx),
-
-	m_render_pass(create_render_pass()),
 	m_pipeline(create_graphics_pipeline())
 {}
-
-vren::vk_render_pass vren::debug_renderer::create_render_pass()
-{
-	/* Attachments */
-	VkAttachmentDescription attachments[]{
-		{ // Color attachment
-			.flags = NULL,
-			.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-		},
-		{ // Depth attachment
-			.flags = NULL,
-			.format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-		}
-	};
-
-	/* Subpass */
-	VkAttachmentReference color_attachment_ref{ .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-	VkAttachmentReference depth_attachment_ref{ .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
-	VkSubpassDescription subpasses[]{
-		{ // Subpass 0
-			.flags = NULL,
-			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-			.inputAttachmentCount = 0,
-			.pInputAttachments = nullptr,
-			.colorAttachmentCount = 1,
-			.pColorAttachments = &color_attachment_ref,
-			.pResolveAttachments = 0,
-			.pDepthStencilAttachment = &depth_attachment_ref,
-			.preserveAttachmentCount = 0,
-			.pPreserveAttachments = nullptr
-		}
-	};
-
-	/* Dependencies */
-	VkSubpassDependency dependencies[]{
-		{
-			.srcSubpass = VK_SUBPASS_EXTERNAL,
-			.dstSubpass = 0,
-			.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-			.dstAccessMask =
-				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-			.dependencyFlags = NULL
-		}
-	};
-
-	/* */
-
-	VkRenderPassCreateInfo render_pass_info{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = NULL,
-		.attachmentCount = std::size(attachments),
-		.pAttachments = attachments,
-		.subpassCount = std::size(subpasses),
-		.pSubpasses = subpasses,
-		.dependencyCount = std::size(dependencies),
-		.pDependencies = dependencies
-	};
-
-	VkRenderPass render_pass;
-	VREN_CHECK(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass), m_context);
-	return vren::vk_render_pass(*m_context, render_pass);
-}
 
 vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 {
@@ -308,6 +226,20 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 		.pDynamicStates = dynamic_states
 	};
 
+	// Pipeline rendering
+	VkFormat color_attachment_formats[] { VREN_COLOR_BUFFER_OUTPUT_FORMAT };
+	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+		.pNext = nullptr,
+		.viewMask = 0,
+		.colorAttachmentCount = std::size(color_attachment_formats),
+		.pColorAttachmentFormats = color_attachment_formats,
+		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
+		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+	};
+
+	//
+
 	vren::vk_utils::shader shaders[]{
 		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/debug_draw.vert.spv"),
 		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/debug_draw.frag.spv")
@@ -324,55 +256,95 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		m_render_pass.m_handle,
-		0
+		&pipeline_rendering_info
 	);
 }
 
-void vren::debug_renderer::render(
-	uint32_t frame_idx,
-	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container,
+vren::render_graph_node* vren::debug_renderer::render(
 	vren::render_target const& render_target,
 	vren::camera const& camera,
 	vren::debug_renderer_draw_buffer const& draw_buffer
 )
 {
-	if (draw_buffer.m_vertex_count == 0) {
-		return;
-	}
+	auto node = new vren::render_graph_node();
+	node->set_name("debug_renderer | render");
+	node->set_in_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+	node->add_image(
+		{ .m_name = "color_buffer", .m_image = render_target.m_color_buffer->get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+	);
+	node->add_image(
+		{ .m_name = "depth_buffer", .m_image = render_target.m_depth_buffer->get_image(), .m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+	);
+	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		if (draw_buffer.m_vertex_count == 0) {
+		   return;
+		}
 
-	// Render pass begin
-	VkRenderPassBeginInfo begin_info{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-		.pNext = nullptr,
-		.renderPass = m_render_pass.m_handle,
-		.framebuffer = render_target.m_framebuffer,
-		.renderArea = render_target.m_render_area,
-		.clearValueCount = 0,
-		.pClearValues = nullptr
-	};
-	vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		// Color attachment
+		VkRenderingAttachmentInfoKHR color_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = render_target.m_color_buffer->get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE
+		};
 
-	vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
-	vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
+		// Depth attachment
+		VkRenderingAttachmentInfoKHR depth_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = render_target.m_depth_buffer->get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE
+		};
 
-	m_pipeline.bind(command_buffer);
+		// Begin rendering
+		VkRenderingInfoKHR rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+			.pNext = nullptr,
+			.flags = NULL,
+			.renderArea = render_target.m_render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &color_attachment_info,
+			.pDepthAttachment = &depth_attachment_info,
+			.pStencilAttachment = nullptr
+		};
+		vkCmdBeginRenderingKHR(command_buffer, &rendering_info);
 
-	// Camera
-	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
+		vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
+		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-	VkDeviceSize offsets[]{0};
+		// Bind pipeline
+		m_pipeline.bind(command_buffer);
 
-	// Draw
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
-	resource_container.add_resource(draw_buffer.m_vertex_buffer.m_buffer);
+		// Camera
+		m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
 
-	vkCmdSetLineWidth(command_buffer, 1.0f);
-	vkCmdSetPrimitiveTopologyEXT(command_buffer, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+		VkDeviceSize offsets[]{0};
 
-	vkCmdDraw(command_buffer, draw_buffer.m_vertex_count, 1, 0, 0);
+		// Draw
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, &draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle, offsets);
+		resource_container.add_resource(draw_buffer.m_vertex_buffer.m_buffer);
 
-	// Render pass end
-	vkCmdEndRenderPass(command_buffer);
+		vkCmdSetLineWidth(command_buffer, 1.0f);
+		vkCmdSetPrimitiveTopologyEXT(command_buffer, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+
+		vkCmdDraw(command_buffer, draw_buffer.m_vertex_count, 1, 0, 0);
+
+		// End rendering
+		vkCmdEndRenderingKHR(command_buffer);
+	});
+	return node;
 }

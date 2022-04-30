@@ -10,7 +10,55 @@ namespace vren
 {
 	// Forward decl
 	class context;
-	class depth_buffer_pyramid;
+	class depth_buffer_reductor;
+
+	// ------------------------------------------------------------------------------------------------
+	// Depth buffer pyramid
+	// ------------------------------------------------------------------------------------------------
+
+	class depth_buffer_pyramid
+	{
+		friend vren::depth_buffer_reductor;
+
+	public:
+		static const uint32_t k_max_depth_buffer_pyramid_level_count = 16;
+
+	private:
+		vren::context const* m_context;
+
+		uint32_t m_base_width, m_base_height;
+		uint32_t m_level_count;
+		vren::vk_utils::image m_image;
+		std::vector<vren::vk_image_view> m_image_views;
+
+	public:
+		depth_buffer_pyramid(vren::context const& context, uint32_t width, uint32_t height);
+
+	private:
+		vren::vk_utils::image create_image();
+		std::vector<vren::vk_image_view> create_image_views();
+
+	public:
+		inline VkImage get_image() const
+		{
+			return m_image.m_image.m_handle;
+		}
+
+		inline VkImageView get_image_view(uint32_t level) const
+		{
+			return m_image_views.at(level).m_handle;
+		}
+
+		inline uint32_t get_image_width(uint32_t level) const
+		{
+			return m_base_width >> level;
+		}
+
+		inline uint32_t get_image_height(uint32_t level) const
+		{
+			return m_base_height >> level;
+		}
+	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Depth buffer reductor
@@ -40,55 +88,15 @@ namespace vren
 		vren::vk_sampler create_depth_buffer_sampler();
 
 	private:
-		vren::render_graph_node* copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph_node* copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 		vren::render_graph_node* reduce_step(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t current_level) const;
 		vren::render_graph_node* reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 
 	public:
-		vren::render_graph_node* copy_and_reduce(vren::vk_utils::depth_buffer const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph_node* copy_and_reduce(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// Depth buffer pyramid
-	// ------------------------------------------------------------------------------------------------
 
-	class depth_buffer_pyramid
-	{
-		friend vren::depth_buffer_reductor;
-
-	public:
-		static const uint32_t k_max_depth_buffer_pyramid_level_count = 16;
-
-	private:
-		vren::context const* m_context;
-
-		uint32_t m_base_width, m_base_height;
-		uint32_t m_level_count;
-		vren::vk_utils::image m_image;
-		std::vector<vren::vk_image_view> m_image_views;
-
-	public:
-		depth_buffer_pyramid(vren::context const& context, uint32_t width, uint32_t height);
-
-	private:
-		vren::vk_utils::image create_image();
-		std::vector<vren::vk_image_view> create_image_views();
-
-	public:
-		VkImage get_image() const {
-			return m_image.m_image.m_handle;
-		}
-
-		VkImageView get_image_view(uint32_t level) const {
-			return m_image_views.at(level).m_handle;
-		}
-
-		uint32_t get_image_width(uint32_t level) const {
-			return m_base_width >> level;
-		}
-
-		uint32_t get_image_height(uint32_t level) const {
-			return m_base_height >> level;
-		}
-	};
+	vren::render_graph_node* blit_depth_buffer_pyramid_level_to_color_buffer(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t level, vren::vk_utils::color_buffer_t const& color_buffer, uint32_t width, uint32_t height); // Debug
 }

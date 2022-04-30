@@ -101,7 +101,6 @@ namespace vren::vk_utils
 		VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
 		VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
 		VkPipelineDynamicStateCreateInfo* dynamic_state_info,
-		VkRenderPass render_pass,
-		uint32_t subpass
+		VkPipelineRenderingCreateInfoKHR* pipeline_rendering_info
 	);
 }

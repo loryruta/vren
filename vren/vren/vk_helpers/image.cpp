@@ -6,6 +6,7 @@
 #include "buffer.hpp"
 #include "vk_helpers/image_layout_transitions.hpp"
 #include "vk_helpers/misc.hpp"
+#include "vk_helpers/debug_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image
@@ -259,7 +260,7 @@ vren::vk_utils::texture vren::vk_utils::create_color_texture(
 	);
 }
 
-vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& context, VkRenderPass render_pass, std::span<VkImageView> const& attachments, uint32_t width, uint32_t height)
+vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& context, VkRenderPass render_pass, uint32_t width, uint32_t height, std::span<VkImageView> const& attachments)
 {
 	VkFramebufferCreateInfo framebuffer_info{
 		.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -278,135 +279,39 @@ vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& con
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
+// Color buffer
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::vk_utils::color_buffer_t vren::vk_utils::create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
+{
+	VkFormat image_format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
+	auto image = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | image_usage);
+	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE, (uint64_t) image.m_image.m_handle, "color_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view.m_handle, "color_buffer");
+
+	return {
+		.m_image = std::move(image),
+		.m_image_view = std::move(image_view)
+	};
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
 // Depth buffer
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::color_buffer vren::vk_utils::create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
-{
-	VkFormat image_format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
-	auto image      = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | image_usage);
-	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
-	return {
-		.m_image = std::move(image),
-		.m_image_view = std::move(image_view)
-	};
-}
-
-vren::vk_utils::depth_buffer vren::vk_utils::create_depth_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
+vren::vk_utils::depth_buffer_t vren::vk_utils::create_depth_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
 {
 	VkFormat image_format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT;
-	auto image      = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | image_usage);
+	auto image = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | image_usage);
 	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE, (uint64_t) image.m_image.m_handle, "depth_buffer");
+	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view.m_handle, "depth_buffer");
+
 	return {
 		.m_image = std::move(image),
 		.m_image_view = std::move(image_view)
 	};
 }
-
-// --------------------------------------------------------------------------------------------------------------------------------
-// Custom framebuffer
-// --------------------------------------------------------------------------------------------------------------------------------
-
-vren::vk_utils::custom_framebuffer::color_buffer
-vren::vk_utils::custom_framebuffer::create_color_buffer(
-	vren::context const& ctx,
-	uint32_t width,
-	uint32_t height
-)
-{
-	auto img = vren::vk_utils::create_image(
-		ctx,
-		width, height,
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-	);
-
-    vren::vk_utils::immediate_graphics_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
-    {
-        vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf, img.m_image.m_handle);
-    });
-
-	auto img_view = vren::vk_utils::create_image_view(
-		ctx,
-		img.m_image.m_handle,
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	return color_buffer(
-		std::move(img),
-		std::move(img_view)
-	);
-}
-
-vren::vk_utils::custom_framebuffer::depth_buffer
-vren::vk_utils::custom_framebuffer::create_depth_buffer(
-	vren::context const& ctx,
-	uint32_t width,
-	uint32_t height
-)
-{
-	auto img = vren::vk_utils::create_image(
-		ctx,
-		width, height,
-		VK_FORMAT_D32_SFLOAT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-	);
-
-    vren::vk_utils::immediate_graphics_queue_submit(ctx, [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
-    {
-        vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachment(cmd_buf, img.m_image.m_handle);
-    });
-
-	auto img_view = vren::vk_utils::create_image_view(
-		ctx,
-		img.m_image.m_handle,
-		VK_FORMAT_D32_SFLOAT,
-		VK_IMAGE_ASPECT_DEPTH_BIT // | VK_IMAGE_ASPECT_STENCIL_BIT
-	);
-
-	return depth_buffer(
-		std::move(img),
-		std::move(img_view)
-	);
-}
-
-vren::vk_framebuffer
-vren::vk_utils::custom_framebuffer::create_framebuffer(
-	vren::context const& ctx,
-	uint32_t width,
-	uint32_t height
-)
-{
-	VkImageView attachments[]{
-		m_color_buffer.m_image_view.m_handle,
-		m_depth_buffer.m_image_view.m_handle
-	};
-
-	VkFramebufferCreateInfo fb_info{};
-	fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	fb_info.renderPass = m_render_pass->m_handle;
-	fb_info.attachmentCount = std::size(attachments);
-	fb_info.pAttachments = attachments;
-	fb_info.width = width;
-	fb_info.height = height;
-	fb_info.layers = 1;
-
-	VkFramebuffer fb;
-	VREN_CHECK(vkCreateFramebuffer(ctx.m_device, &fb_info, nullptr, &fb), &ctx);
-	return vren::vk_framebuffer(ctx, fb);
-}
-
-vren::vk_utils::custom_framebuffer::custom_framebuffer(
-	vren::context const& ctx,
-	std::shared_ptr<vren::vk_render_pass> const& render_pass,
-	uint32_t width,
-	uint32_t height
-) :
-	m_render_pass(render_pass),
-	m_color_buffer(create_color_buffer(ctx, width, height)),
-	m_depth_buffer(create_depth_buffer(ctx, width, height)),
-	m_framebuffer(create_framebuffer(ctx, width, height))
-{}

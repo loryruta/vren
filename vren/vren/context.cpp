@@ -63,7 +63,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(VkDebugUtilsMessa
 {
 	if ((msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) || (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
 	{
-		VREN_ERROR("[Vulkan] [{}] [{}] {}\n", debug_utils_message_type_display_name(msg_type), debug_utils_message_severity_display_name(msg_severity), data->pMessage);
+		VREN_ERROR("{}\n", data->pMessage);
 	}
 
 	return false;
@@ -251,12 +251,15 @@ int does_physical_device_support(VkPhysicalDevice physical_device, std::span<cha
 		bool supported = false;
 		for (auto const& supported_extension : supported_extensions)
 		{
-			if (strcmp(supported_extension.extensionName, ext_name) == 0) {
+			if (strcmp(supported_extension.extensionName, ext_name) == 0)
+			{
 				supported = true;
 				break;
 			}
 		}
-		if (!supported) {
+
+		if (!supported)
+		{
 			return i;
 		}
 	}
@@ -288,18 +291,25 @@ VkDevice vren::context::create_logical_device()
 	dev_ext.push_back(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
 	dev_ext.push_back(VK_NV_MESH_SHADER_EXTENSION_NAME);
 	dev_ext.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+	dev_ext.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
 	int unsupported_ext = does_physical_device_support(m_physical_device, dev_ext);
 	if (unsupported_ext >= 0)
 	{
-		VREN_ERROR("Required device extension not supported: {}", dev_ext.at(unsupported_ext));
+		VREN_ERROR("Required device extension not supported: {}\n", dev_ext.at(unsupported_ext));
 		exit(1);
 	}
 
 	/* Features */
+	VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+		.pNext = nullptr,
+		.dynamicRendering = true
+	};
+
 	VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
-		.pNext = nullptr,
+		.pNext = &dynamic_rendering_features,
 		.descriptorBindingPartiallyBound = true,
 		.descriptorBindingVariableDescriptorCount = true,
 		.runtimeDescriptorArray = true,

@@ -24,19 +24,17 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
-		VkRenderPass m_render_pass;
-		uint32_t m_subpass_idx;
 		vren::vk_utils::pipeline m_pipeline;
 
 	public:
-		mesh_shader_draw_pass(vren::context const& context, VkRenderPass render_pass, uint32_t subpass_idx);
+		mesh_shader_draw_pass(vren::context const& context);
 
 	private:
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
 		void render(
-			uint32_t descriptor_set,
+			uint32_t frame_idx,
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,

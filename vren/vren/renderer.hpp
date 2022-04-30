@@ -11,6 +11,7 @@
 #include "mesh_shader_draw_pass.hpp"
 #include "vertex_pipeline_draw_pass.hpp"
 #include "vk_helpers/image.hpp"
+#include "render_graph.hpp"
 
 namespace vren
 {
@@ -26,15 +27,17 @@ namespace vren
 
 	struct render_target
 	{
-		VkFramebuffer m_framebuffer;
+		vren::vk_utils::color_buffer_t const* m_color_buffer;
+		vren::vk_utils::depth_buffer_t const* m_depth_buffer;
 		VkRect2D m_render_area;
 		VkViewport m_viewport;
 		VkRect2D m_scissor;
 
-		inline static render_target cover(uint32_t image_width, uint32_t image_height, VkFramebuffer framebuffer)
+		inline static render_target cover(uint32_t image_width, uint32_t image_height ,vren::vk_utils::color_buffer_t const& color_buffer, vren::vk_utils::depth_buffer_t const& depth_buffer)
 		{
 			return {
-				.m_framebuffer = framebuffer,
+				.m_color_buffer = &color_buffer,
+				.m_depth_buffer = &depth_buffer,
 				.m_render_area = {
 					.offset = {0, 0},
 					.extent = {image_width, image_height}
@@ -84,21 +87,13 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
-	public:
-		vren::vk_render_pass m_render_pass;
-
 	private:
 		vren::vertex_pipeline_draw_pass m_vertex_pipeline_draw_pass;
-
-		vren::vk_render_pass create_render_pass();
 
 	public:
 		explicit basic_renderer(vren::context const& context);
 
-		void render(
-			uint32_t frame_idx,
-			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
+		vren::render_graph_node* render(
 			vren::render_target const& render_target,
 			vren::camera const& camera,
 			vren::light_array const& light_array,
@@ -127,26 +122,11 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
-
-	public:
-		vren::vk_render_pass m_render_pass;
-
-	private:
 		vren::mesh_shader_draw_pass m_mesh_shader_draw_pass;
-
-		vren::vk_render_pass create_render_pass();
 
 	public:
 		explicit mesh_shader_renderer(vren::context const& context);
 
-		void render(
-			uint32_t frame_idx,
-			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
-			vren::render_target const& render_target,
-			vren::camera const& camera,
-			vren::light_array const& light_array,
-			vren::mesh_shader_renderer_draw_buffer const& draw_buffer
-		);
+		vren::render_graph_node* render(vren::render_target const& render_target, vren::camera const& camera, vren::light_array const& light_array, vren::mesh_shader_renderer_draw_buffer const& draw_buffer);
 	};
 }

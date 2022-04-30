@@ -4,9 +4,9 @@
 #include "toolbox.hpp"
 #include "renderer.hpp"
 
-vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline(VkRenderPass render_pass, uint32_t subpass_idx)
+vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 {
-	/* Vertex input state */
+	// Vertex input state
 	VkVertexInputBindingDescription vertex_input_binding_descriptions[]{
 		{ .binding = 0, .stride = sizeof(vren::vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },          // Vertex buffer
 		{ .binding = 1, .stride = sizeof(vren::mesh_instance), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE }, // Instance buffer
@@ -139,6 +139,18 @@ vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeli
 		.pDynamicStates = dynamic_states
 	};
 
+	// Pipeline rendering
+	VkFormat color_attachment_formats[] { VREN_COLOR_BUFFER_OUTPUT_FORMAT };
+	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+		.pNext = nullptr,
+		.viewMask = 0,
+		.colorAttachmentCount = std::size(color_attachment_formats),
+		.pColorAttachmentFormats = color_attachment_formats,
+		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
+		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+	};
+
 	/* */
 
 	vren::vk_utils::shader shaders[]{
@@ -157,14 +169,13 @@ vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeli
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		render_pass,
-		subpass_idx
+		&pipeline_rendering_info
 	);
 }
 
-vren::vertex_pipeline_draw_pass::vertex_pipeline_draw_pass(vren::context const& context, VkRenderPass render_pass, uint32_t subpass_idx) :
+vren::vertex_pipeline_draw_pass::vertex_pipeline_draw_pass(vren::context const& context) :
 	m_context(&context),
-	m_pipeline(create_graphics_pipeline(render_pass, subpass_idx))
+	m_pipeline(create_graphics_pipeline())
 {}
 
 void write_material_descriptor_set(vren::context const& context, VkDescriptorSet descriptor_set, VkBuffer material_buffer, uint32_t material_idx)

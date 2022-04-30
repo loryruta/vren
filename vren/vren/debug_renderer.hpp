@@ -5,6 +5,7 @@
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/shader.hpp"
 #include "renderer.hpp"
+#include "render_graph.hpp"
 
 namespace vren
 {
@@ -97,24 +98,16 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
-	public:
-		vren::vk_render_pass m_render_pass;
-
-	private:
 		vren::vk_utils::pipeline m_pipeline;
 
 	public:
 		explicit debug_renderer(vren::context const& context);
 
 	private:
-		vren::vk_render_pass create_render_pass();
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
-		void render(
-			uint32_t frame_idx,
-			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
+		vren::render_graph_node* render(
 			vren::render_target const& render_target,
 			vren::camera const& camera,
 			vren::debug_renderer_draw_buffer const& draw_buffer

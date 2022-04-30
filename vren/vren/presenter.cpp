@@ -5,6 +5,7 @@
 #include "context.hpp"
 #include "toolbox.hpp"
 #include "vk_helpers/image_layout_transitions.hpp"
+#include "vk_helpers/debug_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Swapchain frame
@@ -74,9 +75,12 @@ vren::swapchain::swapchain(
 {
 	for (VkImage image : m_images)
 	{
-		m_image_views.push_back(
-			vren::vk_utils::create_image_view(*m_context, image, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT)
-		);
+		auto image_view = vren::vk_utils::create_image_view(*m_context, image, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_IMAGE, (uint64_t) image, "swapchain_image");
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view.m_handle, "swapchain_image_view");
+
+		m_image_views.push_back(std::move(image_view));
 
 		vren::swapchain_frame_data frame_data(*m_context);
 		m_frame_data.emplace_back(std::move(frame_data));
@@ -251,16 +255,10 @@ void vren::presenter::present(render_func_t const& render_func)
 		throw std::runtime_error("Acquirement of the next swapchain image failed");
 	}
 
-	/* Image layout transition from undefined image layout to color attachment */
-	vren::vk_utils::transition_image_layout_undefined_to_color_attachment(cmd_buf->m_handle, m_swapchain->m_images.at(img_idx));
-
-	/* Render pass */
+	// Frame callback
 	render_func(m_current_frame_idx, img_idx, *m_swapchain, cmd_buf->m_handle, frame_data.m_resource_container);
 
-	/* Image layout transition from color attachment to present */
-	vren::vk_utils::transition_image_layout_color_attachment_to_present(cmd_buf->m_handle, m_swapchain->m_images.at(img_idx));
-
-	/* Submit */
+	// Submit
 	VREN_CHECK(vkEndCommandBuffer(cmd_buf->m_handle), m_context);
 
 	VkPipelineStageFlags wait_dst_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -277,7 +275,7 @@ void vren::presenter::present(render_func_t const& render_func)
 	};
 	VREN_CHECK(vkQueueSubmit(m_context->m_graphics_queue, 1, &submit_info, frame_data.m_frame_fence.m_handle), m_context);
 
-	/* Present */
+	// Present
 	VkPresentInfoKHR present_info{
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = nullptr,
@@ -300,4 +298,58 @@ void vren::presenter::present(render_func_t const& render_func)
 	}
 
 	m_current_frame_idx = (m_current_frame_idx + 1) % m_swapchain->m_frame_data.size();
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::render_graph_node* vren::blit_color_buffer_to_swapchain_image(vren::vk_utils::color_buffer_t const& color_buffer, uint32_t width, uint32_t height, VkImage swapchain_image, uint32_t swapchain_image_width, uint32_t swapchain_image_height)
+{
+	auto node = new vren::render_graph_node();
+	node->set_name("blit_color_buffer_to_swapchain_image");
+	node->set_in_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
+	node->add_image(
+		{ .m_name = "color_buffer", .m_image = color_buffer.get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VK_ACCESS_TRANSFER_READ_BIT
+	);
+	node->add_image(
+		{ .m_name = "swapchain_image", .m_image = swapchain_image, .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_ACCESS_TRANSFER_WRITE_BIT
+	);
+	node->set_callback([=, &color_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		VkImageBlit image_blit{
+			.srcSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 },
+			.srcOffsets = {
+				{ 0, 0, 0 },
+				{ (int32_t) width, (int32_t) height, 1 },
+			},
+			.dstSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1, },
+			.dstOffsets = {
+				{ 0, 0, 0 },
+				{ (int32_t) swapchain_image_width, (int32_t) swapchain_image_height, 1 }
+			},
+		};
+		vkCmdBlitImage(command_buffer, color_buffer.get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchain_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
+	});
+	return node;
+}
+
+vren::render_graph_node* vren::transit_swapchain_image_to_present_layout(VkImage swapchain_image)
+{
+	auto node = new vren::render_graph_node();
+	node->set_name("transit_swapchain_image_to_present_layout");
+	node->set_in_stage(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+	node->add_image(
+		{ .m_name = "swapchain_image", .m_image = swapchain_image, .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		VK_ACCESS_NONE_KHR
+	);
+	node->set_callback([](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+	});
+	return node;
 }

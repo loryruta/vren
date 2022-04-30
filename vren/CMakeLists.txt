@@ -44,7 +44,6 @@ set(SRC
         vren/toolbox.cpp
         vren/vk_helpers/shader.hpp
         vren/vk_helpers/shader.cpp
-        vren/vk_helpers/barrier.cpp
         vren/vk_helpers/barrier.hpp
         vren/debug_renderer.hpp
         vren/debug_renderer.cpp

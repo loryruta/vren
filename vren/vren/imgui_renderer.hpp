@@ -10,6 +10,7 @@
 
 #include "base/resource_container.hpp"
 #include "renderer.hpp"
+#include "render_graph.hpp"
 
 namespace vren
 {
@@ -24,25 +25,18 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
+		GLFWwindow* m_window;
+
+		vren::vk_render_pass m_render_pass;
 
 		VkDescriptorPool m_descriptor_pool;
 
 		vren::vk_render_pass create_render_pass();
 
 	public:
-		vren::vk_render_pass m_render_pass;
-
-		GLFWwindow* m_window;
-
-		explicit imgui_renderer(vren::context const& ctx, GLFWwindow* window);
+		explicit imgui_renderer(vren::context const& context, GLFWwindow* window);
 		~imgui_renderer();
 
-		void render(
-			uint32_t frame_idx,
-			VkCommandBuffer cmd_buf,
-            vren::resource_container& res_container,
-			vren::render_target const& target,
-			std::function<void()> const& show_guis_func
-		);
+		vren::render_graph_node* render(vren::render_target const& render_target, std::function<void()> const& show_ui_callback);
 	};
 }

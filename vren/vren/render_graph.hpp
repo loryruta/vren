@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <vector>
 #include <functional>
 #include <optional>
@@ -19,18 +20,26 @@ namespace vren
 
 	struct render_graph_node_image_resource
 	{
-		VkImage m_image;
-		VkImageLayout m_image_layout;
-		VkImageSubresourceRange m_image_subresource_range;
+		std::string m_name = "unnamed";
 
-		bool operator==(render_graph_node_image_resource const& other) const;
+		VkImage m_image;
+		VkImageAspectFlags m_image_aspect;
+		uint32_t m_mip_level = 0;
+		uint32_t m_layer = 0;
+
+		inline bool operator==(render_graph_node_image_resource const& other) const
+		{
+			return m_image == other.m_image && (m_image_aspect & other.m_image_aspect) && m_mip_level == other.m_mip_level && m_layer == other.m_layer;
+		}
 	};
 
-	inline auto describe_image(VkImage image, VkImageLayout image_layout, VkImageAspectFlags image_aspect, uint32_t mip_level = 0, uint32_t layer = 0)
+	struct render_graph_node_image_resource_hasher
 	{
-		VkImageSubresourceRange subresource_range = { .aspectMask = image_aspect, .baseMipLevel = mip_level, .levelCount = 1, .baseArrayLayer = layer, .layerCount = 1 };
-		return render_graph_node_image_resource{ .m_image = image, .m_image_layout = image_layout, .m_image_subresource_range = subresource_range };
-	}
+		uint64_t operator()(render_graph_node_image_resource const& value) const
+		{
+			return uint64_t(value.m_image) ^ value.m_image_aspect ^ (uint64_t(value.m_mip_level) << 32) ^ (value.m_layer);
+		}
+	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Buffer resource
@@ -38,17 +47,14 @@ namespace vren
 
 	struct render_graph_node_buffer_resource
 	{
+		std::string m_name = "unnamed";
+
 		VkBuffer m_buffer;
 		VkDeviceSize m_size;
 		VkDeviceSize m_offset;
 
 		bool operator==(render_graph_node_buffer_resource const& other) const;
 	};
-
-	inline auto describe_buffer(VkBuffer buffer, VkDeviceSize size, VkDeviceSize offset = 0)
-	{
-		return render_graph_node_buffer_resource{ .m_buffer = buffer, .m_size = size, .m_offset = offset };
-	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph node
@@ -62,9 +68,11 @@ namespace vren
 		using callback_t = std::function<void(uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)>;
 
 	private:
+		std::string m_name = "unnamed";
+
 		VkPipelineStageFlags m_in_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		VkPipelineStageFlags m_out_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		std::vector<std::pair<render_graph_node_image_resource, VkAccessFlags>> m_image_resources;
+		std::vector<std::tuple<render_graph_node_image_resource, VkImageLayout, VkAccessFlags>> m_image_resources;
 		std::vector<std::pair<render_graph_node_buffer_resource, VkAccessFlags>> m_buffer_resources;
 
 		callback_t m_callback;
@@ -74,6 +82,12 @@ namespace vren
 
 	public:
 		explicit render_graph_node() = default;
+
+		inline auto set_name(std::string const& name)
+		{
+			m_name = name;
+			return this;
+		}
 
 		inline auto set_in_stage(VkPipelineStageFlags stage)
 		{
@@ -87,9 +101,9 @@ namespace vren
 			return this;
 		}
 
-		inline auto add_image(render_graph_node_image_resource&& image_resource, VkAccessFlags access_flags)
+		inline auto add_image(render_graph_node_image_resource&& image_resource, VkImageLayout image_layout, VkAccessFlags access_flags)
 		{
-			m_image_resources.emplace_back(image_resource, access_flags);
+			m_image_resources.emplace_back(image_resource, image_layout, access_flags);
 			return this;
 		}
 
@@ -126,6 +140,13 @@ namespace vren
 
 			return this;
 		}
+
+		inline auto chain(render_graph_node* following)
+		{
+			add_following(following);
+
+			return following;
+		}
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -144,6 +165,7 @@ namespace vren
 		explicit render_graph_executor() = default;
 
 	private:
+		void initialize_image_layout(vren::render_graph_node const& node, std::tuple<vren::render_graph_node_image_resource, VkImageLayout, VkAccessFlags> const& image_resource, VkCommandBuffer command_buffer);
 		void place_barriers(vren::render_graph_node const& node, VkCommandBuffer command_buffer);
 		void execute_node(vren::render_graph_node const& node, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
@@ -158,9 +180,10 @@ namespace vren
 	class render_graph_handler
 	{
 	private:
-		render_graph_t const& m_handle;
+		render_graph_t m_handle;
 
 	public:
+		explicit render_graph_handler() = default;
 		explicit render_graph_handler(render_graph_t const& handle) :
 			m_handle(std::move(handle))
 		{}
@@ -174,7 +197,7 @@ namespace vren
 
 	// ------------------------------------------------------------------------------------------------
 
-	render_graph_node* clear_color_buffer(VkImage color_buffer, VkImageSubresourceRange subresource_range, VkClearColorValue clear_color_value);
-	render_graph_node* clear_depth_stencil_buffer(VkImage depth_buffer, VkImageSubresourceRange subresource_range, VkClearDepthStencilValue clear_depth_stencil_value);
+	render_graph_node* clear_color_buffer(VkImage color_buffer, VkClearColorValue clear_color_value);
+	render_graph_node* clear_depth_stencil_buffer(VkImage depth_buffer, VkClearDepthStencilValue clear_depth_stencil_value);
 }
 

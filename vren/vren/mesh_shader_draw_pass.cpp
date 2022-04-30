@@ -6,10 +6,8 @@
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
-vren::mesh_shader_draw_pass::mesh_shader_draw_pass(vren::context const& context, VkRenderPass render_pass, uint32_t subpass_idx) :
+vren::mesh_shader_draw_pass::mesh_shader_draw_pass(vren::context const& context) :
 	m_context(&context),
-	m_render_pass(render_pass),
-	m_subpass_idx(subpass_idx),
 	m_pipeline(create_graphics_pipeline())
 {}
 
@@ -112,6 +110,18 @@ vren::vk_utils::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline()
 		.pDynamicStates = dynamic_states
 	};
 
+	// Pipeline rendering
+	VkFormat color_attachment_formats[] { VREN_COLOR_BUFFER_OUTPUT_FORMAT };
+	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+		.pNext = nullptr,
+		.viewMask = 0,
+		.colorAttachmentCount = std::size(color_attachment_formats),
+		.pColorAttachmentFormats = color_attachment_formats,
+		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
+		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+	};
+
 	/* */
 
 	vren::vk_utils::shader shaders[]{
@@ -131,8 +141,7 @@ vren::vk_utils::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline()
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		m_render_pass,
-		m_subpass_idx
+		&pipeline_rendering_info
 	);
 }
 

@@ -21,70 +21,54 @@
 
 vren::vk_render_pass vren::imgui_renderer::create_render_pass()
 {
-	VkAttachmentDescription color_attachment{};
-	color_attachment.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentDescription depth_attachment{};
-	depth_attachment.format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT;
-	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	// Subpass
-	VkAttachmentReference color_attachment_ref{};
-	color_attachment_ref.attachment = 0;
-	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depth_attachment_ref{};
-	depth_attachment_ref.attachment = 1;
-	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &color_attachment_ref;
-	subpass.pDepthStencilAttachment = &depth_attachment_ref;
-
-	VkSubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-	std::vector<VkAttachmentDescription> attachments{
-		color_attachment,
-		depth_attachment
+	VkAttachmentDescription color_attachment{
+		.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	};
 
-	VkRenderPassCreateInfo render_pass_info{};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = attachments.size();
-	render_pass_info.pAttachments = attachments.data();
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = 1;
-	render_pass_info.pDependencies = &dependency;
+	VkAttachmentReference color_attachment_ref{
+		.attachment = 0,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	};
+
+	VkSubpassDescription subpass{
+		.flags = NULL,
+		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+		.inputAttachmentCount = 0,
+		.pInputAttachments = nullptr,
+		.colorAttachmentCount = 1,
+		.pColorAttachments = &color_attachment_ref,
+		.pResolveAttachments = nullptr,
+		.pDepthStencilAttachment = nullptr,
+		.preserveAttachmentCount = 0,
+		.pPreserveAttachments = nullptr
+	};
+
+	VkRenderPassCreateInfo render_pass_info{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.attachmentCount = 1,
+		.pAttachments = &color_attachment,
+		.subpassCount = 1,
+		.pSubpasses = &subpass,
+		.dependencyCount = 0, // Dependencies are expressed through barriers placed by the render-graph
+		.pDependencies = nullptr
+	};
 
 	VkRenderPass render_pass;
 	VREN_CHECK(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass), m_context);
 	return vren::vk_render_pass(*m_context, render_pass);
 }
 
-vren::imgui_renderer::imgui_renderer(vren::context const& ctx, GLFWwindow* window) :
-	m_context(&ctx),
+vren::imgui_renderer::imgui_renderer(vren::context const& context, GLFWwindow* window) :
+	m_context(&context),
 	m_window(window),
 	m_render_pass(create_render_pass())
 {
@@ -98,7 +82,7 @@ vren::imgui_renderer::imgui_renderer(vren::context const& ctx, GLFWwindow* windo
 
 	ImGui_ImplVulkan_LoadFunctions([](char const* func_name, void* user_data) {
 		return (PFN_vkVoidFunction) vkGetInstanceProcAddr((VkInstance) user_data, func_name);
-	}, ctx.m_instance);
+	}, context.m_instance);
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
@@ -123,15 +107,15 @@ vren::imgui_renderer::imgui_renderer(vren::context const& ctx, GLFWwindow* windo
 	pool_info.maxSets = 1024;
 	pool_info.poolSizeCount = std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
-	VREN_CHECK(vkCreateDescriptorPool(ctx.m_device, &pool_info, nullptr, &m_descriptor_pool), m_context);
+	VREN_CHECK(vkCreateDescriptorPool(context.m_device, &pool_info, nullptr, &m_descriptor_pool), m_context);
 
 	/* Create ImGui render pass */
 	ImGui_ImplVulkan_InitInfo init_info{};
-	init_info.Instance = ctx.m_instance;
-	init_info.PhysicalDevice = ctx.m_physical_device;
-	init_info.Device = ctx.m_device;
-	init_info.QueueFamily = ctx.m_queue_families.m_graphics_idx;
-	init_info.Queue = ctx.m_graphics_queue;
+	init_info.Instance = context.m_instance;
+	init_info.PhysicalDevice = context.m_physical_device;
+	init_info.Device = context.m_device;
+	init_info.QueueFamily = context.m_queue_families.m_graphics_idx;
+	init_info.Queue = context.m_graphics_queue;
 	init_info.PipelineCache = nullptr;
 	init_info.DescriptorPool = m_descriptor_pool;
 	init_info.Subpass = 0;
@@ -159,42 +143,56 @@ vren::imgui_renderer::~imgui_renderer()
 	vkDestroyDescriptorPool(m_context->m_device, m_descriptor_pool, nullptr);
 }
 
-void vren::imgui_renderer::render(
-	uint32_t frame_idx,
-	VkCommandBuffer cmd_buf,
-	vren::resource_container& res_container,
-	vren::render_target const& target,
-	std::function<void()> const& show_guis_func
-)
+vren::render_graph_node* vren::imgui_renderer::render(vren::render_target const& render_target, std::function<void()> const& show_ui_callback)
 {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
+	auto node = new vren::render_graph_node();
+	node->set_name("debug_renderer | render");
+	node->set_in_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	node->set_out_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+	node->add_image(
+		{ .m_name = "color_buffer", .m_image = render_target.m_color_buffer->get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+	);
+	node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		// Create UIs
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
-	show_guis_func();
+		show_ui_callback();
 
-	VkClearValue clear_values[] = {
-		{},
-		{ .depthStencil = { 1.0f, 0 } }
-	};
+		// Create a temporary framebuffer (to emulate dynamic rendering feature since ImGui Vulkan backend doesn't support it)
+		VkImageView attachments[] { render_target.m_color_buffer->get_image_view() };
+		auto framebuffer_size = render_target.m_render_area.extent;
+		auto framebuffer = std::make_shared<vren::vk_framebuffer>(
+			vren::vk_utils::create_framebuffer(*m_context, m_render_pass.m_handle, framebuffer_size.width, framebuffer_size.height, attachments)
+		);
+		resource_container.add_resource(framebuffer);
 
-	VkRenderPassBeginInfo begin_info{};
-	begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	begin_info.pNext = nullptr;
-	begin_info.renderPass = m_render_pass.m_handle;
-	begin_info.framebuffer = target.m_framebuffer;
-	begin_info.renderArea = target.m_render_area;
-	begin_info.clearValueCount = 2;
-	begin_info.pClearValues = clear_values;
+		// Render-pass begin
+		VkRenderPassBeginInfo render_pass_begin_info{
+			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+			.pNext = nullptr,
+			.renderPass = m_render_pass.m_handle,
+			.framebuffer = framebuffer->m_handle,
+			.renderArea = render_target.m_render_area,
+			.clearValueCount = 0,
+			.pClearValues = nullptr
+		};
+		vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBeginRenderPass(cmd_buf, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
+		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-	vkCmdSetViewport(cmd_buf, 0, 1, &target.m_viewport);
-	vkCmdSetScissor(cmd_buf, 0, 1, &target.m_render_area);
+		// Recording
+		ImGui::Render();
+		ImDrawData* draw_data = ImGui::GetDrawData();
+		ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
 
-	ImGui::Render();
-	ImDrawData* draw_data = ImGui::GetDrawData();
-	ImGui_ImplVulkan_RenderDrawData(draw_data, cmd_buf);
-
-	vkCmdEndRenderPass(cmd_buf);
+		// Render-pass end
+		vkCmdEndRenderPass(command_buffer);
+	});
+	return node;
 }

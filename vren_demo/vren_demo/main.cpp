@@ -19,6 +19,7 @@
 #include <vren/imgui_renderer.hpp>
 #include <vren/utils/profiler.hpp>
 #include <vren/vk_helpers/barrier.hpp>
+#include <vren/render_graph.hpp>
 #include <vren/debug_renderer.hpp>
 #include <vren/depth_buffer_pyramid.hpp>
 
@@ -94,7 +95,7 @@ void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 
 	if (key == GLFW_KEY_F5 && action == GLFW_PRESS) {
-		g_show_depth_buffer_pyramid = true;
+		g_show_depth_buffer_pyramid = !g_show_depth_buffer_pyramid;
 	}
 
 	if (g_show_depth_buffer_pyramid) {
@@ -301,7 +302,7 @@ vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer(
 
 int main(int argc, char* argv[])
 {
-	//setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
+	setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
 	setvbuf(stderr, NULL, _IONBF, 0);
 
 	if (argc != (1 + 1))
@@ -369,28 +370,21 @@ int main(int argc, char* argv[])
 	auto surface = std::make_shared<vren::vk_surface_khr>(context, surface_handle);
 
 	// Color buffers
-	std::vector<vren::vk_utils::color_buffer> color_buffers;
+	std::vector<vren::vk_utils::color_buffer_t> color_buffers;
 
 	// Depth buffer
-	std::unique_ptr<vren::vk_utils::depth_buffer> depth_buffer;
-
-	// Framebuffers
-	std::vector<vren::vk_framebuffer> basic_renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> mesh_shader_renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> debug_renderer_framebuffers;
-	std::vector<vren::vk_framebuffer> imgui_renderer_framebuffers;
+	std::unique_ptr<vren::vk_utils::depth_buffer_t> depth_buffer;
 
 	// Depth buffer pyramid
 	std::unique_ptr<vren::depth_buffer_pyramid> depth_buffer_pyramid;
 
 	// Presenter
-	vren::presenter presenter(context, surface, [&](vren::swapchain const& swapchain) // Function called every time the swapchain is re-created
-	{
+	vren::presenter presenter(context, surface, [&](vren::swapchain const& swapchain) {
 		// Re-create color buffers
 		color_buffers.clear();
 		for (uint32_t i = 0; i < swapchain.m_images.size(); i++) {
 			color_buffers.push_back(
-				vren::vk_utils::create_color_buffer(context, swapchain.m_image_width, swapchain.m_image_height, VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+				vren::vk_utils::create_color_buffer(context, swapchain.m_image_width, swapchain.m_image_height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 			);
 		}
 
@@ -398,31 +392,12 @@ int main(int argc, char* argv[])
 		uint32_t padded_width = vren::round_to_nearest_multiple_of_power_of_2(swapchain.m_image_width, 32); // The depth buffer size must be padded to a multiple of 32 for efficiency reasons
 		uint32_t padded_height = vren::round_to_nearest_multiple_of_power_of_2(swapchain.m_image_height, 32);
 
-		depth_buffer = std::make_unique<vren::vk_utils::depth_buffer>(
+		depth_buffer = std::make_unique<vren::vk_utils::depth_buffer_t>(
 			vren::vk_utils::create_depth_buffer(context, padded_width, padded_height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 		);
 
 		// Re-create depth buffer pyramid
 		depth_buffer_pyramid = std::make_unique<vren::depth_buffer_pyramid>(context, padded_width, padded_height);
-
-		// Framebuffers
-		auto recreate_framebuffers = [&](std::vector<vren::vk_framebuffer>& framebuffers, VkRenderPass render_pass)
-		{
-			for (uint32_t i = 0; i < swapchain.m_images.size(); i++)
-			{
-				VkImageView attachments[]{
-					color_buffers.at(i).m_image_view.m_handle,
-					depth_buffer->m_image_view.m_handle
-				};
-				framebuffers.push_back(
-					vren::vk_utils::create_framebuffer(context, render_pass, attachments, swapchain.m_image_width, swapchain.m_image_height)
-				);
-			}
-		};
-		recreate_framebuffers(basic_renderer_framebuffers,       basic_renderer->m_render_pass.m_handle);
-		recreate_framebuffers(mesh_shader_renderer_framebuffers, mesh_shader_renderer->m_render_pass.m_handle);
-		recreate_framebuffers(debug_renderer_framebuffers,       debug_renderer->m_render_pass.m_handle);
-		recreate_framebuffers(imgui_renderer_framebuffers,       imgui_renderer->m_render_pass.m_handle);
 	});
 
 	// Depth buffer pyramid reductor
@@ -505,11 +480,9 @@ int main(int argc, char* argv[])
         {
 			vkCmdSetCheckpointNV(command_buffer, "Frame start");
 
-			VkImage color_buffer_image = color_buffers.at(frame_idx).m_image.m_image.m_handle;
-			VkImageView color_buffer_image_view = color_buffers.at(frame_idx).m_image_view.m_handle;
+			auto& color_buffer = color_buffers.at(frame_idx);
 
-			VkImage depth_buffer_image = depth_buffer->m_image.m_image.m_handle;
-			VkImageView depth_buffer_image_view = depth_buffer->m_image_view.m_handle;
+			vren::render_target render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *depth_buffer);
 
 			// Material uploading
 			context.m_toolbox->m_material_manager.sync_buffer(frame_idx, command_buffer);
@@ -535,113 +508,111 @@ int main(int argc, char* argv[])
 			prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
 			prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 
-			// Clear color buffer
-			vren::vk_utils::image_barrier_before_transfer_stage(command_buffer, color_buffer_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT); // Just for layout transition
+			// Render-graph begin
+			vren::render_graph_node* render_graph_head;
+			vren::render_graph_node* node;
 
-			vren::vk_utils::image_barrier_after_transfer_stage(command_buffer, color_buffer_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
+			// Clear color buffer
+			node = vren::clear_color_buffer(color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+			render_graph_head = node;
 
 			// Clear depth buffer
-			vren::vk_utils::image_barrier_before_transfer_stage(command_buffer, depth_buffer_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
-
-			vren::vk_utils::clear_color_image(command_buffer, color_buffer_image, {0.45f, 0.45f, 0.45f, 0.0f});
-			vren::vk_utils::clear_depth_image(command_buffer, depth_buffer_image, {.depth = 1.0f, .stencil = 0});
-
-			vren::vk_utils::image_barrier_after_transfer_stage(command_buffer, depth_buffer_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+			node = node->chain(
+				vren::clear_depth_stencil_buffer(depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 })
+			);
 
 			// Render scene
-			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::MainPass, [&]()
+			if (g_renderer_type == renderer_type::BASIC_RENDERER)
 			{
-				if (g_renderer_type == renderer_type::BASIC_RENDERER)
-				{
+				node = node->chain(
 					basic_renderer->render(
-						frame_idx,
-						command_buffer,
-						resource_container,
-						vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, basic_renderer_framebuffers.at(swapchain_image_idx).m_handle),
+						render_target,
 						{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() },
 						*light_array,
 						basic_renderer_draw_buffer
-					);
-				}
-				else if (g_renderer_type == renderer_type::MESH_SHADER_RENDERER)
-				{
+					)
+				);
+			}
+			else if (g_renderer_type == renderer_type::MESH_SHADER_RENDERER)
+			{
+				node = node->chain(
 					mesh_shader_renderer->render(
-						frame_idx,
-						command_buffer,
-						resource_container,
-						vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, mesh_shader_renderer_framebuffers.at(swapchain_image_idx).m_handle),
+						render_target,
 						{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() },
 						*light_array,
 						mesh_shader_renderer_draw_buffer
-					);
-				}
-			});
+					)
+				);
+			}
 
-			// Copy depth buffer to depth buffer pyramid base
-			vren::vk_utils::image_barrier_after_late_fragment_tests_stage_before_compute_stage(command_buffer, depth_buffer_image, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
+			// Build depth buffer pyramid
+			node = node->chain(
+				depth_buffer_reductor.copy_and_reduce(*depth_buffer, *depth_buffer_pyramid)
+			);
+			while (node->get_following_nodes().size() > 0) {
+				node = node->get_following_nodes()[0];
+			}
 
-			depth_buffer_reductor.copy_depth_buffer_at_depth_buffer_pyramid_base(frame_idx, command_buffer, resource_container, depth_buffer_image_view, *depth_buffer_pyramid);
+			// Debug general purpose objects
+			node = node->chain(
+				debug_renderer->render(render_target, camera_data, debug_draw_buffer)
+			);
 
-			vren::vk_utils::image_barrier_after_compute_stage(command_buffer, depth_buffer_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-			depth_buffer_reductor.reduce(frame_idx, command_buffer, resource_container, *depth_buffer_pyramid);
-
-			// Render debug elements
+			// Debug meshlets
+			if (g_show_meshlets)
 			{
-				auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, debug_renderer_framebuffer.get_framebuffer(swapchain_image_idx));
+				node = node->chain(
+					debug_renderer->render(render_target, camera_data, meshlet_debug_draw_buffer)
+				);
+			}
 
-				debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, debug_draw_buffer);
-
-				if (g_show_meshlets) {
-					debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, meshlet_debug_draw_buffer);
-				}
-
-				if (g_show_meshlet_bounds) {
-					debug_renderer->render(frame_idx, command_buffer, resource_container, render_target, camera_data, meshlet_bounds_debug_draw_buffer);
-				}
+			// Debug meshlet bounds
+			if (g_show_meshlet_bounds)
+			{
+				node = node->chain(
+					debug_renderer->render(render_target, camera_data, meshlet_bounds_debug_draw_buffer)
+				);
 			}
 
 			// Debug depth buffer pyramid
 			if (g_show_depth_buffer_pyramid)
 			{
-				vren::vk_utils::image_barrier_after_color_attachment_output_stage_before_transfer_stage(command_buffer, color_buffer_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
-
-				VkImageBlit image_blit{
-					.srcSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = g_depth_buffer_pyramid_level, .baseArrayLayer = 0, .layerCount = 1 },
-					.srcOffsets = {
-						{ 0, 0, 0 },
-						{ (int32_t) depth_buffer_pyramid->get_image_width(g_depth_buffer_pyramid_level), (int32_t) depth_buffer_pyramid->get_image_height(g_depth_buffer_pyramid_level), 1 },
-					},
-					.dstSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1, },
-					.dstOffsets = {
-						{ 0, 0, 0 },
-						{ (int32_t) swapchain.m_image_width, (int32_t) swapchain.m_image_height, 1 }
-					},
-				};
-				vkCmdBlitImage(command_buffer, depth_buffer_pyramid->get_image(), VK_IMAGE_LAYOUT_GENERAL, color_buffer_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_NEAREST);
-
-				vren::vk_utils::image_barrier_after_transfer_stage_before_color_attachment_output_stage(command_buffer, color_buffer_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
+				node = node->chain(
+					vren::blit_depth_buffer_pyramid_level_to_color_buffer(*depth_buffer_pyramid, g_depth_buffer_pyramid_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
+				);
 			}
 
-			// UI
-			profiler.profile(frame_idx, command_buffer, resource_container, prof_slot + vren_demo::profile_slot::UiPass, [&]()
-			{
-				vren::vk_utils::image_barrier_after_color_attachment_output_stage_before_transfer_stage(command_buffer, color_buffer_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
+			// Render UI
+			node = node->chain(
+				imgui_renderer->render(render_target, [&]() {
+					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
+					ui.show(*light_array);
+				})
+			);
 
-				imgui_renderer->render(
-					frame_idx,
-					command_buffer,
-					resource_container,
-					vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, mesh_shader_renderer_framebuffer.get_framebuffer(swapchain_image_idx)),
-					[&]() {
-						ui.m_fps_ui.notify_frame_profiling_data(prof_info);
-						ui.show(*light_array);
-					});
+			// Blit to swapchain image
+			node = node->chain(
+				vren::blit_color_buffer_to_swapchain_image(
+					color_buffer,
+					swapchain.m_image_width, swapchain.m_image_height,
+					swapchain.m_images.at(swapchain_image_idx),
+					swapchain.m_image_width, swapchain.m_image_height
+				)
+			);
 
-				vkCmdSetCheckpointNV(command_buffer, "ImGui drawn");
-			});
+			// Ensure swapchain image is in present layout
+			node = node->chain(
+				vren::transit_swapchain_image_to_present_layout(swapchain.m_images.at(swapchain_image_idx))
+			);
 
-			vkCmdSetCheckpointNV(command_buffer, "Frame end");
+			// Render-graph end
+			(void) node;
+
+			// Execute render-graph
+			vren::render_graph_handler render_graph({ render_graph_head });
+
+			vren::render_graph_executor render_graph_executor;
+			render_graph_executor.execute(render_graph.get_handle(), frame_idx, command_buffer, resource_container);
 		});
 	}
 
