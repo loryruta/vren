@@ -11,6 +11,7 @@
 #include <vren/renderer.hpp>
 #include <vren/toolbox.hpp>
 #include <vren/vk_helpers/shader.hpp>
+#include <vren/depth_buffer_pyramid.hpp>
 
 #include "scene/tinygltf_parser.hpp"
 
@@ -29,6 +30,11 @@ namespace vren_demo::ui
 		plot();
 
 		void push(float val);
+
+		inline float get_last_value() const
+		{
+			return m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1];
+		}
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -44,6 +50,14 @@ namespace vren_demo::ui
 		scene_ui(vren::context const& ctx);
 
 		void show(vren::light_array& light_arr);
+	};
+
+	struct depth_buffer_pyramid_ui
+	{
+		uint32_t m_selected_level = 0;
+		bool m_show = false;
+
+		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid);
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -93,11 +107,12 @@ namespace vren_demo::ui
 			m_bottom_toolbar_dock_id;
 
 	public:
+		vren_demo::ui::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
 		vren_demo::ui::fps_ui m_fps_ui;
 		vren_demo::ui::scene_ui m_scene_ui;
 
 		main_ui(vren::context const& ctx, vren::basic_renderer const& renderer);
 
-		void show(vren::light_array& light_arr);
+		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_arr);
 	};
 }

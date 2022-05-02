@@ -224,6 +224,17 @@ void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, cha
 	}
 }
 
+void vren_demo::ui::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid)
+{
+	if (ImGui::Begin("Depth buffer pyramid##depth_buffer_pyramid", nullptr, NULL))
+	{
+		ImGui::Checkbox("Show", &m_show);
+		ImGui::SliderInt("Level", (int32_t*) &m_selected_level, 0, depth_buffer_pyramid.get_level_count() - 1);
+
+		ImGui::End();
+	}
+}
+
 void vren_demo::ui::fps_ui::show()
 {
 	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
@@ -232,24 +243,31 @@ void vren_demo::ui::fps_ui::show()
 
 		ImGui::Separator();
 
-		/* General */
+		// General
 		ImGui::Text("FPS: %d", m_fps);
+		ImGui::Text("Frame parallelism: %.1f%%", m_frame_parallelism_plot.get_last_value());
 
 		ImGui::Separator();
 
-		/* Frame profiling */
+		// Frame profiling
 		ImGui::Text("Frame profiling:");
 
-		plot_ui("Frame parallelism##frame_parallelism-frame_ui", m_frame_parallelism_plot, "%");
+		//plot_ui("Frame parallelism##frame_parallelism-frame_ui", m_frame_parallelism_plot, "%");
 		plot_ui("Frame delta##frame_delta-frame_ui", m_frame_delta_plot, "ms");
 
 		ImGui::Separator();
 
-		/* Passes */
-		ImGui::Text("Passes:");
+		// Passes
+		if (ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Text("Main pass: %.3f ms", m_main_pass_plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
+			ImGui::Text("UI pass: %.3f ms", m_main_pass_plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
 
-		plot_ui("Main pass##main_pass-frame_ui", m_main_pass_plot, "ms");
-		plot_ui("UI pass##ui_pass-frame_ui", m_ui_pass_plot, "ms");
+			ImGui::TreePop();
+		}
+
+		//plot_ui("Main pass##main_pass-frame_ui", m_main_pass_plot, "ms");
+		//plot_ui("UI pass##ui_pass-frame_ui", m_ui_pass_plot, "ms");
 	}
 
 	ImGui::End();
@@ -261,7 +279,7 @@ vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::basic_renderer c
 	m_scene_ui(ctx)
 {}
 
-void vren_demo::ui::main_ui::show(vren::light_array& light_array)
+void vren_demo::ui::main_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_array)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
@@ -306,6 +324,8 @@ void vren_demo::ui::main_ui::show(vren::light_array& light_array)
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	m_fps_ui.show();
+
+	m_depth_buffer_pyramid_ui.show(depth_buffer_pyramid);
 
 	//ImGui::ShowDemoWindow();
 	//ImPlot::ShowDemoWindow();

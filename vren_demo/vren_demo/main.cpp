@@ -44,8 +44,6 @@ public:
 auto g_renderer_type = renderer_type::BASIC_RENDERER;
 bool g_show_meshlets = false;
 bool g_show_meshlet_bounds = false;
-bool g_show_depth_buffer_pyramid = false;
-uint32_t g_depth_buffer_pyramid_level = 0;
 
 void update_camera(GLFWwindow* window, float dt, vren_demo::camera& camera, float camera_speed)
 {
@@ -92,19 +90,6 @@ void on_key_press(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
 		g_show_meshlet_bounds = !g_show_meshlet_bounds;
-	}
-
-	if (key == GLFW_KEY_F5 && action == GLFW_PRESS) {
-		g_show_depth_buffer_pyramid = !g_show_depth_buffer_pyramid;
-	}
-
-	if (g_show_depth_buffer_pyramid) {
-		if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
-			g_depth_buffer_pyramid_level = (g_depth_buffer_pyramid_level - 1) % 16;
-		}
-		if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
-			g_depth_buffer_pyramid_level = (g_depth_buffer_pyramid_level + 1) % 16;
-		}
 	}
 
 	if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
@@ -575,10 +560,10 @@ int main(int argc, char* argv[])
 			}
 
 			// Debug depth buffer pyramid
-			if (g_show_depth_buffer_pyramid)
+			if (ui.m_depth_buffer_pyramid_ui.m_show)
 			{
 				node = node->chain(
-					vren::blit_depth_buffer_pyramid_level_to_color_buffer(*depth_buffer_pyramid, g_depth_buffer_pyramid_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
+					vren::blit_depth_buffer_pyramid_level_to_color_buffer(*depth_buffer_pyramid, ui.m_depth_buffer_pyramid_ui.m_selected_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
 				);
 			}
 
@@ -586,7 +571,7 @@ int main(int argc, char* argv[])
 			node = node->chain(
 				imgui_renderer->render(render_target, [&]() {
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
-					ui.show(*light_array);
+					ui.show(*depth_buffer_pyramid, *light_array);
 				})
 			);
 

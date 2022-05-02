@@ -39,16 +39,6 @@ namespace vren
 		std::vector<vren::vk_image_view> create_image_views();
 
 	public:
-		inline VkImage get_image() const
-		{
-			return m_image.m_image.m_handle;
-		}
-
-		inline VkImageView get_image_view(uint32_t level) const
-		{
-			return m_image_views.at(level).m_handle;
-		}
-
 		inline uint32_t get_image_width(uint32_t level) const
 		{
 			return m_base_width >> level;
@@ -57,6 +47,21 @@ namespace vren
 		inline uint32_t get_image_height(uint32_t level) const
 		{
 			return m_base_height >> level;
+		}
+
+		inline uint32_t get_level_count() const
+		{
+			return m_level_count;
+		}
+
+		inline VkImage get_image() const
+		{
+			return m_image.m_image.m_handle;
+		}
+
+		inline VkImageView get_image_view(uint32_t level) const
+		{
+			return m_image_views.at(level).m_handle;
 		}
 	};
 
