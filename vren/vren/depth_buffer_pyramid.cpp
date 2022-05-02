@@ -221,7 +221,7 @@ void write_reduce_pipeline_descriptor_set(
 		.dstSet = descriptor_set,
 		.dstBinding = 0,
 		.dstArrayElement = 0,
-		.descriptorCount = 2,
+		.descriptorCount = std::size(image_info),
 		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 		.pImageInfo = image_info,
 		.pBufferInfo = nullptr,
@@ -294,7 +294,9 @@ vren::render_graph_node* vren::depth_buffer_reductor::reduce_step(vren::depth_bu
 		);
 		m_reduce_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-		m_reduce_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> (5 + current_level + 1), depth_buffer_pyramid.m_base_height >> (5 + current_level + 1), 1);
+		uint32_t num_workgroups_x = (depth_buffer_pyramid.get_image_width(current_level + 1) + 31) >> 5;
+		uint32_t num_workgroups_y = (depth_buffer_pyramid.get_image_height(current_level + 1) + 31) >> 5;
+		m_reduce_pipeline.dispatch(command_buffer, num_workgroups_x, num_workgroups_y, 1);
 	});
 	return node;
 }
@@ -302,17 +304,16 @@ vren::render_graph_node* vren::depth_buffer_reductor::reduce_step(vren::depth_bu
 vren::render_graph_node* vren::depth_buffer_reductor::reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const
 {
 	vren::render_graph_node* head = nullptr;
-	if (depth_buffer_pyramid.m_level_count > 1)
+	vren::render_graph_node* current;
+	for (uint32_t i = 0; i < depth_buffer_pyramid.m_level_count - 1; i++)
 	{
-		head = reduce_step(depth_buffer_pyramid, 0);
-
-		vren::render_graph_node* current = head;
-		for (uint32_t i = 1; i < depth_buffer_pyramid.m_level_count - 1; i++)
-		{
-			auto following = reduce_step(depth_buffer_pyramid, i);
+		auto following = reduce_step(depth_buffer_pyramid, i);
+		if (head == nullptr) {
+			head = following;
+		} else {
 			current->add_following(following);
-			current = following;
 		}
+		current = following;
 	}
 	return head;
 }
