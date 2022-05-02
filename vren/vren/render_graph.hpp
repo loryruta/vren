@@ -13,6 +13,7 @@ namespace vren
 {
 	// Forward decl
 	class render_graph_executor;
+	class render_graph_handler;
 
 	// ------------------------------------------------------------------------------------------------
 	// Image resource
@@ -63,6 +64,7 @@ namespace vren
 	class render_graph_node
 	{
 		friend vren::render_graph_executor;
+		friend vren::render_graph_handler;
 
 	public:
 		using callback_t = std::function<void(uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)>;

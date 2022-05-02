@@ -230,7 +230,20 @@ void vren::render_graph_executor::execute(vren::render_graph_t const& render_gra
 
 vren::render_graph_handler::~render_graph_handler()
 {
-	// TODO deallocate the render_graph
+	std::unordered_set<vren::render_graph_node*> nodes;
+	nodes.insert(m_handle.begin(), m_handle.end());
+
+	while (!nodes.empty())
+	{
+		std::unordered_set<vren::render_graph_node*> new_nodes;
+		for (vren::render_graph_node const* node : nodes)
+		{
+			new_nodes.insert(node->m_following_nodes.begin(), node->m_following_nodes.end());
+			delete node;
+		}
+
+		nodes = std::move(new_nodes);
+	}
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
