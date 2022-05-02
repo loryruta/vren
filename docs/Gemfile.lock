@@ -282,6 +282,7 @@ PLATFORMS
 
 DEPENDENCIES
   github-pages (~> 225)
+  jemoji
   webrick (~> 1.7)
 
 BUNDLED WITH

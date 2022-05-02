@@ -4,5 +4,5 @@ author:
   name: loryruta
   link: "https://github.com/loryruta"
 
-include:
-  - _pages
+plugins:
+  - jemoji
