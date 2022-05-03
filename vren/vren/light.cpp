@@ -64,7 +64,7 @@ vren::vk_descriptor_pool vren::light_array::create_descriptor_pool()
 
 std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::light_array::create_buffers(size_t buffer_size)
 {
-	return create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&]() {
+	return create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t idx) {
 		return vren::vk_utils::alloc_host_visible_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buffer_size, true);
 	});
 }

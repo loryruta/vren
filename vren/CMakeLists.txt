@@ -69,38 +69,30 @@ set(SRC
 add_library(vren ${SRC})
 
 # ------------------------------------------------------------------------------------------------
-# ImGui backend
+# ImGui Vulkan backend binary
 # ------------------------------------------------------------------------------------------------
 
-set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/377b864bb4a9ed9a25674b04f64f63baf221060d/backends/)
+set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/master/backends)
 
-set(IMGUI_BACKEND_DIR ${CMAKE_CURRENT_BINARY_DIR}/imgui_backend)
+set(IMGUI_VULKAN_BACKEND_DIR ${CMAKE_CURRENT_BINARY_DIR}/imgui_vulkan_backend)
 
-file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.cpp ${IMGUI_BACKEND_DIR}/imgui_impl_vulkan.cpp)
-file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.h   ${IMGUI_BACKEND_DIR}/imgui_impl_vulkan.h)
-file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_glfw.cpp   ${IMGUI_BACKEND_DIR}/imgui_impl_glfw.cpp)
-file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_glfw.h     ${IMGUI_BACKEND_DIR}/imgui_impl_glfw.h)
+file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.cpp ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.cpp)
+file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.h ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.h)
 
-set(IMGUI_BACKEND_SRC
-        ${IMGUI_BACKEND_DIR}/imgui_impl_vulkan.cpp
-        ${IMGUI_BACKEND_DIR}/imgui_impl_vulkan.h
-        ${IMGUI_BACKEND_DIR}/imgui_impl_glfw.cpp
-        ${IMGUI_BACKEND_DIR}/imgui_impl_glfw.h
+add_library(vren_imgui_vulkan_backend
+        ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.cpp
+        ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.h
         )
 
-add_library(vren_imgui_backend ${IMGUI_BACKEND_SRC})
+target_compile_definitions(vren_imgui_vulkan_backend PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
-target_compile_definitions(vren_imgui_backend PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
-
+# Vulkan
 find_package(Vulkan REQUIRED)
-target_include_directories(vren_imgui_backend PRIVATE ${Vulkan_INCLUDE_DIRS})
-#target_link_libraries(vren_imgui_backend PRIVATE ${Vulkan_LIBRARIES})
+target_include_directories(vren_imgui_vulkan_backend PRIVATE ${Vulkan_INCLUDE_DIRS})
 
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(vren_imgui_backend PRIVATE glfw)
-
+# ImGui
 find_package(imgui CONFIG REQUIRED)
-target_link_libraries(vren_imgui_backend PRIVATE imgui::imgui)
+target_link_libraries(vren_imgui_vulkan_backend PRIVATE imgui::imgui)
 
 # ------------------------------------------------------------------------------------------------
 # Dependencies
@@ -109,18 +101,18 @@ target_link_libraries(vren_imgui_backend PRIVATE imgui::imgui)
 # Self include
 target_include_directories(vren PUBLIC vren)
 
-# Vulkan
-find_package(Vulkan REQUIRED)
-target_include_directories(vren PUBLIC ${Vulkan_INCLUDE_DIRS})
-#target_link_libraries(vren PUBLIC ${Vulkan_LIBRARIES})
+# volk
+FetchContent_Declare(
+        volk
+        GIT_REPOSITORY https://github.com/zeux/volk
+        GIT_TAG        1.2.198
+)
+FetchContent_MakeAvailable(volk)
+target_link_libraries(vren PUBLIC volk::volk)
 
 # glm
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC glm::glm)
-
-# glfw3
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(vren PRIVATE glfw)
 
 # VulkanMemoryAllocator
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
@@ -130,13 +122,13 @@ target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-me
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC imgui::imgui)
 
-# ImGui backend
-target_include_directories(vren PUBLIC ${IMGUI_BACKEND_DIR})
-target_link_libraries(vren PUBLIC vren_imgui_backend)
-
 # ImPlot
 find_package(implot CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC implot::implot)
+
+# ImGui Vulkan backend
+target_include_directories(vren PUBLIC ${IMGUI_VULKAN_BACKEND_DIR})
+target_link_libraries(vren PUBLIC vren_imgui_vulkan_backend)
 
 # spirv-reflect
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
@@ -149,12 +141,3 @@ target_link_libraries(vren PUBLIC meshoptimizer::meshoptimizer)
 # fmt
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC fmt::fmt)
-
-# volk
-FetchContent_Declare(
-        volk
-        GIT_REPOSITORY https://github.com/zeux/volk
-        GIT_TAG        1.2.198
-)
-FetchContent_MakeAvailable(volk)
-target_link_libraries(vren PUBLIC volk::volk)

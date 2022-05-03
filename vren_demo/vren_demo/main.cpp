@@ -9,6 +9,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/random.hpp>
 #include <meshoptimizer.h>
+#include <imgui_impl_glfw.h>
 
 #include <vren/utils/log.hpp>
 
@@ -343,7 +344,13 @@ int main(int argc, char* argv[])
 	auto basic_renderer = std::make_unique<vren::basic_renderer>(context);
 	auto mesh_shader_renderer = std::make_unique<vren::mesh_shader_renderer>(context);
 	auto debug_renderer = std::make_unique<vren::debug_renderer>(context);
-	auto imgui_renderer = std::make_unique<vren::imgui_renderer>(context, window);
+
+	// Initialize ImGui renderer
+	vren::imgui_renderer imgui_renderer(context, {
+		.m_init_callback      = [window](){ ImGui_ImplGlfw_InitForVulkan(window, true); },
+		.m_new_frame_callback = [](){ ImGui_ImplGlfw_NewFrame(); },
+		.m_shutdown_callback  = [](){ ImGui_ImplGlfw_Shutdown(); }
+	});
 
 	vren::debug_renderer_draw_buffer debug_draw_buffer(context); // General purpose debug draw buffer
 
@@ -459,6 +466,8 @@ int main(int argc, char* argv[])
 		int win_width, win_height;
 		glfwGetWindowSize(window, &win_width, &win_height);
 
+		ImGui_ImplGlfw_NewFrame();
+
 		vren::camera camera_data{ .m_position = camera.m_position, .m_view = camera.get_view(), .m_projection = camera.get_projection() };
 
 		presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
@@ -569,7 +578,7 @@ int main(int argc, char* argv[])
 
 			// Render UI
 			node = node->chain(
-				imgui_renderer->render(render_target, [&]() {
+				imgui_renderer.render(render_target, [&]() {
 					ui.m_fps_ui.notify_frame_profiling_data(prof_info);
 					ui.show(*depth_buffer_pyramid, *light_array);
 				})
@@ -601,7 +610,7 @@ int main(int argc, char* argv[])
 		});
 	}
 
-	vkDeviceWaitIdle(context.m_device);
+	VREN_CHECK(vkDeviceWaitIdle(context.m_device), &context);
 
 	//glfwDestroyWindow(g_window); // TODO Terminate only AFTER Vulkan instance destruction!
 	//glfwTerminate();
