@@ -27,12 +27,16 @@ namespace vren
 		return create_array<_t, _size>([&](uint32_t idx) { return value; });
 	}
 
-	inline uint32_t round_to_nearest_multiple_of_power_of_2(uint32_t value, uint32_t power_of_2)
+	inline constexpr bool is_power_of_2(uint32_t value)
 	{
-		assert(power_of_2 > 0 && (power_of_2 & (power_of_2 - 1)) == 0);
-		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
+		return (value & (value - 1)) == 0;
 	}
 
+	inline uint32_t round_to_nearest_multiple_of_power_of_2(uint32_t value, uint32_t power_of_2)
+	{
+		assert(power_of_2 > 0 && is_power_of_2(power_of_2));
+		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
+	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Bounding sphere

@@ -62,9 +62,8 @@ namespace vren
 	// Basic renderer
 	// ------------------------------------------------------------------------------------------------
 
-	class basic_renderer_draw_buffer
+	struct basic_renderer_draw_buffer
 	{
-	public:
 		struct mesh
 		{
 			uint32_t m_vertex_offset, m_vertex_count;
@@ -73,7 +72,6 @@ namespace vren
 			uint32_t m_material_idx;
 		};
 
-	public:
 		vren::vk_utils::buffer m_vertex_buffer;
 		vren::vk_utils::buffer m_index_buffer;
 		vren::vk_utils::buffer m_instance_buffer;

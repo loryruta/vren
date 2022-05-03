@@ -4,6 +4,8 @@ add_executable(vren_demo
         vren_demo/main.cpp
         vren_demo/camera.hpp
         vren_demo/camera.cpp
+        vren_demo/app.hpp
+        vren_demo/app.cpp
         vren_demo/ui.hpp
         vren_demo/ui.cpp
         vren_demo/scene/intermediate_scene.hpp

@@ -66,19 +66,22 @@ namespace vren
 
 		void add_lines(vren::debug_renderer_line const* lines, size_t line_count);
 
-		inline void add_line(vren::debug_renderer_line const& line) {
+		inline void add_line(vren::debug_renderer_line const& line)
+		{
 			add_lines(&line, 1);
 		}
 
 		void add_points(vren::debug_renderer_point const* points, size_t point_count);
 
-		inline void add_point(vren::debug_renderer_point const& point) {
+		inline void add_point(vren::debug_renderer_point const& point)
+		{
 			add_points(&point, 1);
 		}
 
 		void add_spheres(vren::debug_renderer_sphere const* spheres, size_t sphere_count);
 
-		inline void add_sphere(vren::debug_renderer_sphere const& sphere) {
+		inline void add_sphere(vren::debug_renderer_sphere const& sphere)
+		{
 			add_spheres(&sphere, 1);
 		}
 	};

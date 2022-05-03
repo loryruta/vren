@@ -285,6 +285,7 @@ VkDevice vren::context::create_logical_device()
 
 	/* Extensions */
 	std::vector<char const*> dev_ext = m_info.m_device_extensions;
+	dev_ext.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	dev_ext.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 	dev_ext.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 	dev_ext.push_back(VK_KHR_8BIT_STORAGE_EXTENSION_NAME);

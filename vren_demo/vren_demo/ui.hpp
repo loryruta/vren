@@ -17,8 +17,13 @@
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 
-namespace vren_demo::ui
+namespace vren_demo
 {
+	// Forward decl
+	class app;
+
+	// ------------------------------------------------------------------------------------------------
+
 	struct plot
 	{
 		float m_val[VREN_DEMO_PLOT_SAMPLES_COUNT];
@@ -91,14 +96,13 @@ namespace vren_demo::ui
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// main_ui
+	// UI
 	// ------------------------------------------------------------------------------------------------
 
-	class main_ui
+	class ui
 	{
 	private:
-		vren::context const* m_context;
-		vren::basic_renderer const* m_renderer;
+		vren_demo::app const* m_app;
 
 		ImGuiID
 			m_main_dock_id,
@@ -107,11 +111,11 @@ namespace vren_demo::ui
 			m_bottom_toolbar_dock_id;
 
 	public:
-		vren_demo::ui::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
-		vren_demo::ui::fps_ui m_fps_ui;
-		vren_demo::ui::scene_ui m_scene_ui;
+		vren_demo::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
+		vren_demo::fps_ui m_fps_ui;
+		vren_demo::scene_ui m_scene_ui;
 
-		main_ui(vren::context const& ctx, vren::basic_renderer const& renderer);
+		ui(vren_demo::app const& app);
 
 		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_arr);
 	};

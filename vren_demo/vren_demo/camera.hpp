@@ -1,9 +1,18 @@
 #pragma once
 
+#include <optional>
+
 #include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
+
+#include <vren/gpu_repr.hpp>
 
 namespace vren_demo
 {
+	// ------------------------------------------------------------------------------------------------
+	// Camera
+	// ------------------------------------------------------------------------------------------------
+
 	struct camera
 	{
 		glm::vec3 m_position = {0.0f, 0.0f, 0.0f};
@@ -24,5 +33,30 @@ namespace vren_demo
 
 		glm::mat4 get_view() const;
 		glm::mat4 get_projection() const;
+
+		inline vren::camera to_vren()
+		{
+			return {
+				.m_position = m_position,
+				.m_view = get_view(),
+				.m_projection = get_projection()
+			};
+		}
+	};
+
+	// ------------------------------------------------------------------------------------------------
+	// Freecam controller
+	// ------------------------------------------------------------------------------------------------
+
+	class freecam_controller
+	{
+	private:
+		GLFWwindow* m_window;
+		std::optional<glm::dvec2> m_last_cursor_position;
+
+	public:
+		freecam_controller(GLFWwindow* window);
+
+		void update(vren_demo::camera& camera, float dt, float movement_speed = 1.0f, float rotation_speed = glm::radians(90.0f));
 	};
 }

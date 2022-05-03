@@ -91,27 +91,27 @@ namespace vren
 
 	private:
 		vren::context const* m_context;
-
-		uint32_t pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
-		VkSurfaceFormatKHR pick_surface_format(vren::vk_utils::surface_details const& surf_details);
-        VkPresentModeKHR pick_present_mode(vren::vk_utils::surface_details const& surf_details);
-
-	public:
-		std::shared_ptr<vren::vk_surface_khr> m_surface;
+		vren::vk_surface_khr const* m_surface;
 		std::function<void(vren::swapchain const& swapchain)> m_swapchain_recreate_callback;
 
-        uint32_t m_image_count;
-
-		std::shared_ptr<vren::swapchain> m_swapchain;
+		std::unique_ptr<vren::swapchain> m_swapchain;
 
 		uint32_t m_present_queue_family_idx = -1;
 		uint32_t m_current_frame_idx = 0;
 
-		presenter(
-			vren::context const& context,
-			std::shared_ptr<vren::vk_surface_khr> const& surface,
-			std::function<void(vren::swapchain const& swapchain)> const& swapchain_recreate_callback // When the swapchain is re-created the user is interested in re-creating the attached framebuffers
-		);
+	public:
+		presenter(vren::context const& context, vren::vk_surface_khr const& surface, std::function<void(vren::swapchain const& swapchain)> const& swapchain_recreate_callback);
+
+	private:
+		uint32_t pick_min_image_count(vren::vk_utils::surface_details const& surf_details);
+		VkSurfaceFormatKHR pick_surface_format(vren::vk_utils::surface_details const& surf_details);
+		VkPresentModeKHR pick_present_mode(vren::vk_utils::surface_details const& surf_details);
+
+	public:
+		inline vren::swapchain* get_swapchain() const
+		{
+			return m_swapchain.get();
+		}
 
 		void recreate_swapchain(uint32_t width, uint32_t height);
 

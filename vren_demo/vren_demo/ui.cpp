@@ -10,6 +10,8 @@
 #include <vren/vk_helpers/misc.hpp>
 #include <vren/vk_helpers/shader.hpp>
 
+#include "app.hpp"
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // plot
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -26,13 +28,13 @@ void left_shift_array(_t* arr, size_t size, size_t pos)
 	}
 }
 
-vren_demo::ui::plot::plot()
+vren_demo::plot::plot()
 {
 	std::fill_n(m_val, VREN_DEMO_PLOT_SAMPLES_COUNT, 0);
 	std::fill_n(m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT, 0);
 }
 
-void vren_demo::ui::plot::push(float val)
+void vren_demo::plot::push(float val)
 {
 	m_val_sum = m_val_sum - m_val[0] + val;
 
@@ -50,10 +52,10 @@ void vren_demo::ui::plot::push(float val)
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren_demo::ui::scene_ui::scene_ui(vren::context const& ctx)
+vren_demo::scene_ui::scene_ui(vren::context const& ctx)
 {}
 
-void vren_demo::ui::scene_ui::show(vren::light_array& light_array)
+void vren_demo::scene_ui::show(vren::light_array& light_array)
 {
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
@@ -90,13 +92,13 @@ void vren_demo::ui::scene_ui::show(vren::light_array& light_array)
 // fps_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren_demo::ui::fps_ui::fps_ui()
+vren_demo::fps_ui::fps_ui()
 {
 	std::fill_n(m_frame_start_t, std::size(m_frame_start_t), std::numeric_limits<uint64_t>::infinity());
 	std::fill_n(m_frame_end_t, std::size(m_frame_end_t), 0);
 }
 
-void vren_demo::ui::fps_ui::notify_frame_profiling_data(
+void vren_demo::fps_ui::notify_frame_profiling_data(
 	vren_demo::profile_info const& prof_info
 )
 {
@@ -178,7 +180,7 @@ void vren_demo::ui::fps_ui::notify_frame_profiling_data(
 	}
 }
 
-void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, char const* unit)
+void plot_ui(std::string const& plot_title, vren_demo::plot const& plot, char const* unit)
 {
 	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 	if (ImGui::TreeNode(plot_title.c_str()))
@@ -224,7 +226,7 @@ void plot_ui(std::string const& plot_title, vren_demo::ui::plot const& plot, cha
 	}
 }
 
-void vren_demo::ui::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid)
+void vren_demo::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid)
 {
 	if (ImGui::Begin("Depth buffer pyramid##depth_buffer_pyramid", nullptr, NULL))
 	{
@@ -235,7 +237,7 @@ void vren_demo::ui::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid con
 	}
 }
 
-void vren_demo::ui::fps_ui::show()
+void vren_demo::fps_ui::show()
 {
 	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
 	{
@@ -273,13 +275,12 @@ void vren_demo::ui::fps_ui::show()
 	ImGui::End();
 }
 
-vren_demo::ui::main_ui::main_ui(vren::context const& ctx, vren::basic_renderer const& renderer) :
-	m_context(&ctx),
-	m_renderer(&renderer),
-	m_scene_ui(ctx)
+vren_demo::ui::ui(vren_demo::app const& app) :
+	m_app(&app),
+	m_scene_ui(app.m_context)
 {}
 
-void vren_demo::ui::main_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_array)
+void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_array)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);

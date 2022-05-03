@@ -124,19 +124,17 @@ vren::swapchain& vren::swapchain::operator=(swapchain&& other)
 // Presenter
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::presenter::presenter(
-	vren::context const& context,
-	std::shared_ptr<vren::vk_surface_khr> const& surface,
-	std::function<void(vren::swapchain const& swapchain)> const& swapchain_recreate_callback
-) :
+vren::presenter::presenter(vren::context const& context, vren::vk_surface_khr const& surface, std::function<void(vren::swapchain const& swapchain)> const& swapchain_recreate_callback) :
 	m_context(&context),
-	m_surface(surface),
+	m_surface(&surface),
 	m_swapchain_recreate_callback(swapchain_recreate_callback)
 {
 	m_present_queue_family_idx = context.m_queue_families.m_graphics_idx;
+
 	VkBool32 has_support;
 	vkGetPhysicalDeviceSurfaceSupportKHR(context.m_physical_device, m_present_queue_family_idx, m_surface->m_handle, &has_support);
-	if (!has_support) {
+	if (!has_support)
+	{
 		throw std::runtime_error("Unsupported state: the graphics queue family doesn't have the present support");
 	}
 }
@@ -210,7 +208,7 @@ void vren::presenter::recreate_swapchain(uint32_t width, uint32_t height)
 	};
 	VkSwapchainKHR swapchain;
 	VREN_CHECK(vkCreateSwapchainKHR(m_context->m_device, &swapchain_info, nullptr, &swapchain), m_context);
-	m_swapchain = std::make_shared<vren::swapchain>(*m_context, swapchain, width, height, image_count, surface_format, present_mode);
+	m_swapchain = std::make_unique<vren::swapchain>(*m_context, swapchain, width, height, image_count, surface_format, present_mode);
 
 	m_swapchain_recreate_callback(*m_swapchain);
 }
@@ -348,8 +346,6 @@ vren::render_graph_node* vren::transit_swapchain_image_to_present_layout(VkImage
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 		VK_ACCESS_NONE_KHR
 	);
-	node->set_callback([](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
-	{
-	});
+	node->set_callback([](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) {});
 	return node;
 }
