@@ -37,8 +37,8 @@ void traverse_node(vren::render_graph_node const& node, bool callback_this_node,
 		return;
 	}
 
-	for (vren::render_graph_node const* following_node : node.get_following_nodes()) {
-		traverse_node(*following_node, true, callback);
+	for (vren::render_graph_node const* next_node : node.get_next_nodes()) {
+		traverse_node(*next_node, true, callback);
 	}
 }
 
@@ -128,13 +128,13 @@ void vren::render_graph_executor::place_barriers(vren::render_graph_node const& 
 	{
 		std::unordered_set<vren::render_graph_node const*> generated_barriers;
 
-		traverse_node(node, /* callback_this_node */ false, [&](vren::render_graph_node const& following_node) -> bool
+		traverse_node(node, /* callback_this_node */ false, [&](vren::render_graph_node const& next_node) -> bool
 		{
-			if (generated_barriers.contains(&following_node)) {
+			if (generated_barriers.contains(&next_node)) {
 				return false;
 			}
 
-			for (auto const& resource_2 : following_node.m_buffer_resources)
+			for (auto const& resource_2 : next_node.m_buffer_resources)
 			{
 				auto const& [buffer_1, access_flags_1] = resource_1;
 				auto const& [buffer_2, access_flags_2] = resource_2;
@@ -152,7 +152,7 @@ void vren::render_graph_executor::place_barriers(vren::render_graph_node const& 
 						.offset = buffer_1.m_offset,
 						.size = buffer_1.m_size
 					};
-					vkCmdPipelineBarrier(command_buffer, node.m_out_stage, following_node.m_in_stage, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+					vkCmdPipelineBarrier(command_buffer, node.m_out_stage, next_node.m_in_stage, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
 					//VREN_INFO("render_graph_executor | \"{}\" < Pipeline barrier for buffer \"{}\" > \"{}\"\n", node.m_name, buffer_1.m_name, following_node.m_name);
 
@@ -214,8 +214,8 @@ void vren::render_graph_executor::execute(vren::render_graph_t const& render_gra
 		std::unordered_set<vren::render_graph_node*> next_concurrent_nodes; // Unordered set is used to avoid duplicated nodes
 		for (vren::render_graph_node const* node : concurrent_nodes)
 		{
-			auto const& following_nodes = node->get_following_nodes();
-			next_concurrent_nodes.insert(following_nodes.begin(), following_nodes.end());
+			auto const& next_nodes = node->get_next_nodes();
+			next_concurrent_nodes.insert(next_nodes.begin(), next_nodes.end());
 		}
 
 		concurrent_nodes = std::move(next_concurrent_nodes);
@@ -238,7 +238,7 @@ vren::render_graph_handler::~render_graph_handler()
 		std::unordered_set<vren::render_graph_node*> new_nodes;
 		for (vren::render_graph_node const* node : nodes)
 		{
-			new_nodes.insert(node->m_following_nodes.begin(), node->m_following_nodes.end());
+			new_nodes.insert(node->m_next_nodes.begin(), node->m_next_nodes.end());
 			delete node;
 		}
 

@@ -80,7 +80,7 @@ namespace vren
 		callback_t m_callback;
 
 		std::vector<render_graph_node*> m_previous_nodes;
-		std::vector<render_graph_node*> m_following_nodes;
+		std::vector<render_graph_node*> m_next_nodes;
 
 	public:
 		explicit render_graph_node() = default;
@@ -126,28 +126,28 @@ namespace vren
 			return m_previous_nodes;
 		}
 
-		inline std::vector<render_graph_node*> const& get_following_nodes() const
+		inline std::vector<render_graph_node*> const& get_next_nodes() const
 		{
-			return m_following_nodes;
+			return m_next_nodes;
 		}
 
 	public:
-		inline auto add_following(render_graph_node* following)
+		inline auto add_next(render_graph_node* next)
 		{
-			assert(following != nullptr);
-			assert(this != following);
+			assert(next != nullptr);
+			assert(this != next);
 
-			m_following_nodes.push_back(following);
-			following->m_previous_nodes.push_back(this);
+			m_next_nodes.push_back(next);
+			next->m_previous_nodes.push_back(this);
 
 			return this;
 		}
 
-		inline auto chain(render_graph_node* following)
+		inline auto chain(render_graph_node* next)
 		{
-			add_following(following);
+			add_next(next);
 
-			return following;
+			return next;
 		}
 	};
 
@@ -168,7 +168,7 @@ namespace vren
 
 	private:
 		void initialize_image_layout(vren::render_graph_node const& node, std::tuple<vren::render_graph_node_image_resource, VkImageLayout, VkAccessFlags> const& image_resource, VkCommandBuffer command_buffer);
-		void place_barriers(vren::render_graph_node const& node, VkCommandBuffer command_buffer);
+		void place_barriers(vren::render_graph_node const& next_node, VkCommandBuffer command_buffer);
 		void execute_node(vren::render_graph_node const& node, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	public:

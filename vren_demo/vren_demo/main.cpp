@@ -543,8 +543,8 @@ int main(int argc, char* argv[])
 			node = node->chain(
 				depth_buffer_reductor.copy_and_reduce(*depth_buffer, *depth_buffer_pyramid)
 			);
-			while (node->get_following_nodes().size() > 0) {
-				node = node->get_following_nodes()[0];
+			while (node->get_next_nodes().size() > 0) {
+				node = node->get_next_nodes()[0];
 			}
 
 			// Debug general purpose objects

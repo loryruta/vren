@@ -307,13 +307,13 @@ vren::render_graph_node* vren::depth_buffer_reductor::reduce(vren::depth_buffer_
 	vren::render_graph_node* current;
 	for (uint32_t i = 0; i < depth_buffer_pyramid.m_level_count - 1; i++)
 	{
-		auto following = reduce_step(depth_buffer_pyramid, i);
+		auto node = reduce_step(depth_buffer_pyramid, i);
 		if (head == nullptr) {
-			head = following;
+			head = node;
 		} else {
-			current->add_following(following);
+			current->add_next(node);
 		}
-		current = following;
+		current = node;
 	}
 	return head;
 }
@@ -321,7 +321,7 @@ vren::render_graph_node* vren::depth_buffer_reductor::reduce(vren::depth_buffer_
 vren::render_graph_node* vren::depth_buffer_reductor::copy_and_reduce(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const
 {
 	auto head = copy_depth_buffer_to_depth_buffer_pyramid_base(depth_buffer, depth_buffer_pyramid);
-	head->add_following(
+	head->add_next(
 		reduce(depth_buffer_pyramid)
 	);
 	return head;
