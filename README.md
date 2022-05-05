@@ -14,6 +14,7 @@ and put my effort in designing a clean overlay over the Vulkan API.
 
 #### Requirements
 
+- C++ >= 20
 - git
 - [CMake](https://cmake.org/download/) >= 3.19
 - [vcpkg](https://github.com/microsoft/vcpkg)

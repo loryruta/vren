@@ -327,16 +327,16 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
 
 	// Render-graph begin
-	vren::render_graph_node* render_graph_head;
-	vren::render_graph_node* node;
+	vren::render_graph::node* render_graph_head;
+	vren::render_graph::node* node;
 
 	// Clear color buffer
-	node = vren::clear_color_buffer(color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+	node = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
 	render_graph_head = node;
 
 	// Clear depth buffer
 	node = node->chain(
-		vren::clear_depth_stencil_buffer(m_depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 })
+		vren::clear_depth_stencil_buffer(m_render_graph_allocator, m_depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 })
 	);
 
 	// Render scene
@@ -346,7 +346,7 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 		if (m_basic_renderer_draw_buffer)
 		{
 			node = node->chain(
-				m_basic_renderer.render(render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer)
+				m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer)
 			);
 		}
 		break;
@@ -354,7 +354,7 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 		if (m_mesh_shader_renderer_draw_buffer)
 		{
 			node = node->chain(
-				m_mesh_shader_renderer.render(render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer)
+				m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer)
 			);
 		}
 		break;
@@ -372,14 +372,14 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 
 	// Debug general purpose objects
 	node = node->chain(
-		m_debug_renderer.render(render_target, m_camera.to_vren(), m_debug_draw_buffer)
+		m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer)
 	);
 
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
 		node = node->chain(
-			m_debug_renderer.render(render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer)
+			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer)
 		);
 	}
 
@@ -387,7 +387,7 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	if (m_show_meshlets_bounds)
 	{
 		node = node->chain(
-			m_debug_renderer.render(render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer)
+			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer)
 		);
 	}
 
@@ -395,7 +395,7 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	if (m_ui.m_depth_buffer_pyramid_ui.m_show)
 	{
 		node = node->chain(
-			vren::blit_depth_buffer_pyramid_level_to_color_buffer(*m_depth_buffer_pyramid, m_ui.m_depth_buffer_pyramid_ui.m_selected_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
+			vren::blit_depth_buffer_pyramid_level_to_color_buffer(m_render_graph_allocator, *m_depth_buffer_pyramid, m_ui.m_depth_buffer_pyramid_ui.m_selected_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
 		);
 	}
 
@@ -429,10 +429,10 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	(void) node;
 
 	// Execute render-graph
-	vren::render_graph_handler render_graph({ render_graph_head });
+	vren::render_graph::node const* render_graph[]{ render_graph_head };
+	vren::render_graph::execute(m_render_graph_allocator, render_graph, frame_idx, command_buffer, resource_container);
 
-	vren::render_graph_executor render_graph_executor;
-	render_graph_executor.execute(render_graph.get_handle(), frame_idx, command_buffer, resource_container);
+	m_render_graph_allocator.clear();
 }
 
 void vren_demo::app::on_frame()

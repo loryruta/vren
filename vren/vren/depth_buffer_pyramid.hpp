@@ -93,15 +93,22 @@ namespace vren
 		vren::vk_sampler create_depth_buffer_sampler();
 
 	private:
-		vren::render_graph_node* copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
-		vren::render_graph_node* reduce_step(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t current_level) const;
-		vren::render_graph_node* reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph::node* copy_depth_buffer_to_depth_buffer_pyramid_base(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph::node* reduce_step(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t current_level) const;
+		vren::render_graph::node* reduce(vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 
 	public:
-		vren::render_graph_node* copy_and_reduce(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
+		vren::render_graph::node* copy_and_reduce(vren::vk_utils::depth_buffer_t const& depth_buffer, vren::depth_buffer_pyramid const& depth_buffer_pyramid) const;
 	};
 
 	// ------------------------------------------------------------------------------------------------
 
-	vren::render_graph_node* blit_depth_buffer_pyramid_level_to_color_buffer(vren::depth_buffer_pyramid const& depth_buffer_pyramid, uint32_t level, vren::vk_utils::color_buffer_t const& color_buffer, uint32_t width, uint32_t height); // Debug
+	vren::render_graph::node* blit_depth_buffer_pyramid_level_to_color_buffer( // Debug
+		vren::render_graph::allocator& allocator,
+		vren::depth_buffer_pyramid const& depth_buffer_pyramid,
+		uint32_t level,
+		vren::vk_utils::color_buffer_t const& color_buffer,
+		uint32_t width,
+		uint32_t height
+	);
 }

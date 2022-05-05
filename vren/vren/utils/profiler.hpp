@@ -1,9 +1,11 @@
 #pragma once
 
-#include <functional>
+#include <unordered_map>
+#include <bitset>
 
 #include "base/resource_container.hpp"
 #include "vk_helpers/vk_raii.hpp"
+#include "render_graph.hpp"
 
 namespace vren
 {
@@ -16,20 +18,30 @@ namespace vren
 
 	class profiler
 	{
+	public:
+		static constexpr uint32_t k_max_slot_count = 32;
+
 	private:
 		vren::context const* m_context;
 		vren::vk_query_pool m_query_pool;
 
+		std::unordered_map<std::string, uint32_t> m_slot_by_name;
+		std::bitset<k_max_slot_count> m_slot_used;
+
 	public:
-		profiler(vren::context const& ctx, size_t slots_count);
+		profiler(vren::context const& context);
 		~profiler();
 
-		void profile(uint32_t frame_idx, VkCommandBuffer cmd_buf, vren::resource_container& res_container, uint32_t slot_idx, std::function<void()> const& sample_func);
-		bool get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t);
+	private:
+		vren::vk_query_pool create_query_pool() const;
+
+	public:
+		vren::render_graph::node* profile(
+			vren::render_graph::allocator& allocator,
+			std::string const& slot_name,
+			vren::render_graph::graph_t const& sample
+		);
+
+		bool pull_slot_timestamps(std::string const& slot_name, uint64_t* start_t, uint64_t* end_t);
 	};
-
-
-	uint32_t profile(std::function<void()> const& sample_func);
-	double profile_us(std::function<void()> const& sample_func);
-	double profile_ms(std::function<void()> const& sample_func);
 }

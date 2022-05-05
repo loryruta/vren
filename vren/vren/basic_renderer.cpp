@@ -19,27 +19,32 @@ vren::basic_renderer::basic_renderer(vren::context const& context) :
 	m_vertex_pipeline_draw_pass(context)
 {}
 
-vren::render_graph_node* vren::basic_renderer::render(
+vren::render_graph::node* vren::basic_renderer::render(
+	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
 	vren::light_array const& light_array,
 	vren::basic_renderer_draw_buffer const& draw_buffer
 )
 {
-	auto node = new vren::render_graph_node();
+	auto node = render_graph_allocator.allocate();
 	node->set_name("basic_renderer | render");
-	node->set_in_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-	node->set_out_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-	node->add_image(
-		{ .m_name = "color_buffer", .m_image = render_target.m_color_buffer->get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT },
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-	);
-	node->add_image(
-		{ .m_name = "depth_buffer", .m_image = render_target.m_depth_buffer->get_image(), .m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-	);
+	node->set_src_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	node->set_dst_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+	node->add_image({
+		.m_name = "color_buffer",
+		.m_image = render_target.m_color_buffer->get_image(),
+		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+		.m_image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		.m_access_flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+	});
+	node->add_image({
+		.m_name = "depth_buffer",
+		.m_image = render_target.m_depth_buffer->get_image(),
+		.m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+		.m_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.m_access_flags = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+	});
 	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		// Color attachment

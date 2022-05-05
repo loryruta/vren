@@ -68,6 +68,8 @@ namespace vren_demo
 
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
 
+		vren::render_graph::allocator m_render_graph_allocator;
+
 		vren::profiler m_profiler;
 
 		vren_demo::camera m_camera;

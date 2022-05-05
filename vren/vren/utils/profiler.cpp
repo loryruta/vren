@@ -1,37 +1,78 @@
 #include "profiler.hpp"
 
 #include <chrono>
+#include <stdexcept>
 
 #include "context.hpp"
 #include "vk_helpers/misc.hpp"
+#include "utils/log.hpp"
 
-vren::profiler::profiler(vren::context const& ctx, size_t slots_count) :
-	m_context(&ctx),
-	m_query_pool(vren::vk_utils::create_timestamp_query_pool(ctx, slots_count * 2))
+vren::profiler::profiler(vren::context const& context) :
+	m_context(&context),
+	m_query_pool(create_query_pool())
 {}
 
 vren::profiler::~profiler()
 {}
 
-void vren::profiler::profile(
-	uint32_t frame_idx,
-	VkCommandBuffer cmd_buf,
-	vren::resource_container& res_container,
-	uint32_t slot_idx,
-	std::function<void()> const& sample_func
+vren::vk_query_pool vren::profiler::create_query_pool() const
+{
+	VkQueryPoolCreateInfo query_pool_info{
+		.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.queryType = VK_QUERY_TYPE_TIMESTAMP,
+		.queryCount = k_max_slot_count * 2,
+		.pipelineStatistics = NULL
+	};
+
+	VkQueryPool query_pool;
+	VREN_CHECK(vkCreateQueryPool(m_context->m_device, &query_pool_info, nullptr, &query_pool), m_context);
+	return vren::vk_query_pool(*m_context, query_pool);
+}
+
+vren::render_graph::node* vren::profiler::profile(
+	vren::render_graph::allocator& allocator,
+	std::string const& slot_name,
+	vren::render_graph::graph_t const& sample
 )
 {
-	/* Starting timestamp */
-	vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr); // Needed ?
+	uint32_t assigned_slot;
+	for (uint32_t i = 0; i < k_max_slot_count; i++) {
+		if (!m_slot_used[i]) {
+			assigned_slot = i;
+		}
+	}
 
-	vkCmdResetQueryPool(cmd_buf, m_query_pool.m_handle, slot_idx * 2, 2);
-	vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2);
+	if (assigned_slot >= k_max_slot_count) {
+		throw std::runtime_error("Full, failed to assign a free slot");
+	}
 
-	/* Recording */
-	sample_func();
+	m_slot_by_name.emplace(slot_name, assigned_slot);
+	m_slot_used[assigned_slot] = true;
 
-	/* Ending timestamp */
-	vkCmdWriteTimestamp(cmd_buf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
+	// Take starting time
+	auto head_node = allocator.allocate();
+	head_node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, assigned_slot * 2, 2);
+		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, assigned_slot * 2 + 0);
+	});
+
+	//vren::render_graph::iterate_starting_nodes();
+
+
+
+	// Take ending time
+	auto tail_node = allocator.allocate();
+	tail_node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, assigned_slot * 2 + 1);
+	});
+
+
+
+	return head;
 }
 
 bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* end_t)
@@ -58,24 +99,7 @@ bool vren::profiler::get_timestamps(int slot_idx, uint64_t* start_t, uint64_t* e
 	}
 }
 
-uint32_t vren::profile(std::function<void()> const& sample_func)
+vren::render_graph_node* vren::profile(vren::render_graph_t const& sample)
 {
-	auto start = std::chrono::steady_clock::now();
 
-	sample_func();
-
-	auto end = std::chrono::steady_clock::now();
-
-	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
-
-double vren::profile_us(std::function<void()> const& sample_func)
-{
-	return double(profile(sample_func)) / 1000;
-}
-
-double vren::profile_ms(std::function<void()> const& sample_func)
-{
-	return double(profile(sample_func)) / (1000 * 1000);
-}
-

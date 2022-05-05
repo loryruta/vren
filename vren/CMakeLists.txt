@@ -1,4 +1,7 @@
 include(FetchContent)
+include(CheckIncludeFileCXX)
+include(CheckCXXCompilerFlag)
+include(CheckCXXSourceCompiles)
 
 set(SRC
         vren/base/base.hpp

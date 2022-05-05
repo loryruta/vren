@@ -169,22 +169,6 @@ vren::vk_utils::surface_details vren::vk_utils::get_surface_details(
 	return surf_det;
 }
 
-vren::vk_query_pool vren::vk_utils::create_timestamp_query_pool(vren::context const& ctx, uint32_t query_count)
-{
-	VkQueryPoolCreateInfo pool_info{
-		.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = NULL,
-		.queryType = VK_QUERY_TYPE_TIMESTAMP,
-		.queryCount = query_count,
-		.pipelineStatistics = NULL
-	};
-
-	VkQueryPool handle;
-	VREN_CHECK(vkCreateQueryPool(ctx.m_device, &pool_info, nullptr, &handle), &ctx);
-	return vren::vk_query_pool(ctx, handle);
-}
-
 std::vector<VkQueueFamilyProperties> vren::vk_utils::get_queue_families_properties(VkPhysicalDevice phy_dev)
 {
 	uint32_t queue_fam_props_cnt;
