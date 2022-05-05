@@ -39,6 +39,10 @@ namespace vren
 		vren::vk_render_pass create_render_pass();
 
 	public:
-		vren::render_graph_node* render(vren::render_target const& render_target, std::function<void()> const& show_ui_callback);
+		vren::render_graph::node* render(
+			vren::render_graph::allocator& allocator,
+			vren::render_target const& render_target,
+			std::function<void()> const& show_ui_callback
+		);
 	};
 }

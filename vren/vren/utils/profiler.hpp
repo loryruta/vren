@@ -19,14 +19,11 @@ namespace vren
 	class profiler
 	{
 	public:
-		static constexpr uint32_t k_max_slot_count = 32;
+		static constexpr uint32_t k_max_slot_count = 256;
 
 	private:
 		vren::context const* m_context;
 		vren::vk_query_pool m_query_pool;
-
-		std::unordered_map<std::string, uint32_t> m_slot_by_name;
-		std::bitset<k_max_slot_count> m_slot_used;
 
 	public:
 		profiler(vren::context const& context);
@@ -36,12 +33,18 @@ namespace vren
 		vren::vk_query_pool create_query_pool() const;
 
 	public:
-		vren::render_graph::node* profile(
-			vren::render_graph::allocator& allocator,
-			std::string const& slot_name,
-			vren::render_graph::graph_t const& sample
-		);
+		vren::render_graph::node* profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample);
 
-		bool pull_slot_timestamps(std::string const& slot_name, uint64_t* start_t, uint64_t* end_t);
+		bool read_timestamps(uint32_t slot_idx, uint64_t& start_timestamp, uint64_t& end_timestamp);
+
+		inline uint64_t read_elapsed_time(uint32_t slot_idx)
+		{
+			uint64_t start_timestamp, end_timestamp;
+			if (read_timestamps(slot_idx, start_timestamp, end_timestamp)) {
+				return end_timestamp - start_timestamp;
+			} else {
+				return -1;
+			}
+		}
 	};
 }

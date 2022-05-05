@@ -300,22 +300,34 @@ void vren::presenter::present(render_func_t const& render_func)
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::render_graph_node* vren::blit_color_buffer_to_swapchain_image(vren::vk_utils::color_buffer_t const& color_buffer, uint32_t width, uint32_t height, VkImage swapchain_image, uint32_t swapchain_image_width, uint32_t swapchain_image_height)
+vren::render_graph::node* vren::blit_color_buffer_to_swapchain_image(
+	vren::render_graph::allocator& allocator,
+	vren::vk_utils::color_buffer_t const& color_buffer,
+	uint32_t width,
+	uint32_t height,
+	VkImage swapchain_image,
+	uint32_t swapchain_image_width,
+	uint32_t swapchain_image_height
+)
 {
-	auto node = new vren::render_graph_node();
+	auto node = allocator.allocate();
 	node->set_name("blit_color_buffer_to_swapchain_image");
 	node->set_src_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
-	node->add_image(
-		{.m_name = "color_buffer", .m_image = color_buffer.get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT},
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		VK_ACCESS_TRANSFER_READ_BIT
-	);
-	node->add_image(
-		{.m_name = "swapchain_image", .m_image = swapchain_image, .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT},
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_ACCESS_TRANSFER_WRITE_BIT
-	);
+	node->add_image({
+		.m_name = "color_buffer",
+		.m_image = color_buffer.get_image(),
+		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+		.m_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		.m_access_flags = VK_ACCESS_TRANSFER_READ_BIT
+	});
+	node->add_image({
+		.m_name = "swapchain_image",
+		.m_image = swapchain_image,
+		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+		.m_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT
+	});
 	node->set_callback([=, &color_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		VkImageBlit image_blit{
@@ -335,17 +347,22 @@ vren::render_graph_node* vren::blit_color_buffer_to_swapchain_image(vren::vk_uti
 	return node;
 }
 
-vren::render_graph_node* vren::transit_swapchain_image_to_present_layout(VkImage swapchain_image)
+vren::render_graph::node* vren::transit_swapchain_image_to_present_layout(
+	vren::render_graph::allocator& allocator,
+	VkImage swapchain_image
+)
 {
-	auto node = new vren::render_graph_node();
+	auto node = allocator.allocate();
 	node->set_name("transit_swapchain_image_to_present_layout");
 	node->set_src_stage(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-	node->add_image(
-		{.m_name = "swapchain_image", .m_image = swapchain_image, .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT},
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-		VK_ACCESS_NONE_KHR
-	);
+	node->add_image({
+		.m_name = "swapchain_image",
+		.m_image = swapchain_image,
+		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+		.m_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		.m_access_flags = VK_ACCESS_NONE_KHR
+	});
 	node->set_callback([](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) {});
 	return node;
 }

@@ -17,17 +17,32 @@
 namespace vren_demo
 {
 	// ------------------------------------------------------------------------------------------------
-	// Renderer type
-	// ------------------------------------------------------------------------------------------------
 
-	enum renderer_type
+	enum renderer_type_enum_t
 	{
-		NONE,
-		BASIC_RENDERER,
-		MESH_SHADER_RENDERER,
+		RendererType_NONE,
+		RendererType_BASIC_RENDERER,
+		RendererType_MESH_SHADER_RENDERER,
 
-		Count
+		RendererType_Count
 	};
+
+	enum profile_slot_enum_t
+	{
+		ProfileSlot_NONE = 0, // VREN_MAX_FRAME_IN_FLIGHTS = 4
+		ProfileSlot_CLEAR_COLOR_BUFFER = 4,
+		ProfileSlot_CLEAR_DEPTH_BUFFER = 8,
+		ProfileSlot_BASIC_RENDERER = 12,
+		ProfileSlot_MESH_SHADER_RENDERER = 16,
+		ProfileSlot_DEBUG_RENDERER = 20,
+		ProfileSlot_IMGUI_RENDERER = 24,
+		ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID = 28,
+		ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE = 32,
+
+		ProfileSlot_LAST = 35,
+		ProfileSlot_Count
+	};
+
 
 	// ------------------------------------------------------------------------------------------------
 	// App
@@ -71,6 +86,7 @@ namespace vren_demo
 		vren::render_graph::allocator m_render_graph_allocator;
 
 		vren::profiler m_profiler;
+		std::array<uint64_t, ProfileSlot_Count> m_elapsed_time_by_slot;
 
 		vren_demo::camera m_camera;
 		vren_demo::freecam_controller m_freecam_controller;
@@ -80,7 +96,7 @@ namespace vren_demo
 		vren_demo::ui m_ui;
 
 		// Behavioral variables
-		vren_demo::renderer_type m_selected_renderer_type = vren_demo::renderer_type::BASIC_RENDERER;
+		vren_demo::renderer_type_enum_t m_selected_renderer_type = vren_demo::RendererType_BASIC_RENDERER;
 		bool m_show_ui = true;
 		bool m_show_meshlets = false;
 		bool m_show_meshlets_bounds = false;

@@ -1,13 +1,31 @@
 #include "render_graph.hpp"
 
+#include <stdexcept>
 #include <array>
 #include <bitset>
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// Render-graph node
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::render_graph::node* vren::render_graph::node::chain(vren::render_graph::node* chain)
+{
+	vren::render_graph::node* tail_node = nullptr;
+	vren::render_graph::iterate_ending_nodes(*m_allocator, std::span(&chain, 1), [&tail_node](vren::render_graph::node* node) {
+		if (tail_node) {
+			throw std::runtime_error("A chain must have only one ending node");
+		}
+		tail_node = node;
+	});
+	assert(tail_node); // How could it fail? I mean, always at least one ending node should be found if chain is not null
+	return tail_node;
+}
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Render-graph
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::render_graph::traverse(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, bool callback_starting_nodes, std::function<bool(vren::render_graph::node const* node)> const& callback)
+void vren::render_graph::traverse(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, bool callback_starting_nodes, std::function<bool(vren::render_graph::node* node)> const& callback)
 {
 	const size_t k_max_allocable_nodes = vren::render_graph::allocator::k_max_allocable_nodes;
 
@@ -26,7 +44,7 @@ void vren::render_graph::traverse(vren::render_graph::allocator const& allocator
 		i[!_1] = 0;
 		for (uint32_t j = 0; j < i[_1]; j++)
 		{
-			vren::render_graph::node const* node = allocator.get_node_at(stepping_nodes[_1].at(j));
+			vren::render_graph::node* node = allocator.get_node_at(stepping_nodes[_1].at(j));
 			if (!callback_starting_nodes || callback(node))
 			{
 				for (vren::render_graph::node_index_t const& next_node_idx : node->get_next_nodes())
@@ -52,16 +70,16 @@ void vren::render_graph::traverse(vren::render_graph::allocator const& allocator
 	}
 }
 
-void vren::render_graph::iterate_starting_nodes(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node const*)> const& callback)
+void vren::render_graph::iterate_starting_nodes(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node*)> const& callback)
 {
-	for (vren::render_graph::node const* node : graph) {
+	for (vren::render_graph::node* node : graph) {
 		callback(node);
 	}
 }
 
-void vren::render_graph::iterate_ending_nodes(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node const*)> const& callback)
+void vren::render_graph::iterate_ending_nodes(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node*)> const& callback)
 {
-	vren::render_graph::traverse(allocator, graph, true, [callback](vren::render_graph::node const* node) {
+	vren::render_graph::traverse(allocator, graph, true, [callback](vren::render_graph::node* node) {
 		if (node->get_next_nodes().empty()) {
 			callback(node);
 		}
@@ -73,7 +91,7 @@ void vren::render_graph::iterate_ending_nodes(vren::render_graph::allocator cons
 // Render-graph executor
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::render_graph::execute(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+void vren::render_graph::execute(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 {
 	const size_t k_max_allocable_nodes = vren::render_graph::allocator::k_max_allocable_nodes;
 	const size_t k_max_image_accesses_per_node = vren::render_graph::node::k_max_image_accesses;
@@ -97,7 +115,7 @@ void vren::render_graph::execute(vren::render_graph::allocator const& allocator,
 		for (uint32_t j = 0; j < i[_1]; j++)
 		{
 			vren::render_graph::node_index_t node_idx = stepping_nodes[_1].at(j);
-			vren::render_graph::node const* node = allocator.get_node_at(node_idx);
+			vren::render_graph::node* node = allocator.get_node_at(node_idx);
 
 			// The node can be executed only if its previous nodes have been executed as well
 			bool can_execute = true;
@@ -159,8 +177,7 @@ void vren::render_graph::execute(vren::render_graph::allocator const& allocator,
 			// If an image resource of the current node will be used by a following node, then place a barrier soon after it
 			for (auto const& image_access_1 : node->get_image_accesses())
 			{
-				vren::render_graph::node const* starting_node[]{ node };
-				vren::render_graph::traverse(allocator, starting_node, false, [&](vren::render_graph::node const* other_node) -> bool
+				vren::render_graph::traverse(allocator, std::span(&node, 1), false, [&](vren::render_graph::node const* other_node) -> bool
 				{
 					for (auto const& image_access_2 : other_node->get_image_accesses())
 					{
@@ -196,8 +213,7 @@ void vren::render_graph::execute(vren::render_graph::allocator const& allocator,
 			// The same as above for buffer resources
 			for (auto const& buffer_access_1 : node->get_buffer_accesses())
 			{
-				vren::render_graph::node const* starting_node[]{ node };
-				vren::render_graph::traverse(allocator, starting_node, false, [&](vren::render_graph::node const* other_node) -> bool
+				vren::render_graph::traverse(allocator, std::span(&node, 1), false, [&](vren::render_graph::node const* other_node) -> bool
 				{
 					for (auto const& buffer_access_2 : other_node->get_buffer_accesses())
 					{

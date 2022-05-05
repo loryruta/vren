@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+#include <array>
 #include <functional>
 #include <unordered_set>
 #include <span>
@@ -10,6 +11,7 @@
 #include <volk.h>
 
 #include "base/resource_container.hpp"
+#include "utils/log.hpp"
 
 namespace vren::render_graph
 {
@@ -57,7 +59,7 @@ namespace vren::render_graph
 	{
 		static constexpr size_t k_max_name_length = vren::render_graph::k_max_name_length;
 
-		char m_name[k_max_name_length] = "unnamed";
+		char m_name[k_max_name_length] = "unnamed"; // TODO char const*
 
 		VkBuffer m_buffer = VK_NULL_HANDLE;
 		VkDeviceSize m_size = VK_WHOLE_SIZE;
@@ -106,9 +108,10 @@ namespace vren::render_graph
 		static_assert(std::numeric_limits<node_index_t>::max() >= k_max_next_nodes - 1);
 
 	private:
+		vren::render_graph::allocator* m_allocator;
 		node_index_t m_idx = -1;
 
-		char m_name[k_max_name_length] = "unnamed";
+		char m_name[k_max_name_length] = "unnamed"; // TODO char const*
 
 		VkPipelineStageFlags m_src_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		VkPipelineStageFlags m_dst_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -201,30 +204,39 @@ namespace vren::render_graph
 			return this;
 		}
 
-		inline auto chain(vren::render_graph::node* next)
-		{
-
-			add_next(next);
-
-			return next;
-		}
+		vren::render_graph::node* chain(vren::render_graph::node* chain);
 	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph
 	// ------------------------------------------------------------------------------------------------
 
-	using graph_t = std::span<vren::render_graph::node const*>;
+	using graph_t = std::span<vren::render_graph::node*>;
 
-	void traverse(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, bool callback_starting_nodes, std::function<bool(vren::render_graph::node const* node)> const& callback);
-	void iterate_starting_nodes(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node const*)> const& callback);
-	void iterate_ending_nodes(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, std::function<void(vren::render_graph::node const*)> const& callback);
+	void traverse(
+		vren::render_graph::allocator& allocator,
+		vren::render_graph::graph_t const& graph,
+		bool callback_starting_nodes,
+		std::function<bool(vren::render_graph::node* node)> const& callback
+	);
+
+	void iterate_starting_nodes(
+		vren::render_graph::allocator& allocator,
+		vren::render_graph::graph_t const& graph,
+		std::function<void(vren::render_graph::node*)> const& callback
+	);
+
+	void iterate_ending_nodes(
+		vren::render_graph::allocator& allocator,
+		vren::render_graph::graph_t const& graph,
+		std::function<void(vren::render_graph::node*)> const& callback
+	);
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph execution
 	// ------------------------------------------------------------------------------------------------
 
-	void execute(vren::render_graph::allocator const& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
+	void execute(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph allocator
@@ -245,7 +257,7 @@ namespace vren::render_graph
 		inline allocator() :
 			m_nodes(k_max_allocable_nodes)
 		{
-			VREN_INFO("vren::render_graph::allocator | Allocating {} bytes of memory\n", m_nodes.size() * sizeof(vren::render_graph_node));
+			VREN_INFO("vren::render_graph::allocator | Allocating {} bytes for render-graph\n", m_nodes.size() * sizeof(vren::render_graph::node));
 		}
 
 		inline vren::render_graph::node* allocate()
@@ -258,7 +270,7 @@ namespace vren::render_graph
 			return &node;
 		}
 
-		inline vren::render_graph::node const* get_node_at(vren::render_graph::node_index_t node_idx) const
+		inline vren::render_graph::node* get_node_at(vren::render_graph::node_index_t node_idx)
 		{
 			return &m_nodes.at(node_idx);
 		}

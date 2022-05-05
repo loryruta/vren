@@ -127,7 +127,17 @@ namespace vren
 
 	// --------------------------------------------------------------------------------------------------------------------------------
 
-	vren::render_graph_node* blit_color_buffer_to_swapchain_image(vren::vk_utils::color_buffer_t const& color_buffer, uint32_t width, uint32_t height, VkImage swapchain_image, uint32_t swapchain_image_width, uint32_t swapchain_image_height);
-	vren::render_graph_node* transit_swapchain_image_to_present_layout(VkImage swapchain_image);
+	vren::render_graph::node* blit_color_buffer_to_swapchain_image(
+		vren::render_graph::allocator& allocator,
+		vren::vk_utils::color_buffer_t const& color_buffer,
+		uint32_t width, uint32_t height,
+		VkImage swapchain_image,
+		uint32_t swapchain_image_width, uint32_t swapchain_image_height
+	);
+
+	vren::render_graph::node* transit_swapchain_image_to_present_layout(
+		vren::render_graph::allocator& allocator,
+		VkImage swapchain_image
+	);
 }
 

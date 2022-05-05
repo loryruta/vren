@@ -58,7 +58,7 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	m_depth_buffer_reductor(m_context),
 
-	m_profiler(m_context, VREN_MAX_FRAME_IN_FLIGHT_COUNT * vren_demo::profile_slot::count),
+	m_profiler(m_context),
 
 	m_gltf_parser(m_context),
 
@@ -129,7 +129,7 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 
 	if (key == GLFW_KEY_F1 && action == GLFW_PRESS)
 	{
-		m_selected_renderer_type = static_cast<vren_demo::renderer_type>((m_selected_renderer_type + 1) % vren_demo::renderer_type::Count);
+		m_selected_renderer_type = static_cast<vren_demo::renderer_type_enum_t>((m_selected_renderer_type + 1) % vren_demo::RendererType_Count);
 	}
 
 	if (key == GLFW_KEY_F2 && action == GLFW_PRESS)
@@ -296,6 +296,11 @@ void vren_demo::app::on_update(float dt)
 
 void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 {
+	// Dump profiling data
+	for (uint32_t slot_idx = frame_idx; slot_idx < ProfileSlot_Count; slot_idx += 4) {
+		m_elapsed_time_by_slot[slot_idx] = m_profiler.read_elapsed_time(slot_idx);
+	}
+
 	vkCmdSetCheckpointNV(command_buffer, "Frame start");
 
 	auto& color_buffer = m_color_buffers.at(frame_idx);
@@ -308,54 +313,40 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	// Light array uploading
 	m_light_array.sync_buffers(frame_idx);
 
-	// Profiling
-	int prof_slot = frame_idx * vren_demo::profile_slot::count;
-
-	vren_demo::profile_info prof_info{};
-
-	prof_info.m_frame_idx = frame_idx;
-	prof_info.m_frame_in_flight_count = m_presenter.get_swapchain()->m_frame_data.size();
-
-	prof_info.m_main_pass_profiled =
-		m_profiler.get_timestamps(prof_slot + vren_demo::profile_slot::MainPass, &prof_info.m_main_pass_start_t, &prof_info.m_main_pass_end_t);
-
-	prof_info.m_ui_pass_profiled =
-		m_profiler.get_timestamps(prof_slot + vren_demo::profile_slot::UiPass, &prof_info.m_ui_pass_start_t, &prof_info.m_ui_pass_end_t);
-
-	prof_info.m_frame_profiled = prof_info.m_main_pass_profiled && prof_info.m_ui_pass_profiled;
-	prof_info.m_frame_start_t = prof_info.m_main_pass_start_t;
-	prof_info.m_frame_end_t = prof_info.m_ui_pass_end_t;
-
 	// Render-graph begin
 	vren::render_graph::node* render_graph_head;
 	vren::render_graph::node* node;
 
 	// Clear color buffer
-	node = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+	node = node->chain(
+		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER + frame_idx, std::span(&clear_color_buffer, 1))
+	);
 	render_graph_head = node;
 
 	// Clear depth buffer
+	auto clear_depth_buffer = vren::clear_depth_stencil_buffer(m_render_graph_allocator, m_depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 });
 	node = node->chain(
-		vren::clear_depth_stencil_buffer(m_render_graph_allocator, m_depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 })
+		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_CLEAR_DEPTH_BUFFER + frame_idx, std::span(&clear_depth_buffer, 1))
 	);
 
 	// Render scene
 	switch (m_selected_renderer_type)
 	{
-	case vren_demo::renderer_type::BASIC_RENDERER:
+	case vren_demo::RendererType_BASIC_RENDERER:
 		if (m_basic_renderer_draw_buffer)
 		{
+			auto basic_render_node = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer);
 			node = node->chain(
-				m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer)
+				m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BASIC_RENDERER + frame_idx, std::span(&basic_render_node, 1))
 			);
 		}
 		break;
-	case vren_demo::renderer_type::MESH_SHADER_RENDERER:
+	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_mesh_shader_renderer_draw_buffer)
 		{
-			node = node->chain(
-				m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer)
-			);
+			auto mesh_shader_render_node = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer);
+			node = node->chain(m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_MESH_SHADER_RENDERER + frame_idx, std::span(&mesh_shader_render_node, 1)));
 		}
 		break;
 	default:
@@ -363,22 +354,20 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	}
 
 	// Build depth buffer pyramid
-	node = node->chain(
-		m_depth_buffer_reductor.copy_and_reduce(*m_depth_buffer, *m_depth_buffer_pyramid)
-	);
-	while (node->get_next_nodes().size() > 0) {
-		node = node->get_next_nodes()[0];
-	}
+	auto build_depth_buffer_pyramid_node = m_depth_buffer_reductor.copy_and_reduce(m_render_graph_allocator, *m_depth_buffer, *m_depth_buffer_pyramid);
+	node = node->chain(m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID + frame_idx, std::span(&build_depth_buffer_pyramid_node, 1)));
 
 	// Debug general purpose objects
-	node = node->chain(
-		m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer)
-	);
+	vren::render_graph::node* debug_render_head_node;
+	vren::render_graph::node* debug_render_node;
+
+	debug_render_node = m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer);
+	debug_render_head_node = debug_render_node;
 
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
-		node = node->chain(
+		debug_render_node = debug_render_node->chain(
 			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer)
 		);
 	}
@@ -386,7 +375,7 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	// Debug meshlet bounds
 	if (m_show_meshlets_bounds)
 	{
-		node = node->chain(
+		debug_render_node = debug_render_node->chain(
 			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer)
 		);
 	}
@@ -394,43 +383,48 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	// Debug depth buffer pyramid
 	if (m_ui.m_depth_buffer_pyramid_ui.m_show)
 	{
-		node = node->chain(
+		debug_render_node = debug_render_node->chain(
 			vren::blit_depth_buffer_pyramid_level_to_color_buffer(m_render_graph_allocator, *m_depth_buffer_pyramid, m_ui.m_depth_buffer_pyramid_ui.m_selected_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
 		);
 	}
 
+	node = node->chain(
+		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_DEBUG_RENDERER + frame_idx, std::span(&debug_render_head_node, 1))
+	);
+
 	// Render UI
 	if (m_show_ui)
 	{
-		node = node->chain(
-			m_imgui_renderer.render(render_target, [&]() {
-				m_ui.m_fps_ui.notify_frame_profiling_data(prof_info);
-				m_ui.show(*m_depth_buffer_pyramid, m_light_array);
-			})
-		);
+		auto show_ui = [&]() {
+			m_ui.show(*m_depth_buffer_pyramid, m_light_array);
+		};
+
+		auto imgui_render_node = m_imgui_renderer.render(m_render_graph_allocator, render_target, show_ui);
+		node = node->chain(m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_IMGUI_RENDERER + frame_idx, std::span(&imgui_render_node, 1)));
 	}
 
 	// Blit to swapchain image
+	auto blit_to_swapchain_node = vren::blit_color_buffer_to_swapchain_image(
+		m_render_graph_allocator,
+		color_buffer,
+		swapchain.m_image_width, swapchain.m_image_height,
+		swapchain.m_images.at(swapchain_image_idx),
+		swapchain.m_image_width, swapchain.m_image_height
+	);
 	node = node->chain(
-		vren::blit_color_buffer_to_swapchain_image(
-			color_buffer,
-			swapchain.m_image_width, swapchain.m_image_height,
-			swapchain.m_images.at(swapchain_image_idx),
-			swapchain.m_image_width, swapchain.m_image_height
-		)
+		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE + frame_idx, std::span(&blit_to_swapchain_node, 1))
 	);
 
 	// Ensure swapchain image is in "present" layout
 	node = node->chain(
-		vren::transit_swapchain_image_to_present_layout(swapchain.m_images.at(swapchain_image_idx))
+		vren::transit_swapchain_image_to_present_layout(m_render_graph_allocator, swapchain.m_images.at(swapchain_image_idx))
 	);
 
 	// Render-graph end
 	(void) node;
 
 	// Execute render-graph
-	vren::render_graph::node const* render_graph[]{ render_graph_head };
-	vren::render_graph::execute(m_render_graph_allocator, render_graph, frame_idx, command_buffer, resource_container);
+	vren::render_graph::execute(m_render_graph_allocator, std::span(&render_graph_head, 1), frame_idx, command_buffer, resource_container);
 
 	m_render_graph_allocator.clear();
 }
