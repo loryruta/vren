@@ -85,6 +85,7 @@ std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_image_views(
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 				.baseMipLevel = i,
 				.levelCount = 1,
+
 				.baseArrayLayer = 0,
 				.layerCount = 1
 			}
@@ -230,7 +231,7 @@ void write_reduce_pipeline_descriptor_set(
 	vkUpdateDescriptorSets(context.m_device, 1, &write_descriptor_set, 0, nullptr);
 }
 
-vren::render_graph::node* vren::depth_buffer_reductor::copy_depth_buffer_to_depth_buffer_pyramid_base(
+vren::render_graph::graph_t vren::depth_buffer_reductor::copy_depth_buffer_to_depth_buffer_pyramid_base(
 	vren::render_graph::allocator& allocator,
 	vren::vk_utils::depth_buffer_t const& depth_buffer,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid
@@ -268,10 +269,10 @@ vren::render_graph::node* vren::depth_buffer_reductor::copy_depth_buffer_to_dept
 
 		m_copy_pipeline.dispatch(command_buffer, depth_buffer_pyramid.m_base_width >> 5, depth_buffer_pyramid.m_base_height >> 5, 1);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }
 
-vren::render_graph::node* vren::depth_buffer_reductor::reduce_step(
+vren::render_graph::graph_t vren::depth_buffer_reductor::reduce_step(
 	vren::render_graph::allocator& allocator,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid,
 	uint32_t current_level
@@ -316,45 +317,39 @@ vren::render_graph::node* vren::depth_buffer_reductor::reduce_step(
 		uint32_t num_workgroups_y = (depth_buffer_pyramid.get_image_height(current_level + 1) + 31) >> 5;
 		m_reduce_pipeline.dispatch(command_buffer, num_workgroups_x, num_workgroups_y, 1);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }
 
-vren::render_graph::node* vren::depth_buffer_reductor::reduce(
+vren::render_graph::graph_t vren::depth_buffer_reductor::reduce(
 	vren::render_graph::allocator& allocator,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid
 ) const
 {
-	vren::render_graph::node* head = nullptr;
-	vren::render_graph::node* current;
-	for (uint32_t i = 0; i < depth_buffer_pyramid.m_level_count - 1; i++)
+	auto head = reduce_step(allocator, depth_buffer_pyramid, 0);
+
+	vren::render_graph::graph_t tail = head;
+	for (uint32_t i = 1; i < depth_buffer_pyramid.m_level_count - 1; i++)
 	{
-		auto node = reduce_step(allocator, depth_buffer_pyramid, i);
-		if (head == nullptr) {
-			head = node;
-		} else {
-			current->add_next(node);
-		}
-		current = node;
+		auto node = reduce_step(allocator, depth_buffer_pyramid, 0);
+		tail = vren::render_graph::concat(allocator, tail, node);
 	}
 	return head;
 }
 
-vren::render_graph::node* vren::depth_buffer_reductor::copy_and_reduce(
+vren::render_graph::graph_t vren::depth_buffer_reductor::copy_and_reduce(
 	vren::render_graph::allocator& allocator,
 	vren::vk_utils::depth_buffer_t const& depth_buffer,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid
 ) const
 {
 	auto head = copy_depth_buffer_to_depth_buffer_pyramid_base(allocator, depth_buffer, depth_buffer_pyramid);
-	head->add_next(
-		reduce(allocator, depth_buffer_pyramid)
-	);
+	vren::render_graph::concat(allocator, head, reduce(allocator, depth_buffer_pyramid));
 	return head;
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::render_graph::node* vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+vren::render_graph::graph_t vren::blit_depth_buffer_pyramid_level_to_color_buffer(
 	vren::render_graph::allocator& allocator,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid,
 	uint32_t level,
@@ -398,6 +393,5 @@ vren::render_graph::node* vren::blit_depth_buffer_pyramid_level_to_color_buffer(
 		};
 		vkCmdBlitImage(command_buffer, depth_buffer_pyramid.get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, color_buffer.get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_NEAREST);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }
-

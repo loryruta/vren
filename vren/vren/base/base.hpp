@@ -4,6 +4,8 @@
 
 #include <glm/glm.hpp>
 
+#include "fixed_capacity_vector.hpp"
+
 namespace vren
 {
 	namespace detail
@@ -37,6 +39,11 @@ namespace vren
 		assert(power_of_2 > 0 && is_power_of_2(power_of_2));
 		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
 	}
+
+	// ------------------------------------------------------------------------------------------------
+
+	template<typename _t, size_t _size>
+	using static_vector_t = std::experimental::fixed_capacity_vector<_t, _size>;
 
 	// ------------------------------------------------------------------------------------------------
 	// Bounding sphere

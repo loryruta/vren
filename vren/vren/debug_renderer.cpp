@@ -260,7 +260,7 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 	);
 }
 
-vren::render_graph::node* vren::debug_renderer::render(
+vren::render_graph::graph_t vren::debug_renderer::render(
 	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
@@ -351,5 +351,5 @@ vren::render_graph::node* vren::debug_renderer::render(
 		// End rendering
 		vkCmdEndRenderingKHR(command_buffer);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }

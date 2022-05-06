@@ -300,7 +300,7 @@ void vren::presenter::present(render_func_t const& render_func)
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::render_graph::node* vren::blit_color_buffer_to_swapchain_image(
+vren::render_graph::graph_t vren::blit_color_buffer_to_swapchain_image(
 	vren::render_graph::allocator& allocator,
 	vren::vk_utils::color_buffer_t const& color_buffer,
 	uint32_t width,
@@ -344,10 +344,10 @@ vren::render_graph::node* vren::blit_color_buffer_to_swapchain_image(
 		};
 		vkCmdBlitImage(command_buffer, color_buffer.get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchain_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }
 
-vren::render_graph::node* vren::transit_swapchain_image_to_present_layout(
+vren::render_graph::graph_t vren::transit_swapchain_image_to_present_layout(
 	vren::render_graph::allocator& allocator,
 	VkImage swapchain_image
 )
@@ -364,5 +364,5 @@ vren::render_graph::node* vren::transit_swapchain_image_to_present_layout(
 		.m_access_flags = VK_ACCESS_NONE_KHR
 	});
 	node->set_callback([](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) {});
-	return node;
+	return vren::render_graph::gather(node);
 }

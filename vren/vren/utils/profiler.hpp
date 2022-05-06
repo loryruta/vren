@@ -33,7 +33,7 @@ namespace vren
 		vren::vk_query_pool create_query_pool() const;
 
 	public:
-		vren::render_graph::node* profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample);
+		vren::render_graph::graph_t profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample);
 
 		bool read_timestamps(uint32_t slot_idx, uint64_t& start_timestamp, uint64_t& end_timestamp);
 

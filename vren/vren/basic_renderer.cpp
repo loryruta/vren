@@ -19,7 +19,7 @@ vren::basic_renderer::basic_renderer(vren::context const& context) :
 	m_vertex_pipeline_draw_pass(context)
 {}
 
-vren::render_graph::node* vren::basic_renderer::render(
+vren::render_graph::graph_t vren::basic_renderer::render(
 	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
@@ -93,5 +93,5 @@ vren::render_graph::node* vren::basic_renderer::render(
 		// End rendering
 		vkCmdEndRenderingKHR(command_buffer);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }

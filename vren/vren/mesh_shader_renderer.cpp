@@ -21,7 +21,7 @@ vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context) :
 	m_mesh_shader_draw_pass(context)
 {}
 
-vren::render_graph::node* vren::mesh_shader_renderer::render(
+vren::render_graph::graph_t vren::mesh_shader_renderer::render(
 	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
@@ -95,5 +95,5 @@ vren::render_graph::node* vren::mesh_shader_renderer::render(
 		// End rendering
 		vkCmdEndRenderingKHR(command_buffer);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }

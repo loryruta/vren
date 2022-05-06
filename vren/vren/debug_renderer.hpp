@@ -110,7 +110,7 @@ namespace vren
 		vren::vk_utils::pipeline create_graphics_pipeline();
 
 	public:
-		vren::render_graph::node* render(
+		vren::render_graph::graph_t render(
 			vren::render_graph::allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,

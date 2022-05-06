@@ -29,32 +29,32 @@ vren::vk_query_pool vren::profiler::create_query_pool() const
 	return vren::vk_query_pool(*m_context, query_pool);
 }
 
-vren::render_graph::node* vren::profiler::profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample)
+vren::render_graph::graph_t vren::profiler::profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample)
 {
-	// Starting time
-	auto head_node = allocator.allocate();
-	head_node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	auto head = allocator.allocate();
+	head->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, slot_idx * 2, 2);
 		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 0);
 	});
 
-	vren::render_graph::iterate_starting_nodes(allocator, sample, [&](vren::render_graph::node* node) {
-		head_node->add_next(node);
-	});
+	for (auto node_idx : vren::render_graph::get_starting_nodes(allocator, sample))
+	{
+		head->add_next(node_idx);
+	}
 
-	// Ending time
-	auto tail_node = allocator.allocate();
-	tail_node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	auto tail = allocator.allocate();
+	tail->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
 	});
 
-	vren::render_graph::iterate_ending_nodes(allocator, sample, [&](vren::render_graph::node* node) {
-		node->add_next(tail_node);
-	});
+	for (auto node_idx : vren::render_graph::get_ending_nodes(allocator, sample))
+	{
+		allocator.get_node_at(node_idx)->add_next(tail);
+	}
 
-	return head_node;
+	return vren::render_graph::gather(head);
 }
 
 bool vren::profiler::read_timestamps(uint32_t slot_idx, uint64_t& start_timestamp, uint64_t& end_timestamp)

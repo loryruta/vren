@@ -3,13 +3,12 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
-#include <array>
 #include <functional>
-#include <unordered_set>
-#include <span>
+#include <type_traits>
 
 #include <volk.h>
 
+#include "base/base.hpp"
 #include "base/resource_container.hpp"
 #include "utils/log.hpp"
 
@@ -22,6 +21,8 @@ namespace vren::render_graph
 
 	inline constexpr size_t k_max_name_length = 64;
 
+	using node_idx_t = uint8_t;
+
 	// ------------------------------------------------------------------------------------------------
 	// Image access
 	// ------------------------------------------------------------------------------------------------
@@ -30,7 +31,7 @@ namespace vren::render_graph
 	{
 		static constexpr size_t k_max_name_length = vren::render_graph::k_max_name_length;
 
-		char m_name[k_max_name_length] = "unnamed"; // TODO char const*
+		char const* m_name;
 
 		VkImage m_image = VK_NULL_HANDLE;
 		VkImageAspectFlags m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -59,7 +60,7 @@ namespace vren::render_graph
 	{
 		static constexpr size_t k_max_name_length = vren::render_graph::k_max_name_length;
 
-		char m_name[k_max_name_length] = "unnamed"; // TODO char const*
+		char const* m_name;
 
 		VkBuffer m_buffer = VK_NULL_HANDLE;
 		VkDeviceSize m_size = VK_WHOLE_SIZE;
@@ -82,8 +83,6 @@ namespace vren::render_graph
 	// Render-graph node
 	// ------------------------------------------------------------------------------------------------
 
-	using node_index_t = uint8_t;
-
 	class node
 	{
 		friend vren::render_graph::allocator;
@@ -96,147 +95,133 @@ namespace vren::render_graph
 		static constexpr size_t k_max_previous_nodes = 4;
 		static constexpr size_t k_max_next_nodes = 4;
 
-		using access_index_t = uint8_t;
-		using image_access_index_t = access_index_t;
-		using buffer_access_index_t = access_index_t;
+		using image_access_idx_t = uint8_t;
+		using buffer_access_idx_t = uint8_t;
 
-		using callback_t = std::function<void(uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)>;
+		using callback_t = std::function<void(uint32_t frame_idx, VkCommandBuffer command_buffer, resource_container& resource_container)>;
 
-		static_assert(std::numeric_limits<image_access_index_t>::max() >= k_max_image_accesses - 1);
-		static_assert(std::numeric_limits<buffer_access_index_t>::max() >= k_max_buffer_accesses - 1);
-		static_assert(std::numeric_limits<node_index_t>::max() >= k_max_previous_nodes - 1);
-		static_assert(std::numeric_limits<node_index_t>::max() >= k_max_next_nodes - 1);
+		static_assert(std::numeric_limits<buffer_access_idx_t>::max() >= k_max_buffer_accesses - 1);
+		static_assert(std::numeric_limits<node_idx_t>::max() >= k_max_previous_nodes - 1);
+		static_assert(std::numeric_limits<node_idx_t>::max() >= k_max_next_nodes - 1);
 
 	private:
-		vren::render_graph::allocator* m_allocator;
-		node_index_t m_idx = -1;
+		allocator* m_allocator;
+		node_idx_t m_allocation_idx;
 
-		char m_name[k_max_name_length] = "unnamed"; // TODO char const*
+		char const* m_name = "unnamed";
 
 		VkPipelineStageFlags m_src_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		VkPipelineStageFlags m_dst_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
-		std::array<vren::render_graph::image_access, k_max_image_accesses> m_image_accesses;
-		access_index_t m_next_image_access_idx = 0;
-
-		std::array<vren::render_graph::buffer_access, k_max_buffer_accesses> m_buffer_accesses;
-		access_index_t m_next_buffer_access_idx = 0;
+		static_vector_t<image_access, k_max_image_accesses> m_image_accesses;
+		static_vector_t<buffer_access, k_max_buffer_accesses> m_buffer_accesses;
 
 		callback_t m_callback;
 
-		std::array<node_index_t, k_max_previous_nodes> m_previous_nodes;
-		node_index_t m_next_previous_node_idx = 0;
-
-		std::array<node_index_t, k_max_next_nodes> m_next_nodes;
-		node_index_t m_next_next_node_idx = 0;
+		static_vector_t<node_idx_t, k_max_previous_nodes> m_previous_nodes;
+		static_vector_t<node_idx_t, k_max_next_nodes> m_next_nodes;
 
 	public:
-		explicit node() = default;
+		node(allocator& allocator) :
+			m_allocator(&allocator)
+		{}
 
-		inline uint32_t get_idx() const
+		inline auto* get_allocator()
 		{
-			return m_idx;
+			return m_allocator;
 		}
 
-		inline auto get_name() const { return m_name; }
-		inline void set_name(char const* name) { strcpy_s(m_name, name); }
-
-		inline auto get_src_stage() const { return m_src_stage; }
-		inline void set_src_stage(VkPipelineStageFlags stage) { m_src_stage = stage; }
-
-		inline auto get_dst_stage() const { return m_dst_stage; }
-		inline void set_dst_stage(VkPipelineStageFlags stage) { m_dst_stage = stage; }
-
-		inline void add_image(vren::render_graph::image_access&& image_access)
+		inline auto get_idx() const
 		{
-			assert(m_next_image_access_idx < k_max_image_accesses);
-
-			m_image_accesses[m_next_image_access_idx++] = std::move(image_access);
+			return m_allocation_idx;
 		}
 
-		inline auto get_image_accesses() const -> std::span<vren::render_graph::image_access const>
+		inline auto get_name() const
 		{
-			return std::span(m_image_accesses.data(), m_next_image_access_idx);
+			return m_name;
 		}
 
-		inline void add_buffer_access(vren::render_graph::buffer_access&& buffer_access)
+		inline void set_name(char const* name)
 		{
-			assert(m_next_buffer_access_idx < k_max_buffer_accesses);
-
-			m_buffer_accesses[m_next_buffer_access_idx++] = std::move(buffer_access);
+			m_name = name;
 		}
 
-		inline auto get_buffer_accesses() const -> std::span<vren::render_graph::buffer_access const>
+		inline auto get_src_stage() const
 		{
-			return std::span(m_buffer_accesses.data(), m_next_buffer_access_idx);
+			return m_src_stage;
 		}
 
-		inline void operator()(uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) const
+		inline void set_src_stage(VkPipelineStageFlags stage)
+		{
+			m_src_stage = stage;
+		}
+
+		inline auto get_dst_stage() const
+		{
+			return m_dst_stage;
+		}
+
+		inline void set_dst_stage(VkPipelineStageFlags stage)
+		{
+			m_dst_stage = stage;
+		}
+
+		inline void add_image(image_access const& image_access)
+		{
+			m_image_accesses.push_back(image_access);
+		}
+
+		inline auto const& get_image_accesses() const
+		{
+			return m_image_accesses;
+		}
+
+		inline void add_buffer_access(buffer_access const& buffer_access)
+		{
+			m_buffer_accesses.push_back(buffer_access);
+		}
+
+		inline auto const& get_buffer_accesses() const
+		{
+			return m_buffer_accesses;
+		}
+
+		inline void operator()(uint32_t frame_idx, VkCommandBuffer command_buffer, resource_container& resource_container) const
 		{
 			if (m_callback) {
 				m_callback(frame_idx, command_buffer, resource_container);
 			}
 		}
 
-		inline void set_callback(callback_t const& callback) { m_callback = callback; }
-
-		inline auto get_previous_nodes() const -> std::span<vren::render_graph::node_index_t const>
+		inline void set_callback(callback_t const& callback)
 		{
-			return std::span(m_previous_nodes.data(), m_next_previous_node_idx);
+			m_callback = callback;
 		}
 
-		inline auto get_next_nodes() const -> std::span<vren::render_graph::node_index_t const>
+		inline auto const& get_previous_nodes() const
 		{
-			return std::span(m_next_nodes.data(), m_next_next_node_idx);
+			return m_previous_nodes;
 		}
 
-	public:
-		inline auto add_next(vren::render_graph::node* next_node)
+		inline auto const& get_next_nodes() const
+		{
+			return m_next_nodes;
+		}
+
+		inline void add_next(node* next_node)
 		{
 			assert(next_node != nullptr);
 			assert(this != next_node);
-			assert(next_node->m_next_previous_node_idx < k_max_previous_nodes);
-			assert(m_next_next_node_idx < k_max_next_nodes);
+			assert(!next_node->m_previous_nodes.full());
+			assert(!m_next_nodes.full());
 
-			next_node->m_previous_nodes[next_node->m_next_previous_node_idx++] = m_idx;
-			m_next_nodes[m_next_next_node_idx++] = next_node->m_idx;
-
-			return this;
+			m_next_nodes.push_back(next_node->m_allocation_idx);
+			next_node->m_previous_nodes.push_back(m_allocation_idx);
 		}
 
-		vren::render_graph::node* chain(vren::render_graph::node* chain);
+		// Forward decl (need allocator)
+		void add_next(node_idx_t next_node_idx);
 	};
-
-	// ------------------------------------------------------------------------------------------------
-	// Render-graph
-	// ------------------------------------------------------------------------------------------------
-
-	using graph_t = std::span<vren::render_graph::node*>;
-
-	void traverse(
-		vren::render_graph::allocator& allocator,
-		vren::render_graph::graph_t const& graph,
-		bool callback_starting_nodes,
-		std::function<bool(vren::render_graph::node* node)> const& callback
-	);
-
-	void iterate_starting_nodes(
-		vren::render_graph::allocator& allocator,
-		vren::render_graph::graph_t const& graph,
-		std::function<void(vren::render_graph::node*)> const& callback
-	);
-
-	void iterate_ending_nodes(
-		vren::render_graph::allocator& allocator,
-		vren::render_graph::graph_t const& graph,
-		std::function<void(vren::render_graph::node*)> const& callback
-	);
-
-	// ------------------------------------------------------------------------------------------------
-	// Render-graph execution
-	// ------------------------------------------------------------------------------------------------
-
-	void execute(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph allocator
@@ -247,45 +232,73 @@ namespace vren::render_graph
 	public:
 		static constexpr size_t k_max_allocable_nodes = 256;
 
-		static_assert(std::numeric_limits<vren::render_graph::node_index_t>::max() >= k_max_allocable_nodes - 1);
+		static_assert(std::numeric_limits<node_idx_t>::max() >= k_max_allocable_nodes - 1);
 
 	private:
-		std::vector<vren::render_graph::node> m_nodes;
-		uint32_t m_next_node_idx = 0;
+		std::vector<node> m_nodes;
 
 	public:
-		inline allocator() :
-			m_nodes(k_max_allocable_nodes)
+		inline allocator()
 		{
-			VREN_INFO("vren::render_graph::allocator | Allocating {} bytes for render-graph\n", m_nodes.size() * sizeof(vren::render_graph::node));
+			m_nodes.reserve(k_max_allocable_nodes);
 		}
 
-		inline vren::render_graph::node* allocate()
+		inline node* allocate()
 		{
-			assert(m_next_node_idx < k_max_allocable_nodes);
-
-			auto& node = m_nodes.at(m_next_node_idx);
-			node.m_idx = m_next_node_idx;
-			m_next_node_idx++;
+			auto& node = m_nodes.emplace_back(*this);
+			node.m_allocation_idx = m_nodes.size() - 1;
 			return &node;
 		}
 
-		inline vren::render_graph::node* get_node_at(vren::render_graph::node_index_t node_idx)
+		inline node* get_node_at(node_idx_t node_idx)
 		{
 			return &m_nodes.at(node_idx);
 		}
 
 		inline void clear()
 		{
-			m_next_node_idx = 0;
+			m_nodes.clear();
 		}
 	};
+
+	// ------------------------------------------------------------------------------------------------
+
+	inline void vren::render_graph::node::add_next(node_idx_t next_node_idx)
+	{
+		add_next(m_allocator->get_node_at(next_node_idx));
+	}
+
+	// ------------------------------------------------------------------------------------------------
+	// Render-graph
+	// ------------------------------------------------------------------------------------------------
+
+	using graph_t = static_vector_t<node_idx_t, allocator::k_max_allocable_nodes>;
+
+	using traverse_callback_t = std::function<bool(node_idx_t node_idx)>;
+	void traverse(allocator& allocator, graph_t const& graph, bool first_callback, traverse_callback_t const& callback);
+
+	graph_t get_starting_nodes(allocator& allocator, graph_t const& graph);
+	graph_t get_ending_nodes(allocator& allocator, graph_t const& graph);
+
+	template<typename... _nodes> requires (std::is_same_v<node, typename std::remove_pointer<_nodes>::type> && ...)
+	graph_t gather(_nodes... nodes)
+	{
+		return { (nodes->get_idx(), ...) };
+	}
+
+	graph_t concat(allocator& allocator, graph_t const& left, graph_t const& right);
+
+	// ------------------------------------------------------------------------------------------------
+	// Render-graph execution
+	// ------------------------------------------------------------------------------------------------
+
+	void execute(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 }
 
 // ------------------------------------------------------------------------------------------------
 
 namespace vren
 {
-	vren::render_graph::node* clear_color_buffer(vren::render_graph::allocator& allocator, VkImage color_buffer, VkClearColorValue clear_color_value);
-	vren::render_graph::node* clear_depth_stencil_buffer(vren::render_graph::allocator& allocator, VkImage depth_buffer, VkClearDepthStencilValue clear_depth_stencil_value);
+	render_graph::graph_t clear_color_buffer(vren::render_graph::allocator& allocator, VkImage color_buffer, VkClearColorValue clear_color_value);
+	render_graph::graph_t clear_depth_stencil_buffer(vren::render_graph::allocator& allocator, VkImage depth_buffer, VkClearDepthStencilValue clear_depth_stencil_value);
 }

@@ -91,7 +91,7 @@ namespace vren
 	public:
 		explicit basic_renderer(vren::context const& context);
 
-		vren::render_graph::node* render(
+		vren::render_graph::graph_t render(
 			vren::render_graph::allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
@@ -126,7 +126,7 @@ namespace vren
 	public:
 		explicit mesh_shader_renderer(vren::context const& context);
 
-		vren::render_graph::node* render(
+		vren::render_graph::graph_t render(
 			vren::render_graph::allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,

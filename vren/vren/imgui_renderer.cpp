@@ -142,7 +142,7 @@ vren::vk_render_pass vren::imgui_renderer::create_render_pass()
 	return vren::vk_render_pass(*m_context, render_pass);
 }
 
-vren::render_graph::node* vren::imgui_renderer::render(
+vren::render_graph::graph_t vren::imgui_renderer::render(
 	vren::render_graph::allocator& allocator,
 	vren::render_target const& render_target,
 	std::function<void()> const& show_ui_callback
@@ -199,5 +199,5 @@ vren::render_graph::node* vren::imgui_renderer::render(
 		// Render-pass end
 		vkCmdEndRenderPass(command_buffer);
 	});
-	return node;
+	return vren::render_graph::gather(node);
 }
