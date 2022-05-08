@@ -279,13 +279,14 @@ vren::render_graph::graph_t vren::depth_buffer_reductor::reduce_step(
 ) const
 {
 	auto node = allocator.allocate();
-	node->set_name(fmt::format("depth_buffer_reductor | reduce_step {} -> {}", current_level, current_level + 1).c_str());
+	node->set_name("depth_buffer_reductor | reduce_step");
 	node->set_src_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 	node->add_image({
 		.m_name = "depth_buffer_pyramid level=x",//fmt::format("depth_buffer_pyramid level={}", current_level),
 		.m_image = depth_buffer_pyramid.get_image(),
-		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT, .m_mip_level = current_level,
+		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+		.m_mip_level = current_level,
 		.m_image_layout = VK_IMAGE_LAYOUT_GENERAL,
 		.m_access_flags = VK_ACCESS_SHADER_READ_BIT
 	});
@@ -330,7 +331,7 @@ vren::render_graph::graph_t vren::depth_buffer_reductor::reduce(
 	vren::render_graph::graph_t tail = head;
 	for (uint32_t i = 1; i < depth_buffer_pyramid.m_level_count - 1; i++)
 	{
-		auto node = reduce_step(allocator, depth_buffer_pyramid, 0);
+		auto node = reduce_step(allocator, depth_buffer_pyramid, i);
 		tail = vren::render_graph::concat(allocator, tail, node);
 	}
 	return head;
@@ -359,11 +360,11 @@ vren::render_graph::graph_t vren::blit_depth_buffer_pyramid_level_to_color_buffe
 )
 {
 	auto node = allocator.allocate();
-	node->set_name(fmt::format("blit_depth_buffer_pyramid_level_to_color_buffer level={}", level).c_str());
+	node->set_name("blit_depth_buffer_pyramid_level_to_color_buffer");
 	node->set_src_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 	node->add_image({
-		.m_name = "depth_buffer_pyramid level=x",//fmt::format("depth_buffer_pyramid level={}", level).c_str(),
+		.m_name = "depth_buffer_pyramid level=x",
 		.m_image = depth_buffer_pyramid.get_image(),
 		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
 		.m_mip_level = level,

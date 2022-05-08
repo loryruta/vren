@@ -142,6 +142,11 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 		m_camera.m_position = glm::vec3(0);
 	}
 
+	if (key == GLFW_KEY_F5 && action == GLFW_PRESS)
+	{
+		m_take_render_graph_dump = true;
+	}
+
 	if (action == GLFW_PRESS)
 	{
 		switch (key)
@@ -448,6 +453,16 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 
 	// Execute render-graph
 	vren::render_graph::execute(m_render_graph_allocator, head, frame_idx, command_buffer, resource_container);
+
+	if (m_take_render_graph_dump)
+	{
+		std::filesystem::path render_graph_dump_filename(
+			fmt::format("{}_render_graph.dot", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+		);
+		vren::render_graph::dump(m_render_graph_allocator, head, render_graph_dump_filename);
+
+		m_take_render_graph_dump = false;
+	}
 
 	m_render_graph_allocator.clear();
 }

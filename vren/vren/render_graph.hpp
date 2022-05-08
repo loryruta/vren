@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <type_traits>
+#include <filesystem>
 
 #include <volk.h>
 
@@ -31,7 +32,7 @@ namespace vren::render_graph
 	{
 		static constexpr size_t k_max_name_length = vren::render_graph::k_max_name_length;
 
-		char const* m_name;
+		char const* m_name = "unnamed";
 
 		VkImage m_image = VK_NULL_HANDLE;
 		VkImageAspectFlags m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -60,7 +61,7 @@ namespace vren::render_graph
 	{
 		static constexpr size_t k_max_name_length = vren::render_graph::k_max_name_length;
 
-		char const* m_name;
+		char const* m_name = "unnamed";
 
 		VkBuffer m_buffer = VK_NULL_HANDLE;
 		VkDeviceSize m_size = VK_WHOLE_SIZE;
@@ -275,7 +276,13 @@ namespace vren::render_graph
 	using graph_t = static_vector_t<node_idx_t, allocator::k_max_allocable_nodes>;
 
 	using traverse_callback_t = std::function<bool(node_idx_t node_idx)>;
-	void traverse(allocator& allocator, graph_t const& graph, bool first_callback, traverse_callback_t const& callback);
+	void traverse(
+		allocator& allocator,
+		graph_t const& graph,
+		traverse_callback_t const& callback, // The function called every time a node is reached
+		bool forward_traversal = true,       // Whether the traversal should go forward or backward
+		bool callback_initial_nodes = true   // Whether the callback should be called for graph initial nodes
+	);
 
 	graph_t get_starting_nodes(allocator& allocator, graph_t const& graph);
 	graph_t get_ending_nodes(allocator& allocator, graph_t const& graph);
@@ -292,7 +299,35 @@ namespace vren::render_graph
 	// Render-graph execution
 	// ------------------------------------------------------------------------------------------------
 
-	void execute(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph, uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
+	namespace detail
+	{
+		template<
+		    typename _execution_parameters,
+			typename _make_initial_image_layout_transition,
+			typename _execute_node,
+			typename _put_image_memory_barrier,
+			typename _put_buffer_memory_barrier
+		>
+		void execute(
+			vren::render_graph::allocator& allocator,
+			vren::render_graph::graph_t const& graph,
+			_execution_parameters& params
+		);
+	}
+
+	void execute(
+		vren::render_graph::allocator& allocator,
+		vren::render_graph::graph_t const& graph,
+		uint32_t frame_idx,
+		VkCommandBuffer command_buffer,
+		vren::resource_container& resource_container
+	);
+
+	void dump(
+		vren::render_graph::allocator& allocator,
+		vren::render_graph::graph_t const& graph,
+		std::filesystem::path const& output_filename
+	);
 }
 
 // ------------------------------------------------------------------------------------------------

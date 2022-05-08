@@ -65,11 +65,19 @@
 #include <stdio.h>      // for assertion diagnostics
 
 /// Unreachable code
-#define FCV_UNREACHABLE __builtin_unreachable()
+#ifdef __GNUC__
+#	define FCV_UNREACHABLE __builtin_unreachable()
+#else
+#	define FCV_UNREACHABLE
+#endif
 
 /// Optimizer allowed to assume that EXPR evaluates to true
-#define FCV_ASSUME(EXPR) \
-    static_cast<void>((EXPR) ? void(0) : __builtin_unreachable())
+#ifdef __GNU_C
+#	define FCV_ASSUME(EXPR) \
+    	static_cast<void>((EXPR) ? void(0) : __builtin_unreachable())
+#else
+#	define FCV_ASSUME(EXPR)
+#endif
 
 /// Assert pretty printer
 #define FCV_ASSERT(...)                                                       \
@@ -80,15 +88,20 @@
                                 "assertion failed: " #__VA_ARGS__))
 
 /// Likely/unlikely branches
-#define FCV_LIKELY(boolean_expr) __builtin_expect(!!(boolean_expr), 1)
-#define FCV_UNLIKELY(boolean_expr) __builtin_expect(!!(boolean_expr), 0)
+#ifdef __GNUC__
+#	define FCV_LIKELY(boolean_expr) __builtin_expect(!!(boolean_expr), 1)
+#	define FCV_UNLIKELY(boolean_expr) __builtin_expect(!!(boolean_expr), 0)
+#else
+#	define FCV_LIKELY(boolean_expr) !!(boolean_expr)
+#	define FCV_UNLIKELY(boolean_expr) !!(boolean_expr)
+#endif
 
 /// Expect asserts the condition in debug builds and assumes the condition to be
 /// true in release builds.
 #ifdef NDEBUG
-#define FCV_EXPECT(EXPR) FCV_ASSUME(EXPR)
+#	define FCV_EXPECT(EXPR) FCV_ASSUME(EXPR)
 #else
-#define FCV_EXPECT(EXPR) FCV_ASSERT(EXPR)
+#	define FCV_EXPECT(EXPR) FCV_ASSERT(EXPR)
 #endif
 
 #define FCV_CONCEPT_PP_CAT_(X, Y) X##Y

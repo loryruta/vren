@@ -84,6 +84,7 @@ namespace vren_demo
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
 
 		vren::render_graph::allocator m_render_graph_allocator;
+		bool m_take_render_graph_dump = false;
 
 		vren::profiler m_profiler;
 		std::array<uint64_t, ProfileSlot_Count> m_elapsed_time_by_slot;
