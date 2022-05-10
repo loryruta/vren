@@ -47,7 +47,7 @@ target_link_libraries(vren_demo_imgui_glfw_backend PRIVATE glfw)
 target_include_directories(vren_demo PRIVATE "${VREN_HOME}/vren_demo/vren_demo")
 
 # vren
-target_compile_definitions(vren PRIVATE VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
+target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
 
 target_include_directories(vren_demo PRIVATE "${VREN_HOME}/vren")
 target_link_libraries(vren_demo PRIVATE vren)
