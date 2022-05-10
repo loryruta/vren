@@ -5,8 +5,6 @@
 
 #include <imgui.h>
 
-#include "profile.hpp"
-
 #include <vren/context.hpp>
 #include <vren/renderer.hpp>
 #include <vren/toolbox.hpp>
@@ -66,36 +64,6 @@ namespace vren_demo
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// fps_ui
-	// ------------------------------------------------------------------------------------------------
-
-	class fps_ui
-	{
-	private:
-		uint32_t m_fps_counter = 0;
-		uint32_t m_fps;
-		double m_last_fps_time = -1.0;
-
-		uint64_t m_frame_start_t[VREN_MAX_FRAME_IN_FLIGHT_COUNT];
-		uint64_t m_frame_end_t[VREN_MAX_FRAME_IN_FLIGHT_COUNT];
-
-		bool m_paused = false;
-
-		plot m_frame_parallelism_plot;
-		plot m_frame_delta_plot;
-
-		plot m_main_pass_plot;
-		plot m_ui_pass_plot;
-
-	public:
-		fps_ui();
-
-		void notify_frame_profiling_data(vren_demo::profile_info const& prof_info);
-
-		void show();
-	};
-
-	// ------------------------------------------------------------------------------------------------
 	// UI
 	// ------------------------------------------------------------------------------------------------
 
@@ -112,10 +80,11 @@ namespace vren_demo
 
 	public:
 		vren_demo::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
-		vren_demo::fps_ui m_fps_ui;
 		vren_demo::scene_ui m_scene_ui;
 
 		ui(vren_demo::app const& app);
+
+		void show_profiling_window();
 
 		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_arr);
 	};

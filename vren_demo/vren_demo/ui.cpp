@@ -92,12 +92,7 @@ void vren_demo::scene_ui::show(vren::light_array& light_array)
 // fps_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren_demo::fps_ui::fps_ui()
-{
-	std::fill_n(m_frame_start_t, std::size(m_frame_start_t), std::numeric_limits<uint64_t>::infinity());
-	std::fill_n(m_frame_end_t, std::size(m_frame_end_t), 0);
-}
-
+/*
 void vren_demo::fps_ui::notify_frame_profiling_data(
 	vren_demo::profile_info const& prof_info
 )
@@ -106,7 +101,6 @@ void vren_demo::fps_ui::notify_frame_profiling_data(
 		return;
 	}
 
-	/* FPS */
 	m_fps_counter++;
 	if ((glfwGetTime() - m_last_fps_time) >= 1.0 || m_last_fps_time < 0)
 	{
@@ -115,21 +109,18 @@ void vren_demo::fps_ui::notify_frame_profiling_data(
 		m_last_fps_time = glfwGetTime();
 	}
 
-	/* Main pass */
 	if (prof_info.m_main_pass_profiled)
 	{
 		float main_pass_dt = (float) (prof_info.m_main_pass_end_t - prof_info.m_main_pass_start_t) / (1000.0f * 1000.0f);
 		m_main_pass_plot.push(main_pass_dt);
 	}
 
-	/* UI pass */
 	if (prof_info.m_ui_pass_profiled)
 	{
 		float ui_pass_dt = (float) (prof_info.m_ui_pass_end_t - prof_info.m_ui_pass_start_t) / (1000.0f * 1000.0f);
 		m_ui_pass_plot.push(ui_pass_dt);
 	}
 
-	/* Frame profiling */
 	if (prof_info.m_frame_profiled)
 	{
 		float frame_dt = (float) (prof_info.m_frame_end_t - prof_info.m_frame_start_t) / (1000.0f * 1000.0f);;
@@ -178,7 +169,7 @@ void vren_demo::fps_ui::notify_frame_profiling_data(
 		float par_perc = ((float) tot_par_dt) / (float) (right_t - left_t);
 		m_frame_parallelism_plot.push(par_perc);
 	}
-}
+}*/
 
 void plot_ui(std::string const& plot_title, vren_demo::plot const& plot, char const* unit)
 {
@@ -237,48 +228,62 @@ void vren_demo::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& 
 	}
 }
 
-void vren_demo::fps_ui::show()
+
+vren_demo::ui::ui(vren_demo::app const& app) :
+	m_app(&app),
+	m_scene_ui(app.m_context)
 {
-	if (ImGui::Begin("Frame info##frame_ui", nullptr, NULL))
+}
+
+void vren_demo::ui::show_profiling_window()
+{
+	if (ImGui::Begin("Profiling##profiling", nullptr, NULL))
 	{
-		ImGui::Checkbox("Pause", &m_paused);
-
-		ImGui::Separator();
-
 		// General
-		ImGui::Text("FPS: %d", m_fps);
-		ImGui::Text("Frame parallelism: %.1f%%", m_frame_parallelism_plot.get_last_value());
+		ImGui::Text("FPS: %d", m_app->m_fps);
 
-		ImGui::Separator();
-
-		// Frame profiling
-		ImGui::Text("Frame profiling:");
-
-		//plot_ui("Frame parallelism##frame_parallelism-frame_ui", m_frame_parallelism_plot, "%");
-		plot_ui("Frame delta##frame_delta-frame_ui", m_frame_delta_plot, "ms");
+		for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
+		{
+			ImGui::Text("Frame %d: %.3f ms %.3f ms", i, m_app->m_frame_dt[i].get_last_value(), m_app->m_frame_dt[i].m_avg);
+		}
 
 		ImGui::Separator();
 
 		// Passes
 		if (ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Text("Main pass: %.3f ms", m_main_pass_plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
-			ImGui::Text("UI pass: %.3f ms", m_main_pass_plot.m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1]);
+			for (uint32_t slot = 1; slot < ProfileSlot_Count; slot++)
+			{
+				char const* slot_name = vren_demo::get_profile_slot_name(static_cast<vren_demo::profile_slot_enum_t>(slot));
+
+				ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(250, 128, 114, 255));
+
+				if (ImGui::TreeNodeEx(slot_name, ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					float last_dt = m_app->m_delta_time_by_profile_slot.at(slot).get_last_value() / (1000 * 1000);
+					float avg_dt = m_app->m_delta_time_by_profile_slot.at(slot).m_avg / (1000 * 1000);
+
+					ImGui::PopStyleColor();
+
+					ImGui::Text("Last dt: %.3f ms", last_dt);
+					ImGui::Text("Avg. dt: %.3f ms", avg_dt);
+
+					ImGui::Spacing();
+
+					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32_DISABLE);
+
+					ImGui::TreePop();
+				}
+
+				ImGui::PopStyleColor();
+			}
 
 			ImGui::TreePop();
 		}
-
-		//plot_ui("Main pass##main_pass-frame_ui", m_main_pass_plot, "ms");
-		//plot_ui("UI pass##ui_pass-frame_ui", m_ui_pass_plot, "ms");
 	}
 
 	ImGui::End();
 }
-
-vren_demo::ui::ui(vren_demo::app const& app) :
-	m_app(&app),
-	m_scene_ui(app.m_context)
-{}
 
 void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_array)
 {
@@ -324,11 +329,11 @@ void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid,
 	m_scene_ui.show(light_array);
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
-	m_fps_ui.show();
+	show_profiling_window();
 
 	m_depth_buffer_pyramid_ui.show(depth_buffer_pyramid);
 
-	//ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 	//ImPlot::ShowDemoWindow();
 }
 

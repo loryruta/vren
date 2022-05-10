@@ -44,29 +44,23 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
-		void swap(swapchain& other);
-
-		std::vector<VkImage> get_swapchain_images();
-
 	public:
 		VkSwapchainKHR m_handle;
 
 		uint32_t m_image_width, m_image_height;
-		uint32_t m_image_count;
 		VkSurfaceFormatKHR m_surface_format;
 		VkPresentModeKHR m_present_mode;
 
 		std::vector<VkImage> m_images;
 		std::vector<vren::vk_image_view> m_image_views;
 
-		std::vector<vren::swapchain_frame_data> m_frame_data;
+		std::array<vren::swapchain_frame_data, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_data;
 
 		swapchain(
 			vren::context const& context,
 			VkSwapchainKHR handle,
 			uint32_t image_width,
 			uint32_t image_height,
-			uint32_t image_count,
             VkSurfaceFormatKHR surface_format,
             VkPresentModeKHR present_mode
 		);
@@ -74,6 +68,12 @@ namespace vren
 		swapchain(swapchain&& other);
 		~swapchain();
 
+	private:
+		void swap(swapchain& other);
+
+		std::vector<VkImage> get_swapchain_images();
+
+	public:
 		swapchain& operator=(swapchain const& other) = delete;
 		swapchain& operator=(swapchain&& other);
 	};

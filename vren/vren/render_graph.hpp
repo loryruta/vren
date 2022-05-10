@@ -125,7 +125,8 @@ namespace vren::render_graph
 	public:
 		node(allocator& allocator) :
 			m_allocator(&allocator)
-		{}
+		{
+		}
 
 		inline auto* get_allocator()
 		{
@@ -177,7 +178,7 @@ namespace vren::render_graph
 			return m_image_accesses;
 		}
 
-		inline void add_buffer_access(buffer_access const& buffer_access)
+		inline void add_buffer(buffer_access const& buffer_access)
 		{
 			m_buffer_accesses.push_back(buffer_access);
 		}
@@ -242,6 +243,8 @@ namespace vren::render_graph
 		inline allocator()
 		{
 			m_nodes.reserve(k_max_allocable_nodes);
+
+			VREN_INFO("[render_graph::allocator] Max allocable nodes {} ({} bytes)\n", k_max_allocable_nodes, k_max_allocable_nodes * sizeof(vren::render_graph::node));
 		}
 
 		inline node* allocate()
@@ -294,6 +297,38 @@ namespace vren::render_graph
 	}
 
 	graph_t concat(allocator& allocator, graph_t const& left, graph_t const& right);
+
+	// ------------------------------------------------------------------------------------------------
+	// Render-graph chain (builder)
+	// ------------------------------------------------------------------------------------------------
+
+	class chain
+	{
+	private:
+		allocator* m_allocator;
+
+	public:
+		graph_t m_head;
+		graph_t m_tail;
+
+		inline chain(allocator& allocator) :
+			m_allocator(&allocator)
+		{
+		}
+
+		inline void concat(graph_t const& graph)
+		{
+			if (m_head.empty())
+			{
+				m_head = graph;
+				m_tail = graph;
+			}
+			else
+			{
+				m_tail = vren::render_graph::concat(*m_allocator, m_tail, graph);
+			}
+		}
+	};
 
 	// ------------------------------------------------------------------------------------------------
 	// Render-graph execution

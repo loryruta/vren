@@ -29,7 +29,11 @@ vren::vk_query_pool vren::profiler::create_query_pool() const
 	return vren::vk_query_pool(*m_context, query_pool);
 }
 
-vren::render_graph::graph_t vren::profiler::profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample)
+vren::render_graph::graph_t vren::profiler::profile(
+	vren::render_graph::allocator& allocator,
+	vren::render_graph::graph_t const& sample,
+	uint32_t slot_idx
+)
 {
 	auto head = allocator.allocate();
 	head->set_name("Profiling start");
@@ -79,6 +83,6 @@ bool vren::profiler::read_timestamps(uint32_t slot_idx, uint64_t& start_timestam
 	}
 	else
 	{
-		throw std::runtime_error("Failed to read_elapsed_time query results");
+		throw std::runtime_error("Failed to read query results");
 	}
 }

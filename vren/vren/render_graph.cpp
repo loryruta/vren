@@ -69,18 +69,27 @@ vren::render_graph::graph_t vren::render_graph::get_ending_nodes(vren::render_gr
 
 vren::render_graph::graph_t vren::render_graph::concat(allocator& allocator, graph_t const& left, graph_t const& right)
 {
-	auto left_ending_nodes = get_ending_nodes(allocator, left);
-	auto right_starting_nodes = get_starting_nodes(allocator, right);
-
-	for (node_idx_t left_node_idx : left_ending_nodes)
+	if (left.empty())
 	{
-		for (node_idx_t right_node_idx : right_starting_nodes)
-		{
-			allocator.get_node_at(left_node_idx)->add_next(allocator.get_node_at(right_node_idx));
-		}
+		return right;
 	}
+	else if (right.empty())
+	{
+		return left;
+	}
+	else
+	{
+		// Merge the left graph with the right graph and return the tail of the merged result
+		for (node_idx_t left_node_idx : get_ending_nodes(allocator, left))
+		{
+			for (node_idx_t right_node_idx : get_starting_nodes(allocator, right))
+			{
+				allocator.get_node_at(left_node_idx)->add_next(allocator.get_node_at(right_node_idx));
+			}
+		}
 
-	return get_ending_nodes(allocator, left);
+		return get_ending_nodes(allocator, left);
+	}
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -371,9 +380,7 @@ void vren::render_graph::dump(
 		void operator()(node const& node, uint32_t image_idx, execution_parameters& params) const
 		{
 			auto const& image = node.get_image_accesses().at(image_idx);
-
 			params.m_writer << fmt::format("node_{}_image_{} [color=red, fillcolor=orange, label=\"{} ({})\"];\n", node.get_idx(), image_idx, image.m_name, params.m_position);
-
 			params.m_position++;
 		}
 	};
@@ -383,7 +390,6 @@ void vren::render_graph::dump(
 		void operator()(node const& node, execution_parameters& params) const
 		{
 			params.m_writer << fmt::format("node_{} [shape=rect, label=\"{} ({})\"];\n", node.get_idx(), node.get_name(), params.m_position);
-
 			params.m_position++;
 		}
 	};
@@ -393,7 +399,6 @@ void vren::render_graph::dump(
 		void operator()(node const& node_1, node const& node_2, uint32_t image_1_idx, uint32_t image_2_idx, execution_parameters& params) const
 		{
 			params.m_writer << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), image_1_idx, node_2.get_idx(), image_2_idx, params.m_position);
-
 			params.m_position++;
 		}
 	};
@@ -403,7 +408,6 @@ void vren::render_graph::dump(
 		void operator()(node const& node_1, node const& node_2, uint32_t buffer_1_idx, uint32_t buffer_2_idx, execution_parameters& params) const
 		{
 			params.m_writer << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), buffer_1_idx, node_2.get_idx(), buffer_2_idx, params.m_position);
-
 			params.m_position++;
 		}
 	};

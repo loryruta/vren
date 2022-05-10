@@ -33,9 +33,28 @@ namespace vren
 		vren::vk_query_pool create_query_pool() const;
 
 	public:
-		vren::render_graph::graph_t profile(vren::render_graph::allocator& allocator, uint32_t slot_idx, vren::render_graph::graph_t const& sample);
+		vren::render_graph::graph_t profile(
+			vren::render_graph::allocator& allocator,
+			vren::render_graph::graph_t const& sample,
+			uint32_t slot_idx
+		);
+
+		inline vren::render_graph::graph_t profile(
+			vren::render_graph::allocator& allocator,
+			vren::render_graph::graph_t const& sample,
+			uint32_t slot_idx,
+			uint32_t frame_idx
+		)
+		{
+			return profile(allocator, sample, slot_idx * VREN_MAX_FRAME_IN_FLIGHT_COUNT + frame_idx);
+		}
 
 		bool read_timestamps(uint32_t slot_idx, uint64_t& start_timestamp, uint64_t& end_timestamp);
+
+		inline bool read_timestamps(uint32_t slot_idx, uint32_t frame_idx, uint64_t& start_timestamp, uint64_t& end_timestamp)
+		{
+			return read_timestamps(slot_idx * VREN_MAX_FRAME_IN_FLIGHT_COUNT + frame_idx, start_timestamp, end_timestamp);
+		}
 
 		inline uint64_t read_elapsed_time(uint32_t slot_idx)
 		{
@@ -43,8 +62,13 @@ namespace vren
 			if (read_timestamps(slot_idx, start_timestamp, end_timestamp)) {
 				return end_timestamp - start_timestamp;
 			} else {
-				return -1;
+				return UINT64_MAX;
 			}
+		}
+
+		inline uint64_t read_elapsed_time(uint32_t slot_idx, uint32_t frame_idx)
+		{
+			return read_elapsed_time(slot_idx * VREN_MAX_FRAME_IN_FLIGHT_COUNT + frame_idx);
 		}
 	};
 }

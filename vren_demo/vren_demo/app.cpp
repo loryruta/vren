@@ -96,7 +96,7 @@ void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
 {
 	// Resize color buffers
 	m_color_buffers.clear();
-	for (uint32_t i = 0; i < swapchain.m_images.size(); i++)
+	for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
 	{
 		m_color_buffers.push_back(
 			vren::vk_utils::create_color_buffer(m_context, swapchain.m_image_width, swapchain.m_image_height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
@@ -301,38 +301,39 @@ void vren_demo::app::on_update(float dt)
 
 void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 {
+	// Render-graph begin
+	vren::render_graph::chain render_graph(m_render_graph_allocator);
+
 	// Dump profiling data
-	for (uint32_t slot_idx = frame_idx; slot_idx < ProfileSlot_Count; slot_idx += 4) {
-		m_elapsed_time_by_slot[slot_idx] = m_profiler.read_elapsed_time(slot_idx);
+	for (uint32_t slot_idx = 0; slot_idx < ProfileSlot_Count; slot_idx++)
+	{
+		uint64_t time_elapsed = m_profiler.read_elapsed_time(slot_idx, frame_idx);
+		if (time_elapsed != UINT64_MAX) {
+			m_delta_time_by_profile_slot[slot_idx].push_value(time_elapsed);
+		}
 	}
 
 	vkCmdSetCheckpointNV(command_buffer, "Frame start");
 
 	auto& color_buffer = m_color_buffers.at(frame_idx);
 
-	vren::render_target render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *m_depth_buffer);
+	auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *m_depth_buffer);
 
 	// Material uploading
-	m_context.m_toolbox->m_material_manager.sync_buffer(frame_idx, command_buffer);
+	auto sync_material_buffer = m_context.m_toolbox->m_material_manager.sync_buffer(m_render_graph_allocator, frame_idx);
+	render_graph.concat(sync_material_buffer);
 
 	// Light array uploading
-	m_light_array.sync_buffers(frame_idx);
-
-	// Render-graph begin
-	vren::render_graph::graph_t head, tail;
+	auto sync_light_buffers = m_light_array.sync_buffers(m_render_graph_allocator, frame_idx);
+	render_graph.concat(sync_light_buffers);
 
 	// Clear color buffer
 	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
-	head = m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER + frame_idx, clear_color_buffer);
-	tail = head;
+	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_color_buffer, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER, frame_idx));
 
 	// Clear depth buffer
 	auto clear_depth_buffer = vren::clear_depth_stencil_buffer(m_render_graph_allocator, m_depth_buffer->get_image(), { .depth = 1.0f, .stencil = 0 });
-	tail = vren::render_graph::concat(
-		m_render_graph_allocator,
-		tail,
-		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_CLEAR_DEPTH_BUFFER + frame_idx, clear_depth_buffer)
-	);
+	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_depth_buffer, vren_demo::ProfileSlot_CLEAR_DEPTH_BUFFER, frame_idx));
 
 	// Render scene
 	switch (m_selected_renderer_type)
@@ -341,22 +342,14 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 		if (m_basic_renderer_draw_buffer)
 		{
 			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer);
-			tail = vren::render_graph::concat(
-				m_render_graph_allocator,
-				tail,
-				m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BASIC_RENDERER + frame_idx, basic_render)
-			);
+			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_mesh_shader_renderer_draw_buffer)
 		{
 			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer);
-			tail = vren::render_graph::concat(
-				m_render_graph_allocator,
-				tail,
-				m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_MESH_SHADER_RENDERER + frame_idx, mesh_shader_render)
-			);
+			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 		}
 		break;
 	default:
@@ -365,52 +358,41 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 
 	// Build depth buffer pyramid
 	auto build_depth_buffer_pyramid = m_depth_buffer_reductor.copy_and_reduce(m_render_graph_allocator, *m_depth_buffer, *m_depth_buffer_pyramid);
-	tail = vren::render_graph::concat(
-		m_render_graph_allocator,
-		tail,
-		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID + frame_idx, build_depth_buffer_pyramid)
-	);
+	render_graph.concat(build_depth_buffer_pyramid);
 
 	// Debug general purpose objects
-	vren::render_graph::graph_t debug_head, debug_tail;
+	vren::render_graph::chain debug_render_graph(m_render_graph_allocator);
 
-	debug_head = m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer);
-	debug_tail = debug_head;
+	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
 
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
-		debug_tail = vren::render_graph::concat(
-			m_render_graph_allocator,
-			debug_tail,
-			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer)
-		);
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer));
 	}
 
 	// Debug meshlet bounds
 	if (m_show_meshlets_bounds)
 	{
-		debug_tail = vren::render_graph::concat(
-			m_render_graph_allocator,
-			debug_tail,
-			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer)
-		);
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer));
 	}
 
 	// Debug depth buffer pyramid
 	if (m_ui.m_depth_buffer_pyramid_ui.m_show)
 	{
-		debug_tail = vren::render_graph::concat(
-			m_render_graph_allocator,
-			debug_tail,
-			vren::blit_depth_buffer_pyramid_level_to_color_buffer(m_render_graph_allocator, *m_depth_buffer_pyramid, m_ui.m_depth_buffer_pyramid_ui.m_selected_level, color_buffer, swapchain.m_image_width, swapchain.m_image_height)
+		debug_render_graph.concat(
+			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+				m_render_graph_allocator,
+				*m_depth_buffer_pyramid,
+				m_ui.m_depth_buffer_pyramid_ui.m_selected_level,
+				color_buffer,
+				swapchain.m_image_width, swapchain.m_image_height
+			)
 		);
 	}
 
-	tail = vren::render_graph::concat(
-		m_render_graph_allocator,
-		tail,
-		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_DEBUG_RENDERER + frame_idx, debug_head)
+	render_graph.concat(
+		m_profiler.profile(m_render_graph_allocator, debug_render_graph.m_head, vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
 	);
 
 	// Render UI
@@ -421,10 +403,8 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 		};
 
 		auto imgui_render_node = m_imgui_renderer.render(m_render_graph_allocator, render_target, show_ui);
-		tail = vren::render_graph::concat(
-			m_render_graph_allocator,
-			tail,
-			m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_IMGUI_RENDERER + frame_idx, imgui_render_node)
+		render_graph.concat(
+			m_profiler.profile(m_render_graph_allocator, imgui_render_node, vren_demo::ProfileSlot_IMGUI_RENDERER, frame_idx)
 		);
 	}
 
@@ -436,30 +416,24 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 		swapchain.m_images.at(swapchain_image_idx),
 		swapchain.m_image_width, swapchain.m_image_height
 	);
-	tail = vren::render_graph::concat(
-		m_render_graph_allocator,
-		tail,
-		m_profiler.profile(m_render_graph_allocator, vren_demo::ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE + frame_idx, blit_to_swapchain_node)
+	render_graph.concat(
+		m_profiler.profile(m_render_graph_allocator, blit_to_swapchain_node, vren_demo::ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE, frame_idx)
 	);
 
 	// Ensure swapchain image is in "present" layout
-	tail = vren::render_graph::concat(
-		m_render_graph_allocator,
-		tail,
+	render_graph.concat(
 		vren::transit_swapchain_image_to_present_layout(m_render_graph_allocator, swapchain.m_images.at(swapchain_image_idx))
 	);
 
-	(void) tail;
-
 	// Execute render-graph
-	vren::render_graph::execute(m_render_graph_allocator, head, frame_idx, command_buffer, resource_container);
+	vren::render_graph::execute(m_render_graph_allocator, render_graph.m_head, frame_idx, command_buffer, resource_container);
 
 	if (m_take_render_graph_dump)
 	{
 		std::filesystem::path render_graph_dump_filename(
 			fmt::format("{}_render_graph.dot", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 		);
-		vren::render_graph::dump(m_render_graph_allocator, head, render_graph_dump_filename);
+		vren::render_graph::dump(m_render_graph_allocator, render_graph.m_head, render_graph_dump_filename);
 
 		m_take_render_graph_dump = false;
 	}
@@ -471,6 +445,22 @@ void vren_demo::app::on_frame()
 {
 	m_presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
+		double now = glfwGetTime();
+
+		m_frame_dt[frame_idx].push_value((now - m_frame_started_at[frame_idx]) * 1000);
+		m_frame_started_at[frame_idx] = now;
+
+		m_fps_counter++;
+
+		if (m_last_fps_time < 0.0 || now - m_last_fps_time >= 1.0)
+		{
+			m_fps = m_fps_counter;
+			m_fps_counter = 0;
+			m_last_fps_time = now;
+		}
+
+		auto start_at = std::chrono::system_clock::now();
+
 		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container);
 	});
 }

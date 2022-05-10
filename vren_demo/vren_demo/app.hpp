@@ -27,22 +27,80 @@ namespace vren_demo
 		RendererType_Count
 	};
 
+	// ------------------------------------------------------------------------------------------------
+	// Profiling
+	// ------------------------------------------------------------------------------------------------
+
+
 	enum profile_slot_enum_t
 	{
-		ProfileSlot_NONE = 0, // VREN_MAX_FRAME_IN_FLIGHTS = 4
-		ProfileSlot_CLEAR_COLOR_BUFFER = 4,
-		ProfileSlot_CLEAR_DEPTH_BUFFER = 8,
-		ProfileSlot_BASIC_RENDERER = 12,
-		ProfileSlot_MESH_SHADER_RENDERER = 16,
-		ProfileSlot_DEBUG_RENDERER = 20,
-		ProfileSlot_IMGUI_RENDERER = 24,
-		ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID = 28,
-		ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE = 32,
+		ProfileSlot_NONE = 0,
+		ProfileSlot_CLEAR_COLOR_BUFFER,
+		ProfileSlot_CLEAR_DEPTH_BUFFER,
+		ProfileSlot_BASIC_RENDERER,
+		ProfileSlot_MESH_SHADER_RENDERER,
+		ProfileSlot_DEBUG_RENDERER,
+		ProfileSlot_IMGUI_RENDERER,
+		ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID,
+		ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE,
 
-		ProfileSlot_LAST = 35,
 		ProfileSlot_Count
 	};
 
+	inline char const* get_profile_slot_name(profile_slot_enum_t profile_slot)
+	{
+		switch (profile_slot)
+		{
+		case ProfileSlot_NONE: return "None";
+		case ProfileSlot_CLEAR_COLOR_BUFFER: return "Clear color-buffer";
+		case ProfileSlot_CLEAR_DEPTH_BUFFER: return "Clear depth-buffer";
+		case ProfileSlot_BASIC_RENDERER: return "Basic renderer";
+		case ProfileSlot_MESH_SHADER_RENDERER: return "Mesh shader renderer";
+		case ProfileSlot_DEBUG_RENDERER: return "Debug renderer";
+		case ProfileSlot_IMGUI_RENDERER: return "ImGui renderer";
+		case ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID: return "Build depth-buffer pyramid";
+		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "Blit color-buffer to swapchain";
+		default: return "Unknown";
+		}
+	}
+
+	template<size_t _size>
+	struct profiled_data
+	{
+		std::array<float, _size> m_values{};
+		float m_avg = 0;
+		float m_sum = 0;
+		float m_min = 0, m_max = 0;
+
+		inline float get_last_value() const
+		{
+			return m_values[_size - 1];
+		}
+
+		inline void push_value(float value)
+		{
+			m_sum -= m_values[0];
+			m_sum += value;
+
+			for (uint32_t i = 0; i < _size - 1; i++)
+			{
+				m_values[i] = m_values[i + 1];
+			}
+
+			m_values[_size - 1] = value;
+
+			m_avg = m_sum / float(_size);
+
+			/*
+			m_min = std::numeric_limits<float>::infinity();
+			m_max = -std::numeric_limits<float>::infinity();
+			for (uint32_t i = 0; i < _size; i++)
+			{
+				m_min = std::min<float>(m_values[i], m_min);
+				m_max = std::max<float>(m_values[i], m_max);
+			}*/
+		}
+	};
 
 	// ------------------------------------------------------------------------------------------------
 	// App
@@ -79,16 +137,28 @@ namespace vren_demo
 
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
 		std::unique_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;
-		std::unique_ptr<vren::depth_buffer_pyramid> m_depth_buffer_pyramid;
 
+		// Depth-buffer pyramid
+		std::unique_ptr<vren::depth_buffer_pyramid> m_depth_buffer_pyramid;
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
 
+		// Render-graph
 		vren::render_graph::allocator m_render_graph_allocator;
 		bool m_take_render_graph_dump = false;
 
+		// Profiling
 		vren::profiler m_profiler;
-		std::array<uint64_t, ProfileSlot_Count> m_elapsed_time_by_slot;
 
+		double m_last_fps_time = -1.0;
+		uint32_t m_fps_counter = 0;
+		uint32_t m_fps = 0;
+
+		std::array<double, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_started_at{};
+		std::array<vren_demo::profiled_data<32>, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_dt{};
+
+		std::array<vren_demo::profiled_data<32>, ProfileSlot_Count> m_delta_time_by_profile_slot{};
+
+		// Camera
 		vren_demo::camera m_camera;
 		vren_demo::freecam_controller m_freecam_controller;
 

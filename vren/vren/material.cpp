@@ -21,6 +21,23 @@ vren::material_manager::material_manager(vren::context const& context) :
 	}
 }
 
+vren::vk_utils::buffer vren::material_manager::create_staging_buffer()
+{
+	return vren::vk_utils::alloc_host_visible_buffer(*m_context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, k_max_material_buffer_size, true);
+}
+
+std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::create_buffers()
+{
+	return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t idx)
+	{
+		auto buffer = vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, k_max_material_buffer_size);
+
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_BUFFER, (uint64_t) buffer.m_buffer.m_handle, fmt::format("Material buffer {}", idx).c_str());
+
+		return std::move(buffer);
+	});
+}
+
 vren::vk_descriptor_set_layout vren::material_manager::create_descriptor_set_layout()
 {
 	VkDescriptorSetLayoutBinding bindings[]{
@@ -63,18 +80,6 @@ vren::vk_descriptor_pool vren::material_manager::create_descriptor_pool()
 	return vren::vk_descriptor_pool(*m_context, descriptor_pool);
 }
 
-vren::vk_utils::buffer vren::material_manager::create_staging_buffer()
-{
-	return vren::vk_utils::alloc_host_visible_buffer(*m_context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, k_max_material_buffer_size, true);
-}
-
-std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::create_buffers()
-{
-	return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
-		return vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, k_max_material_buffer_size);
-	});
-}
-
 std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manager::allocate_descriptor_sets()
 {
 	std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> descriptor_sets;
@@ -96,14 +101,6 @@ std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> vren::material_manag
 	}
 
 	return descriptor_sets;
-}
-
-void vren::material_manager::lazy_initialize()
-{
-	m_materials[m_material_count++] = { // Default material
-		.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
-		.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
-	};
 }
 
 void vren::material_manager::write_descriptor_set(uint32_t frame_idx)
@@ -128,38 +125,57 @@ void vren::material_manager::write_descriptor_set(uint32_t frame_idx)
 	vkUpdateDescriptorSets(m_context->m_device, 1, &descriptor_set_write, 0, nullptr);
 }
 
+void vren::material_manager::lazy_initialize()
+{
+	m_materials[m_material_count++] = { // Default material
+		.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
+		.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
+	};
+}
+
 void vren::material_manager::request_buffer_sync()
 {
 	m_buffers_dirty_flags = UINT32_MAX;
 }
 
-void vren::material_manager::sync_buffer(uint32_t frame_idx, VkCommandBuffer command_buffer)
+vren::render_graph::graph_t vren::material_manager::sync_buffer(vren::render_graph::allocator& allocator, uint32_t frame_idx)
 {
+	vren::render_graph::graph_t result;
+
 	if ((m_buffers_dirty_flags >> frame_idx) & 1)
 	{
-		if (m_material_count > 0)
+		auto node = allocator.allocate();
+		node->set_src_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
+		node->set_dst_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
+		node->set_name("Material buffer uploading");
+		node->add_buffer({
+			.m_buffer = m_staging_buffer.m_buffer.m_handle,
+			.m_size = VK_WHOLE_SIZE,
+			.m_offset = 0,
+			.m_access_flags = VK_ACCESS_TRANSFER_READ_BIT
+		});
+		node->add_buffer({
+			.m_buffer = m_buffers.at(frame_idx).m_buffer.m_handle,
+			.m_size = VK_WHOLE_SIZE,
+			.m_offset = 0,
+			.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT
+		});
+		node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 		{
-			// Copy the staging buffer to the device only buffers used for drawing
-			VkBufferCopy buffer_copy{
-				.srcOffset = 0,
-				.dstOffset = 0,
-				.size = m_material_count * sizeof(vren::material)
-			};
-			vkCmdCopyBuffer(command_buffer, m_staging_buffer.m_buffer.m_handle, m_buffers.at(frame_idx).m_buffer.m_handle, 1, &buffer_copy);
+			if (m_material_count > 0)
+			{
+				VkBufferCopy buffer_copy{ .srcOffset = 0, .dstOffset = 0, .size = m_material_count * sizeof(vren::material) };
+				vkCmdCopyBuffer(command_buffer, m_staging_buffer.m_buffer.m_handle, m_buffers.at(frame_idx).m_buffer.m_handle, 1, &buffer_copy);
+			}
 
-			// Barrier
-			vren::vk_utils::buffer_barrier(
-				command_buffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
-				m_buffers.at(frame_idx).m_buffer.m_handle
-			);
-		}
-
-		write_descriptor_set(frame_idx);
+			write_descriptor_set(frame_idx); // The descriptor set must be re-written since the material count changed
+		});
+		result = vren::render_graph::gather(node);
 
 		m_buffers_dirty_flags &= ~(1 << frame_idx);
 	}
+
+	return result;
 }
 
 VkDescriptorSet vren::material_manager::get_descriptor_set(uint32_t frame_idx) const

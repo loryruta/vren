@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "base/base.hpp"
 #include "context.hpp"
 #include "toolbox.hpp"
 #include "vk_helpers/image_layout_transitions.hpp"
@@ -21,44 +22,11 @@ vren::swapchain_frame_data::swapchain_frame_data(vren::context const& ctx) :
 // Swapchain
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::swapchain::swap(swapchain& other)
-{
-	std::swap(m_context, other.m_context);
-	std::swap(m_handle, other.m_handle);
-
-	std::swap(m_images, other.m_images);
-	std::swap(m_image_views, other.m_image_views);
-
-	std::swap(m_image_width, other.m_image_width);
-	std::swap(m_image_height, other.m_image_height);
-	std::swap(m_image_count, other.m_image_count);
-	std::swap(m_surface_format, other.m_surface_format);
-	std::swap(m_present_mode, other.m_present_mode);
-
-	std::swap(m_frame_data, other.m_frame_data);
-}
-
-std::vector<VkImage> vren::swapchain::get_swapchain_images()
-{
-	std::vector<VkImage> images(m_image_count);
-
-	uint32_t img_count;
-	vkGetSwapchainImagesKHR(m_context->m_device, m_handle, &img_count, nullptr);
-	vkGetSwapchainImagesKHR(m_context->m_device, m_handle, &img_count, images.data());
-
-	if (m_image_count != img_count) {
-		throw std::runtime_error("Image count returned by vkGetSwapchainImagesKHR is smaller than the requested image count");
-	}
-
-	return images;
-}
-
 vren::swapchain::swapchain(
 	vren::context const& context,
 	VkSwapchainKHR handle,
 	uint32_t image_width,
 	uint32_t image_height,
-	uint32_t image_count,
     VkSurfaceFormatKHR surface_format,
     VkPresentModeKHR present_mode
 ) :
@@ -67,12 +35,19 @@ vren::swapchain::swapchain(
 
 	m_image_width(image_width),
 	m_image_height(image_height),
-    m_image_count(image_count),
     m_surface_format(surface_format),
     m_present_mode(present_mode),
 
-	m_images(get_swapchain_images())
+	m_frame_data(vren::create_array<vren::swapchain_frame_data, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t idx) {
+		return vren::swapchain_frame_data(*m_context);
+	}))
 {
+	uint32_t image_count;
+	vkGetSwapchainImagesKHR(m_context->m_device, m_handle, &image_count, nullptr);
+
+	m_images.resize(image_count);
+	vkGetSwapchainImagesKHR(m_context->m_device, m_handle, &image_count, m_images.data());
+
 	for (VkImage image : m_images)
 	{
 		auto image_view = vren::vk_utils::create_image_view(*m_context, image, m_surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -81,9 +56,6 @@ vren::swapchain::swapchain(
 		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view.m_handle, "swapchain_image_view");
 
 		m_image_views.push_back(std::move(image_view));
-
-		vren::swapchain_frame_data frame_data(*m_context);
-		m_frame_data.emplace_back(std::move(frame_data));
 	}
 }
 
@@ -93,7 +65,6 @@ vren::swapchain::swapchain(swapchain&& other) :
 
 	m_image_width(other.m_image_width),
 	m_image_height(other.m_image_height),
-	m_image_count(other.m_image_count),
 	m_surface_format(other.m_surface_format),
 	m_present_mode(other.m_present_mode),
 
@@ -112,6 +83,22 @@ vren::swapchain::~swapchain()
 	if (m_handle != VK_NULL_HANDLE) {
 		vkDestroySwapchainKHR(m_context->m_device, m_handle, nullptr);
 	}
+}
+
+void vren::swapchain::swap(swapchain& other)
+{
+	std::swap(m_context, other.m_context);
+	std::swap(m_handle, other.m_handle);
+
+	std::swap(m_images, other.m_images);
+	std::swap(m_image_views, other.m_image_views);
+
+	std::swap(m_image_width, other.m_image_width);
+	std::swap(m_image_height, other.m_image_height);
+	std::swap(m_surface_format, other.m_surface_format);
+	std::swap(m_present_mode, other.m_present_mode);
+
+	std::swap(m_frame_data, other.m_frame_data);
 }
 
 vren::swapchain& vren::swapchain::operator=(swapchain&& other)
@@ -182,7 +169,7 @@ void vren::presenter::recreate_swapchain(uint32_t width, uint32_t height)
 
 	auto surface_details = vren::vk_utils::get_surface_details(m_context->m_physical_device, m_surface->m_handle);
 
-	uint32_t image_count = pick_min_image_count(surface_details);
+	uint32_t min_image_count = pick_min_image_count(surface_details);
 	VkSurfaceFormatKHR surface_format = pick_surface_format(surface_details);
     VkPresentModeKHR present_mode = pick_present_mode(surface_details);
 
@@ -191,7 +178,7 @@ void vren::presenter::recreate_swapchain(uint32_t width, uint32_t height)
 		.pNext = nullptr,
 		.flags = NULL,
 		.surface = m_surface->m_handle,
-		.minImageCount = image_count,
+		.minImageCount = min_image_count,
 		.imageFormat = surface_format.format,
 		.imageColorSpace = surface_format.colorSpace,
 		.imageExtent = { width, height },
@@ -208,14 +195,22 @@ void vren::presenter::recreate_swapchain(uint32_t width, uint32_t height)
 	};
 	VkSwapchainKHR swapchain;
 	VREN_CHECK(vkCreateSwapchainKHR(m_context->m_device, &swapchain_info, nullptr, &swapchain), m_context);
-	m_swapchain = std::make_unique<vren::swapchain>(*m_context, swapchain, width, height, image_count, surface_format, present_mode);
+	m_swapchain = std::make_unique<vren::swapchain>(*m_context, swapchain, width, height, surface_format, present_mode);
+
+	m_current_frame_idx = 0;
+
+	VREN_INFO(
+		"[presenter] Swapchain re-created: Size {}x{} - Surface format: {:#x} - Surface color-space: {:#x} - Present mode: {:#x} - Image count: {} (min. requested: {})\n",
+		width, height, surface_format.format, surface_format.colorSpace, present_mode, m_swapchain->m_images.size(), min_image_count
+	);
 
 	m_swapchain_recreate_callback(*m_swapchain);
 }
 
 void vren::presenter::present(render_func_t const& render_func)
 {
-	if (!m_swapchain) {
+	if (!m_swapchain)
+	{
 		return;
 	}
 
@@ -223,8 +218,9 @@ void vren::presenter::present(render_func_t const& render_func)
 	auto& frame_data = m_swapchain->m_frame_data.at(m_current_frame_idx);
 
 	VREN_CHECK(vkWaitForFences(m_context->m_device, 1, &frame_data.m_frame_fence.m_handle, VK_TRUE, UINT64_MAX), m_context);
-	frame_data.m_resource_container.clear();
 	vkResetFences(m_context->m_device, 1, &frame_data.m_frame_fence.m_handle);
+
+	frame_data.m_resource_container.clear();
 
 	/* Command buffer init */
 	auto cmd_buf = std::make_shared<vren::pooled_vk_command_buffer>(
@@ -295,7 +291,8 @@ void vren::presenter::present(render_func_t const& render_func)
 		throw std::runtime_error("Failed to present the swapchain image");
 	}
 
-	m_current_frame_idx = (m_current_frame_idx + 1) % m_swapchain->m_frame_data.size();
+	// The number of frame-in-flight(s) actually used can't exceed the number of swapchain images
+	m_current_frame_idx = (m_current_frame_idx + 1) % std::min<uint32_t>(VREN_MAX_FRAME_IN_FLIGHT_COUNT, m_swapchain->m_images.size());
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
