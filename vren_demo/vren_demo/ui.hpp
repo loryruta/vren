@@ -21,26 +21,6 @@ namespace vren_demo
 	class app;
 
 	// ------------------------------------------------------------------------------------------------
-
-	struct plot
-	{
-		float m_val[VREN_DEMO_PLOT_SAMPLES_COUNT];
-		float m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT];
-		float m_val_sum = 0;
-		float m_val_min = std::numeric_limits<float>::infinity();
-		float m_val_max = -std::numeric_limits<float>::infinity();
-
-		plot();
-
-		void push(float val);
-
-		inline float get_last_value() const
-		{
-			return m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1];
-		}
-	};
-
-	// ------------------------------------------------------------------------------------------------
 	// scene_ui
 	// ------------------------------------------------------------------------------------------------
 

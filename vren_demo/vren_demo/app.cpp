@@ -441,25 +441,79 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	m_render_graph_allocator.clear();
 }
 
+float vren_demo::app::calc_frame_parallelism_percentage(uint32_t frame_idx)
+{
+	// The following algorithm is used to take the temporal interval while one frame was working in parallel
+	// with other frames. As a requirement for this algorithm to work, all frames starting timestamp from
+	// the oldest frame to the newest *MUST BE SEQUENTIAL*
+
+	int start_fi = (frame_idx + 1) % VREN_MAX_FRAME_IN_FLIGHT_COUNT; // Oldest frame
+	int fi = start_fi;
+
+	uint64_t left_t = m_frame_started_at[start_fi];
+	uint64_t right_t = 0;
+
+	uint64_t tot_par_dt = 0;
+
+	while (true)
+	{
+		uint64_t slice_start_t = m_frame_started_at[fi];
+		uint64_t slice_end_t = m_frame_ended_at[fi];
+
+		for (int next_fi = (fi + 1) % VREN_MAX_FRAME_IN_FLIGHT_COUNT; next_fi != fi; next_fi = (next_fi + 1) % VREN_MAX_FRAME_IN_FLIGHT_COUNT)
+		{
+			slice_start_t = std::max(std::min(m_frame_started_at[next_fi], slice_start_t), m_frame_started_at[fi]);
+			slice_end_t = std::min(std::max(m_frame_ended_at[next_fi], slice_end_t), m_frame_ended_at[fi]);
+		}
+
+		slice_start_t = std::max(right_t, slice_start_t);
+		slice_end_t = std::max(right_t, slice_end_t);
+		right_t = slice_end_t;
+
+		if (slice_end_t > slice_start_t) {
+			tot_par_dt += slice_end_t - slice_start_t;
+		}
+
+		fi = (fi + 1) % VREN_MAX_FRAME_IN_FLIGHT_COUNT;
+		if (fi == start_fi) {
+			break;
+		}
+	}
+
+	if (right_t > left_t)
+	{
+		return ((float) tot_par_dt) / (float) (right_t - left_t);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 void vren_demo::app::on_frame()
 {
 	m_presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
-		double now = glfwGetTime();
+		m_frame_ended_at[frame_idx] =
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-		m_frame_dt[frame_idx].push_value((now - m_frame_started_at[frame_idx]) * 1000);
-		m_frame_started_at[frame_idx] = now;
+		m_frame_parallelism_pct.push_value(calc_frame_parallelism_percentage(frame_idx));
+
+		uint64_t frame_dt = m_frame_ended_at[frame_idx] - m_frame_started_at[frame_idx];
+		m_frame_dt.push_value(double(frame_dt) / (1000.0 * 1000.0) /* frame_dt (in ms) */);
+
+		m_frame_started_at[frame_idx] =
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 		m_fps_counter++;
 
+		double now = glfwGetTime();
 		if (m_last_fps_time < 0.0 || now - m_last_fps_time >= 1.0)
 		{
 			m_fps = m_fps_counter;
 			m_fps_counter = 0;
 			m_last_fps_time = now;
 		}
-
-		auto start_at = std::chrono::system_clock::now();
 
 		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container);
 	});

@@ -13,42 +13,6 @@
 #include "app.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// plot
-// --------------------------------------------------------------------------------------------------------------------------------
-
-template<typename _t>
-void left_shift_array(_t* arr, size_t size, size_t pos)
-{
-	size_t i;
-	for (i = 0; i < size - pos; i++) {
-		arr[i] = arr[i + pos];
-	}
-	for (; i < size; i++) {
-		arr[i] = 0;
-	}
-}
-
-vren_demo::plot::plot()
-{
-	std::fill_n(m_val, VREN_DEMO_PLOT_SAMPLES_COUNT, 0);
-	std::fill_n(m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT, 0);
-}
-
-void vren_demo::plot::push(float val)
-{
-	m_val_sum = m_val_sum - m_val[0] + val;
-
-	left_shift_array(m_val, VREN_DEMO_PLOT_SAMPLES_COUNT, 1);
-	m_val[VREN_DEMO_PLOT_SAMPLES_COUNT - 1] = val;
-
-	m_val_min = std::min(val, m_val_min);
-	m_val_max = std::max(val, m_val_max);
-
-	left_shift_array(m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT, 1);
-	m_val_avg[VREN_DEMO_PLOT_SAMPLES_COUNT - 1] = m_val_sum / (float) VREN_DEMO_PLOT_SAMPLES_COUNT;
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
 
@@ -88,92 +52,11 @@ void vren_demo::scene_ui::show(vren::light_array& light_array)
 	ImGui::End();
 }
 
-// --------------------------------------------------------------------------------------------------------------------------------
-// fps_ui
-// --------------------------------------------------------------------------------------------------------------------------------
-
-/*
-void vren_demo::fps_ui::notify_frame_profiling_data(
-	vren_demo::profile_info const& prof_info
-)
-{
-	if (m_paused) {
-		return;
-	}
-
-	m_fps_counter++;
-	if ((glfwGetTime() - m_last_fps_time) >= 1.0 || m_last_fps_time < 0)
-	{
-		m_fps = m_fps_counter;
-		m_fps_counter = 0;
-		m_last_fps_time = glfwGetTime();
-	}
-
-	if (prof_info.m_main_pass_profiled)
-	{
-		float main_pass_dt = (float) (prof_info.m_main_pass_end_t - prof_info.m_main_pass_start_t) / (1000.0f * 1000.0f);
-		m_main_pass_plot.push(main_pass_dt);
-	}
-
-	if (prof_info.m_ui_pass_profiled)
-	{
-		float ui_pass_dt = (float) (prof_info.m_ui_pass_end_t - prof_info.m_ui_pass_start_t) / (1000.0f * 1000.0f);
-		m_ui_pass_plot.push(ui_pass_dt);
-	}
-
-	if (prof_info.m_frame_profiled)
-	{
-		float frame_dt = (float) (prof_info.m_frame_end_t - prof_info.m_frame_start_t) / (1000.0f * 1000.0f);;
-		m_frame_delta_plot.push(frame_dt);
-
-		m_frame_start_t[prof_info.m_frame_idx] = prof_info.m_frame_start_t;
-		m_frame_end_t[prof_info.m_frame_idx] = prof_info.m_frame_end_t;
-
-		// The following algorithm is used to take the temporal interval while one frame was working in parallel
-		// with other frames. As a requirement for this algorithm to work, all frames starting timestamp from
-		// the oldest frame to the newest *MUST BE SEQUENTIAL*.
-
-		int start_fi = (prof_info.m_frame_idx + 1) % prof_info.m_frame_in_flight_count; // Oldest frame
-		int fi = start_fi;
-
-		uint64_t left_t = m_frame_start_t[start_fi];
-		uint64_t right_t = 0;
-
-		uint64_t tot_par_dt = 0;
-
-		while (true)
-		{
-			uint64_t slice_start_t = m_frame_end_t[fi];
-			uint64_t slice_end_t = m_frame_start_t[fi];
-
-			for (int next_fi = (fi + 1) % prof_info.m_frame_in_flight_count; next_fi != fi; next_fi = (next_fi + 1) % prof_info.m_frame_in_flight_count)
-			{
-				slice_start_t = std::max(std::min(m_frame_start_t[next_fi], slice_start_t), m_frame_start_t[fi]);
-				slice_end_t = std::min(std::max(m_frame_end_t[next_fi], slice_end_t), m_frame_end_t[fi]);
-			}
-
-			slice_start_t = std::max(right_t, slice_start_t);
-			slice_end_t = std::max(right_t, slice_end_t);
-			right_t = slice_end_t;
-
-			if (slice_end_t > slice_start_t) {
-				tot_par_dt += slice_end_t - slice_start_t;
-			}
-
-			fi = (fi + 1) % prof_info.m_frame_in_flight_count;
-			if (fi == start_fi) {
-				break;
-			}
-		}
-
-		float par_perc = ((float) tot_par_dt) / (float) (right_t - left_t);
-		m_frame_parallelism_plot.push(par_perc);
-	}
-}*/
-
-void plot_ui(std::string const& plot_title, vren_demo::plot const& plot, char const* unit)
+template<size_t _sample_count>
+void plot_ui(std::string const& plot_title, vren_demo::profiled_data<_sample_count> const& data, char const* unit)
 {
 	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
 	if (ImGui::TreeNode(plot_title.c_str()))
 	{
 		/* Summary
@@ -204,8 +87,8 @@ void plot_ui(std::string const& plot_title, vren_demo::plot const& plot, char co
 			//ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_LockMin);
 			//ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1.0, ImPlotCond_Once);
 
-			ImPlot::PlotStairs((plot_title + "##val").c_str(), plot.m_val, VREN_DEMO_PLOT_SAMPLES_COUNT);
-			ImPlot::PlotStairs((plot_title + "##val_avg").c_str(), plot.m_val_avg, VREN_DEMO_PLOT_SAMPLES_COUNT);
+			ImPlot::PlotStairs((plot_title + "##values").c_str(), data.m_values.data(), _sample_count);
+			ImPlot::PlotStairs((plot_title + "##avg").c_str(), data.m_avg.data(), _sample_count);
 
 			//float min_line[] = { plot.m_val_min, plot.m_val_min }; ImPlot::PlotStairs("val min", min_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
 			//float max_line[] = { plot.m_val_max, plot.m_val_max }; ImPlot::PlotStairs("val max", max_line, 2, VREN_DEMO_PLOT_SAMPLES_COUNT);
@@ -223,11 +106,10 @@ void vren_demo::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& 
 	{
 		ImGui::Checkbox("Show", &m_show);
 		ImGui::SliderInt("Level", (int32_t*) &m_selected_level, 0, depth_buffer_pyramid.get_level_count() - 1);
-
-		ImGui::End();
 	}
-}
 
+	ImGui::End();
+}
 
 vren_demo::ui::ui(vren_demo::app const& app) :
 	m_app(&app),
@@ -240,46 +122,61 @@ void vren_demo::ui::show_profiling_window()
 	if (ImGui::Begin("Profiling##profiling", nullptr, NULL))
 	{
 		// General
-		ImGui::Text("FPS: %d", m_app->m_fps);
+		ImGui::Text("General");
 
-		for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
-		{
-			ImGui::Text("Frame %d: %.3f ms %.3f ms", i, m_app->m_frame_dt[i].get_last_value(), m_app->m_frame_dt[i].m_avg);
+		ImGui::Spacing();
+
+		ImGui::Text("FPS: %d", m_app->m_fps);
+		ImGui::Text("Num. of frame-in-flight: %d", VREN_MAX_FRAME_IN_FLIGHT_COUNT);
+
+		auto swapchain = m_app->m_presenter.get_swapchain();
+		if (swapchain) {
+			ImGui::Text("Swapchain images: %lld", swapchain->m_images.size());
 		}
 
-		ImGui::Separator();
+		plot_ui("Frame dt##profiling-general-frame_dt", m_app->m_frame_dt, "ms");
+		ImGui::Text("Frame parallelism: %.1f%% %.1f%%", m_app->m_frame_parallelism_pct.get_last_value() * 100, m_app->m_frame_parallelism_pct.get_last_avg() * 100);
 
-		// Passes
-		if (ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen))
+		ImGui::Spacing();
+
+		// Profiling slots
+		if (ImGui::TreeNodeEx("Profiling slots"))
 		{
-			for (uint32_t slot = 1; slot < ProfileSlot_Count; slot++)
+			ImGui::Spacing();
+
+			if (ImGui::BeginTable("##profiling-slots", 3))
 			{
-				char const* slot_name = vren_demo::get_profile_slot_name(static_cast<vren_demo::profile_slot_enum_t>(slot));
+				ImGui::TableSetupColumn("##profiling-slots-name", ImGuiTableColumnFlags_WidthFixed);
+				ImGui::TableSetupColumn("##profiling-slots-last_val", ImGuiTableColumnFlags_WidthFixed);
+				ImGui::TableSetupColumn("##profiling-slots-last_avg", ImGuiTableColumnFlags_WidthFixed);
 
-				ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(250, 128, 114, 255));
-
-				if (ImGui::TreeNodeEx(slot_name, ImGuiTreeNodeFlags_DefaultOpen))
+				for (uint32_t slot = 1; slot < ProfileSlot_Count; slot++)
 				{
-					float last_dt = m_app->m_delta_time_by_profile_slot.at(slot).get_last_value() / (1000 * 1000);
-					float avg_dt = m_app->m_delta_time_by_profile_slot.at(slot).m_avg / (1000 * 1000);
+					auto const& profiled_data = m_app->m_delta_time_by_profile_slot.at(slot);
 
-					ImGui::PopStyleColor();
+					ImGui::TableNextRow();
 
-					ImGui::Text("Last dt: %.3f ms", last_dt);
-					ImGui::Text("Avg. dt: %.3f ms", avg_dt);
+					ImGui::TableNextColumn();
 
-					ImGui::Spacing();
+					char const* slot_name = vren_demo::get_profile_slot_name(static_cast<vren_demo::profile_slot_enum_t>(slot));
+					ImGui::Text("%s", slot_name);
 
-					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32_DISABLE);
+					ImGui::TableNextColumn();
+					ImGui::Text("%.3f ms", profiled_data.get_last_value() / (1000 * 1000));
 
-					ImGui::TreePop();
+					ImGui::TableNextColumn();
+					ImGui::Text("%.3f ms", profiled_data.get_last_avg() / (1000 * 1000));
 				}
 
-				ImGui::PopStyleColor();
+				ImGui::EndTable();
 			}
 
 			ImGui::TreePop();
 		}
+
+		ImGui::Spacing();
+
+		ImGui::Separator();
 	}
 
 	ImGui::End();
@@ -334,7 +231,7 @@ void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid,
 	m_depth_buffer_pyramid_ui.show(depth_buffer_pyramid);
 
 	ImGui::ShowDemoWindow();
-	//ImPlot::ShowDemoWindow();
+	ImPlot::ShowDemoWindow();
 }
 
 

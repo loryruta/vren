@@ -59,46 +59,44 @@ namespace vren_demo
 		case ProfileSlot_DEBUG_RENDERER: return "Debug renderer";
 		case ProfileSlot_IMGUI_RENDERER: return "ImGui renderer";
 		case ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID: return "Build depth-buffer pyramid";
-		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "Blit color-buffer to swapchain";
+		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "Blit to swapchain";
 		default: return "Unknown";
 		}
 	}
 
-	template<size_t _size>
+	template<size_t _sample_count>
 	struct profiled_data
 	{
-		std::array<float, _size> m_values{};
-		float m_avg = 0;
-		float m_sum = 0;
-		float m_min = 0, m_max = 0;
+		std::array<double, _sample_count> m_values{};
+		std::array<double, _sample_count> m_avg{};
+		double m_sum = 0;
 
 		inline float get_last_value() const
 		{
-			return m_values[_size - 1];
+			return m_values[_sample_count - 1];
 		}
 
-		inline void push_value(float value)
+		inline float get_last_avg() const
+		{
+			return m_avg[_sample_count - 1];
+		}
+
+		inline void push_value(double value)
 		{
 			m_sum -= m_values[0];
 			m_sum += value;
 
-			for (uint32_t i = 0; i < _size - 1; i++)
-			{
+			for (uint32_t i = 0; i < _sample_count - 1; i++) {
 				m_values[i] = m_values[i + 1];
 			}
 
-			m_values[_size - 1] = value;
+			m_values[_sample_count - 1] = value;
 
-			m_avg = m_sum / float(_size);
+			for (uint32_t i = 0; i < _sample_count - 1; i++) {
+				m_avg[i] = m_avg[i + 1];
+			}
 
-			/*
-			m_min = std::numeric_limits<float>::infinity();
-			m_max = -std::numeric_limits<float>::infinity();
-			for (uint32_t i = 0; i < _size; i++)
-			{
-				m_min = std::min<float>(m_values[i], m_min);
-				m_max = std::max<float>(m_values[i], m_max);
-			}*/
+			m_avg[_sample_count - 1] = m_sum / double(_sample_count);
 		}
 	};
 
@@ -153,8 +151,10 @@ namespace vren_demo
 		uint32_t m_fps_counter = 0;
 		uint32_t m_fps = 0;
 
-		std::array<double, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_started_at{};
-		std::array<vren_demo::profiled_data<32>, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_dt{};
+		std::array<uint64_t, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_started_at{};
+		std::array<uint64_t, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_frame_ended_at{};
+		vren_demo::profiled_data<720> m_frame_dt{};
+		vren_demo::profiled_data<32> m_frame_parallelism_pct{};
 
 		std::array<vren_demo::profiled_data<32>, ProfileSlot_Count> m_delta_time_by_profile_slot{};
 
@@ -193,6 +193,8 @@ namespace vren_demo
 		void record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	public:
+		float calc_frame_parallelism_percentage(uint32_t frame_idx);
+
 		void on_frame();
 	};
 }
