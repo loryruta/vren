@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <implot.h>
+#include <imgui_impl_vulkan.h>
 
 #include <glm/gtc/random.hpp>
 
@@ -15,42 +16,6 @@
 // --------------------------------------------------------------------------------------------------------------------------------
 // scene_ui
 // --------------------------------------------------------------------------------------------------------------------------------
-
-vren_demo::scene_ui::scene_ui(vren::context const& ctx)
-{}
-
-void vren_demo::scene_ui::show(vren::light_array& light_array)
-{
-	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
-	{
-		/* Lighting */
-		ImGui::Text("Lighting");
-
-		/* Point lights */
-		ImGui::Text("Point lights");
-
-		int point_light_count = (int) light_array.m_point_light_count;
-		ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS);
-
-		if (light_array.m_point_light_count != point_light_count)
-		{
-			for (uint32_t i = light_array.m_point_light_count; i < point_light_count; i++)
-			{
-				light_array.m_point_lights[i] = {
-					.m_position = {0, 0, 0},
-					.m_color = {0.91f, 0.91f, 0.77f}
-				};
-			}
-			light_array.m_point_light_count = point_light_count;
-
-			light_array.request_point_light_buffer_sync();
-		}
-
-		ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
-	}
-
-	ImGui::End();
-}
 
 template<size_t _sample_count>
 void plot_ui(std::string const& plot_title, vren_demo::profiled_data<_sample_count> const& data, char const* unit)
@@ -111,10 +76,46 @@ void vren_demo::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& 
 	ImGui::End();
 }
 
-vren_demo::ui::ui(vren_demo::app const& app) :
-	m_app(&app),
-	m_scene_ui(app.m_context)
+vren_demo::ui::ui(vren_demo::app& app) :
+	m_app(&app)
 {
+	ImGuiIO& io = ImGui::GetIO(); (void) io;
+	io.ConfigWindowsMoveFromTitleBarOnly = true;
+}
+
+void vren_demo::ui::show_scene_window()
+{
+	auto& light_arr = m_app->m_light_array;
+
+	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
+	{
+		/* Lighting */
+		ImGui::Text("Lighting");
+
+		/* Point lights */
+		ImGui::Text("Point lights");
+
+		int point_light_count = (int) light_arr.m_point_light_count;
+		ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS);
+
+		if (light_arr.m_point_light_count != point_light_count)
+		{
+			for (uint32_t i = light_arr.m_point_light_count; i < point_light_count; i++)
+			{
+				light_arr.m_point_lights[i] = {
+					.m_position = {0, 0, 0},
+					.m_color = {0.91f, 0.91f, 0.77f}
+				};
+			}
+			light_arr.m_point_light_count = point_light_count;
+
+			light_arr.request_point_light_buffer_sync();
+		}
+
+		//ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
+	}
+
+	ImGui::End();
 }
 
 void vren_demo::ui::show_profiling_window()
@@ -127,6 +128,7 @@ void vren_demo::ui::show_profiling_window()
 		ImGui::Spacing();
 
 		ImGui::Text("FPS: %d", m_app->m_fps);
+		ImGui::Text("%.2f", ImGui::GetIO().MouseWheel);
 		ImGui::Text("Num. of frame-in-flight: %d", VREN_MAX_FRAME_IN_FLIGHT_COUNT);
 
 		auto swapchain = m_app->m_presenter.get_swapchain();
@@ -182,7 +184,25 @@ void vren_demo::ui::show_profiling_window()
 	ImGui::End();
 }
 
-void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_array)
+void vren_demo::ui::show_render_graph_dump_window()
+{
+	if (ImGui::Begin("Render-graph dump", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+	{
+		ImGui::InputText("Output file##render_graph_dump", m_app->m_render_graph_dump_file, sizeof(m_app->m_render_graph_dump_file));
+
+		if (ImGui::Button("Take##render_graph_dump"))
+		{
+			m_app->m_take_next_render_graph_dump = true;
+		}
+	}
+
+	ImGui::End();
+}
+
+void vren_demo::ui::show(
+	uint32_t frame_idx,
+	vren::resource_container& resource_container
+)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
@@ -223,12 +243,14 @@ void vren_demo::ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid,
 	ImGui::End();
 
 	ImGui::SetNextWindowDockID(m_right_sidebar_dock_id, ImGuiCond_Once);
-	m_scene_ui.show(light_array);
+	show_scene_window();
 
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	show_profiling_window();
 
-	m_depth_buffer_pyramid_ui.show(depth_buffer_pyramid);
+	show_render_graph_dump_window();
+
+	m_depth_buffer_pyramid_ui.show(*m_app->m_depth_buffer_pyramid);
 
 	ImGui::ShowDemoWindow();
 	ImPlot::ShowDemoWindow();

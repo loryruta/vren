@@ -361,7 +361,7 @@ namespace vren::render_graph
 	void dump(
 		vren::render_graph::allocator& allocator,
 		vren::render_graph::graph_t const& graph,
-		std::filesystem::path const& output_filename
+		std::ostream& output
 	);
 }
 

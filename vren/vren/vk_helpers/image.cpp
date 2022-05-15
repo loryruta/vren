@@ -42,11 +42,13 @@ vren::vk_utils::create_image(
 
 	VkImage image;
 	VmaAllocation alloc;
-	VREN_CHECK(vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, nullptr), &ctx);
+	VmaAllocationInfo allocation_info;
+	VREN_CHECK(vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, &allocation_info), &ctx);
 
 	return {
 		.m_image = vren::vk_image(ctx, image),
-		.m_allocation = vren::vma_allocation(ctx, alloc)
+		.m_allocation = vren::vma_allocation(ctx, alloc),
+		.m_allocation_info = allocation_info
 	};
 }
 

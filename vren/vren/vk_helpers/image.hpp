@@ -28,6 +28,7 @@ namespace vren::vk_utils
 	{
 		vren::vk_image m_image;
 		vren::vma_allocation m_allocation;
+		VmaAllocationInfo m_allocation_info;
 	};
 
 	vren::vk_utils::image create_image(

@@ -1,5 +1,7 @@
 #include "app.hpp"
 
+#include <fstream>
+
 #include <imgui_impl_glfw.h>
 
 #include "scene/scene_gpu_uploader.hpp"
@@ -58,6 +60,7 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	m_depth_buffer_reductor(m_context),
 
+	// Profiler
 	m_profiler(m_context),
 
 	m_gltf_parser(m_context),
@@ -144,7 +147,7 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 
 	if (key == GLFW_KEY_F5 && action == GLFW_PRESS)
 	{
-		m_take_render_graph_dump = true;
+		m_take_next_render_graph_dump = true;
 	}
 
 	if (action == GLFW_PRESS)
@@ -398,8 +401,9 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	// Render UI
 	if (m_show_ui)
 	{
-		auto show_ui = [&]() {
-			m_ui.show(*m_depth_buffer_pyramid, m_light_array);
+		auto show_ui = [&]()
+		{
+			m_ui.show(frame_idx, resource_container);
 		};
 
 		auto imgui_render_node = m_imgui_renderer.render(m_render_graph_allocator, render_target, show_ui);
@@ -428,14 +432,12 @@ void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_imag
 	// Execute render-graph
 	vren::render_graph::execute(m_render_graph_allocator, render_graph.m_head, frame_idx, command_buffer, resource_container);
 
-	if (m_take_render_graph_dump)
+	if (m_take_next_render_graph_dump)
 	{
-		std::filesystem::path render_graph_dump_filename(
-			fmt::format("{}_render_graph.dot", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
-		);
-		vren::render_graph::dump(m_render_graph_allocator, render_graph.m_head, render_graph_dump_filename);
+		std::ofstream output_file(m_render_graph_dump_file);
+		vren::render_graph::dump(m_render_graph_allocator, render_graph.m_head, output_file);
 
-		m_take_render_graph_dump = false;
+		m_take_next_render_graph_dump = false;
 	}
 
 	m_render_graph_allocator.clear();

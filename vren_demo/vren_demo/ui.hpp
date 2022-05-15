@@ -24,23 +24,18 @@ namespace vren_demo
 	// scene_ui
 	// ------------------------------------------------------------------------------------------------
 
-	// TODO should this class manage rendering?
-	class scene_ui
-	{
-	public:
-		float m_speed = 1.0f;
-
-		scene_ui(vren::context const& ctx);
-
-		void show(vren::light_array& light_arr);
-	};
-
 	struct depth_buffer_pyramid_ui
 	{
 		uint32_t m_selected_level = 0;
 		bool m_show = false;
 
 		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid);
+	};
+
+
+	struct browsable_image
+	{
+		// TODO
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -50,7 +45,7 @@ namespace vren_demo
 	class ui
 	{
 	private:
-		vren_demo::app const* m_app;
+		vren_demo::app* m_app;
 
 		ImGuiID
 			m_main_dock_id,
@@ -58,14 +53,24 @@ namespace vren_demo
 			m_right_sidebar_dock_id,
 			m_bottom_toolbar_dock_id;
 
+		// Render-graph dump window
+		void* m_render_graph_dump_address = nullptr; // The render-graph dump pointer address for which the descriptor set have been generated
+		VkDescriptorSet m_render_graph_dump_descriptor_set = VK_NULL_HANDLE;
+
+		glm::vec2 m_image_uv_0 = glm::vec2(0, 0), m_image_uv_1 = glm::vec2(1, 1);
+
 	public:
 		vren_demo::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
-		vren_demo::scene_ui m_scene_ui;
 
-		ui(vren_demo::app const& app);
+		ui(vren_demo::app& app);
 
+		void show_scene_window();
 		void show_profiling_window();
+		void show_render_graph_dump_window();
 
-		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid, vren::light_array& light_arr);
+		void show(
+			uint32_t frame_idx,
+			vren::resource_container& resource_container
+		);
 	};
 }

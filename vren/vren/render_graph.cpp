@@ -366,12 +366,12 @@ void vren::render_graph::execute(
 void vren::render_graph::dump(
 	vren::render_graph::allocator& allocator,
 	vren::render_graph::graph_t const& graph,
-	std::filesystem::path const& output_filename
+	std::ostream& output
 )
 {
 	struct execution_parameters
 	{
-		std::ofstream& m_writer;
+		std::ostream& m_writer;
 		uint32_t m_position = 0;
 	};
 
@@ -412,42 +412,41 @@ void vren::render_graph::dump(
 		}
 	};
 
-	std::ofstream writer(output_filename);
-	writer << "digraph render_graph {\n";
+	output << "digraph render_graph {\n";
 
-	writer << "node[shape=rect]\n";
+	output << "node[shape=rect]\n";
 
 	traverse(allocator, graph, [&](node_idx_t node_idx)
 	{
 		auto node = allocator.get_node_at(node_idx);
 
-		writer << fmt::format("node_{} [shape=rect, label=\"{}\"];\n", node_idx, node->get_name());
+		output << fmt::format("node_{} [shape=rect, label=\"{}\"];\n", node_idx, node->get_name());
 
 		for (uint32_t image_idx = 0; image_idx < node->get_image_accesses().size(); image_idx++)
 		{
 			auto image = node->get_image_accesses().at(image_idx);
 
-			writer << fmt::format("node_{}_image_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, image_idx, image.m_name);
-			writer << fmt::format("node_{} -> node_{}_image_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, image_idx);
+			output << fmt::format("node_{}_image_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, image_idx, image.m_name);
+			output << fmt::format("node_{} -> node_{}_image_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, image_idx);
 		}
 
 		for (uint32_t buffer_idx = 0; buffer_idx < node->get_buffer_accesses().size(); buffer_idx++)
 		{
 			auto buffer = node->get_buffer_accesses().at(buffer_idx);
 
-			writer << fmt::format("node_{}_buffer_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, buffer_idx, buffer.m_name);
-			writer << fmt::format("node_{} -> node_{}_buffer_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, buffer_idx);
+			output << fmt::format("node_{}_buffer_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, buffer_idx, buffer.m_name);
+			output << fmt::format("node_{} -> node_{}_buffer_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, buffer_idx);
 		}
 
 		for (node_idx_t next_node_idx : node->get_next_nodes())
 		{
-			writer << fmt::format("node_{} -> node_{};\n", node_idx, next_node_idx);
+			output << fmt::format("node_{} -> node_{};\n", node_idx, next_node_idx);
 		}
 
 		return true;
 	}, /* Forward traversal */ true, /* Initial callback */ true);
 
-	execution_parameters params{ .m_writer = writer, .m_position = 0 };
+	execution_parameters params{ .m_writer = output, .m_position = 0 };
 	vren::render_graph::detail::execute<
 		execution_parameters,
 		make_initial_image_layout_transition,
@@ -456,7 +455,7 @@ void vren::render_graph::dump(
 		put_buffer_memory_barrier
 	>(allocator, graph, params);
 
-	writer << "}";
+	output << "}";
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

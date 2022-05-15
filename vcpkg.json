@@ -4,7 +4,6 @@
     "description": "my Vulkan RENderer",
     "builtin-baseline": "7dd2e65c0bb63669f3a7717cf78f0f943b2fd185",
     "dependencies": [
-        "glfw3",
         "glm",
         "vulkan-memory-allocator",
         {
@@ -19,6 +18,7 @@
         "meshoptimizer",
         "fmt",
 
+        "glfw3",
         "tinyfiledialogs",
         "tinygltf",
 

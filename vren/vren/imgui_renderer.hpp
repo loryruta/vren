@@ -39,6 +39,16 @@ namespace vren
 		vren::vk_render_pass create_render_pass();
 
 	public:
+		inline VkDescriptorPool get_descriptor_pool() const
+		{
+			return m_descriptor_pool.m_handle;
+		}
+
+		inline VkRenderPass get_render_pass() const
+		{
+			return m_render_pass.m_handle;
+		}
+
 		vren::render_graph::graph_t render(
 			vren::render_graph::allocator& allocator,
 			vren::render_target const& render_target,

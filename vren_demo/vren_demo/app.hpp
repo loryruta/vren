@@ -142,7 +142,8 @@ namespace vren_demo
 
 		// Render-graph
 		vren::render_graph::allocator m_render_graph_allocator;
-		bool m_take_render_graph_dump = false;
+		char m_render_graph_dump_file[256] = "render_graph.dot";
+		bool m_take_next_render_graph_dump = false;
 
 		// Profiling
 		vren::profiler m_profiler;
@@ -190,10 +191,13 @@ namespace vren_demo
 		void on_update(float dt);
 
 	private:
+		float calc_frame_parallelism_percentage(uint32_t frame_idx);
+
+	private:
 		void record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	public:
-		float calc_frame_parallelism_percentage(uint32_t frame_idx);
+		void take_render_graph_dump();
 
 		void on_frame();
 	};
