@@ -39,7 +39,9 @@ namespace vren_demo
 			return {
 				.m_position = m_position,
 				.m_view = get_view(),
-				.m_projection = get_projection()
+				.m_projection = get_projection(),
+				.m_z_near = m_near_plane,
+				.m_z_far = m_far_plane,
 			};
 		}
 	};

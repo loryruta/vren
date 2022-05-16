@@ -6,13 +6,15 @@ struct Camera
 	vec3 position; float _pad;
 	mat4 view;
 	mat4 projection;
+	float z_near, z_far;
+	float _pad1[2];
 };
 
 // ------------------------------------------------------------------------------------------------
 // Geometry
 // ------------------------------------------------------------------------------------------------
 
-struct BoundingSphere
+struct Sphere
 {
 	vec3 center;
 	float radius;
@@ -32,7 +34,7 @@ struct Meshlet
 	uint triangle_offset;
 	uint triangle_count;
 
-	BoundingSphere bounding_sphere;
+	Sphere bounding_sphere;
 };
 
 struct InstancedMeshlet

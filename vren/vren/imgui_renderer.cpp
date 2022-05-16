@@ -18,6 +18,7 @@ vren::imgui_renderer::imgui_renderer(vren::context const& context, imgui_windowi
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void) io;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.IniFilename = nullptr;
 
 	ImPlot::CreateContext();
 

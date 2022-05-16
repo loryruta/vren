@@ -18,7 +18,8 @@ vren::depth_buffer_pyramid::depth_buffer_pyramid(vren::context const& context, u
 	m_base_height(height),
 	m_level_count(glm::log2(glm::max(width, height)) + 1),
 	m_image(create_image()),
-	m_image_views(create_image_views())
+	m_image_views(create_image_views()),
+	m_sampler(create_sampler())
 {}
 
 vren::vk_utils::image vren::depth_buffer_pyramid::create_image()
@@ -38,7 +39,7 @@ vren::vk_utils::image vren::depth_buffer_pyramid::create_image()
 		.arrayLayers = 1,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+		.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.queueFamilyIndexCount = 0,
 		.pQueueFamilyIndices = nullptr,
@@ -82,7 +83,6 @@ std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_image_views(
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 				.baseMipLevel = i,
 				.levelCount = 1,
-
 				.baseArrayLayer = 0,
 				.layerCount = 1
 			}
@@ -93,10 +93,28 @@ std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_image_views(
 
 		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view, fmt::format("depth_buffer_pyramid level={}", i).c_str());
 
-		image_views.push_back(vren::vk_image_view(*m_context, image_view));
+		image_views.emplace_back(*m_context, image_view);
 	}
 
 	return image_views;
+}
+
+vren::vk_sampler vren::depth_buffer_pyramid::create_sampler()
+{
+	VkSamplerCreateInfo sampler_info{
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.magFilter = VK_FILTER_NEAREST,
+		.minFilter = VK_FILTER_NEAREST,
+		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	};
+
+	VkSampler sampler;
+	VREN_CHECK(vkCreateSampler(m_context->m_device, &sampler_info, nullptr, &sampler), m_context);
+	return vren::vk_sampler(*m_context, sampler);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

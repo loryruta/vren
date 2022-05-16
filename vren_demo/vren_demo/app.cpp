@@ -355,7 +355,7 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_mesh_shader_renderer_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer);
+			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer, *m_depth_buffer_pyramid);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 		}
 		break;

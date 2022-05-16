@@ -188,7 +188,7 @@ void write_meshlet_buffer_descriptor_set(
 			.range = VK_WHOLE_SIZE
 		}
 	};
-	VkWriteDescriptorSet write_desc_set{
+	VkWriteDescriptorSet descriptor_set_write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = descriptor_set,
 		.dstBinding = 0,
@@ -197,7 +197,32 @@ void write_meshlet_buffer_descriptor_set(
 		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		.pBufferInfo = buffer_info
 	};
-	vkUpdateDescriptorSets(context.m_device, 1, &write_desc_set, 0, nullptr);
+	vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+}
+
+void write_depth_buffer_pyramid_descriptor_set(
+	vren::context const& context,
+	VkDescriptorSet descriptor_set,
+	vren::depth_buffer_pyramid const& depth_buffer_pyramid
+)
+{
+	VkDescriptorImageInfo image_info[]{
+		{
+			.sampler = depth_buffer_pyramid.get_sampler(),
+			.imageView = depth_buffer_pyramid.get_image_view(0),
+			.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+		}
+	};
+	VkWriteDescriptorSet descriptor_set_write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = descriptor_set,
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = std::size(image_info),
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = image_info
+	};
+	vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
 }
 
 void vren::mesh_shader_draw_pass::render(
@@ -206,13 +231,14 @@ void vren::mesh_shader_draw_pass::render(
 	vren::resource_container& resource_container,
 	vren::camera const& camera,
 	vren::mesh_shader_renderer_draw_buffer const& draw_buffer,
-	vren::light_array const& light_array
+	vren::light_array const& light_array,
+	vren::depth_buffer_pyramid const& depth_buffer_pyramid
 )
 {
 	m_pipeline.bind(command_buffer);
 
 	// Push constants
-	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
+	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_TASK_BIT_NV | VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
 
 	// Bind texture manager
 	m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);
@@ -223,7 +249,8 @@ void vren::mesh_shader_draw_pass::render(
 	m_pipeline.bind_descriptor_set(command_buffer, 1, light_array_descriptor_set);
 
 	// Bind draw buffer
-	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 2, [&](VkDescriptorSet descriptor_set) {
+	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 2, [&](VkDescriptorSet descriptor_set)
+	{
 		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "meshlet_buffer");
 		write_meshlet_buffer_descriptor_set(
 			*m_context,
@@ -240,6 +267,17 @@ void vren::mesh_shader_draw_pass::render(
 	// Bind material manager
 	auto material_descriptor_set = m_context->m_toolbox->m_material_manager.get_descriptor_set(frame_idx);
 	m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set);
+
+	// Bind depth-buffer pyramid
+	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 4, [&](VkDescriptorSet descriptor_set)
+	{
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "depth_buffer_pyramid");
+		write_depth_buffer_pyramid_descriptor_set(
+			*m_context,
+			descriptor_set,
+			depth_buffer_pyramid
+		);
+	});
 
 	// Draw
 	uint32_t workgroups_num = (uint32_t) glm::ceil(draw_buffer.m_instanced_meshlet_count / (float) 32);

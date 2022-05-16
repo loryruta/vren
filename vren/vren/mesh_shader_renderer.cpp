@@ -26,7 +26,8 @@ vren::render_graph::graph_t vren::mesh_shader_renderer::render(
 	vren::render_target const& render_target,
 	vren::camera const& camera,
 	vren::light_array const& light_array,
-	vren::mesh_shader_renderer_draw_buffer const& draw_buffer
+	vren::mesh_shader_renderer_draw_buffer const& draw_buffer,
+	vren::depth_buffer_pyramid const& depth_buffer_pyramid
 )
 {
 	auto node = render_graph_allocator.allocate();
@@ -90,7 +91,7 @@ vren::render_graph::graph_t vren::mesh_shader_renderer::render(
 		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
 		// Recording
-		m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera, draw_buffer, light_array);
+		m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera, draw_buffer, light_array, depth_buffer_pyramid);
 
 		// End rendering
 		vkCmdEndRenderingKHR(command_buffer);

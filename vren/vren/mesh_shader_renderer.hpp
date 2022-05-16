@@ -39,7 +39,8 @@ namespace vren
 			vren::render_target const& render_target,
 			vren::camera const& camera,
 			vren::light_array const& light_array,
-			vren::mesh_shader_renderer_draw_buffer const& draw_buffer
+			vren::mesh_shader_renderer_draw_buffer const& draw_buffer,
+			vren::depth_buffer_pyramid const& depth_buffer_pyramid
 		);
 	};
 }
