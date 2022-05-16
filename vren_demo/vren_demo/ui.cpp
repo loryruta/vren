@@ -128,7 +128,6 @@ void vren_demo::ui::show_profiling_window()
 		ImGui::Spacing();
 
 		ImGui::Text("FPS: %d", m_app->m_fps);
-		ImGui::Text("%.2f", ImGui::GetIO().MouseWheel);
 		ImGui::Text("Num. of frame-in-flight: %d", VREN_MAX_FRAME_IN_FLIGHT_COUNT);
 
 		auto swapchain = m_app->m_presenter.get_swapchain();

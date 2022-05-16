@@ -97,25 +97,25 @@ void vren_demo::app::late_initialize()
 
 void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
 {
+	uint32_t width = swapchain.m_image_width;
+	uint32_t height = swapchain.m_image_height;
+
 	// Resize color buffers
 	m_color_buffers.clear();
 	for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
 	{
 		m_color_buffers.push_back(
-			vren::vk_utils::create_color_buffer(m_context, swapchain.m_image_width, swapchain.m_image_height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+			vren::vk_utils::create_color_buffer(m_context, width, height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 		);
 	}
 
 	// Resize depth buffer
-	uint32_t padded_width = vren::round_to_nearest_multiple_of_power_of_2(swapchain.m_image_width, 32); // The depth buffer size must be padded to a multiple of 32 for efficiency reasons
-	uint32_t padded_height = vren::round_to_nearest_multiple_of_power_of_2(swapchain.m_image_height, 32);
-
 	m_depth_buffer = std::make_unique<vren::vk_utils::depth_buffer_t>(
-		vren::vk_utils::create_depth_buffer(m_context, padded_width, padded_height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+		vren::vk_utils::create_depth_buffer(m_context, width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	);
 
 	// Resize depth buffer pyramid
-	m_depth_buffer_pyramid = std::make_unique<vren::depth_buffer_pyramid>(m_context, padded_width, padded_height);
+	m_depth_buffer_pyramid = std::make_unique<vren::depth_buffer_pyramid>(m_context, width, height);
 }
 
 void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)

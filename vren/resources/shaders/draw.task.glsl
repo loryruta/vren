@@ -16,6 +16,8 @@ layout(set = 2, binding = 4) buffer readonly InstancedMeshletBuffer
     InstancedMeshlet instanced_meshlets[];
 };
 
+in
+
 out taskNV TaskData
 {
     uint instanced_meshlet_indices[THREADS_NUM];

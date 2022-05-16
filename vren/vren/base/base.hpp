@@ -40,6 +40,11 @@ namespace vren
 		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
 	}
 
+	inline uint32_t divide_and_ceil(uint32_t value, uint32_t divider)
+	{
+		return (uint32_t) std::ceil(double(value) / double(divider));
+	}
+
 	// ------------------------------------------------------------------------------------------------
 
 	template<typename _t, size_t _size>

@@ -41,12 +41,12 @@ namespace vren
 	public:
 		inline uint32_t get_image_width(uint32_t level) const
 		{
-			return m_base_width >> level;
+			return glm::max(m_base_width >> level, 1u);
 		}
 
 		inline uint32_t get_image_height(uint32_t level) const
 		{
-			return m_base_height >> level;
+			return glm::max(m_base_height >> level, 1u);
 		}
 
 		inline uint32_t get_level_count() const

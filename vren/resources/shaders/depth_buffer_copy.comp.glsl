@@ -7,6 +7,12 @@ layout(set = 0, binding = 1) layout(r32f) uniform image2D depth_buffer_pyramid_b
 
 void main()
 {
-    float depth = texture(depth_buffer, gl_GlobalInvocationID.xy).r;
-    imageStore(depth_buffer_pyramid_base, ivec2(gl_GlobalInvocationID.xy), vec4(depth));
+    uvec2 pos = gl_GlobalInvocationID.xy;
+    ivec2 size = textureSize(depth_buffer, 0);
+
+    if (pos.x < size.x && pos.y < size.y)
+    {
+        float depth = texture(depth_buffer, pos).r;
+        imageStore(depth_buffer_pyramid_base, ivec2(gl_GlobalInvocationID.xy), vec4(depth));
+    }
 }
