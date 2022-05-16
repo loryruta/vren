@@ -20,8 +20,6 @@ namespace vren
 		// The number of triangles of the meshlet (actual uint8_t count will be m_triangle_count * 3)
 		uint32_t m_triangle_count;
 
-		float _pad[4];
-
 		vren::bounding_sphere m_bounding_sphere;
 	};
 

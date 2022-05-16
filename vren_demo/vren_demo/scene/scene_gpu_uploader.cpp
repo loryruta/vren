@@ -304,7 +304,7 @@ vren::mesh_shader_renderer_draw_buffer vren_demo::upload_scene_for_mesh_shader_r
 		vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_vertices, meshlet_vertex_count * sizeof(uint32_t));
 
 	auto meshlet_triangle_buffer =
-		vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_triangles, meshlet_triangle_count * sizeof(uint8_t));
+		vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlet_triangles, meshlet_triangle_count * 3 * sizeof(uint8_t));
 
 	auto meshlet_buffer =
 		vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, meshlets, meshlet_count * sizeof(vren::meshlet));

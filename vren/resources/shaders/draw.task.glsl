@@ -3,11 +3,13 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_NV_mesh_shader : require
 
-#include "common.glsl"
+#define THREADS_NUM 32
 
 #define UINT32_MAX 4294967295u
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+#include "common.glsl"
+
+layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 2, binding = 4) buffer readonly InstancedMeshletBuffer
 {
@@ -16,20 +18,33 @@ layout(set = 2, binding = 4) buffer readonly InstancedMeshletBuffer
 
 out taskNV TaskData
 {
-    uint instanced_meshlet_indices[32];
-} task_out;
+    uint instanced_meshlet_indices[THREADS_NUM];
+} o_task;
+
+shared uint s_meshlet_instances_count;
 
 void main()
 {
-    // If at least one index within the current workgroup points to a valid instanced meshlet, then
-    // we can generate the workgroups for it. Otherwise the task size is defaulted to 0.
-    if (gl_GlobalInvocationID.x < instanced_meshlets.length())
+    if (gl_LocalInvocationIndex == 0)
     {
-        task_out.instanced_meshlet_indices[gl_LocalInvocationIndex] = gl_GlobalInvocationID.x;
-        gl_TaskCountNV = 32;
+        s_meshlet_instances_count = 0;
     }
-    else
+
+    memoryBarrierShared();
+    barrier();
+
+    uint instanced_meshlet_idx = gl_GlobalInvocationID.x;
+
+    if (instanced_meshlet_idx < instanced_meshlets.length())
     {
-        task_out.instanced_meshlet_indices[gl_LocalInvocationIndex] = UINT32_MAX;
+        uint pos = atomicAdd(s_meshlet_instances_count, 1);
+        o_task.instanced_meshlet_indices[pos] = instanced_meshlet_idx;
+    }
+
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0)
+    {
+        gl_TaskCountNV = s_meshlet_instances_count;
     }
 }

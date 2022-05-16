@@ -5,15 +5,24 @@
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_16bit_storage : require
 
-#include "common.glsl"
+#define ITERATIONS_NUM 16
+#define THREADS_NUM 32
+#define MAX_VERTICES_NUM 64
+#define MAX_PRIMITIVES_NUM 124
+
+#if (THREADS_NUM * ITERATIONS_NUM < MAX_VERTICES_NUM) || (THREADS_NUM * ITERATIONS_NUM < MAX_PRIMITIVES_NUM * 3)
+#   error "Invalid threads/iterations number (not sufficient to output all vertices/indices)"
+#endif
 
 #define UINT32_MAX 4294967295u
 
-#define MAX_ITERATIONS 256
+//#define DEBUG_MESHLETS
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+#include "common.glsl"
 
-layout(triangles, max_vertices = 64, max_primitives = 124) out;
+layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;
+
+layout(triangles, max_vertices = MAX_VERTICES_NUM, max_primitives = MAX_PRIMITIVES_NUM) out;
 
 layout(push_constant) uniform PushConstants
 {
@@ -53,13 +62,13 @@ layout(set = 2, binding = 5) buffer readonly MeshInstanceBuffer
 in taskNV TaskData
 {
     uint instanced_meshlet_indices[32];
-} task_in;
+} i_task;
 
-layout(location = 0) out vec3 v_position[];
-layout(location = 1) out vec3 v_normal[];
-layout(location = 2) out vec2 v_texcoords[];
-layout(location = 3) out flat uint v_material_idx[];
-layout(location = 4) out vec3 v_colors[];
+layout(location = 0) out vec3 o_position[];
+layout(location = 1) out vec3 o_normal[];
+layout(location = 2) out vec2 o_texcoord[];
+layout(location = 3) out flat uint o_material_idx[];
+layout(location = 4) out vec3 o_color[];
 
 uint hash(uint a)
 {
@@ -74,49 +83,52 @@ uint hash(uint a)
 
 void main()
 {
-    uint instanced_meshlet_idx = task_in.instanced_meshlet_indices[gl_WorkGroupID.x];
-    if (instanced_meshlet_idx < UINT32_MAX)
+    uint instanced_meshlet_idx = i_task.instanced_meshlet_indices[gl_WorkGroupID.x];
+
+    InstancedMeshlet instanced_meshlet = instanced_meshlets[instanced_meshlet_idx];
+    Meshlet meshlet = meshlets[instanced_meshlet.meshlet_idx];
+    MeshInstance mesh_instance = mesh_instances[instanced_meshlet.instance_idx];
+
+    uint material_idx;
+    vec3 color;
+
+#ifdef DEBUG_MESHLETS
+    material_idx = 0;
+
+    uint meshlet_hash = hash(instanced_meshlet.meshlet_idx);
+    color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
+#else
+    material_idx = instanced_meshlet.material_idx;
+    color = vec3(1);
+#endif
+
+    for (uint i = gl_LocalInvocationIndex * ITERATIONS_NUM; i < (gl_LocalInvocationIndex + 1) * ITERATIONS_NUM; i++)
     {
-        InstancedMeshlet instanced_meshlet = instanced_meshlets[instanced_meshlet_idx];
-        Meshlet meshlet = meshlets[instanced_meshlet.meshlet_idx];
-        MeshInstance mesh_instance = mesh_instances[instanced_meshlet.instance_idx];
-        uint material_idx = instanced_meshlet.material_idx;
-
-        uint meshlet_hash = hash(instanced_meshlet.meshlet_idx);
-        vec3 meshlet_color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
-
-        for (uint i = gl_LocalInvocationIndex * MAX_ITERATIONS; i < (gl_LocalInvocationIndex + 1) * MAX_ITERATIONS; i++)
+        if (i < meshlet.vertex_count)
         {
-            if (i < meshlet.vertex_count)
-            {
-                Vertex vertex = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
+            Vertex vertex = vertices[meshlet_vertices[meshlet.vertex_offset + i]];
 
-                vec4 world_position = mesh_instance.transform * vec4(vertex.position, 1.0);
-                gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * world_position;
+            vec4 world_position = mesh_instance.transform * vec4(vertex.position, 1.0);
+            gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * world_position;
 
-                v_position[i] = world_position.xyz;
-                v_normal[i] = vertex.normal;
-                v_texcoords[i] = vertex.texcoord;
-                v_material_idx[i] = 0;//material_idx;
-                v_colors[i] = meshlet_color;
-            }
-        }
-
-        for (uint i = gl_LocalInvocationIndex * MAX_ITERATIONS; i < (gl_LocalInvocationIndex + 1) * MAX_ITERATIONS; i++)
-        {
-            if (i < meshlet.triangle_count * 3)
-            {
-                gl_PrimitiveIndicesNV[i] = uint(meshlet_triangles[meshlet.triangle_offset + i]);
-            }
-        }
-
-        if (gl_LocalInvocationIndex == 0)
-        {
-            gl_PrimitiveCountNV = meshlet.triangle_count;
+            o_position[i] = world_position.xyz;
+            o_normal[i] = vertex.normal;
+            o_texcoord[i] = vertex.texcoord;
+            o_material_idx[i] = material_idx;
+            o_color[i] = color;
         }
     }
-    else
+
+    for (uint i = gl_LocalInvocationIndex * ITERATIONS_NUM; i < (gl_LocalInvocationIndex + 1) * ITERATIONS_NUM; i++)
     {
-        gl_PrimitiveCountNV = 0;
+        if (i < meshlet.triangle_count * 3)
+        {
+            gl_PrimitiveIndicesNV[i] = uint(meshlet_triangles[meshlet.triangle_offset + i]);
+        }
+    }
+
+    if (gl_LocalInvocationIndex == 0)
+    {
+        gl_PrimitiveCountNV = meshlet.triangle_count;
     }
 }

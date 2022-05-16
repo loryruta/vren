@@ -235,7 +235,6 @@ vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer_(vr
 		parsed_scene.m_instances.data(),
 		debug_lines
 	);
-
 	meshlet_debug_draw_buffer.clear();
 	meshlet_debug_draw_buffer.add_lines(debug_lines.data(), debug_lines.size());
 
@@ -248,7 +247,6 @@ vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer_(vr
 		parsed_scene.m_instances.data(),
 		debug_spheres
 	);
-
 	meshlet_bounds_debug_draw_buffer.clear();
 	meshlet_bounds_debug_draw_buffer.add_spheres(debug_spheres.data(), debug_spheres.size());
 
@@ -302,7 +300,13 @@ void vren_demo::app::on_update(float dt)
 	m_freecam_controller.update(m_camera, dt, 0.1f, glm::radians(90.0f));
 }
 
-void vren_demo::app::record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+void vren_demo::app::record_commands(
+	uint32_t frame_idx,
+	uint32_t swapchain_image_idx,
+	vren::swapchain const& swapchain,
+	VkCommandBuffer command_buffer,
+	vren::resource_container& resource_container
+)
 {
 	// Render-graph begin
 	vren::render_graph::chain render_graph(m_render_graph_allocator);

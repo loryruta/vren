@@ -5,6 +5,7 @@
 
 #include <vren/context.hpp>
 #include <vren/renderer.hpp>
+#include <vren/mesh_shader_renderer.hpp>
 #include <vren/debug_renderer.hpp>
 #include <vren/imgui_renderer.hpp>
 #include <vren/depth_buffer_pyramid.hpp>

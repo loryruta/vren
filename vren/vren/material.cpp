@@ -127,7 +127,8 @@ void vren::material_manager::write_descriptor_set(uint32_t frame_idx)
 
 void vren::material_manager::lazy_initialize()
 {
-	m_materials[m_material_count++] = { // Default material
+	// Default material
+	m_materials[m_material_count++] = {
 		.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
 		.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
 	};

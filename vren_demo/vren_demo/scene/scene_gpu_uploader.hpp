@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vren/renderer.hpp>
-
+#include <vren/mesh_shader_renderer.hpp>
 #include <vren/debug_renderer.hpp>
 
 #include "intermediate_scene.hpp"

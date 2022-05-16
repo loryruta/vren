@@ -53,7 +53,6 @@ namespace vren
 	{
 		glm::vec3 m_center;
 		float m_radius;
-		float _pad[2];
 
 		bool is_degenerate() const;
 		bool intersects(bounding_sphere const& other) const;

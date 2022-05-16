@@ -16,7 +16,6 @@ struct BoundingSphere
 {
 	vec3 center;
 	float radius;
-	float _pad[2];
 };
 
 struct Vertex
@@ -28,10 +27,10 @@ struct Vertex
 
 struct Meshlet
 {
-	uint vertex_offset;   uint vertex_count;
-	uint triangle_offset; uint triangle_count;
-
-	float _pad[4];
+	uint vertex_offset;
+	uint vertex_count;
+	uint triangle_offset;
+	uint triangle_count;
 
 	BoundingSphere bounding_sphere;
 };
@@ -41,7 +40,6 @@ struct InstancedMeshlet
 	uint meshlet_idx;
 	uint instance_idx;
 	uint material_idx;
-	float _pad;
 };
 
 struct MeshInstance

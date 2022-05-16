@@ -34,7 +34,6 @@ namespace vren
 		uint32_t m_meshlet_idx;
 		uint32_t m_instance_idx;
 		uint32_t m_material_idx;
-		float _pad;
 	};
 
 	struct mesh_instance
