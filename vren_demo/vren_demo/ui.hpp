@@ -67,6 +67,7 @@ namespace vren_demo
 		void show_scene_window();
 		void show_profiling_window();
 		void show_render_graph_dump_window();
+		void show_camera_window();
 
 		void show(
 			uint32_t frame_idx,

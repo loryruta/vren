@@ -36,11 +36,16 @@ layout(set = 2, binding = 5) buffer readonly InstanceBuffer
 layout(set = 4, binding = 0) uniform sampler2D depth_buffer_pyramid;
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool project_sphere(vec3 C, float r, out vec4 aabb)
+bool project_sphere(vec3 C, float r, out vec4 aabb) // C in camera space
 {
-    if (C.z + r < camera.position.z + camera.z_near)
+    float m00 = camera.projection[0][0];
+    float m11 = camera.projection[1][1];
+    float m22 = camera.projection[2][2];
+    float m32 = camera.projection[3][2];
+
+    if ((C.z + r) * m22 + m32 < 0.0f) // The entire sphere is clipped by the near plane
     {
-        return false;
+   //     return false;
     }
 
     vec2 cx = -C.xz;
@@ -53,12 +58,27 @@ bool project_sphere(vec3 C, float r, out vec4 aabb)
     vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
     vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
 
-    float P00 = camera.projection[0][0];
-    float P11 = camera.projection[1][1];
-
-    aabb = vec4(minx.x / minx.y * P00, miny.x / miny.y * P11, maxx.x / maxx.y * P00, maxy.x / maxy.y * P11);
+    aabb = vec4(minx.x / minx.y * m00, miny.x / miny.y * m11, maxx.x / maxx.y * m00, maxy.x / maxy.y * m11);
     aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); // clip space -> uv space
 
+    /*
+    // a^ = (1, 0, 0)
+    vec2 cx = C.xz;
+    float cxl = length(cx);
+    float tx = sqrt(dot(cx, cx) - r * r);
+    vec2 minx = mat2(tx, r, -r, tx) * (cx / cxl) * tx;
+    vec2 maxx = mat2(tx, -r, r, tx) * (cx / cxl) * tx;
+
+    // a^ = (0, 1, 0)
+    vec2 cy = C.yz;
+    float cyl = length(cy);
+    float ty = sqrt(dot(cy, cy) - r * r);
+    vec2 miny = mat2(ty, r, -r, ty) * (cy / cyl) * ty;
+    vec2 maxy = mat2(ty, -r, r, ty) * (cy / cyl) * ty;
+
+    aabb = vec4(minx.x * m00, miny.x * m11, maxx.x * m00, maxx.x * m11); // To screen-space AABB
+    aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); // To UV (0,0) -> (1,1) (note the Y being inverted)
+*/
     return true;
 }
 
@@ -68,6 +88,15 @@ out taskNV TaskData
 } o_task;
 
 shared uint s_meshlet_instances_count;
+
+vec3 get_scale(mat4 transform)
+{
+    return vec3(
+        length(transform[0]),
+        length(transform[1]),
+        length(transform[2])
+    );
+}
 
 void main()
 {
@@ -91,9 +120,13 @@ void main()
 
 #ifdef OCCLUSION_CULLING
         vec4 aabb;
-        vec3 center = (instance.transform * vec4(sphere.center, 1)).xyz;
 
-        if (project_sphere(center, sphere.radius, aabb))
+        vec3 center = (camera.view * instance.transform * vec4(sphere.center, 1)).xyz;
+
+        vec3 transform_scale = get_scale(instance.transform);
+        float radius = sphere.radius * max(transform_scale.x, max(transform_scale.y, transform_scale.z));
+
+        if (project_sphere(center, radius, aabb))
         {
             ivec2 depth_buffer_pyramid_base_size = textureSize(depth_buffer_pyramid, 0);
 
@@ -102,9 +135,15 @@ void main()
 
             float level = floor(log2(max(width, height)));
 
+            // Retrieve the farthest Z coordinate in the AABB containing the projected sphere
             float depth = textureLod(depth_buffer_pyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
-            float sphere_depth = (camera.projection * camera.view * vec4(center + normalize(camera.position - center) * sphere.radius, 1)).z; // TODO this mess to find just the z, couldn't it be simplified?
 
+            // Project the Z coordinate of the nearest sphere point, which is the one lying in the vector that link the camera origin to the sphere center
+            float m22 = camera.projection[2][2];
+            float m32 = camera.projection[3][2];
+            float sphere_depth = (center - normalize(center) * radius).z * m22 + m32;
+
+            // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere content
             visible = sphere_depth > depth;
         }
         else

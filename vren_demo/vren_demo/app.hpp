@@ -198,8 +198,6 @@ namespace vren_demo
 		void record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
 
 	public:
-		void take_render_graph_dump();
-
 		void on_frame();
 	};
 }

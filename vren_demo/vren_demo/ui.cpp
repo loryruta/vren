@@ -198,6 +198,30 @@ void vren_demo::ui::show_render_graph_dump_window()
 	ImGui::End();
 }
 
+void vren_demo::ui::show_camera_window()
+{
+	vren_demo::camera& camera = m_app->m_camera;
+
+	glm::vec4 a(0, 0, 0, 1);
+	glm::vec4 b(0, 0, 1, 1);
+
+	if (ImGui::Begin("Camera info##camera"))
+	{
+		ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera.m_position.x, camera.m_position.y, camera.m_position.z);
+		ImGui::Text("Yaw/pitch: (%.2f, %.2f)", camera.m_yaw, camera.m_pitch);
+		ImGui::SliderFloat("FOV", &camera.m_fov_y, glm::radians(1.0f), glm::radians(90.0f), "%.2f");
+		ImGui::Text("Near plane: %.2f", camera.m_near_plane);
+		ImGui::Text("Far plane: %.2f", camera.m_far_plane);
+		ImGui::Text("Aspect ratio: %.2f", camera.m_aspect_ratio);
+
+		ImGui::Text("Forward: (%.2f, %.2f, %.2f)", camera.get_forward().x, camera.get_forward().y, camera.get_forward().z);
+		ImGui::Text("Up: (%.2f, %.2f, %.2f)", camera.get_up().x, camera.get_up().y, camera.get_up().z);
+		ImGui::Text("Right: (%.2f, %.2f, %.2f)", camera.get_right().x, camera.get_right().y, camera.get_right().z);
+	}
+
+	ImGui::End();
+}
+
 void vren_demo::ui::show(
 	uint32_t frame_idx,
 	vren::resource_container& resource_container
@@ -247,12 +271,14 @@ void vren_demo::ui::show(
 	ImGui::SetNextWindowDockID(m_left_sidebar_dock_id, ImGuiCond_Once);
 	show_profiling_window();
 
+	show_camera_window();
+
 	show_render_graph_dump_window();
 
 	m_depth_buffer_pyramid_ui.show(*m_app->m_depth_buffer_pyramid);
 
-	ImGui::ShowDemoWindow();
-	ImPlot::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
+	//ImPlot::ShowDemoWindow();
 }
 
 

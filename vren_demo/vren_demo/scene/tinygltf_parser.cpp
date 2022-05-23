@@ -9,37 +9,49 @@
 #include <tiny_gltf.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <vren/utils/profiler.hpp>
 #include <vren/toolbox.hpp>
 
-glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> gltf_vec3)
+glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> v)
 {
+	assert(v.size() == 3);
+
 	glm::vec3 r{};
-	r.x = (float) gltf_vec3.at(0);
-	r.y = (float) gltf_vec3.at(1);
-	r.z = (float) gltf_vec3.at(2);
+	r.x = (float) v.at(0);
+	r.y = (float) v.at(1);
+	r.z = (float) v.at(2);
 	return r;
 }
 
-glm::vec4 parse_gltf_vec4_to_glm_vec4(std::vector<double> gltf_vec4)
+glm::vec4 parse_gltf_vec4_to_glm_vec4(std::vector<double> v)
 {
+	assert(v.size() == 4);
+
 	glm::vec4 r{};
-	r.x = (float) gltf_vec4.at(0);
-	r.y = (float) gltf_vec4.at(1);
-	r.z = (float) gltf_vec4.at(2);
-	r.w = (float) gltf_vec4.at(3);
+	r.x = (float) v.at(0);
+	r.y = (float) v.at(1);
+	r.z = (float) v.at(2);
+	r.w = (float) v.at(3);
 	return r;
 }
 
-glm::mat4 parse_gltf_mat4_to_glm_mat4(std::vector<double> m)
+glm::mat4 parse_gltf_mat4_to_glm_mat4(std::vector<double> v)
 {
-	return glm::mat4(
-		m[0], m[4], m[8],  m[12],
-		m[1], m[5], m[9],  m[13],
-		m[2], m[6], m[10], m[14],
-		m[3], m[7], m[11], m[15]
-	);
+	assert(v.size() == 16);
+
+	glm::mat4 r{};
+	r[0] = glm::vec4(v[0], v[1], v[2], v[3]);
+	r[1] = glm::vec4(v[4], v[5], v[6], v[7]);
+	r[2] = glm::vec4(v[8], v[9], v[10], v[11]);
+	r[3] = glm::vec4(v[12], v[13], v[14], v[15]);
+	return r;
+}
+
+glm::quat parse_gltf_quat_to_glm_quat(std::vector<double> v)
+{
+	return glm::quat(v[3], v[2], v[1], v[0]);
 }
 
 uint8_t const* get_accessor_element_at(tinygltf::Model const& model, tinygltf::Accessor const& accessor, size_t idx)
@@ -178,30 +190,39 @@ void vren_demo::tinygltf_parser::linearize_node_hierarchy(
 	std::vector<std::vector<vren::mesh_instance>>& mesh_instances
 )
 {
-	if (!gltf_node.matrix.empty()) { // If matrix is present
-		transform = transform * parse_gltf_mat4_to_glm_mat4(gltf_node.matrix);
+	if (!gltf_node.matrix.empty())
+	{
+		transform *= parse_gltf_mat4_to_glm_mat4(gltf_node.matrix);
 	}
 
-	if (gltf_node.translation.size() == 3) {
-		transform = glm::translate(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.translation));
-	}
-
-	// TODO quaternion rotation
-
-	if (gltf_node.scale.size() == 3) {
+	if (!gltf_node.scale.empty())
+	{
 		transform = glm::scale(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.scale));
 	}
 
+	if (!gltf_node.rotation.empty())
+	{
+		transform *= glm::mat4_cast(parse_gltf_quat_to_glm_quat(gltf_node.rotation));
+	}
+
+	if (!gltf_node.translation.empty())
+	{
+		transform = glm::translate(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.translation));
+	}
+
 	// Registers the node for the mesh
-	if (gltf_node.mesh >= 0) {
+	if (gltf_node.mesh >= 0)
+	{
 		mesh_instances[gltf_node.mesh].push_back({
 			.m_transform = transform
 		});
 	}
 
 	// Traverses children
-	if (gltf_node.children.size() > 0) {
-		for (int child_idx : gltf_node.children) {
+	if (gltf_node.children.size() > 0)
+	{
+		for (int child_idx : gltf_node.children)
+		{
 			linearize_node_hierarchy(gltf_model, gltf_model.nodes.at(child_idx), transform, mesh_instances);
 		}
 	}
@@ -232,7 +253,8 @@ void vren_demo::tinygltf_parser::load_meshes(
 			vren_demo::intermediate_scene::mesh mesh{};
 
 			//assert(gltf_primitive.mode == TINYGLTF_MODE_TRIANGLES);
-			if (gltf_primitive.mode != TINYGLTF_MODE_TRIANGLES) {
+			if (gltf_primitive.mode != TINYGLTF_MODE_TRIANGLES)
+			{
 				continue;
 			}
 
@@ -263,7 +285,8 @@ void vren_demo::tinygltf_parser::load_meshes(
 				vren::vertex vertex{};
 				vertex.m_position = *reinterpret_cast<glm::vec3 const*>(get_accessor_element_at(gltf_model, position_accessor, vtx_idx));
 				vertex.m_normal = *reinterpret_cast<glm::vec3 const*>(get_accessor_element_at(gltf_model, normal_accessor, vtx_idx));
-				if (texcoord_accessor.has_value()) {
+				if (texcoord_accessor.has_value())
+				{
 					vertex.m_texcoords = *reinterpret_cast<glm::vec2 const*>(get_accessor_element_at(gltf_model, texcoord_accessor.value(), vtx_idx));
 				}
 				parsed_scene.m_vertices.push_back(vertex);
@@ -378,4 +401,6 @@ void vren_demo::tinygltf_parser::load_from_file(
 	}
 
 	load_model(model_filename.parent_path(), gltf_model, parsed_scene);
+
+	VREN_INFO("[tinygltf_parser] Scene loaded\n");
 }

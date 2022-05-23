@@ -6,8 +6,6 @@ struct Camera
 	vec3 position; float _pad;
 	mat4 view;
 	mat4 projection;
-	float z_near, z_far;
-	float _pad1[2];
 };
 
 // ------------------------------------------------------------------------------------------------

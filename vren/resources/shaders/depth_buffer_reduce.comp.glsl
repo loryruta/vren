@@ -16,7 +16,7 @@ void main()
 
     if (pos.x < to_size.x && pos.y < to_size.y)
     {
-        float max_depth = 0.0f;
+        float min_depth = 0.0f;
         for (int x = 0; x < 2; x++)
         {
             for (int y = 0; y < 2; y++)
@@ -25,11 +25,11 @@ void main()
                 if (from_pos.x < from_size.x && from_pos.y < from_size.y)
                 {
                     float depth = imageLoad(from_image, from_pos).r;
-                    max_depth = max(max_depth, depth);
+                    min_depth = min(min_depth, depth);
                 }
             }
         }
 
-        imageStore(to_image, pos, vec4(max_depth));
+        imageStore(to_image, pos, vec4(min_depth));
     }
 }

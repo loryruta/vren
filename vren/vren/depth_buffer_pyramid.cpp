@@ -101,12 +101,16 @@ std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_image_views(
 
 vren::vk_sampler vren::depth_buffer_pyramid::create_sampler()
 {
+	VkSamplerReductionModeCreateInfo sampler_reduction_mode_info{
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
+		.pNext = nullptr,
+		.reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX
+	};
+
 	VkSamplerCreateInfo sampler_info{
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		.pNext = nullptr,
+		.pNext = &sampler_reduction_mode_info,
 		.flags = NULL,
-		.magFilter = VK_FILTER_NEAREST,
-		.minFilter = VK_FILTER_NEAREST,
 		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
 		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
 		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,

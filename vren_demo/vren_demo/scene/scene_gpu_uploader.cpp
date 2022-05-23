@@ -267,6 +267,8 @@ void vren_demo::write_debug_information_for_meshlet_bounds(
 	std::vector<vren::debug_renderer_sphere>& spheres // Write
 )
 {
+	//spheres.push_back({ .m_center = glm::vec3(0), .m_radius = 0.01f, .m_color = 0xffffff });
+
 	for (uint32_t i = 0; i < instanced_meshlet_count; i++)
 	{
 		vren::instanced_meshlet const& instanced_meshlet = instanced_meshlets[i];
@@ -277,7 +279,15 @@ void vren_demo::write_debug_information_for_meshlet_bounds(
 		vren::meshlet const& meshlet = meshlets[instanced_meshlet.m_meshlet_idx];
 
 		glm::vec3 center = glm::vec3(instance.m_transform * glm::vec4(meshlet.m_bounding_sphere.m_center, 1.0f));
-		spheres.push_back({ .m_center = center, .m_radius = meshlet.m_bounding_sphere.m_radius, .m_color = color });
+
+		glm::vec3 scale(
+			glm::length(instance.m_transform[0]),
+			glm::length(instance.m_transform[1]),
+			glm::length(instance.m_transform[2])
+		);
+		float radius = glm::max(glm::max(scale.x, scale.y), scale.z) * meshlet.m_bounding_sphere.m_radius;
+
+		spheres.push_back({ .m_center = center, .m_radius = radius, .m_color = color });
 	}
 }
 
