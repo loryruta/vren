@@ -8,11 +8,8 @@ add_executable(vren_demo
         vren_demo/app.cpp
         vren_demo/ui.hpp
         vren_demo/ui.cpp
-        vren_demo/scene/intermediate_scene.hpp
         vren_demo/scene/scene_gpu_uploader.cpp
         vren_demo/scene/scene_gpu_uploader.hpp
-        vren_demo/scene/tinygltf_parser.hpp
-        vren_demo/scene/tinygltf_parser.cpp
 )
 
 # ------------------------------------------------------------------------------------------------
@@ -63,10 +60,6 @@ target_link_libraries(vren_demo PRIVATE vren_demo_imgui_glfw_backend)
 # tinyfiledialogs
 find_package(tinyfiledialogs CONFIG REQUIRED)
 target_link_libraries(vren_demo PRIVATE tinyfiledialogs::tinyfiledialogs)
-
-# tinygltf
-find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
-target_include_directories(vren_demo PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 
 # ------------------------------------------------------------------------------------------------
 # Resources

@@ -2,7 +2,7 @@
 
 #include "context.hpp"
 #include "toolbox.hpp"
-#include "renderer.hpp"
+#include "br_renderer.hpp"
 
 vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 {
@@ -199,7 +199,7 @@ void vren::vertex_pipeline_draw_pass::draw(
 	VkCommandBuffer command_buffer,
 	vren::resource_container& resource_container,
 	vren::camera const& camera,
-	vren::basic_renderer_draw_buffer const& draw_buffer,
+	vren::br::draw_buffer const& draw_buffer,
 	vren::light_array const& light_array
 )
 {

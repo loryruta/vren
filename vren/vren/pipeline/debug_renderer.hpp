@@ -4,7 +4,7 @@
 #include "vk_helpers/vk_raii.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/shader.hpp"
-#include "renderer.hpp"
+#include "render_target.hpp"
 #include "render_graph.hpp"
 
 namespace vren
@@ -114,7 +114,8 @@ namespace vren
 			vren::render_graph::allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
-			vren::debug_renderer_draw_buffer const& draw_buffer
+			vren::debug_renderer_draw_buffer const& draw_buffer,
+			bool world_space = true
 		);
 	};
 }

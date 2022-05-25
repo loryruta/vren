@@ -2,6 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : require
 #extension GL_NV_mesh_shader : require
+#extension GL_EXT_debug_printf : require
 
 #define THREADS_NUM 32
 
@@ -36,49 +37,63 @@ layout(set = 2, binding = 5) buffer readonly InstanceBuffer
 layout(set = 4, binding = 0) uniform sampler2D depth_buffer_pyramid;
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool project_sphere(vec3 C, float r, out vec4 aabb) // C in camera space
+bool project_sphere(vec3 C, float r, out vec4 aabb) // C and r in camera space
 {
     float m00 = camera.projection[0][0];
     float m11 = camera.projection[1][1];
     float m22 = camera.projection[2][2];
     float m32 = camera.projection[3][2];
 
-    if ((C.z + r) * m22 + m32 < 0.0f) // The entire sphere is clipped by the near plane
+    if (C.z + r < camera.z_near) // The sphere is entirely clipped by the near plane
     {
-   //     return false;
+        //debugPrintfEXT("CLIPPED BY NEAR-PLANE: ID: %d, C.z: %.2f, r: %.2f, m22: %.2f, m32: %.2f\n", gl_GlobalInvocationID.x, C.z, r, m22, m32);
+        return false; // The sphere is entirely clipped by the near plane
     }
 
-    vec2 cx = -C.xz;
-    vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r);
-    vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
-    vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+    float k = sqrt(r * r - (camera.z_near - C.z) * (camera.z_near - C.z));
 
-    vec2 cy = -C.yz;
-    vec2 vy = vec2(sqrt(dot(cy, cy) - r * r), r);
-    vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
-    vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
+    // Consider XZ plane to find minX and maxX
+    vec2 minx, maxx;
 
-    aabb = vec4(minx.x / minx.y * m00, miny.x / miny.y * m11, maxx.x / maxx.y * m00, maxy.x / maxy.y * m11);
-    aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); // clip space -> uv space
-
-    /*
-    // a^ = (1, 0, 0)
     vec2 cx = C.xz;
     float cxl = length(cx);
     float tx = sqrt(dot(cx, cx) - r * r);
-    vec2 minx = mat2(tx, r, -r, tx) * (cx / cxl) * tx;
-    vec2 maxx = mat2(tx, -r, r, tx) * (cx / cxl) * tx;
+    minx = mat2(tx, r, -r, tx) * (cx / cxl);
+    maxx = mat2(tx, -r, r, tx) * (cx / cxl);
 
-    // a^ = (0, 1, 0)
+    // If (dot(cx, cx) - r * r) < 0 then tx is NaN, or if minx or maxx are behind the near plane, we use the intersections of the circle with the near plane
+    if (isnan(tx) || minx.y < camera.z_near) minx = vec2(C.x - k, camera.z_near);
+    if (isnan(tx) || maxx.y < camera.z_near) maxx = vec2(C.x + k, camera.z_near);
+
+    // Consider YZ plane to find minY and maxY
+    vec2 miny, maxy;
+
     vec2 cy = C.yz;
     float cyl = length(cy);
     float ty = sqrt(dot(cy, cy) - r * r);
-    vec2 miny = mat2(ty, r, -r, ty) * (cy / cyl) * ty;
-    vec2 maxy = mat2(ty, -r, r, ty) * (cy / cyl) * ty;
+    miny = mat2(ty, r, -r, ty) * (cy / cyl);
+    maxy = mat2(ty, -r, r, ty) * (cy / cyl);
 
-    aabb = vec4(minx.x * m00, miny.x * m11, maxx.x * m00, maxx.x * m11); // To screen-space AABB
-    aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); // To UV (0,0) -> (1,1) (note the Y being inverted)
-*/
+    if (isnan(ty) || miny.y < camera.z_near) miny = vec2(C.y - k, camera.z_near);
+    if (isnan(ty) || maxy.y < camera.z_near) maxy = vec2(C.y + k, camera.z_near);
+
+    // Apply the perspective and convert homogeneous coordinates to euclidean coordinates
+    aabb = vec4(
+        (minx.x * m00) / minx.y, // min_x
+        (miny.x * m11) / miny.y, // min_y
+        (maxx.x * m00) / maxx.y, // max_x
+        (maxy.x * m11) / maxy.y  // max_y
+    );
+
+    // TODO WHEN THE USER IS INSIDE THE SPHERE EVERYTHING BECOMES VERY VERY VERY WRONG
+
+    if (aabb.x > aabb.z || aabb.y > aabb.w || isnan(aabb.x) || isnan(aabb.y) || isnan(aabb.z) || isnan(aabb.w)) {
+       debugPrintfEXT("INVALID SITUATION -> ID: %d, C: %.2v3f, aabb min: %.2v2f, aabb max: %.2v2f\n", gl_GlobalInvocationID.x, (camera.projection * vec4(C, 1)).xyz, aabb.xy, aabb.zw);
+    }
+
+    // Convert the AABB to UV space
+    aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f);
+
     return true;
 }
 
@@ -114,6 +129,7 @@ void main()
         InstancedMeshlet instanced_meshlet = instanced_meshlets[instanced_meshlet_idx];
         Meshlet meshlet = meshlets[instanced_meshlet.meshlet_idx];
         MeshInstance instance = instances[instanced_meshlet.instance_idx];
+
         Sphere sphere = meshlet.bounding_sphere;
 
         bool visible = true;
@@ -121,10 +137,14 @@ void main()
 #ifdef OCCLUSION_CULLING
         vec4 aabb;
 
-        vec3 center = (camera.view * instance.transform * vec4(sphere.center, 1)).xyz;
+        mat4 MV = camera.view * instance.transform;
 
-        vec3 transform_scale = get_scale(instance.transform);
-        float radius = sphere.radius * max(transform_scale.x, max(transform_scale.y, transform_scale.z));
+        // The center of the sphere in camera space
+        vec3 center = (MV * vec4(sphere.center, 1)).xyz;
+
+        // The radius of the sphere is scaled by the maximum of the scale along the XYZ of the MV matrix
+        float max_scale = max(length(MV[0]), max(length(MV[1]), length(MV[2])));
+        float radius = sphere.radius * max_scale;
 
         if (project_sphere(center, radius, aabb))
         {
@@ -141,10 +161,11 @@ void main()
             // Project the Z coordinate of the nearest sphere point, which is the one lying in the vector that link the camera origin to the sphere center
             float m22 = camera.projection[2][2];
             float m32 = camera.projection[3][2];
-            float sphere_depth = (center - normalize(center) * radius).z * m22 + m32;
 
-            // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere content
-            visible = sphere_depth > depth;
+            float nearest_depth = ((center.z - radius) * m22 + m32) / (center.z - radius);
+
+            // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere's content
+            visible = nearest_depth < depth;
         }
         else
         {

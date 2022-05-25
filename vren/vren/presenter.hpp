@@ -5,7 +5,7 @@
 
 #include <volk.h>
 
-#include "renderer.hpp"
+#include "vren/pipeline/render_target.hpp"
 #include "vk_helpers/image.hpp"
 #include "vk_helpers/misc.hpp"
 #include "light.hpp"

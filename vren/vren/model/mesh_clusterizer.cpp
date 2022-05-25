@@ -4,10 +4,7 @@
 #include <vector>
 
 #include "base/base.hpp"
-
-#undef VREN_LOG_LEVEL
-#define VREN_LOG_LEVEL VREN_LOG_LEVEL_WARN
-#include "utils/log.hpp"
+#include "vren/log.hpp"
 
 bool is_triangle_adjacent_to_meshlet(uint32_t const* indices, uint32_t triangle, uint32_t const* meshlet_vertices, vren::meshlet const& meshlet)
 {

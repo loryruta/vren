@@ -5,7 +5,7 @@
 
 #include "base/resource_container.hpp"
 #include "vk_helpers/vk_raii.hpp"
-#include "render_graph.hpp"
+#include "vren/pipeline/render_graph.hpp"
 
 namespace vren
 {

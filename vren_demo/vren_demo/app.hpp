@@ -4,11 +4,11 @@
 #include <GLFW/glfw3.h>
 
 #include <vren/context.hpp>
-#include <vren/renderer.hpp>
-#include <vren/mesh_shader_renderer.hpp>
-#include <vren/debug_renderer.hpp>
-#include <vren/imgui_renderer.hpp>
-#include <vren/depth_buffer_pyramid.hpp>
+#include "vren/pipeline/render_target.hpp"
+#include "vren/pipeline/msr_renderer.hpp"
+#include "vren/pipeline/debug_renderer.hpp"
+#include "vren/pipeline/imgui_renderer.hpp"
+#include "vren/pipeline/depth_buffer_pyramid.hpp"
 #include <vren/presenter.hpp>
 #include <vren/utils/profiler.hpp>
 
@@ -125,7 +125,7 @@ namespace vren_demo
 		vren::presenter m_presenter;
 
 		// Debug draw buffers
-		vren::debug_renderer_draw_buffer m_debug_draw_buffer;
+		vren::debug_renderer_draw_buffer m_debug_draw_buffer; // General purpose
 		vren::debug_renderer_draw_buffer m_meshlets_debug_draw_buffer;
 		vren::debug_renderer_draw_buffer m_meshlets_bounds_debug_draw_buffer;
 

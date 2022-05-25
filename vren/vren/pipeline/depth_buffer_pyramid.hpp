@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "render_graph.hpp"
+#include "vren/pipeline/render_graph.hpp"
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/image.hpp"
 

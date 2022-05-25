@@ -9,7 +9,11 @@ namespace vren
 {
 	// Forward decl
 	class context;
-	class basic_renderer_draw_buffer;
+
+	namespace br
+	{
+		struct draw_buffer;
+	}
 
 	//
 
@@ -35,7 +39,7 @@ namespace vren
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::basic_renderer_draw_buffer const& draw_buffer,
+			vren::br::draw_buffer const& draw_buffer,
 			vren::light_array const& light_array
 		);
 	};

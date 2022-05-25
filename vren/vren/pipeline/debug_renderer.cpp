@@ -2,8 +2,8 @@
 
 #include <execution>
 
-#include <volk.h>
-#include <glm/gtc/matrix_transform.hpp>
+#include "volk.h"
+#include "glm/gtc/matrix_transform.hpp"
 
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/misc.hpp"
@@ -256,7 +256,8 @@ vren::render_graph::graph_t vren::debug_renderer::render(
 	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
-	vren::debug_renderer_draw_buffer const& draw_buffer
+	vren::debug_renderer_draw_buffer const& draw_buffer,
+	bool world_space
 )
 {
 	auto node = render_graph_allocator.allocate();
@@ -327,7 +328,18 @@ vren::render_graph::graph_t vren::debug_renderer::render(
 		m_pipeline.bind(command_buffer);
 
 		// Camera
-		m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
+		if (world_space)
+		{
+			m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
+		}
+		else
+		{
+			vren::camera no_camera{
+				.m_view = glm::identity<glm::mat4>(),
+				.m_projection = glm::identity<glm::mat4>()
+			};
+			m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &no_camera, sizeof(vren::camera));
+		}
 
 		VkDeviceSize offsets[]{0};
 

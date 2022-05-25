@@ -5,14 +5,14 @@
 
 #include "tiny_gltf.h"
 
-#include "vren/context.hpp"
-#include "vren/vk_helpers/image.hpp"
-#include "vren/texture_manager.hpp"
-#include "vren/gpu_repr.hpp"
+#include "context.hpp"
+#include "vk_helpers/image.hpp"
+#include "texture_manager.hpp"
+#include "gpu_repr.hpp"
 
-#include "intermediate_scene.hpp"
+#include "model.hpp"
 
-namespace vren_demo
+namespace vren
 {
 	class tinygltf_parser
 	{
@@ -36,19 +36,19 @@ namespace vren_demo
 		void load_meshes(
 			tinygltf::Model const& gltf_model,
 			size_t material_offset,
-			vren_demo::intermediate_scene& parsed_scene
+			vren::model& parsed_model
 		);
 
 		void load_model(
 			std::filesystem::path const& model_folder,
 			tinygltf::Model const& gltf_model,
-			vren_demo::intermediate_scene& parsed_scene
+			vren::model& parsed_model
 		);
 
 	public:
 		void load_from_file(
 			std::filesystem::path const& model_filename,
-			vren_demo::intermediate_scene& parsed_scene
+			vren::model& parsed_model
 		);
 	};
 }

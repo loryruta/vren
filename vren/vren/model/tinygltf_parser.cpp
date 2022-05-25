@@ -3,16 +3,14 @@
 #include <stdexcept>
 #include <optional>
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image.h>
 #include <tiny_gltf.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include <vren/utils/profiler.hpp>
-#include <vren/toolbox.hpp>
+#include "utils/profiler.hpp"
+#include "toolbox.hpp"
 
 glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> v)
 {
@@ -87,11 +85,11 @@ VkSamplerAddressMode parse_gltf_address_mode(int gltf_address_mode)
 	}
 }
 
-vren_demo::tinygltf_parser::tinygltf_parser(vren::context const& context) :
+vren::tinygltf_parser::tinygltf_parser(vren::context const& context) :
 	m_context(&context)
 {}
 
-void vren_demo::tinygltf_parser::load_textures(std::filesystem::path const& model_folder, tinygltf::Model const& gltf_model)
+void vren::tinygltf_parser::load_textures(std::filesystem::path const& model_folder, tinygltf::Model const& gltf_model)
 {
 	for (auto const& gltf_texture : gltf_model.textures)
 	{
@@ -163,7 +161,7 @@ void vren_demo::tinygltf_parser::load_textures(std::filesystem::path const& mode
 	}
 }
 
-void vren_demo::tinygltf_parser::load_materials(tinygltf::Model const& gltf_model, size_t texture_offset)
+void vren::tinygltf_parser::load_materials(tinygltf::Model const& gltf_model, size_t texture_offset)
 {
 	auto& material_manager = m_context->m_toolbox->m_material_manager;
 
@@ -183,7 +181,7 @@ void vren_demo::tinygltf_parser::load_materials(tinygltf::Model const& gltf_mode
 	}
 }
 
-void vren_demo::tinygltf_parser::linearize_node_hierarchy(
+void vren::tinygltf_parser::linearize_node_hierarchy(
 	tinygltf::Model const& gltf_model,
 	tinygltf::Node const& gltf_node,
 	glm::mat4 transform,
@@ -228,10 +226,10 @@ void vren_demo::tinygltf_parser::linearize_node_hierarchy(
 	}
 }
 
-void vren_demo::tinygltf_parser::load_meshes(
+void vren::tinygltf_parser::load_meshes(
 	tinygltf::Model const& gltf_model,
 	size_t material_offset,
-	intermediate_scene& parsed_scene
+	model& parsed_model
 )
 {
 	// Mesh instances
@@ -250,7 +248,7 @@ void vren_demo::tinygltf_parser::load_meshes(
 		tinygltf::Mesh const& gltf_mesh = gltf_model.meshes.at(mesh_idx);
 		for (auto const& gltf_primitive : gltf_mesh.primitives)
 		{
-			vren_demo::intermediate_scene::mesh mesh{};
+			vren::model::mesh mesh{};
 
 			//assert(gltf_primitive.mode == TINYGLTF_MODE_TRIANGLES);
 			if (gltf_primitive.mode != TINYGLTF_MODE_TRIANGLES)
@@ -278,7 +276,7 @@ void vren_demo::tinygltf_parser::load_meshes(
 			assert(!texcoord_accessor.has_value() || vtx_count == texcoord_accessor->count);
 
 			mesh.m_vertex_count = vtx_count;
-			mesh.m_vertex_offset = parsed_scene.m_vertices.size();
+			mesh.m_vertex_offset = parsed_model.m_vertices.size();
 
 			for (size_t vtx_idx = 0; vtx_idx < vtx_count; vtx_idx++)
 			{
@@ -289,14 +287,14 @@ void vren_demo::tinygltf_parser::load_meshes(
 				{
 					vertex.m_texcoords = *reinterpret_cast<glm::vec2 const*>(get_accessor_element_at(gltf_model, texcoord_accessor.value(), vtx_idx));
 				}
-				parsed_scene.m_vertices.push_back(vertex);
+				parsed_model.m_vertices.push_back(vertex);
 			}
 
 			/* Indices */
 			auto const& indices_accessor = gltf_model.accessors.at(gltf_primitive.indices);
 
 			mesh.m_index_count = indices_accessor.count;
-			mesh.m_index_offset = parsed_scene.m_indices.size();
+			mesh.m_index_offset = parsed_model.m_indices.size();
 
 			for (size_t i = 0; i < indices_accessor.count; i++)
 			{
@@ -323,7 +321,7 @@ void vren_demo::tinygltf_parser::load_meshes(
 				default:
 					throw std::invalid_argument("Unsupported indices component type");
 				}
-				parsed_scene.m_indices.push_back(local_index);
+				parsed_model.m_indices.push_back(local_index);
 			}
 
 			/* Material */
@@ -332,21 +330,21 @@ void vren_demo::tinygltf_parser::load_meshes(
 			/* Instances */
 			auto instances = instances_by_mesh.at(mesh_idx);
 
-			mesh.m_instance_offset = parsed_scene.m_instances.size();
+			mesh.m_instance_offset = parsed_model.m_instances.size();
 			mesh.m_instance_count = instances.size();
 
-			parsed_scene.m_instances.insert(parsed_scene.m_instances.end(), instances.begin(), instances.end());
+			parsed_model.m_instances.insert(parsed_model.m_instances.end(), instances.begin(), instances.end());
 
 			/* */
-			parsed_scene.m_meshes.push_back(mesh);
+			parsed_model.m_meshes.push_back(mesh);
 		}
 	}
 }
 
-void vren_demo::tinygltf_parser::load_model(
+void vren::tinygltf_parser::load_model(
 	std::filesystem::path const& model_folder,
 	tinygltf::Model const& gltf_model,
-	intermediate_scene& parsed_scene
+	model& parsed_model
 )
 {
 	size_t texture_offset = m_context->m_toolbox->m_texture_manager.m_textures.size();
@@ -361,17 +359,19 @@ void vren_demo::tinygltf_parser::load_model(
 	m_context->m_toolbox->m_material_manager.request_buffer_sync();
 
 	// Meshes
-	load_meshes(gltf_model, material_offset, parsed_scene);
+	load_meshes(gltf_model, material_offset, parsed_model);
 }
 
-void vren_demo::tinygltf_parser::load_from_file(
+void vren::tinygltf_parser::load_from_file(
 	std::filesystem::path const& model_filename,
-	intermediate_scene& parsed_scene
+	model& parsed_model
 )
 {
 	tinygltf::TinyGLTF loader;
 	tinygltf::Model gltf_model;
 	std::string warning, error;
+
+	parsed_model.m_name = model_filename.u8string();
 
 	printf("Loading model file: %ls\n", model_filename.c_str());
 
@@ -400,7 +400,7 @@ void vren_demo::tinygltf_parser::load_from_file(
 		throw std::runtime_error("Scene loading failed");
 	}
 
-	load_model(model_filename.parent_path(), gltf_model, parsed_scene);
+	load_model(model_filename.parent_path(), gltf_model, parsed_model);
 
-	VREN_INFO("[tinygltf_parser] Scene loaded\n");
+	VREN_INFO("[tinygltf_parser] Model loaded: {}\n", parsed_model.m_name);
 }

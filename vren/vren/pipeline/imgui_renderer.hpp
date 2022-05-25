@@ -4,7 +4,7 @@
 #include <functional>
 
 #include "base/resource_container.hpp"
-#include "renderer.hpp"
+#include "render_target.hpp"
 #include "render_graph.hpp"
 
 namespace vren

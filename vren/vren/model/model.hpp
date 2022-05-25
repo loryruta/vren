@@ -1,12 +1,11 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
-#include "vren/gpu_repr.hpp"
-
-namespace vren_demo
+namespace vren
 {
-	class intermediate_scene
+	class model
 	{
 	public:
 		struct mesh
@@ -18,10 +17,11 @@ namespace vren_demo
 		};
 
 	public:
+		std::string m_name = "unnamed";
+
 		std::vector<vren::vertex> m_vertices;
 		std::vector<uint32_t> m_indices;
 		std::vector<vren::mesh_instance> m_instances;
-
 		std::vector<mesh> m_meshes;
 	};
-};
+}

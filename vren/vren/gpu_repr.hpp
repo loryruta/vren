@@ -16,6 +16,8 @@ namespace vren
 		glm::vec3 m_position; float _pad;
 		glm::mat4 m_view;
 		glm::mat4 m_projection;
+		float m_z_near;
+		float _pad1[3];
 	};
 
 	// ------------------------------------------------------------------------------------------------

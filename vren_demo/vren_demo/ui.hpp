@@ -6,12 +6,12 @@
 #include <imgui.h>
 
 #include <vren/context.hpp>
-#include <vren/renderer.hpp>
+#include "vren/pipeline/render_target.hpp"
 #include <vren/toolbox.hpp>
 #include <vren/vk_helpers/shader.hpp>
-#include <vren/depth_buffer_pyramid.hpp>
+#include "vren/pipeline/depth_buffer_pyramid.hpp"
 
-#include "scene/tinygltf_parser.hpp"
+#include "vren/model/tinygltf_parser.hpp"
 
 #define VREN_DEMO_PLOT_SAMPLES_COUNT 512
 

@@ -3,8 +3,8 @@
 #include <memory>
 #include <vector>
 
-#include <volk.h>
-#include <vk_mem_alloc.h>
+#include "volk.h"
+#include "vk_mem_alloc.h"
 
 #include "base/resource_container.hpp"
 #include "light.hpp"
@@ -15,7 +15,11 @@
 namespace vren
 {
 	// Forward decl
-	struct mesh_shader_renderer_draw_buffer;
+
+	namespace msr
+	{
+		struct draw_buffer;
+	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Mesh shader draw pass
@@ -39,7 +43,7 @@ namespace vren
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::mesh_shader_renderer_draw_buffer const& draw_buffer,
+			vren::msr::draw_buffer const& draw_buffer,
 			vren::light_array const& light_array,
 			vren::depth_buffer_pyramid const& depth_buffer_pyramid
 		);

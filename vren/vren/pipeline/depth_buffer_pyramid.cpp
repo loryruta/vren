@@ -1,6 +1,6 @@
 #include "depth_buffer_pyramid.hpp"
 
-#include <glm/gtc/integer.hpp>
+#include "glm/gtc/integer.hpp"
 
 #include "toolbox.hpp"
 #include "base/base.hpp"
@@ -106,16 +106,20 @@ vren::vk_sampler vren::depth_buffer_pyramid::create_sampler()
 		.pNext = nullptr,
 		.reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX
 	};
-
 	VkSamplerCreateInfo sampler_info{
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 		.pNext = &sampler_reduction_mode_info,
 		.flags = NULL,
+		.magFilter = VK_FILTER_LINEAR,
+		.minFilter = VK_FILTER_LINEAR,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
 		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
 		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
 		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		.minLod = 0.0f,
+		.maxLod = (float) m_level_count,
+		.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE
 	};
-
 	VkSampler sampler;
 	VREN_CHECK(vkCreateSampler(m_context->m_device, &sampler_info, nullptr, &sampler), m_context);
 	return vren::vk_sampler(*m_context, sampler);

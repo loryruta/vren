@@ -7,7 +7,7 @@
 #include <glm/gtc/random.hpp>
 #include <meshoptimizer.h>
 
-#include <vren/utils/log.hpp>
+#include "vren/log.hpp"
 
 #include "app.hpp"
 

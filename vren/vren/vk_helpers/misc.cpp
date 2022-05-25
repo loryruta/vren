@@ -2,7 +2,7 @@
 
 #include "context.hpp"
 #include "toolbox.hpp"
-#include "utils/log.hpp"
+#include "log.hpp"
 #include "pools/command_pool.hpp"
 
 void what_the_fuck_i_did_wrong(VkQueue queue)

@@ -2,7 +2,7 @@
 
 #include "context.hpp"
 #include "toolbox.hpp"
-#include "mesh_shader_renderer.hpp"
+#include "msr_renderer.hpp"
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
@@ -180,16 +180,20 @@ void write_meshlet_buffer_descriptor_set(
 			.range = VK_WHOLE_SIZE
 		}
 	};
-	VkWriteDescriptorSet descriptor_set_write{
-		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		.dstSet = descriptor_set,
-		.dstBinding = 0,
-		.dstArrayElement = 0,
-		.descriptorCount = std::size(buffer_info),
-		.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		.pBufferInfo = buffer_info
-	};
-	vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+
+	for (uint32_t i = 0; i < std::size(buffer_info); i++)
+	{
+		VkWriteDescriptorSet descriptor_set_write{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = descriptor_set,
+			.dstBinding = i,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.pBufferInfo = &buffer_info[i]
+		};
+		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+	}
 }
 
 void write_depth_buffer_pyramid_descriptor_set(

@@ -88,11 +88,6 @@ void vren_demo::app::late_initialize()
 		auto app = static_cast<vren_demo::app*>(glfwGetWindowUserPointer(window));
 		app->on_key_press(key, scancode, action, mods);
 	});
-
-	// Draw cartesian axes
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 }
 
 void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
@@ -308,6 +303,13 @@ void vren_demo::app::record_commands(
 	vren::resource_container& resource_container
 )
 {
+	m_debug_draw_buffer.clear();
+
+	// Draw cartesian axes
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
+
 	// Render-graph begin
 	vren::render_graph::chain render_graph(m_render_graph_allocator);
 
@@ -367,9 +369,10 @@ void vren_demo::app::record_commands(
 	auto build_depth_buffer_pyramid = m_depth_buffer_reductor.copy_and_reduce(m_render_graph_allocator, *m_depth_buffer, *m_depth_buffer_pyramid);
 	render_graph.concat(build_depth_buffer_pyramid);
 
-	// Debug general purpose objects
+	// Debug draws
 	vren::render_graph::chain debug_render_graph(m_render_graph_allocator);
 
+	// Debug general purpose objects
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
 
 	// Debug meshlets
