@@ -1,4 +1,4 @@
-#include "msr_model_specializer.hpp"
+#include "model_clusterizer.hpp"
 
 #define VREN_USE_MESH_OPTIMIZER
 
@@ -6,7 +6,7 @@
 #	include <meshoptimizer.h>
 #endif
 
-void vren::msr::model_specializer::reserve_buffer_space(pre_upload_model& output, vren::model const& model)
+void vren::model_clusterizer::reserve_buffer_space(vren::clusterized_model& output, vren::model const& model)
 {
 	size_t max_meshlets = 0;
 	size_t max_instanced_meshlets = 0;
@@ -31,7 +31,7 @@ void vren::msr::model_specializer::reserve_buffer_space(pre_upload_model& output
 	output.m_instanced_meshlets.reserve(max_instanced_meshlets);
 }
 
-void vren::msr::model_specializer::clusterize_mesh(pre_upload_model& output, vren::model const& model, vren::model::mesh const& mesh)
+void vren::model_clusterizer::clusterize_mesh(vren::clusterized_model& output, vren::model const& model, vren::model::mesh const& mesh)
 {
 #ifdef VREN_USE_MESH_OPTIMIZER
 	size_t meshopt_max_meshlets = meshopt_buildMeshletsBound(mesh.m_index_count, vren::k_max_meshlet_vertex_count, vren::k_max_meshlet_primitive_count);
@@ -60,9 +60,7 @@ void vren::msr::model_specializer::clusterize_mesh(pre_upload_model& output, vre
 		0.0f // cone_weight
 	);
 
-	(void) meshlet_count;
-
-	meshopt_Meshlet const& last_meshlet = meshopt_meshlets.back();
+	meshopt_Meshlet const& last_meshlet = meshopt_meshlets[meshlet_count - 1];
 	output.m_meshlet_vertices.resize(meshlet_vertices_offset + last_meshlet.vertex_offset + last_meshlet.vertex_count);
 	output.m_meshlet_triangles.resize(meshlet_triangles_offset + last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3));
 
@@ -107,7 +105,7 @@ void vren::msr::model_specializer::clusterize_mesh(pre_upload_model& output, vre
 #endif
 }
 
-void vren::msr::model_specializer::clusterize_model(pre_upload_model& output, vren::model const& model)
+void vren::model_clusterizer::clusterize_model(vren::clusterized_model& output, vren::model const& model)
 {
 	for (auto const& mesh : model.m_meshes)
 	{
@@ -129,13 +127,18 @@ void vren::msr::model_specializer::clusterize_model(pre_upload_model& output, vr
 			}
 		}
 	}
+
+	output.m_vertices = model.m_vertices;
+	output.m_instances = model.m_instances;
 }
 
-vren::msr::pre_upload_model vren::msr::model_specializer::specialize(vren::model const& model)
+vren::clusterized_model vren::model_clusterizer::clusterize(vren::model const& model)
 {
-	vren::msr::pre_upload_model result{};
+	vren::clusterized_model result{};
 
 	reserve_buffer_space(result, model);
 
 	clusterize_model(result, model);
+
+	return std::move(result);
 }

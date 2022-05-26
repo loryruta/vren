@@ -9,7 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "utils/profiler.hpp"
+#include "pipeline/profiler.hpp"
 #include "toolbox.hpp"
 
 glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> v)
@@ -371,7 +371,7 @@ void vren::tinygltf_parser::load_from_file(
 	tinygltf::Model gltf_model;
 	std::string warning, error;
 
-	parsed_model.m_name = model_filename.u8string();
+	parsed_model.m_name = model_filename.string();
 
 	printf("Loading model file: %ls\n", model_filename.c_str());
 

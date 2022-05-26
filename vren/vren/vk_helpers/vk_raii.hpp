@@ -7,7 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "context.hpp"
-#include "vren/log.hpp"
+#include "log.hpp"
 
 #define VREN_DEFINE_VK_RAII(_raii_t, _t, _dtor_lambda) \
     namespace vren { \

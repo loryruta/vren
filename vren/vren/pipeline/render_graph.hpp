@@ -11,7 +11,7 @@
 
 #include "base/base.hpp"
 #include "base/resource_container.hpp"
-#include "vren/log.hpp"
+#include "log.hpp"
 
 namespace vren::render_graph
 {

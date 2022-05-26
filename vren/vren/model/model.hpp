@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include "gpu_repr.hpp"
+
 namespace vren
 {
 	class model

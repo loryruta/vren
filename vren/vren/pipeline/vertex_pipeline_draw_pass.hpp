@@ -4,25 +4,15 @@
 #include "vk_helpers/buffer.hpp"
 #include "light.hpp"
 #include "gpu_repr.hpp"
+#include "model/basic_model_draw_buffer.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
 
-	namespace br
-	{
-		struct draw_buffer;
-	}
-
-	//
-
 	class vertex_pipeline_draw_pass
 	{
-	public:
-		static constexpr uint32_t k_texture_buffer_descriptor_set_idx = 0;
-		static constexpr uint32_t k_material_buffer_descriptor_set_idx = 1;
-
 	private:
 		vren::context const* m_context;
 		vren::vk_utils::pipeline m_pipeline;
@@ -39,7 +29,7 @@ namespace vren
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::br::draw_buffer const& draw_buffer,
+			vren::basic_model_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array
 		);
 	};

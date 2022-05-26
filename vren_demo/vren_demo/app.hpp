@@ -4,13 +4,16 @@
 #include <GLFW/glfw3.h>
 
 #include <vren/context.hpp>
-#include "vren/pipeline/render_target.hpp"
-#include "vren/pipeline/msr_renderer.hpp"
+#include "vren/pipeline/basic_renderer.hpp"
+#include "vren/pipeline/mesh_shader_renderer.hpp"
 #include "vren/pipeline/debug_renderer.hpp"
 #include "vren/pipeline/imgui_renderer.hpp"
 #include "vren/pipeline/depth_buffer_pyramid.hpp"
 #include <vren/presenter.hpp>
-#include <vren/utils/profiler.hpp>
+#include "vren/pipeline/profiler.hpp"
+#include <vren/model/basic_model_draw_buffer.hpp>
+#include <vren/model/clusterized_model.hpp>
+#include <vren/model/clusterized_model_draw_buffer.hpp>
 
 #include "camera.hpp"
 #include "ui.hpp"
@@ -126,11 +129,13 @@ namespace vren_demo
 
 		// Debug draw buffers
 		vren::debug_renderer_draw_buffer m_debug_draw_buffer; // General purpose
-		vren::debug_renderer_draw_buffer m_meshlets_debug_draw_buffer;
-		vren::debug_renderer_draw_buffer m_meshlets_bounds_debug_draw_buffer;
+		vren::debug_renderer_draw_buffer m_debug_meshlets_draw_buffer;
+		vren::debug_renderer_draw_buffer m_debug_meshlet_bounds_draw_buffer;
 
-		std::unique_ptr<vren::basic_renderer_draw_buffer> m_basic_renderer_draw_buffer;
-		std::unique_ptr<vren::mesh_shader_renderer_draw_buffer> m_mesh_shader_renderer_draw_buffer;
+		// Model
+		std::unique_ptr<vren::basic_model_draw_buffer> m_basic_model_draw_buffer;
+		std::unique_ptr<vren::clusterized_model> m_clusterized_model;
+		std::unique_ptr<vren::clusterized_model_draw_buffer> m_clusterized_model_draw_buffer;
 
 		vren::light_array m_light_array;
 
@@ -163,8 +168,6 @@ namespace vren_demo
 		// Camera
 		vren_demo::camera m_camera;
 		vren_demo::freecam_controller m_freecam_controller;
-
-		vren_demo::tinygltf_parser m_gltf_parser;
 
 		vren_demo::ui m_ui;
 

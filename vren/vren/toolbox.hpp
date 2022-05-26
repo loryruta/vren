@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "pools/command_pool.hpp"
-#include "pools/descriptor_pool.hpp"
+#include "pool/command_pool.hpp"
+#include "pool/descriptor_pool.hpp"
 #include "vk_helpers/image.hpp"
 #include "texture_manager.hpp"
 #include "material.hpp"

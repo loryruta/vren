@@ -4,7 +4,8 @@
 #include <vector>
 
 #include "base/base.hpp"
-#include "vren/log.hpp"
+#include "base/kd_tree.hpp"
+#include "log.hpp"
 
 bool is_triangle_adjacent_to_meshlet(uint32_t const* indices, uint32_t triangle, uint32_t const* meshlet_vertices, vren::meshlet const& meshlet)
 {
@@ -151,7 +152,7 @@ size_t vren::clusterize_mesh(
 		kd_tree_triangle_indices[i] = i;
 	}
 
-	std::vector<kd_tree_node> kd_tree(triangle_count * 2); // TODO max size?
+	std::vector<vren::kd_tree_node> kd_tree(triangle_count * 2); // TODO max size?
 	vren::kd_tree_build(reinterpret_cast<float const*>(triangle_midpoints.data()), sizeof(glm::vec3) / sizeof(float), kd_tree_triangle_indices.data(), kd_tree_triangle_indices.size(), kd_tree.data(), 0, 8);
 
 	// 0 = triangle not picked

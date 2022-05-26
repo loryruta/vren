@@ -5,7 +5,7 @@
 
 #include "vk_raii.hpp"
 #include "base/resource_container.hpp"
-#include "pools/command_pool.hpp"
+#include "pool/command_pool.hpp"
 
 #define VREN_CHECK(...) vren::vk_utils::check(__VA_ARGS__)
 

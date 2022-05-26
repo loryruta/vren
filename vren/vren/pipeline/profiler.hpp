@@ -1,11 +1,8 @@
 #pragma once
 
-#include <unordered_map>
-#include <bitset>
-
 #include "base/resource_container.hpp"
 #include "vk_helpers/vk_raii.hpp"
-#include "vren/pipeline/render_graph.hpp"
+#include "render_graph.hpp"
 
 namespace vren
 {

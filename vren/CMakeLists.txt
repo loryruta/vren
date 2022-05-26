@@ -9,29 +9,50 @@ set(SRC
         vren/base/kd_tree.cpp
         vren/base/resource_container.hpp
 
-        vren/pools/command_pool.hpp
-        vren/pools/command_pool.cpp
-        vren/pools/descriptor_pool.hpp
-        vren/pools/descriptor_pool.cpp
-        vren/pools/object_pool.hpp
-
-        vren/model/br_model_specializer.hpp
-        vren/model/br_model_uploader.cpp
-        vren/model/br_model_uploader.hpp
+        vren/model/basic_model_draw_buffer.hpp
+        vren/model/basic_model_uploader.cpp
+        vren/model/basic_model_uploader.hpp
+        vren/model/clusterized_model.hpp
+        vren/model/clusterized_model_draw_buffer.hpp
+        vren/model/clusterized_model_uploader.hpp
+        vren/model/clusterized_model_uploader.cpp
         vren/model/mesh.hpp
-        vren/model/msr_model_specializer.cpp
-        vren/model/msr_model_specializer.hpp
-        vren/model/msr_model_uploader.cpp
-        vren/model/msr_model_uploader.hpp
+        vren/model/mesh_clusterizer.cpp
+        vren/model/model_clusterizer.cpp
+        vren/model/model_clusterizer.hpp
         vren/model/tinygltf_parser.cpp
         vren/model/tinygltf_parser.hpp
 
-        vren/utils/command_graph.hpp
-        vren/utils/command_graph.cpp
-        vren/utils/profiler.hpp
-        vren/utils/profiler.cpp
-        vren/log.hpp
+        vren/pipeline/basic_renderer.cpp
+        vren/pipeline/basic_renderer.hpp
+        vren/pipeline/mesh_shader_renderer.cpp
+        vren/pipeline/mesh_shader_renderer.hpp
+        vren/pipeline/render_target.hpp
+        vren/pipeline/mesh_shader_draw_pass.hpp
+        vren/pipeline/mesh_shader_draw_pass.cpp
+        vren/pipeline/vertex_pipeline_draw_pass.cpp
+        vren/pipeline/vertex_pipeline_draw_pass.hpp
+        vren/pipeline/profiler.hpp
+        vren/pipeline/profiler.cpp
+        vren/pipeline/depth_buffer_pyramid.cpp
+        vren/pipeline/imgui_renderer.hpp
+        vren/pipeline/imgui_renderer.cpp
+        vren/pipeline/debug_renderer.hpp
+        vren/pipeline/debug_renderer.cpp
+        vren/pipeline/render_graph.hpp
+        vren/pipeline/render_graph.cpp
 
+        vren/pool/command_pool.hpp
+        vren/pool/command_pool.cpp
+        vren/pool/descriptor_pool.hpp
+        vren/pool/descriptor_pool.cpp
+        vren/pool/object_pool.hpp
+
+        vren/third_party/impl.cpp
+
+        vren/vk_helpers/shader.hpp
+        vren/vk_helpers/shader.cpp
+        vren/vk_helpers/barrier.hpp
         vren/vk_helpers/debug_utils.hpp
         vren/vk_helpers/buffer.hpp
         vren/vk_helpers/buffer.cpp
@@ -43,42 +64,21 @@ set(SRC
         vren/vk_helpers/image_layout_transitions.hpp
         vren/vk_helpers/image_layout_transitions.cpp
 
-        vren/third_party/header_only_impl.cpp
-
-        vren/pipeline/depth_buffer_pyramid.cpp
         vren/gpu_repr.hpp
         vren/material.cpp
         vren/material.hpp
         vren/texture_manager.cpp
         vren/texture_manager.hpp
-        vren/pipeline/imgui_renderer.hpp
-        vren/pipeline/imgui_renderer.cpp
         vren/toolbox.hpp
         vren/toolbox.cpp
-        vren/vk_helpers/shader.hpp
-        vren/vk_helpers/shader.cpp
-        vren/vk_helpers/barrier.hpp
-        vren/pipeline/debug_renderer.hpp
-        vren/pipeline/debug_renderer.cpp
-        vren/pipeline/render_graph.hpp
-        vren/pipeline/render_graph.cpp
         vren/context.hpp
         vren/context.cpp
-        vren/pipeline/br_renderer.cpp
-        vren/pipeline/br_renderer.hpp
-        vren/pipeline/msr_renderer.cpp
-        vren/pipeline/msr_renderer.hpp
-        vren/pipeline/render_target.hpp
-        vren/pipeline/mesh_shader_draw_pass.hpp
-        vren/pipeline/mesh_shader_draw_pass.cpp
         vren/config.hpp
         vren/presenter.cpp
         vren/presenter.hpp
         vren/light.cpp
         vren/light.hpp
-
-        vren/pipeline/vertex_pipeline_draw_pass.cpp
-        vren/pipeline/vertex_pipeline_draw_pass.hpp
+        vren/log.hpp
 )
 
 add_library(vren ${SRC})

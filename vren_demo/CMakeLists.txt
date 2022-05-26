@@ -8,8 +8,8 @@ add_executable(vren_demo
         vren_demo/app.cpp
         vren_demo/ui.hpp
         vren_demo/ui.cpp
-        vren_demo/scene/scene_gpu_uploader.cpp
-        vren_demo/scene/scene_gpu_uploader.hpp
+        vren_demo/clusterized_model_debugger.cpp
+        vren_demo/clusterized_model_debugger.hpp
 )
 
 # ------------------------------------------------------------------------------------------------

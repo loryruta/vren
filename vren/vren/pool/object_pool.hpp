@@ -1,10 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <memory>
-#include <iostream>
 #include <optional>
-#include <functional>
 
 namespace vren
 {

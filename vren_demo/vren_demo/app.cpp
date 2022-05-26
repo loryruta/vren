@@ -4,7 +4,11 @@
 
 #include <imgui_impl_glfw.h>
 
-#include "scene/scene_gpu_uploader.hpp"
+#include <vren/model/basic_model_uploader.hpp>
+#include <vren/model/model_clusterizer.hpp>
+#include <vren/model/clusterized_model_uploader.hpp>
+
+#include "clusterized_model_debugger.hpp"
 
 vren_demo::app::app(GLFWwindow* window) :
 	m_window(window),
@@ -49,8 +53,8 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	// Debug draw buffers
 	m_debug_draw_buffer(m_context),
-	m_meshlets_debug_draw_buffer(m_context),
-	m_meshlets_bounds_debug_draw_buffer(m_context),
+	m_debug_meshlets_draw_buffer(m_context),
+	m_debug_meshlet_bounds_draw_buffer(m_context),
 
 	m_light_array(m_context),
 
@@ -62,8 +66,6 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	// Profiler
 	m_profiler(m_context),
-
-	m_gltf_parser(m_context),
 
 	m_camera{},
 	m_freecam_controller(m_window),
@@ -165,119 +167,38 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 	}
 }
 
-vren::mesh_shader_renderer_draw_buffer upload_scene_for_mesh_shader_renderer_(vren::context const& context, vren_demo::intermediate_scene const& parsed_scene, vren::debug_renderer_draw_buffer& meshlet_debug_draw_buffer, vren::debug_renderer_draw_buffer& meshlet_bounds_debug_draw_buffer)
-{
-	// Allocation
-	size_t
-		meshlet_vertex_buffer_size,
-		meshlet_triangle_buffer_size,
-		meshlet_buffer_size,
-		instanced_meshlet_buffer_size;
-
-	vren_demo::get_clusterized_scene_requested_buffer_sizes(
-		parsed_scene.m_vertices.data(),
-		parsed_scene.m_indices.data(),
-		parsed_scene.m_instances.data(),
-		parsed_scene.m_meshes.data(),
-		parsed_scene.m_meshes.size(),
-		meshlet_vertex_buffer_size,
-		meshlet_triangle_buffer_size,
-		meshlet_buffer_size,
-		instanced_meshlet_buffer_size
-	);
-
-	// Clustering
-	std::vector<uint32_t> meshlet_vertices(meshlet_vertex_buffer_size);
-	std::vector<uint8_t> meshlet_triangles(meshlet_triangle_buffer_size);
-	std::vector<vren::meshlet> meshlets(meshlet_buffer_size);
-	std::vector<vren::instanced_meshlet> instanced_meshlets(instanced_meshlet_buffer_size);
-	size_t
-		meshlet_vertex_count,
-		meshlet_triangle_count,
-		meshlet_count,
-		instanced_meshlet_count;
-
-	vren_demo::clusterize_scene(
-		parsed_scene.m_vertices.data(),
-		parsed_scene.m_indices.data(),
-		parsed_scene.m_instances.data(),
-		parsed_scene.m_meshes.data(),
-		parsed_scene.m_meshes.size(),
-		meshlet_vertices.data(),
-		meshlet_vertex_count,
-		meshlet_triangles.data(),
-		meshlet_triangle_count,
-		meshlets.data(),
-		meshlet_count,
-		instanced_meshlets.data(),
-		instanced_meshlet_count
-	);
-
-	meshlet_vertices.resize(meshlet_vertex_count);
-	meshlet_triangles.resize(meshlet_triangle_count);
-	meshlets.resize(meshlet_count);
-	instanced_meshlets.resize(instanced_meshlet_count);
-
-	// Debug for meshlet geometry
-	std::vector<vren::debug_renderer_line> debug_lines;
-	vren_demo::write_debug_information_for_meshlet_geometry(
-		parsed_scene.m_vertices.data(),
-		meshlet_vertices.data(),
-		meshlet_triangles.data(),
-		meshlets.data(),
-		instanced_meshlets.data(),
-		instanced_meshlet_count,
-		parsed_scene.m_instances.data(),
-		debug_lines
-	);
-	meshlet_debug_draw_buffer.clear();
-	meshlet_debug_draw_buffer.add_lines(debug_lines.data(), debug_lines.size());
-
-	// Debug for meshlet bounds
-	std::vector<vren::debug_renderer_sphere> debug_spheres;
-	vren_demo::write_debug_information_for_meshlet_bounds(
-		meshlets.data(),
-		instanced_meshlets.data(),
-		instanced_meshlet_count,
-		parsed_scene.m_instances.data(),
-		debug_spheres
-	);
-	meshlet_bounds_debug_draw_buffer.clear();
-	meshlet_bounds_debug_draw_buffer.add_spheres(debug_spheres.data(), debug_spheres.size());
-
-	// Uploading
-	auto draw_buffer = vren_demo::upload_scene_for_mesh_shader_renderer(
-		context,
-		parsed_scene.m_vertices.data(),
-		parsed_scene.m_vertices.size(),
-		meshlet_vertices.data(),
-		meshlet_vertices.size(),
-		meshlet_triangles.data(),
-		meshlet_triangles.size(),
-		meshlets.data(),
-		meshlet_count,
-		instanced_meshlets.data(),
-		instanced_meshlet_count,
-		parsed_scene.m_instances.data(),
-		parsed_scene.m_instances.size()
-	);
-	return std::move(draw_buffer);
-}
-
 void vren_demo::app::load_scene(char const* gltf_model_filename)
 {
-	vren_demo::intermediate_scene parsed_scene;
+	VREN_INFO("[vren_demo] Loading model: {}\n", gltf_model_filename);
 
-	vren_demo::tinygltf_parser gltf_parser(m_context);
-	gltf_parser.load_from_file(gltf_model_filename, parsed_scene);
+	vren::tinygltf_parser gltf_parser(m_context);
 
-	m_basic_renderer_draw_buffer = std::make_unique<vren::basic_renderer_draw_buffer>(
-		vren_demo::upload_scene_for_basic_renderer(m_context, parsed_scene)
+	vren::model parsed_model; // Intermediate model
+	gltf_parser.load_from_file(gltf_model_filename, parsed_model);
+
+	// Basic model
+	vren::basic_model_uploader basic_model_uploader{};
+	m_basic_model_draw_buffer = std::make_unique<vren::basic_model_draw_buffer>(
+		basic_model_uploader.upload(m_context, parsed_model)
 	);
 
-	m_mesh_shader_renderer_draw_buffer = std::make_unique<vren::mesh_shader_renderer_draw_buffer>(
-		upload_scene_for_mesh_shader_renderer_(m_context, parsed_scene, m_meshlets_debug_draw_buffer, m_meshlets_bounds_debug_draw_buffer)
+	// Clusterized model
+	vren::model_clusterizer model_clusterizer{};
+	m_clusterized_model = std::make_unique<vren::clusterized_model>(
+		model_clusterizer.clusterize(parsed_model)
 	);
+
+	vren::clusterized_model_uploader clusterized_model_uploader{};
+	m_clusterized_model_draw_buffer = std::make_unique<vren::clusterized_model_draw_buffer>(
+		clusterized_model_uploader.upload(m_context, *m_clusterized_model)
+	);
+
+	// Clusterized model debug information
+	vren_demo::clusterized_model_debugger clusterized_model_debugger{};
+	clusterized_model_debugger.write_debug_info_for_meshlet_geometry(*m_clusterized_model, m_debug_meshlets_draw_buffer);
+	clusterized_model_debugger.write_debug_info_for_meshlet_bounds(*m_clusterized_model, m_debug_meshlet_bounds_draw_buffer);
+
+	VREN_INFO("[vren_demo] Model completely loaded: {}\n", gltf_model_filename);
 }
 
 void vren_demo::app::on_window_resize(uint32_t width, uint32_t height)
@@ -347,17 +268,19 @@ void vren_demo::app::record_commands(
 	// Render scene
 	switch (m_selected_renderer_type)
 	{
+	case vren_demo::RendererType_NONE:
+		break;
 	case vren_demo::RendererType_BASIC_RENDERER:
-		if (m_basic_renderer_draw_buffer)
+		if (m_basic_model_draw_buffer)
 		{
-			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_renderer_draw_buffer);
+			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_model_draw_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
-		if (m_mesh_shader_renderer_draw_buffer)
+		if (m_clusterized_model_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_mesh_shader_renderer_draw_buffer, *m_depth_buffer_pyramid);
+			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 		}
 		break;
@@ -378,13 +301,13 @@ void vren_demo::app::record_commands(
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_debug_draw_buffer));
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlets_draw_buffer));
 	}
 
 	// Debug meshlet bounds
 	if (m_show_meshlets_bounds)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_meshlets_bounds_debug_draw_buffer));
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlet_bounds_draw_buffer));
 	}
 
 	// Debug depth buffer pyramid

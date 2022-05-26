@@ -10,7 +10,7 @@
 
 #include "vk_raii.hpp"
 #include "base/resource_container.hpp"
-#include "pools/command_pool.hpp"
+#include "pool/command_pool.hpp"
 
 namespace vren
 {

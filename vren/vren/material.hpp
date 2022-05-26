@@ -7,7 +7,7 @@
 #include "base/resource_container.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "gpu_repr.hpp"
-#include "vren/pipeline/render_graph.hpp"
+#include "pipeline/render_graph.hpp"
 
 namespace vren
 {

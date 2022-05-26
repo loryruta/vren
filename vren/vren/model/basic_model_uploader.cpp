@@ -1,18 +1,15 @@
-#include "br_model_uploader.hpp"
+#include "basic_model_uploader.hpp"
 
-#include "log.hpp"
 #include "gpu_repr.hpp"
+#include "log.hpp"
 
-vren::br::draw_buffer vren::br::model_uploader::upload(
-	vren::context const& context,
-	pre_upload_model_t const& model
-)
+vren::basic_model_draw_buffer vren::basic_model_uploader::upload(vren::context const& context, vren::model const& model)
 {
-	std::vector<draw_buffer::mesh> meshes;
+	std::vector<vren::basic_model_draw_buffer::mesh> meshes;
 	meshes.reserve(model.m_meshes.size());
 	for (auto mesh : model.m_meshes)
 	{
-		meshes.push_back(draw_buffer::mesh{
+		meshes.push_back(vren::basic_model_draw_buffer::mesh{
 			.m_vertex_offset   = mesh.m_vertex_offset,
 			.m_vertex_count    = mesh.m_vertex_count,
 			.m_index_offset    = mesh.m_index_offset,
@@ -23,7 +20,7 @@ vren::br::draw_buffer vren::br::model_uploader::upload(
 		});
 	}
 
-	vren::br::draw_buffer draw_buffer{
+	vren::basic_model_draw_buffer draw_buffer{
 		.m_name            = model.m_name,
 		.m_vertex_buffer   = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, model.m_vertices.data(), model.m_vertices.size() * sizeof(vren::vertex)),
 		.m_index_buffer    = vren::vk_utils::create_device_only_buffer(context, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, model.m_indices.data(), model.m_indices.size() * sizeof(uint32_t)),
@@ -31,7 +28,9 @@ vren::br::draw_buffer vren::br::model_uploader::upload(
 		.m_meshes          = std::move(meshes)
 	};
 
-	VREN_INFO("[br] [model_uploader] Uploaded model: {}\n", draw_buffer.m_name);
+	draw_buffer.set_object_names(context);
+
+	VREN_INFO("[basic_model_uploader] Uploaded model: {}\n", draw_buffer.m_name);
 
 	return draw_buffer;
 }

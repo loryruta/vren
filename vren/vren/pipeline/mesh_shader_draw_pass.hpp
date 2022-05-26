@@ -11,16 +11,10 @@
 #include "gpu_repr.hpp"
 #include "vk_helpers/shader.hpp"
 #include "depth_buffer_pyramid.hpp"
+#include "model/clusterized_model_draw_buffer.hpp"
 
 namespace vren
 {
-	// Forward decl
-
-	namespace msr
-	{
-		struct draw_buffer;
-	}
-
 	// ------------------------------------------------------------------------------------------------
 	// Mesh shader draw pass
 	// ------------------------------------------------------------------------------------------------
@@ -43,7 +37,7 @@ namespace vren
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
 			vren::camera const& camera,
-			vren::msr::draw_buffer const& draw_buffer,
+			vren::clusterized_model_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array,
 			vren::depth_buffer_pyramid const& depth_buffer_pyramid
 		);

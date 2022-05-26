@@ -4,10 +4,10 @@
 
 #include <glm/glm.hpp>
 
-#include "pools/descriptor_pool.hpp"
+#include "pool/descriptor_pool.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "gpu_repr.hpp"
-#include "vren/pipeline/render_graph.hpp"
+#include "pipeline/render_graph.hpp"
 
 namespace vren
 {

@@ -1,4 +1,4 @@
-#include "br_renderer.hpp"
+#include "basic_renderer.hpp"
 
 #include <array>
 
@@ -6,24 +6,17 @@
 #include "vk_helpers/misc.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
-void vren::br::set_object_names(vren::context const& context, vren::br::draw_buffer const& draw_buffer)
-{
-	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_vertex_buffer.m_buffer.m_handle, "vertex_buffer");
-	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_index_buffer.m_buffer.m_handle, "meshlet_buffer");
-	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) draw_buffer.m_instance_buffer.m_buffer.m_handle, "instance_buffer");
-}
-
-vren::br::renderer::renderer(vren::context const& context) :
+vren::basic_renderer::basic_renderer(vren::context const& context) :
 	m_context(&context),
 	m_vertex_pipeline_draw_pass(context)
 {}
 
-vren::render_graph::graph_t vren::br::renderer::render(
+vren::render_graph::graph_t vren::basic_renderer::render(
 	vren::render_graph::allocator& render_graph_allocator,
 	vren::render_target const& render_target,
 	vren::camera const& camera,
 	vren::light_array const& light_array,
-	vren::basic_renderer_draw_buffer const& draw_buffer
+	vren::basic_model_draw_buffer const& draw_buffer
 )
 {
 	auto node = render_graph_allocator.allocate();

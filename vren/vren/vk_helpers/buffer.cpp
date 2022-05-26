@@ -18,6 +18,8 @@ vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
 	bool persistently_mapped
 )
 {
+	assert(size > 0);
+
 	VkBufferCreateInfo buf_info{};
 	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buf_info.usage = buffer_usage;
@@ -47,6 +49,8 @@ vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 	size_t size
 )
 {
+	assert(size > 0);
+
 	VkBufferCreateInfo buf_info{};
 	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buf_info.usage = buffer_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
