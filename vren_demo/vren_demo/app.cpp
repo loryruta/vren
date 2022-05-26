@@ -55,6 +55,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_debug_draw_buffer(m_context),
 	m_debug_meshlets_draw_buffer(m_context),
 	m_debug_meshlet_bounds_draw_buffer(m_context),
+	m_debug_projected_meshlet_bounds_draw_buffer(m_context),
 
 	m_light_array(m_context),
 
@@ -125,6 +126,11 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 	if (key == GLFW_KEY_2 && action == GLFW_PRESS)
 	{
 		m_show_meshlets_bounds = !m_show_meshlets_bounds;
+	}
+
+	if (key == GLFW_KEY_3 && action == GLFW_PRESS)
+	{
+		m_show_projected_meshlet_bounds = !m_show_projected_meshlet_bounds;
 	}
 
 	if (key == GLFW_KEY_F1 && action == GLFW_PRESS)
@@ -308,6 +314,18 @@ void vren_demo::app::record_commands(
 	if (m_show_meshlets_bounds)
 	{
 		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlet_bounds_draw_buffer));
+	}
+
+	if (m_show_projected_meshlet_bounds)
+	{
+		auto camera = m_camera.to_vren();
+
+		m_debug_projected_meshlet_bounds_draw_buffer.clear();
+
+		vren_demo::clusterized_model_debugger clusterized_model_debugger{};
+		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera, m_debug_projected_meshlet_bounds_draw_buffer);
+
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
 	}
 
 	// Debug depth buffer pyramid

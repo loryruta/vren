@@ -94,10 +94,11 @@ void vren::debug_renderer_draw_buffer::add_spheres(vren::debug_renderer_sphere c
 
 vren::debug_renderer::debug_renderer(vren::context const& ctx) :
 	m_context(&ctx),
-	m_pipeline(create_graphics_pipeline())
+	m_pipeline(create_graphics_pipeline(/* depth_test */ true)),
+	m_no_depth_test_pipeline(create_graphics_pipeline(false))
 {}
 
-vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
+vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 {
 	VkVertexInputBindingDescription vtx_bindings[]{
 		{ .binding = 0, .stride = sizeof(vren::debug_renderer_vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX, }, // Vertex buffer
@@ -174,8 +175,8 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 	/* Depth-stencil state */
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = true,
-		.depthWriteEnable = true,
+		.depthTestEnable = depth_test,
+		.depthWriteEnable = depth_test,
 		.depthCompareOp = VK_COMPARE_OP_LESS
 	};
 
@@ -206,7 +207,6 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline()
 	VkDynamicState dynamic_states[]{
 		VK_DYNAMIC_STATE_SCISSOR,
 		VK_DYNAMIC_STATE_VIEWPORT,
-
 		VK_DYNAMIC_STATE_LINE_WIDTH,
 		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT
 	};
@@ -278,7 +278,7 @@ vren::render_graph::graph_t vren::debug_renderer::render(
 		.m_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		.m_access_flags = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 	});
-	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	node->set_callback([=, &draw_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		if (draw_buffer.m_vertex_count == 0) {
 		   return;
@@ -324,13 +324,15 @@ vren::render_graph::graph_t vren::debug_renderer::render(
 		vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
+		vren::vk_utils::pipeline& pipeline = world_space ? m_pipeline : m_no_depth_test_pipeline;
+
 		// Bind pipeline
-		m_pipeline.bind(command_buffer);
+		pipeline.bind(command_buffer);
 
 		// Camera
 		if (world_space)
 		{
-			m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
+			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
 		}
 		else
 		{
@@ -338,7 +340,7 @@ vren::render_graph::graph_t vren::debug_renderer::render(
 				.m_view = glm::identity<glm::mat4>(),
 				.m_projection = glm::identity<glm::mat4>()
 			};
-			m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &no_camera, sizeof(vren::camera));
+			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &no_camera, sizeof(vren::camera));
 		}
 
 		VkDeviceSize offsets[]{0};

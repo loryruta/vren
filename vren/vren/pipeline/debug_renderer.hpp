@@ -103,12 +103,13 @@ namespace vren
 		vren::context const* m_context;
 
 		vren::vk_utils::pipeline m_pipeline;
+		vren::vk_utils::pipeline m_no_depth_test_pipeline;
 
 	public:
 		explicit debug_renderer(vren::context const& context);
 
 	private:
-		vren::vk_utils::pipeline create_graphics_pipeline();
+		vren::vk_utils::pipeline create_graphics_pipeline(bool depth_test);
 
 	public:
 		vren::render_graph::graph_t render(

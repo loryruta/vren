@@ -131,6 +131,7 @@ namespace vren_demo
 		vren::debug_renderer_draw_buffer m_debug_draw_buffer; // General purpose
 		vren::debug_renderer_draw_buffer m_debug_meshlets_draw_buffer;
 		vren::debug_renderer_draw_buffer m_debug_meshlet_bounds_draw_buffer;
+		vren::debug_renderer_draw_buffer m_debug_projected_meshlet_bounds_draw_buffer;
 
 		// Model
 		std::unique_ptr<vren::basic_model_draw_buffer> m_basic_model_draw_buffer;
@@ -176,6 +177,7 @@ namespace vren_demo
 		bool m_show_ui = true;
 		bool m_show_meshlets = false;
 		bool m_show_meshlets_bounds = false;
+		bool m_show_projected_meshlet_bounds = false;
 
 	public:
 		app(GLFWwindow* window);
