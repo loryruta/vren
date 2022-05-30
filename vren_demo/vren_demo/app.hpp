@@ -168,6 +168,8 @@ namespace vren_demo
 
 		// Camera
 		vren_demo::camera m_camera;
+		float m_camera_speed = 0.1f;
+
 		vren_demo::freecam_controller m_freecam_controller;
 
 		vren_demo::ui m_ui;

@@ -205,8 +205,10 @@ void vren_demo::ui::show_camera_window()
 	glm::vec4 a(0, 0, 0, 1);
 	glm::vec4 b(0, 0, 1, 1);
 
-	if (ImGui::Begin("Camera info##camera"))
+	if (ImGui::Begin("Camera##camera"))
 	{
+		ImGui::SliderFloat("Speed", &m_app->m_camera_speed, 0.01f, 10.0f);
+
 		ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera.m_position.x, camera.m_position.y, camera.m_position.z);
 		ImGui::Text("Yaw/pitch: (%.2f, %.2f)", camera.m_yaw, camera.m_pitch);
 		ImGui::SliderFloat("FOV", &camera.m_fov_y, glm::radians(1.0f), glm::radians(90.0f), "%.2f");

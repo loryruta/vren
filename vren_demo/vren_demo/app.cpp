@@ -225,7 +225,7 @@ void vren_demo::app::on_update(float dt)
 
 	m_camera.m_aspect_ratio = framebuffer_width / (float) framebuffer_height;
 
-	m_freecam_controller.update(m_camera, dt, 0.1f, glm::radians(90.0f));
+	m_freecam_controller.update(m_camera, dt, m_camera_speed, glm::radians(45.0f));
 }
 
 void vren_demo::app::record_commands(
