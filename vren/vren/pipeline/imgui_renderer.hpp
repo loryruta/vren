@@ -6,6 +6,7 @@
 #include "base/resource_container.hpp"
 #include "render_target.hpp"
 #include "render_graph.hpp"
+#include "gpu_repr.hpp"
 
 namespace vren
 {

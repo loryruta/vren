@@ -7,6 +7,7 @@
 #include <vren/model/basic_model_uploader.hpp>
 #include <vren/model/model_clusterizer.hpp>
 #include <vren/model/clusterized_model_uploader.hpp>
+#include <vren/pipeline/imgui_utils.hpp>
 
 #include "clusterized_model_debugger.hpp"
 
@@ -131,6 +132,11 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 	if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
 		m_show_projected_meshlet_bounds = !m_show_projected_meshlet_bounds;
+	}
+
+	if (key == GLFW_KEY_4 && action == GLFW_PRESS)
+	{
+		m_show_instanced_meshlets_indices = !m_show_instanced_meshlets_indices;
 	}
 
 	if (key == GLFW_KEY_F1 && action == GLFW_PRESS)
@@ -316,6 +322,7 @@ void vren_demo::app::record_commands(
 		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlet_bounds_draw_buffer));
 	}
 
+	// Debug projected meshlet bounds
 	if (m_show_projected_meshlet_bounds)
 	{
 		auto camera = m_camera.to_vren();
@@ -326,6 +333,36 @@ void vren_demo::app::record_commands(
 		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera, m_debug_projected_meshlet_bounds_draw_buffer);
 
 		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
+	}
+
+	// Debug meshlet instances number
+	if (m_show_instanced_meshlets_indices)
+	{
+		debug_render_graph.concat(m_imgui_renderer.render(m_render_graph_allocator, render_target, [this]()
+		{
+			for (uint32_t i = 0; i < m_clusterized_model->m_instanced_meshlets.size(); i++)
+			{
+				auto& instanced_meshlet = m_clusterized_model->m_instanced_meshlets.at(i);
+				auto& meshlet = m_clusterized_model->m_meshlets.at(instanced_meshlet.m_meshlet_idx);
+				auto& instance = m_clusterized_model->m_instances.at(instanced_meshlet.m_instance_idx);
+
+				glm::vec3 p = instance.m_transform * glm::vec4(meshlet.m_bounding_sphere.m_center, 1.0f);
+
+				uint32_t instanced_meshlet_color = (std::hash<uint32_t>()(i) | 0xff000000);
+
+				auto meshlet_tag = std::to_string(i);
+
+				auto draw_list = ImGui::GetForegroundDrawList();
+				vren::imgui_utils::add_world_space_text(
+					draw_list,
+					m_camera.to_vren(),
+					p,
+					meshlet_tag.c_str(),
+					vren::imgui_utils::to_im_color((~instanced_meshlet_color) | 0xff000000),
+					vren::imgui_utils::to_im_color(instanced_meshlet_color)
+				);
+			}
+		}));
 	}
 
 	// Debug depth buffer pyramid

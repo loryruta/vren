@@ -178,6 +178,7 @@ namespace vren_demo
 		bool m_show_meshlets = false;
 		bool m_show_meshlets_bounds = false;
 		bool m_show_projected_meshlet_bounds = false;
+		bool m_show_instanced_meshlets_indices = false;
 
 	public:
 		app(GLFWwindow* window);

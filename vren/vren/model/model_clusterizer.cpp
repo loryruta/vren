@@ -64,17 +64,11 @@ void vren::model_clusterizer::clusterize_mesh(vren::clusterized_model& output, v
 	output.m_meshlet_vertices.resize(meshlet_vertices_offset + last_meshlet.vertex_offset + last_meshlet.vertex_count);
 	output.m_meshlet_triangles.resize(meshlet_triangles_offset + last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3));
 
-	for (uint32_t i = meshlet_vertices_offset; i < output.m_meshlet_vertices.size(); i++)
-	{
-		// Since we're erasing the concept of mesh, we need to offset the meshlet' vertices by the mesh' vertex offset
-		output.m_meshlet_vertices[i] += mesh.m_vertex_offset;
-	}
-
 	for (meshopt_Meshlet const& meshopt_meshlet : meshopt_meshlets)
 	{
 		meshopt_Bounds meshopt_meshlet_bounds = meshopt_computeMeshletBounds(
-			&output.m_meshlet_vertices[meshopt_meshlet.vertex_offset],
-			&output.m_meshlet_triangles[meshopt_meshlet.triangle_offset],
+			&output.m_meshlet_vertices[meshlet_vertices_offset + meshopt_meshlet.vertex_offset],
+			&output.m_meshlet_triangles[meshlet_triangles_offset + meshopt_meshlet.triangle_offset],
 			meshopt_meshlet.triangle_count,
 			vertices,
 			mesh.m_vertex_count,
@@ -92,7 +86,15 @@ void vren::model_clusterizer::clusterize_mesh(vren::clusterized_model& output, v
 			}
 		});
 	}
+
+	for (uint32_t i = meshlet_vertices_offset; i < output.m_meshlet_vertices.size(); i++)
+	{
+		// Since we're erasing the concept of mesh, we need to offset the meshlet' vertices by the mesh' vertex offset
+		output.m_meshlet_vertices[i] += mesh.m_vertex_offset;
+	}
 #else
+	// TODO
+
 	meshlet_count = vren::clusterize_mesh(
 		reinterpret_cast<float const*>(vertices + mesh.m_vertex_offset),
 		sizeof(vren::vertex) / sizeof(float),

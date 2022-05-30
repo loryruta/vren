@@ -6,6 +6,7 @@
 
 #define THREADS_NUM 32
 
+#define INF 1e35
 #define UINT32_MAX 4294967295u
 
 #define OCCLUSION_CULLING
@@ -162,10 +163,16 @@ void main()
             float m22 = camera.projection[2][2];
             float m32 = camera.projection[3][2];
 
-            float nearest_depth = ((center.z - radius) * m22 + m32) / (center.z - radius);
+            vec4 v = camera.projection * vec4(0, 0, center.z - radius, 1);
+            float nearest_depth = v.z < 0.0f ? -INF : v.z / v.w;
 
             // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere's content
             visible = nearest_depth < depth;
+
+            if (!visible)
+            {
+                //debugPrintfEXT("ID %d occluded - center: %.3f, radius: %.3f, nearest depth: %.3f < depth: %.3f\n", gl_GlobalInvocationID.x, center.z, radius, nearest_depth, depth);
+            }
         }
         else
         {
