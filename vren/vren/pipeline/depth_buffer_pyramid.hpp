@@ -29,7 +29,8 @@ namespace vren
 		uint32_t m_base_width, m_base_height;
 		uint32_t m_level_count;
 		vren::vk_utils::image m_image;
-		std::vector<vren::vk_image_view> m_image_views;
+		vren::vk_image_view m_image_view; // Image view covering all mipmap levels
+		std::vector<vren::vk_image_view> m_level_image_views; // Image views per-mipmap level
 		vren::vk_sampler m_sampler;
 
 	public:
@@ -37,7 +38,8 @@ namespace vren
 
 	private:
 		vren::vk_utils::image create_image();
-		std::vector<vren::vk_image_view> create_image_views();
+		vren::vk_image_view create_image_view();
+		std::vector<vren::vk_image_view> create_level_image_views();
 		vren::vk_sampler create_sampler();
 
 	public:
@@ -61,9 +63,14 @@ namespace vren
 			return m_image.m_image.m_handle;
 		}
 
-		inline VkImageView get_image_view(uint32_t level) const
+		inline VkImageView get_image_view() const
 		{
-			return m_image_views.at(level).m_handle;
+			return m_image_view.m_handle;
+		}
+
+		inline VkImageView get_level_image_view(uint32_t level) const
+		{
+			return m_level_image_views.at(level).m_handle;
 		}
 
 		inline VkSampler get_sampler() const

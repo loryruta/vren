@@ -21,24 +21,6 @@ namespace vren_demo
 	class app;
 
 	// ------------------------------------------------------------------------------------------------
-	// scene_ui
-	// ------------------------------------------------------------------------------------------------
-
-	struct depth_buffer_pyramid_ui
-	{
-		uint32_t m_selected_level = 0;
-		bool m_show = false;
-
-		void show(vren::depth_buffer_pyramid const& depth_buffer_pyramid);
-	};
-
-
-	struct browsable_image
-	{
-		// TODO
-	};
-
-	// ------------------------------------------------------------------------------------------------
 	// UI
 	// ------------------------------------------------------------------------------------------------
 
@@ -60,14 +42,13 @@ namespace vren_demo
 		glm::vec2 m_image_uv_0 = glm::vec2(0, 0), m_image_uv_1 = glm::vec2(1, 1);
 
 	public:
-		vren_demo::depth_buffer_pyramid_ui m_depth_buffer_pyramid_ui;
-
 		ui(vren_demo::app& app);
 
 		void show_scene_window();
 		void show_profiling_window();
 		void show_render_graph_dump_window();
 		void show_camera_window();
+		void show_depth_buffer_pyramid_window();
 
 		void show(
 			uint32_t frame_idx,

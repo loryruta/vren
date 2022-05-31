@@ -205,7 +205,7 @@ void write_depth_buffer_pyramid_descriptor_set(
 	VkDescriptorImageInfo image_info[]{
 		{
 			.sampler = depth_buffer_pyramid.get_sampler(),
-			.imageView = depth_buffer_pyramid.get_image_view(0),
+			.imageView = depth_buffer_pyramid.get_image_view(),
 			.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
 		}
 	};

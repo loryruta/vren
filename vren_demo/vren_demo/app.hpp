@@ -181,6 +181,8 @@ namespace vren_demo
 		bool m_show_meshlets_bounds = false;
 		bool m_show_projected_meshlet_bounds = false;
 		bool m_show_instanced_meshlets_indices = false;
+		bool m_show_depth_buffer_pyramid = false;
+		uint32_t m_shown_depth_buffer_pyramid_level = 0;
 
 	public:
 		app(GLFWwindow* window);

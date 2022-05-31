@@ -322,6 +322,20 @@ void vren_demo::app::record_commands(
 		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlet_bounds_draw_buffer));
 	}
 
+	// Debug depth buffer pyramid
+	if (m_show_depth_buffer_pyramid)
+	{
+		debug_render_graph.concat(
+			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+				m_render_graph_allocator,
+				*m_depth_buffer_pyramid,
+				m_shown_depth_buffer_pyramid_level,
+				color_buffer,
+				swapchain.m_image_width, swapchain.m_image_height
+			)
+		);
+	}
+
 	// Debug projected meshlet bounds
 	if (m_show_projected_meshlet_bounds)
 	{
@@ -363,20 +377,6 @@ void vren_demo::app::record_commands(
 				);
 			}
 		}));
-	}
-
-	// Debug depth buffer pyramid
-	if (m_ui.m_depth_buffer_pyramid_ui.m_show)
-	{
-		debug_render_graph.concat(
-			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
-				m_render_graph_allocator,
-				*m_depth_buffer_pyramid,
-				m_ui.m_depth_buffer_pyramid_ui.m_selected_level,
-				color_buffer,
-				swapchain.m_image_width, swapchain.m_image_height
-			)
-		);
 	}
 
 	render_graph.concat(

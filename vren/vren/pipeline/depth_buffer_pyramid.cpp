@@ -18,7 +18,8 @@ vren::depth_buffer_pyramid::depth_buffer_pyramid(vren::context const& context, u
 	m_base_height(height),
 	m_level_count(glm::log2(glm::max(width, height)) + 1),
 	m_image(create_image()),
-	m_image_views(create_image_views()),
+	m_image_view(create_image_view()),
+	m_level_image_views(create_level_image_views()),
 	m_sampler(create_sampler())
 {}
 
@@ -65,7 +66,31 @@ vren::vk_utils::image vren::depth_buffer_pyramid::create_image()
 	};
 }
 
-std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_image_views()
+vren::vk_image_view vren::depth_buffer_pyramid::create_image_view()
+{
+	VkImageViewCreateInfo image_view_info{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.image = m_image.m_image.m_handle,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R32_SFLOAT,
+		.components = {},
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = m_level_count,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		}
+	};
+
+	VkImageView image_view;
+	VREN_CHECK(vkCreateImageView(m_context->m_device, &image_view_info, nullptr, &image_view), m_context);
+	return vren::vk_image_view(*m_context, image_view);
+}
+
+std::vector<vren::vk_image_view> vren::depth_buffer_pyramid::create_level_image_views()
 {
 	std::vector<vren::vk_image_view> image_views;
 
@@ -291,7 +316,7 @@ vren::render_graph::graph_t vren::depth_buffer_reductor::copy_depth_buffer_to_de
 			m_context->m_toolbox->m_descriptor_pool.acquire(m_copy_pipeline.m_descriptor_set_layouts.at(0))
 		);
 		resource_container.add_resource(descriptor_set);
-		write_copy_pipeline_descriptor_set(*m_context, descriptor_set->m_handle.m_descriptor_set, depth_buffer.m_image_view.m_handle, m_depth_buffer_sampler.m_handle, depth_buffer_pyramid.m_image_views.at(0).m_handle);
+		write_copy_pipeline_descriptor_set(*m_context, descriptor_set->m_handle.m_descriptor_set, depth_buffer.m_image_view.m_handle, m_depth_buffer_sampler.m_handle, depth_buffer_pyramid.m_level_image_views.at(0).m_handle);
 		m_copy_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
 		uint32_t num_workgroups_x = vren::divide_and_ceil(depth_buffer_pyramid.m_base_width, 32);
@@ -338,8 +363,8 @@ vren::render_graph::graph_t vren::depth_buffer_reductor::reduce_step(
 		write_reduce_pipeline_descriptor_set(
 			*m_context,
 			descriptor_set->m_handle.m_descriptor_set,
-			depth_buffer_pyramid.m_image_views.at(current_level).m_handle,
-			depth_buffer_pyramid.m_image_views.at(current_level + 1).m_handle
+			depth_buffer_pyramid.m_level_image_views.at(current_level).m_handle,
+			depth_buffer_pyramid.m_level_image_views.at(current_level + 1).m_handle
 		);
 		m_reduce_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 

@@ -89,7 +89,7 @@ bool project_sphere(vec3 C, float r, out vec4 aabb) // C and r in camera space
     // TODO WHEN THE USER IS INSIDE THE SPHERE EVERYTHING BECOMES VERY VERY VERY WRONG
 
     if (aabb.x > aabb.z || aabb.y > aabb.w || isnan(aabb.x) || isnan(aabb.y) || isnan(aabb.z) || isnan(aabb.w)) {
-       debugPrintfEXT("INVALID SITUATION -> ID: %d, C: %.2v3f, aabb min: %.2v2f, aabb max: %.2v2f\n", gl_GlobalInvocationID.x, (camera.projection * vec4(C, 1)).xyz, aabb.xy, aabb.zw);
+       //debugPrintfEXT("INVALID SITUATION -> ID: %d, C: %.2v3f, aabb min: %.2v2f, aabb max: %.2v2f\n", gl_GlobalInvocationID.x, (camera.projection * vec4(C, 1)).xyz, aabb.xy, aabb.zw);
     }
 
     // Convert the AABB to UV space
@@ -157,21 +157,23 @@ void main()
             float level = floor(log2(max(width, height)));
 
             // Retrieve the farthest Z coordinate in the AABB containing the projected sphere
-            float depth = textureLod(depth_buffer_pyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
+            vec2 tex_coord = (aabb.xy + aabb.zw) * 0.5;
+
+            // Sampler will do max reduction so it'll compute the maximum of a 2x2 texel quad
+            float depth = textureLod(depth_buffer_pyramid, tex_coord, level).x;
 
             // Project the Z coordinate of the nearest sphere point, which is the one lying in the vector that link the camera origin to the sphere center
             float m22 = camera.projection[2][2];
             float m32 = camera.projection[3][2];
 
-            vec4 v = camera.projection * vec4(0, 0, center.z - radius, 1);
-            float nearest_depth = v.z < 0.0f ? -INF : v.z / v.w;
+            float nearest_depth = (center.z - radius) < camera.z_near ? -INF : ((center.z - radius) * m22 + m32) / (center.z - radius);
 
             // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere's content
             visible = nearest_depth < depth;
 
             if (!visible)
             {
-                //debugPrintfEXT("ID %d occluded - center: %.3f, radius: %.3f, nearest depth: %.3f < depth: %.3f\n", gl_GlobalInvocationID.x, center.z, radius, nearest_depth, depth);
+                //debugPrintfEXT("ID %d occluded - center: %.3f, radius: %.3f, nearest depth: %.3f < depth: %.3f, level: %.3f (%.2v2f), tex_coord: %.2v2f\n", gl_GlobalInvocationID.x, center.z, radius, nearest_depth, depth, level, tex_coord, vec2(width, height));
             }
         }
         else

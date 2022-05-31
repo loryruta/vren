@@ -65,17 +65,6 @@ void plot_ui(std::string const& plot_title, vren_demo::profiled_data<_sample_cou
 	}
 }
 
-void vren_demo::depth_buffer_pyramid_ui::show(vren::depth_buffer_pyramid const& depth_buffer_pyramid)
-{
-	if (ImGui::Begin("Depth buffer pyramid##depth_buffer_pyramid", nullptr, NULL))
-	{
-		ImGui::Checkbox("Show", &m_show);
-		ImGui::SliderInt("Level", (int32_t*) &m_selected_level, 0, depth_buffer_pyramid.get_level_count() - 1);
-	}
-
-	ImGui::End();
-}
-
 vren_demo::ui::ui(vren_demo::app& app) :
 	m_app(&app)
 {
@@ -224,6 +213,23 @@ void vren_demo::ui::show_camera_window()
 	ImGui::End();
 }
 
+void vren_demo::ui::show_depth_buffer_pyramid_window()
+{
+	auto& depth_buffer_pyramid = m_app->m_depth_buffer_pyramid;
+
+	uint32_t& l = m_app->m_shown_depth_buffer_pyramid_level;
+
+	if (ImGui::Begin("Depth buffer pyramid##depth_buffer_pyramid", nullptr, NULL))
+	{
+		ImGui::Checkbox("Show", &m_app->m_show_depth_buffer_pyramid);
+
+		ImGui::Text("Resolution: (%d, %d)", depth_buffer_pyramid->get_image_width(l), depth_buffer_pyramid->get_image_height(l));
+		ImGui::SliderInt("Level", (int32_t*) &l, 0, depth_buffer_pyramid->get_level_count() - 1);
+	}
+
+	ImGui::End();
+}
+
 void vren_demo::ui::show(
 	uint32_t frame_idx,
 	vren::resource_container& resource_container
@@ -277,7 +283,7 @@ void vren_demo::ui::show(
 
 	show_render_graph_dump_window();
 
-	m_depth_buffer_pyramid_ui.show(*m_app->m_depth_buffer_pyramid);
+	show_depth_buffer_pyramid_window();
 
 	//ImGui::ShowDemoWindow();
 	//ImPlot::ShowDemoWindow();
