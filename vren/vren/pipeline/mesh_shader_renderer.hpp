@@ -23,8 +23,8 @@ namespace vren
 	public:
 		explicit mesh_shader_renderer(vren::context const& context);
 
-		vren::render_graph::graph_t render(
-			vren::render_graph::allocator& render_graph_allocator,
+		vren::render_graph_t render(
+			vren::render_graph_allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
 			vren::light_array const& light_array,

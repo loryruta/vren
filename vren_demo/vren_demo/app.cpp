@@ -244,7 +244,7 @@ void vren_demo::app::record_commands(
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
 	// Render-graph begin
-	vren::render_graph::chain render_graph(m_render_graph_allocator);
+	vren::render_graph_builder render_graph(m_render_graph_allocator);
 
 	// Dump profiling data
 	for (uint32_t slot_idx = 0; slot_idx < ProfileSlot_Count; slot_idx++)
@@ -305,7 +305,7 @@ void vren_demo::app::record_commands(
 	render_graph.concat(build_depth_buffer_pyramid);
 
 	// Debug draws
-	vren::render_graph::chain debug_render_graph(m_render_graph_allocator);
+	vren::render_graph_builder debug_render_graph(m_render_graph_allocator);
 
 	// Debug general purpose objects
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
@@ -380,7 +380,7 @@ void vren_demo::app::record_commands(
 	}
 
 	render_graph.concat(
-		m_profiler.profile(m_render_graph_allocator, debug_render_graph.m_head, vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
+		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
 	);
 
 	// Render UI
@@ -415,16 +415,21 @@ void vren_demo::app::record_commands(
 	);
 
 	// Execute render-graph
-	vren::render_graph::execute(m_render_graph_allocator, render_graph.m_head, frame_idx, command_buffer, resource_container);
+	vren::render_graph_executor executor(frame_idx, command_buffer, resource_container);
+	executor.execute(m_render_graph_allocator, render_graph.get_head());
 
+	// Take a render-graph dump if requested
 	if (m_take_next_render_graph_dump)
 	{
-		std::ofstream output_file(m_render_graph_dump_file);
-		vren::render_graph::dump(m_render_graph_allocator, render_graph.m_head, output_file);
+		std::ofstream output(m_render_graph_dump_file);
+
+		vren::render_graph_dumper dumper(output);
+		dumper.dump(m_render_graph_allocator, render_graph.get_head());
 
 		m_take_next_render_graph_dump = false;
 	}
 
+	// Finally clear all created nodes and the render-graph can be allocated back
 	m_render_graph_allocator.clear();
 }
 
@@ -503,5 +508,7 @@ void vren_demo::app::on_frame()
 		}
 
 		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container);
+
+
 	});
 }

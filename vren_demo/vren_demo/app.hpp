@@ -148,7 +148,7 @@ namespace vren_demo
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
 
 		// Render-graph
-		vren::render_graph::allocator m_render_graph_allocator;
+		vren::render_graph_allocator m_render_graph_allocator;
 		char m_render_graph_dump_file[256] = "render_graph.dot";
 		bool m_take_next_render_graph_dump = false;
 

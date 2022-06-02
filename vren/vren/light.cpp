@@ -181,8 +181,8 @@ void vren::light_array::request_spot_light_buffer_sync()
 	m_point_light_buffers_dirty_flags = UINT32_MAX;
 }
 
-vren::render_graph::graph_t vren::light_array::create_sync_light_buffer_node(
-	vren::render_graph::allocator& allocator,
+vren::render_graph_t vren::light_array::create_sync_light_buffer_node(
+	vren::render_graph_allocator& allocator,
 	char const* node_name,
 	vren::vk_utils::buffer const& light_staging_buffer,
 	vren::vk_utils::buffer const& light_gpu_buffer,
@@ -197,33 +197,23 @@ vren::render_graph::graph_t vren::light_array::create_sync_light_buffer_node(
 	node->set_src_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 	node->set_name(node_name);
-	node->add_buffer({
-		.m_buffer = light_staging_buffer.m_buffer.m_handle,
-		.m_size = VK_WHOLE_SIZE,
-		.m_offset = 0,
-		.m_access_flags = VK_ACCESS_TRANSFER_READ_BIT
-	});
-	node->add_buffer({
-		.m_buffer = light_gpu_buffer.m_buffer.m_handle,
-		.m_size = VK_WHOLE_SIZE,
-		.m_offset = 0,
-		.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT
-	});
+	node->add_buffer({ .m_buffer = light_staging_buffer.m_buffer.m_handle, }, VK_ACCESS_TRANSFER_READ_BIT);
+	node->add_buffer({ .m_buffer = light_gpu_buffer.m_buffer.m_handle, }, VK_ACCESS_TRANSFER_WRITE_BIT);
 	node->set_callback([=, &light_staging_buffer, &light_gpu_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		VkBufferCopy buffer_copy{ .srcOffset = 0, .dstOffset = 0, .size = light_count * single_light_size };
 		vkCmdCopyBuffer(command_buffer, light_staging_buffer.m_buffer.m_handle, light_gpu_buffer.m_buffer.m_handle, 1, &buffer_copy);
 	});
 
-	return vren::render_graph::gather(node);
+	return vren::render_graph_gather(node);
 }
 
-vren::render_graph::graph_t vren::light_array::sync_buffers(
-	vren::render_graph::allocator& allocator,
+vren::render_graph_t vren::light_array::sync_buffers(
+	vren::render_graph_allocator& allocator,
 	uint32_t frame_idx
 )
 {
-	vren::render_graph::graph_t head, tail;
+	vren::render_graph_t head, tail;
 
 	bool something_synced = false;
 
@@ -241,7 +231,7 @@ vren::render_graph::graph_t vren::light_array::sync_buffers(
 				m_point_light_count
 			);
 
-			tail = vren::render_graph::concat(allocator, tail, node);
+			tail = vren::render_graph_concat(allocator, tail, node);
 			if (head.empty()) head = tail;
 		}
 
@@ -264,7 +254,7 @@ vren::render_graph::graph_t vren::light_array::sync_buffers(
 				m_directional_light_count
 			);
 
-			tail = vren::render_graph::concat(allocator, tail, node);
+			tail = vren::render_graph_concat(allocator, tail, node);
 			if (head.empty()) head = tail;
 		}
 
@@ -287,7 +277,7 @@ vren::render_graph::graph_t vren::light_array::sync_buffers(
 				m_spot_light_count
 			);
 
-			tail = vren::render_graph::concat(allocator, tail, node);
+			tail = vren::render_graph_concat(allocator, tail, node);
 			if (head.empty()) head = tail;
 		}
 
@@ -304,7 +294,7 @@ vren::render_graph::graph_t vren::light_array::sync_buffers(
 			write_descriptor_set(frame_idx);
 		});
 
-		tail = vren::render_graph::concat(allocator, tail, vren::render_graph::gather(node));
+		tail = vren::render_graph_concat(allocator, tail, vren::render_graph_gather(node));
 		if (head.empty()) head = tail;
 	}
 

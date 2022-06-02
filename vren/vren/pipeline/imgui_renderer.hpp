@@ -50,8 +50,8 @@ namespace vren
 			return m_render_pass.m_handle;
 		}
 
-		vren::render_graph::graph_t render(
-			vren::render_graph::allocator& allocator,
+		vren::render_graph_t render(
+			vren::render_graph_allocator& allocator,
 			vren::render_target const& render_target,
 			std::function<void()> const& show_ui_callback
 		);

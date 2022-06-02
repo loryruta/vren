@@ -139,9 +139,9 @@ void vren::material_manager::request_buffer_sync()
 	m_buffers_dirty_flags = UINT32_MAX;
 }
 
-vren::render_graph::graph_t vren::material_manager::sync_buffer(vren::render_graph::allocator& allocator, uint32_t frame_idx)
+vren::render_graph_t vren::material_manager::sync_buffer(vren::render_graph_allocator& allocator, uint32_t frame_idx)
 {
-	vren::render_graph::graph_t result;
+	vren::render_graph_t result;
 
 	if ((m_buffers_dirty_flags >> frame_idx) & 1)
 	{
@@ -150,17 +150,11 @@ vren::render_graph::graph_t vren::material_manager::sync_buffer(vren::render_gra
 		node->set_dst_stage(VK_PIPELINE_STAGE_TRANSFER_BIT);
 		node->set_name("Material buffer uploading");
 		node->add_buffer({
-			.m_buffer = m_staging_buffer.m_buffer.m_handle,
-			.m_size = VK_WHOLE_SIZE,
-			.m_offset = 0,
-			.m_access_flags = VK_ACCESS_TRANSFER_READ_BIT
-		});
+			.m_buffer = m_staging_buffer.m_buffer.m_handle
+		}, VK_ACCESS_TRANSFER_READ_BIT);
 		node->add_buffer({
 			.m_buffer = m_buffers.at(frame_idx).m_buffer.m_handle,
-			.m_size = VK_WHOLE_SIZE,
-			.m_offset = 0,
-			.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT
-		});
+		}, VK_ACCESS_TRANSFER_WRITE_BIT);
 		node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 		{
 			if (m_material_count > 0)
@@ -171,7 +165,7 @@ vren::render_graph::graph_t vren::material_manager::sync_buffer(vren::render_gra
 
 			write_descriptor_set(frame_idx); // The descriptor set must be re-written since the material count changed
 		});
-		result = vren::render_graph::gather(node);
+		result = vren::render_graph_gather(node);
 
 		m_buffers_dirty_flags &= ~(1 << frame_idx);
 	}

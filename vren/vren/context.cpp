@@ -354,6 +354,12 @@ VkDevice vren::context::create_logical_device()
 		.extendedDynamicState = true,
 	};
 
+	VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures separate_depth_stencil_layouts_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES,
+		.pNext = &extended_dynamic_state_features,
+		.separateDepthStencilLayouts = true,
+	};
+
 	VkPhysicalDeviceFeatures features{
 		.fillModeNonSolid = VK_TRUE,
 	};
@@ -361,7 +367,7 @@ VkDevice vren::context::create_logical_device()
 	/* Device */
 	VkDeviceCreateInfo device_info{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = &extended_dynamic_state_features,
+		.pNext = &separate_depth_stencil_layouts_features,
 		.flags = NULL,
 		.queueCreateInfoCount = (uint32_t) queue_infos.size(),
 		.pQueueCreateInfos = queue_infos.data(),

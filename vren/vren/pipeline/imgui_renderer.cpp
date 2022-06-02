@@ -142,8 +142,8 @@ vren::vk_render_pass vren::imgui_renderer::create_render_pass()
 	return vren::vk_render_pass(*m_context, render_pass);
 }
 
-vren::render_graph::graph_t vren::imgui_renderer::render(
-	vren::render_graph::allocator& allocator,
+vren::render_graph_t vren::imgui_renderer::render(
+	vren::render_graph_allocator& allocator,
 	vren::render_target const& render_target,
 	std::function<void()> const& show_ui_callback
 )
@@ -156,9 +156,7 @@ vren::render_graph::graph_t vren::imgui_renderer::render(
 		.m_name = "color_buffer",
 		.m_image = render_target.m_color_buffer->get_image(),
 		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-		.m_image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		.m_access_flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-	});
+	}, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 	node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		// Create UIs
@@ -199,5 +197,5 @@ vren::render_graph::graph_t vren::imgui_renderer::render(
 		// Render-pass end
 		vkCmdEndRenderPass(command_buffer);
 	});
-	return vren::render_graph::gather(node);
+	return vren::render_graph_gather(node);
 }

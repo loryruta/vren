@@ -82,8 +82,8 @@ namespace vren
 		void request_spot_light_buffer_sync();
 
 	private:
-		vren::render_graph::graph_t create_sync_light_buffer_node(
-			vren::render_graph::allocator& allocator,
+		vren::render_graph_t create_sync_light_buffer_node(
+			vren::render_graph_allocator& allocator,
 			char const* node_name,
 			vren::vk_utils::buffer const& light_staging_buffer,
 			vren::vk_utils::buffer const& light_gpu_buffer,
@@ -92,8 +92,8 @@ namespace vren
 		);
 
 	public:
-		vren::render_graph::graph_t sync_buffers(
-			vren::render_graph::allocator& allocator,
+		vren::render_graph_t sync_buffers(
+			vren::render_graph_allocator& allocator,
 			uint32_t frame_idx
 		);
 

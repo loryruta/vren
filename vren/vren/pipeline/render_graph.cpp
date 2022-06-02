@@ -4,15 +4,23 @@
 #include <bitset>
 #include <fstream>
 
+#include <fmt/format.h>
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Render-graph
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::render_graph::traverse(allocator& allocator, graph_t const& graph, traverse_callback_t const& callback, bool forward_traversal, bool callback_initial_nodes)
+void vren::render_graph_traverse(
+	vren::render_graph_allocator& allocator,
+	vren::render_graph_t const& graph,
+	render_graph_traverse_callback_t const& callback,
+	bool forward_traversal,
+	bool callback_initial_nodes
+)
 {
-	const size_t k_max_allocable_nodes = vren::render_graph::allocator::k_max_allocable_nodes;
+	const size_t k_max_allocable_nodes = vren::render_graph_allocator::k_max_allocable_nodes;
 
-	graph_t stepping_graph[2];
+	vren::render_graph_t stepping_graph[2];
 	bool _1 = false; // true if buffer 1 is the front buffer
 
 	stepping_graph[_1] = graph;
@@ -23,13 +31,14 @@ void vren::render_graph::traverse(allocator& allocator, graph_t const& graph, tr
 
 		stepping_graph[!_1].clear();
 
-		for (node_idx_t node_idx : stepping_graph[_1])
+		for (vren::render_graph_node_index_t node_idx : stepping_graph[_1])
 		{
 			if (!callback_initial_nodes || callback(node_idx))
 			{
 				auto const& next_nodes =
 					forward_traversal ? allocator.get_node_at(node_idx)->get_next_nodes() : allocator.get_node_at(node_idx)->get_previous_nodes(); // Maybe constexpr condition would make it go faster?
-				for (node_idx_t next_node_idx : next_nodes)
+				
+				for (vren::render_graph_node_index_t next_node_idx : next_nodes)
 				{
 					if (!already_taken[next_node_idx])
 					{
@@ -49,25 +58,27 @@ void vren::render_graph::traverse(allocator& allocator, graph_t const& graph, tr
 	}
 }
 
-vren::render_graph::graph_t vren::render_graph::get_starting_nodes(allocator& allocator, graph_t const& graph)
+vren::render_graph_t vren::render_graph_get_start(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
 {
 	return graph;
 }
 
-vren::render_graph::graph_t vren::render_graph::get_ending_nodes(vren::render_graph::allocator& allocator, vren::render_graph::graph_t const& graph)
+vren::render_graph_t vren::render_graph_get_end(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
 {
-	graph_t result;
-	vren::render_graph::traverse(allocator, graph, [&](node_idx_t node_idx)
+	vren::render_graph_t result;
+
+	vren::render_graph_traverse(allocator, graph, [&](vren::render_graph_node_index_t node_idx)
 	{
 		if (allocator.get_node_at(node_idx)->get_next_nodes().empty()) {
 			result.push_back(node_idx);
 		}
 		return true;
 	}, true, true);
+
 	return result;
 }
 
-vren::render_graph::graph_t vren::render_graph::concat(allocator& allocator, graph_t const& left, graph_t const& right)
+vren::render_graph_t vren::render_graph_concat(vren::render_graph_allocator& allocator, vren::render_graph_t const& left, vren::render_graph_t const& right)
 {
 	if (left.empty())
 	{
@@ -80,46 +91,32 @@ vren::render_graph::graph_t vren::render_graph::concat(allocator& allocator, gra
 	else
 	{
 		// Merge the left graph with the right graph and return the tail of the merged result
-		for (node_idx_t left_node_idx : get_ending_nodes(allocator, left))
+		for (vren::render_graph_node_index_t left_node_idx : vren::render_graph_get_end(allocator, left))
 		{
-			for (node_idx_t right_node_idx : get_starting_nodes(allocator, right))
+			for (vren::render_graph_node_index_t right_node_idx : vren::render_graph_get_start(allocator, right))
 			{
 				allocator.get_node_at(left_node_idx)->add_next(allocator.get_node_at(right_node_idx));
 			}
 		}
 
-		return get_ending_nodes(allocator, left);
+		return vren::render_graph_get_end(allocator, left);
 	}
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// Render-graph execution logic
+// Render-graph abstract executor
 // --------------------------------------------------------------------------------------------------------------------------------
 
-template<
-	typename _execution_parameters,
-	typename _make_initial_image_layout_transition,
-	typename _execute_node,
-	typename _put_image_memory_barrier,
-	typename _put_buffer_memory_barrier
->
-void vren::render_graph::detail::execute(
-	vren::render_graph::allocator& allocator,
-	vren::render_graph::graph_t const& graph,
-	_execution_parameters& params
-)
+void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
 {
-	const size_t k_max_allocable_nodes = vren::render_graph::allocator::k_max_allocable_nodes;
+	const size_t k_max_allocable_nodes = vren::render_graph_allocator::k_max_allocable_nodes;
+	const size_t k_max_image_infos = vren::render_graph_allocator::k_max_image_infos;
 
-	_make_initial_image_layout_transition make_initial_image_layout_transition{};
-	_execute_node execute_node{};
-	_put_image_memory_barrier put_image_memory_barrier{};
-	_put_buffer_memory_barrier put_buffer_memory_barrier{};
-
-	graph_t stepping_graph[2];
+	vren::render_graph_t stepping_graph[2];
 	bool _1 = false;
 
 	std::bitset<k_max_allocable_nodes> executed_nodes{};
+	std::bitset<k_max_image_infos> image_transited{};
 
 	stepping_graph[_1] = graph;
 
@@ -129,13 +126,13 @@ void vren::render_graph::detail::execute(
 
 		stepping_graph[!_1].clear();
 
-		for (node_idx_t node_idx : stepping_graph[_1])
+		for (vren::render_graph_node_index_t node_idx : stepping_graph[_1])
 		{
-			auto node = allocator.get_node_at(node_idx);
+			vren::render_graph_node* node = allocator.get_node_at(node_idx);
 
 			// The node can be executed only if its previous nodes have been executed as well
 			bool can_execute = true;
-			for (vren::render_graph::node_idx_t previous_node_idx : node->get_previous_nodes())
+			for (vren::render_graph_node_index_t previous_node_idx : node->get_previous_nodes())
 			{
 				if (!executed_nodes[previous_node_idx])
 				{
@@ -144,9 +141,9 @@ void vren::render_graph::detail::execute(
 				}
 			}
 
+			// If the node can't be executed, place it in the next execution pool
 			if (!can_execute)
 			{
-				// If the node can't be executed, place it in the next execution pool
 				if (!already_taken[node_idx])
 				{
 					stepping_graph[!_1].push_back(node_idx);
@@ -155,82 +152,61 @@ void vren::render_graph::detail::execute(
 				continue;
 			}
 
-			// We need to know if an image required by the current node has already been transited or not: in order to acknowledge it,
-			// we traverse the render-graph backward starting from the current node and see if any other previous node shares a conflicting image. If this happens it means
-			// the current one has already been transited
-			for (uint32_t image_idx = 0; image_idx < node->get_image_accesses().size(); image_idx++)
+			// If an image for this node hasn't already been transited we need to record initial layout transition
+			for (vren::render_graph_node_image_access const& image_access : node->get_image_accesses())
 			{
-				bool need_init = true;
-
-				vren::render_graph::traverse(allocator, {node_idx}, [&](node_idx_t node_2_idx) -> bool
+				if (!image_transited.test(image_access.m_image_idx))
 				{
-					auto node_2 = allocator.get_node_at(node_2_idx);
-					for (uint32_t image_2_idx = 0; image_2_idx < node_2->get_image_accesses().size(); image_2_idx++)
-					{
-						auto& image_1 = node->get_image_accesses().at(image_idx);
-						auto& image_2 = node_2->get_image_accesses().at(image_2_idx);
-						if (image_1.does_conflict(image_2))
-						{
-							need_init = false;
-							return false;
-						}
-					}
-					return true;
-				}, /* Forward traversal */ false, /* Initial callback */ false);
-
-				if (need_init) {
-					make_initial_image_layout_transition(*node, image_idx, params);
+					make_initial_image_layout_transition(*node, image_access);
+					image_transited[image_access.m_image_idx] = true;
 				}
 			}
 
 			// Execute the node and mark it as executed
-			execute_node(*node, params);
+			execute_node(*node);
 			executed_nodes[node_idx] = true;
 
-			// If an image resource of the current node will be used by a following node, then place a barrier soon after it
-			for (uint32_t image_idx = 0; image_idx < node->get_image_accesses().size(); image_idx++)
+			// Place image barriers
+			for (auto const& image_access : node->get_image_accesses())
 			{
-				vren::render_graph::traverse(allocator, {node_idx}, [&](node_idx_t node_2_idx) -> bool
+				vren::render_graph_traverse(allocator, { node_idx }, [&](vren::render_graph_node_index_t node_idx_2) -> bool
 				{
-					auto node_2 = allocator.get_node_at(node_2_idx);
-					for (uint32_t image_2_idx = 0; image_2_idx < node_2->get_image_accesses().size(); image_2_idx++)
+					vren::render_graph_node* node_2 = allocator.get_node_at(node_idx_2);
+
+					for (vren::render_graph_node_image_access const& image_access_2 : node_2->get_image_accesses())
 					{
-						auto& image_1 = node->get_image_accesses().at(image_idx);
-						auto& image_2 = node_2->get_image_accesses().at(image_2_idx);
-						if (image_1.does_conflict(image_2))
+						if (image_access.m_image_idx == image_access_2.m_image_idx)
 						{
-							put_image_memory_barrier(*node, *node_2, image_idx, image_2_idx, params);
+							place_image_memory_barrier(*node, *node_2, image_access, image_access_2);
+							return false; // If the barrier has been placed we don't descend this node's children
+						}
+					}
+					return true;
+
+				}, true, false);
+			}
+
+			// Place buffer barriers
+			for (auto const& buffer_access : node->get_buffer_accesses())
+			{
+				vren::render_graph_traverse(allocator, { node_idx }, [&](vren::render_graph_node_index_t node_idx_2) -> bool
+				{
+					vren::render_graph_node* node_2 = allocator.get_node_at(node_idx_2);
+
+					for (vren::render_graph_node_buffer_access const& buffer_access_2 : node_2->get_buffer_accesses())
+					{
+						if (buffer_access.m_buffer_idx == buffer_access_2.m_buffer_idx)
+						{
+							place_buffer_memory_barrier(*node, *node_2, buffer_access, buffer_access_2);
 							return false;
 						}
 					}
 
-					return true;
-				}, /* Forward traversal */ true, /* Initial callback */ false);
+				}, true, false);
 			}
 
-			// The same as above for buffer resources
-			for (uint32_t buffer_idx = 0; buffer_idx < node->get_buffer_accesses().size(); buffer_idx++)
-			{
-				vren::render_graph::traverse(allocator, {node_idx}, [&](node_idx_t node_2_idx) -> bool
-				{
-					auto node_2 = allocator.get_node_at(node_2_idx);
-					for (uint32_t buffer_2_idx = 0; buffer_2_idx < node_2->get_buffer_accesses().size(); buffer_2_idx++)
-					{
-						auto& buffer_1 = node->get_buffer_accesses().at(buffer_idx);
-						auto& buffer_2 = node_2->get_buffer_accesses().at(buffer_2_idx);
-						if (buffer_1.does_conflict(buffer_2))
-						{
-							put_buffer_memory_barrier(*node, *node_2, buffer_idx, buffer_2_idx, params);
-							return false;
-						}
-					}
-
-					return true;
-				}, /* Forward traversal */ true, /* Initial callback */ false);
-			}
-
-			// Put current node's children to the execution pool and repeat
-			for (vren::render_graph::node_idx_t next_node_idx : node->get_next_nodes())
+			// Put current node's following nodes to the next execution pool and repeat
+			for (vren::render_graph_node_index_t next_node_idx : node->get_next_nodes())
 			{
 				if (!already_taken[next_node_idx])
 				{
@@ -245,222 +221,194 @@ void vren::render_graph::detail::execute(
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// Render-graph execution
+// Render-graph executor
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::render_graph::execute(
-	vren::render_graph::allocator& allocator,
-	vren::render_graph::graph_t const& graph,
-	uint32_t frame_idx,
-	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container
+vren::render_graph_executor::render_graph_executor(uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) :
+	m_frame_idx(frame_idx),
+	m_command_buffer(command_buffer),
+	m_resource_container(&resource_container)
+{
+}
+
+void vren::render_graph_executor::make_initial_image_layout_transition(vren::render_graph_node const& node, vren::render_graph_node_image_access const& image_access)
+{
+	vren::render_graph_image_info const& image = node.get_allocator()->get_image_info_at(image_access.m_image_idx);
+
+	VkImageMemoryBarrier image_memory_barrier{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.pNext = nullptr,
+		.srcAccessMask = NULL,
+		.dstAccessMask = image_access.m_access_flags,
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = image_access.m_image_layout,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = image.m_image,
+		.subresourceRange = {
+			.aspectMask = image.m_image_aspect,
+			.baseMipLevel = image.m_mip_level,
+			.levelCount = 1,
+			.baseArrayLayer = image.m_layer,
+			.layerCount = 1
+		}
+	};
+	vkCmdPipelineBarrier(m_command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, node.get_src_stage(), NULL, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+}
+
+void vren::render_graph_executor::execute_node(vren::render_graph_node const& node)
+{
+	node(m_frame_idx, m_command_buffer, *m_resource_container);
+}
+
+void vren::render_graph_executor::place_image_memory_barrier(
+	vren::render_graph_node const& node_1,
+	vren::render_graph_node const& node_2,
+	vren::render_graph_node_image_access const& image_access_1,
+	vren::render_graph_node_image_access const& image_access_2
 )
 {
-	struct execution_parameters
-	{
-		uint32_t m_frame_idx;
-		VkCommandBuffer m_command_buffer;
-		vren::resource_container& m_resource_container;
-	};
+	vren::render_graph_image_info const& image_1 = node_1.get_allocator()->get_image_info_at(image_access_1.m_image_idx);
+	vren::render_graph_image_info const& image_2 = node_2.get_allocator()->get_image_info_at(image_access_2.m_image_idx);
 
-	struct make_initial_image_layout_transition
-	{
-		void operator()(node const& node, uint32_t image_idx, execution_parameters const& params) const
-		{
-			auto image_access = node.get_image_accesses().at(image_idx);
-			VkImageMemoryBarrier image_memory_barrier{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = NULL,
-				.dstAccessMask = image_access.m_access_flags,
-				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-				.newLayout = image_access.m_image_layout,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.image = image_access.m_image,
-				.subresourceRange = {
-					.aspectMask = image_access.m_image_aspect,
-					.baseMipLevel = image_access.m_mip_level,
-					.levelCount = 1,
-					.baseArrayLayer = image_access.m_layer,
-					.layerCount = 1
-				}
-			};
-			vkCmdPipelineBarrier(params.m_command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, node.get_src_stage(), NULL, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+	VkImageMemoryBarrier image_memory_barrier{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.pNext = nullptr,
+		.srcAccessMask = image_access_1.m_access_flags,
+		.dstAccessMask = image_access_2.m_access_flags,
+		.oldLayout = image_access_1.m_image_layout,
+		.newLayout = image_access_2.m_image_layout,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = image_1.m_image,
+		.subresourceRange = {
+			.aspectMask = image_1.m_image_aspect,
+			.baseMipLevel = image_1.m_mip_level,
+			.levelCount = 1,
+			.baseArrayLayer = image_1.m_layer,
+			.layerCount = 1,
 		}
 	};
+	vkCmdPipelineBarrier(m_command_buffer, node_1.get_dst_stage(), node_2.get_src_stage(), NULL, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+}
 
-	struct execute_node
-	{
-		void operator()(node const& node, execution_parameters const& params)
-		{
-			node(params.m_frame_idx, params.m_command_buffer, params.m_resource_container);
-		}
+void vren::render_graph_executor::place_buffer_memory_barrier(
+	vren::render_graph_node const& node_1,
+	vren::render_graph_node const& node_2,
+	vren::render_graph_node_buffer_access const& buffer_access_1,
+	vren::render_graph_node_buffer_access const& buffer_access_2
+)
+{
+	vren::render_graph_buffer_info const& buffer_1 = node_1.get_allocator()->get_buffer_info_at(buffer_access_1.m_buffer_idx);
+	vren::render_graph_buffer_info const& buffer_2 = node_2.get_allocator()->get_buffer_info_at(buffer_access_2.m_buffer_idx);
+
+	VkBufferMemoryBarrier buffer_memory_barrier{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.pNext = nullptr,
+		.srcAccessMask = buffer_access_1.m_access_flags,
+		.dstAccessMask = buffer_access_2.m_access_flags,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.buffer = buffer_1.m_buffer,
+		.offset = 0,//buffer_access_2.m_offset,
+		.size = VK_WHOLE_SIZE//buffer_access_1.m_size
 	};
+	vkCmdPipelineBarrier(m_command_buffer, node_1.get_dst_stage(), node_2.get_src_stage(), NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+}
 
-	struct put_image_memory_barrier
-	{
-		void operator()(node const& node_1, node const& node_2, uint32_t image_1_idx, uint32_t image_2_idx, execution_parameters const& params) const
-		{
-			auto image_1 = node_1.get_image_accesses().at(image_1_idx);
-			auto image_2 = node_2.get_image_accesses().at(image_2_idx);
-
-			VkImageMemoryBarrier image_memory_barrier{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = image_1.m_access_flags,
-				.dstAccessMask = image_2.m_access_flags,
-				.oldLayout = image_1.m_image_layout,
-				.newLayout = image_2.m_image_layout,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.image = image_1.m_image,
-				.subresourceRange = {
-					.aspectMask = image_1.m_image_aspect,
-					.baseMipLevel = image_1.m_mip_level,
-					.levelCount = 1,
-					.baseArrayLayer = image_1.m_layer,
-					.layerCount = 1,
-				}
-			};
-			vkCmdPipelineBarrier(params.m_command_buffer, node_1.get_dst_stage(), node_2.get_src_stage(), NULL, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
-		}
-	};
-
-	struct put_buffer_memory_barrier
-	{
-		void operator()(node const& node_1, node const& node_2, uint32_t buffer_1_idx, uint32_t buffer_2_idx, execution_parameters const& params) const
-		{
-			auto& buffer_1 = node_1.get_buffer_accesses().at(buffer_1_idx);
-			auto& buffer_2 = node_2.get_buffer_accesses().at(buffer_2_idx);
-
-			VkBufferMemoryBarrier buffer_memory_barrier{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = buffer_1.m_access_flags,
-				.dstAccessMask = buffer_2.m_access_flags,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.buffer = buffer_1.m_buffer,
-				.offset = 0,//buffer_access_2.m_offset,
-				.size = VK_WHOLE_SIZE//buffer_access_1.m_size
-			};
-			vkCmdPipelineBarrier(params.m_command_buffer, node_1.get_dst_stage(), node_2.get_src_stage(), NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
-		}
-	};
-
-	execution_parameters params{ .m_frame_idx = frame_idx, .m_command_buffer = command_buffer, .m_resource_container = resource_container };
-	vren::render_graph::detail::execute<
-		execution_parameters const,
-		make_initial_image_layout_transition,
-		execute_node,
-		put_image_memory_barrier,
-		put_buffer_memory_barrier
-	>(allocator, graph, params);
+void vren::render_graph_executor::execute(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
+{
+	vren::detail::render_graph_executor::execute(allocator, graph);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// Render-graph dump
+// Render-graph dumper
 // --------------------------------------------------------------------------------------------------------------------------------
 
-void vren::render_graph::dump(
-	vren::render_graph::allocator& allocator,
-	vren::render_graph::graph_t const& graph,
-	std::ostream& output
+vren::render_graph_dumper::render_graph_dumper(std::ostream& output) :
+	m_output(&output),
+	m_execution_order(0)
+{
+}
+
+void vren::render_graph_dumper::make_initial_image_layout_transition(vren::render_graph_node const& node, vren::render_graph_node_image_access const& image_access)
+{
+	vren::render_graph_image_info const& image_info = node.get_allocator()->get_image_info_at(image_access.m_image_idx);
+	*m_output << fmt::format("node_{}_image_{} [color=red, fillcolor=orange, label=\"{} ({})\"];\n", node.get_idx(), image_access.m_image_idx, image_info.m_name, m_execution_order);
+	m_execution_order++;
+}
+
+void vren::render_graph_dumper::execute_node(vren::render_graph_node const& node)
+{
+	*m_output << fmt::format("node_{} [shape=rect, label=\"{} ({})\"];\n", node.get_idx(), node.get_name(), m_execution_order);
+	m_execution_order++;
+}
+
+void vren::render_graph_dumper::place_image_memory_barrier(
+	vren::render_graph_node const& node_1,
+	vren::render_graph_node const& node_2,
+	vren::render_graph_node_image_access const& image_access_1,
+	vren::render_graph_node_image_access const& image_access_2
 )
 {
-	struct execution_parameters
-	{
-		std::ostream& m_writer;
-		uint32_t m_position = 0;
-	};
+	*m_output << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), image_access_1.m_image_idx, node_2.get_idx(), image_access_2.m_image_idx, m_execution_order);
+	m_execution_order++;
+}
 
-	struct make_initial_image_layout_transition
-	{
-		void operator()(node const& node, uint32_t image_idx, execution_parameters& params) const
-		{
-			auto const& image = node.get_image_accesses().at(image_idx);
-			params.m_writer << fmt::format("node_{}_image_{} [color=red, fillcolor=orange, label=\"{} ({})\"];\n", node.get_idx(), image_idx, image.m_name, params.m_position);
-			params.m_position++;
-		}
-	};
+void vren::render_graph_dumper::place_buffer_memory_barrier(
+	vren::render_graph_node const& node_1,
+	vren::render_graph_node const& node_2,
+	vren::render_graph_node_buffer_access const& buffer_access_1,
+	vren::render_graph_node_buffer_access const& buffer_access_2
+)
+{
+	*m_output << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), buffer_access_1.m_buffer_idx, node_2.get_idx(), buffer_access_2.m_buffer_idx, m_execution_order);
+	m_execution_order++;
+}
 
-	struct execute_node
-	{
-		void operator()(node const& node, execution_parameters& params) const
-		{
-			params.m_writer << fmt::format("node_{} [shape=rect, label=\"{} ({})\"];\n", node.get_idx(), node.get_name(), params.m_position);
-			params.m_position++;
-		}
-	};
+void vren::render_graph_dumper::dump(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
+{
+	*m_output << "digraph render_graph {\n";
+	*m_output << "node[shape=rect]\n";
 
-	struct put_image_memory_barrier
-	{
-		void operator()(node const& node_1, node const& node_2, uint32_t image_1_idx, uint32_t image_2_idx, execution_parameters& params) const
-		{
-			params.m_writer << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), image_1_idx, node_2.get_idx(), image_2_idx, params.m_position);
-			params.m_position++;
-		}
-	};
-
-	struct put_buffer_memory_barrier
-	{
-		void operator()(node const& node_1, node const& node_2, uint32_t buffer_1_idx, uint32_t buffer_2_idx, execution_parameters& params) const
-		{
-			params.m_writer << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), buffer_1_idx, node_2.get_idx(), buffer_2_idx, params.m_position);
-			params.m_position++;
-		}
-	};
-
-	output << "digraph render_graph {\n";
-
-	output << "node[shape=rect]\n";
-
-	traverse(allocator, graph, [&](node_idx_t node_idx)
+	vren::render_graph_traverse(allocator, graph, [&](vren::render_graph_node_index_t node_idx)
 	{
 		auto node = allocator.get_node_at(node_idx);
 
-		output << fmt::format("node_{} [shape=rect, label=\"{}\"];\n", node_idx, node->get_name());
+		*m_output << fmt::format("node_{} [shape=rect, label=\"{}\"];\n", node_idx, node->get_name());
 
-		for (uint32_t image_idx = 0; image_idx < node->get_image_accesses().size(); image_idx++)
+		for (vren::render_graph_node_image_access const& image_access : node->get_image_accesses())
 		{
-			auto image = node->get_image_accesses().at(image_idx);
+			vren::render_graph_image_info const& image_info = node->get_allocator()->get_image_info_at(image_access.m_image_idx);
 
-			output << fmt::format("node_{}_image_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, image_idx, image.m_name);
-			output << fmt::format("node_{} -> node_{}_image_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, image_idx);
+			*m_output << fmt::format("node_{}_image_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, image_access.m_image_idx, image_info.m_name);
+			*m_output << fmt::format("node_{} -> node_{}_image_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, image_access.m_image_idx);
 		}
 
-		for (uint32_t buffer_idx = 0; buffer_idx < node->get_buffer_accesses().size(); buffer_idx++)
+		for (vren::render_graph_node_buffer_access const& buffer_access : node->get_buffer_accesses())
 		{
-			auto buffer = node->get_buffer_accesses().at(buffer_idx);
+			vren::render_graph_buffer_info const& buffer_info = node->get_allocator()->get_buffer_info_at(buffer_access.m_buffer_idx);
 
-			output << fmt::format("node_{}_buffer_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, buffer_idx, buffer.m_name);
-			output << fmt::format("node_{} -> node_{}_buffer_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, buffer_idx);
+			*m_output << fmt::format("node_{}_buffer_{} [shape=rect, label=\"{}\", style=filled, fillcolor=yellow, color=gray, height=0];\n", node_idx, buffer_access.m_buffer_idx, buffer_info.m_name);
+			*m_output << fmt::format("node_{} -> node_{}_buffer_{} [arrowhead=none, color=gray];\n", node_idx, node_idx, buffer_access.m_buffer_idx);
 		}
 
-		for (node_idx_t next_node_idx : node->get_next_nodes())
+		for (vren::render_graph_node_index_t next_node_idx : node->get_next_nodes())
 		{
-			output << fmt::format("node_{} -> node_{};\n", node_idx, next_node_idx);
+			*m_output << fmt::format("node_{} -> node_{};\n", node_idx, next_node_idx);
 		}
 
 		return true;
 	}, /* Forward traversal */ true, /* Initial callback */ true);
 
-	execution_parameters params{ .m_writer = output, .m_position = 0 };
-	vren::render_graph::detail::execute<
-		execution_parameters,
-		make_initial_image_layout_transition,
-		execute_node,
-		put_image_memory_barrier,
-		put_buffer_memory_barrier
-	>(allocator, graph, params);
+	vren::detail::render_graph_executor::execute(allocator, graph);
 
-	output << "}";
+	*m_output << "}\n";
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::render_graph::graph_t vren::clear_color_buffer(render_graph::allocator& allocator, VkImage color_buffer, VkClearColorValue clear_color_value)
+vren::render_graph_t vren::clear_color_buffer(vren::render_graph_allocator& allocator, VkImage color_buffer, VkClearColorValue clear_color_value)
 {
 	auto node = allocator.allocate();
 	node->set_name("clear_color_buffer");
@@ -470,19 +418,17 @@ vren::render_graph::graph_t vren::clear_color_buffer(render_graph::allocator& al
 		.m_name = "color_buffer",
 		.m_image = color_buffer,
 		.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-		.m_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT,
-	});
+	}, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT);
 	node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		VkImageSubresourceRange subresource_range =
 			{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1, };
 		vkCmdClearColorImage(command_buffer, color_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color_value, 1, &subresource_range);
 	});
-	return render_graph::gather(node);
+	return vren::render_graph_gather(node);
 }
 
-vren::render_graph::graph_t vren::clear_depth_stencil_buffer(render_graph::allocator& allocator, VkImage depth_buffer, VkClearDepthStencilValue clear_depth_stencil_value)
+vren::render_graph_t vren::clear_depth_stencil_buffer(vren::render_graph_allocator& allocator, VkImage depth_buffer, VkClearDepthStencilValue clear_depth_stencil_value)
 {
 	auto node = allocator.allocate();
 	node->set_name("clear_depth_stencil_buffer");
@@ -491,15 +437,13 @@ vren::render_graph::graph_t vren::clear_depth_stencil_buffer(render_graph::alloc
 	node->add_image({
 		.m_name = "depth_buffer",
 		.m_image = depth_buffer,
-		.m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-		.m_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		.m_access_flags = VK_ACCESS_TRANSFER_WRITE_BIT,
-	});
+		.m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+	}, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT);
 	node->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		VkImageSubresourceRange subresource_range =
 			{ .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1, };
 		vkCmdClearDepthStencilImage(command_buffer, depth_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil_value, 1, &subresource_range);
 	});
-	return render_graph::gather(node);
+	return vren::render_graph_gather(node);
 }

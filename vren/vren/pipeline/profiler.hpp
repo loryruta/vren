@@ -30,15 +30,15 @@ namespace vren
 		vren::vk_query_pool create_query_pool() const;
 
 	public:
-		vren::render_graph::graph_t profile(
-			vren::render_graph::allocator& allocator,
-			vren::render_graph::graph_t const& sample,
+		vren::render_graph_t profile(
+			vren::render_graph_allocator& allocator,
+			vren::render_graph_t const& sample,
 			uint32_t slot_idx
 		);
 
-		inline vren::render_graph::graph_t profile(
-			vren::render_graph::allocator& allocator,
-			vren::render_graph::graph_t const& sample,
+		inline vren::render_graph_t profile(
+			vren::render_graph_allocator& allocator,
+			vren::render_graph_t const& sample,
 			uint32_t slot_idx,
 			uint32_t frame_idx
 		)

@@ -112,8 +112,8 @@ namespace vren
 		vren::vk_utils::pipeline create_graphics_pipeline(bool depth_test);
 
 	public:
-		vren::render_graph::graph_t render(
-			vren::render_graph::allocator& render_graph_allocator,
+		vren::render_graph_t render(
+			vren::render_graph_allocator& render_graph_allocator,
 			vren::render_target const& render_target,
 			vren::camera const& camera,
 			vren::debug_renderer_draw_buffer const& draw_buffer,

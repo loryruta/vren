@@ -62,7 +62,7 @@ namespace vren
 
 	public:
 		void request_buffer_sync();
-		vren::render_graph::graph_t sync_buffer(vren::render_graph::allocator& allocator, uint32_t frame_idx);
+		vren::render_graph_t sync_buffer(vren::render_graph_allocator& allocator, uint32_t frame_idx);
 
 		VkDescriptorSet get_descriptor_set(uint32_t frame_idx) const;
 		VkBuffer get_buffer(uint32_t frame_idx) const;

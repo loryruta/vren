@@ -29,9 +29,9 @@ vren::vk_query_pool vren::profiler::create_query_pool() const
 	return vren::vk_query_pool(*m_context, query_pool);
 }
 
-vren::render_graph::graph_t vren::profiler::profile(
-	vren::render_graph::allocator& allocator,
-	vren::render_graph::graph_t const& sample,
+vren::render_graph_t vren::profiler::profile(
+	vren::render_graph_allocator& allocator,
+	vren::render_graph_t const& sample,
 	uint32_t slot_idx
 )
 {
@@ -43,7 +43,7 @@ vren::render_graph::graph_t vren::profiler::profile(
 		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 0);
 	});
 
-	for (auto node_idx : vren::render_graph::get_starting_nodes(allocator, sample))
+	for (auto node_idx : vren::render_graph_get_start(allocator, sample))
 	{
 		head->add_next(node_idx);
 	}
@@ -55,12 +55,12 @@ vren::render_graph::graph_t vren::profiler::profile(
 		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
 	});
 
-	for (auto node_idx : vren::render_graph::get_ending_nodes(allocator, sample))
+	for (auto node_idx : vren::render_graph_get_end(allocator, sample))
 	{
 		allocator.get_node_at(node_idx)->add_next(tail);
 	}
 
-	return vren::render_graph::gather(head);
+	return vren::render_graph_gather(head);
 }
 
 bool vren::profiler::read_timestamps(uint32_t slot_idx, uint64_t& start_timestamp, uint64_t& end_timestamp)
