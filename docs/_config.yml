@@ -1,8 +1,8 @@
-theme: minima
+title: "VREN"
 
 author:
-  name: loryruta
-  link: "https://github.com/loryruta"
+  username: "loryruta"
+  fullname: "Lorenzo Rutayisire"
 
-plugins:
-  - jemoji
+links:
+  github: "https://github.com/loryruta/vren"
