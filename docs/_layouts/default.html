@@ -7,27 +7,46 @@
     <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
   </head>
   <body>
-    <header>
-      <h1>{{ site.title }}</h1>
+    <!-- Overlay -->
+    <div class="overlay" style="pointer-events: none">
 
-      <div class="links">
-        <!-- Github -->
-        <a href="{{ site.links.github }}" target="_blank">Github</a>
-      </div>
-    </header>
+      <!-- Header -->
+      <header style="pointer-events: all">
+        <h1>{{ site.title }}</h1>
 
-    <div class="container">
-      <div class="inner-container">
-        <div class="page-title">
-          <h1>{{ page.title }}</h1>
+        <div class="links">
+          <a href="{{ site.links.github }}" target="_blank">Github</a>
+        </div>
+      </header>
+
+      <div style="display: flex; flex-direction: row; height: 100%">
+        <!-- Sidebar -->
+        <div style="pointer-events: all; flex-grow: 2; flex-basis: 0;">
+          {% include nav.html %}
         </div>
 
-        <div class="content">
-          {{ content }}
+        <div style="pointer-events: none; flex-grow: 11; flex-basis: 0;"></div>
+      </div>
+    </div>
+
+    <!-- Container -->
+    <div style="margin-top: 150px; display: flex; flex-direction: row;">
+      <div style="flex-grow: 2;"></div>
+
+      <div style="flex-grow: 11; flex-basis: 0;">
+        <div style="padding: 0px 100px 0px 100px">
+          <div class="page-title">
+            <h1>{{ page.title }}</h1>
+          </div>
+
+          <div class="content">
+            {{ content }}
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- Footer -->
     <footer>
       <div class="developed-by">
         Developed by {{ site.author.username }}
