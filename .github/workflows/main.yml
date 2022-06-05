@@ -22,6 +22,4 @@ jobs:
     
       - name: "Building Sphinx docs"
         working-directory: ./docs
-        run: |
-          rm -rd _build
-          sphinx-build -b html . _build
+        run: sphinx-build -b html . _build
