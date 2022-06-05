@@ -1,4 +1,4 @@
-name: Sphinx docs
+name: "Update Sphinx docs"
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
     
-      - name: "Build"
+      - name: "Build website"
         working-directory: ./docs
         run: |
           pip install -r requirements.txt
@@ -38,4 +38,5 @@ jobs:
         with:
           branch: gh-pages
           directory: .
+          force: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
