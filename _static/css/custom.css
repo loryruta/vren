@@ -1,0 +1,13 @@
+@import "theme.css";
+
+.wy-side-nav-search {
+    background-color: #ed3e3e;
+}
+
+.wy-side-nav-search input[type=text] {
+    border-color: #ed3e3e;
+}
+
+.wy-menu-vertical a:active {
+    background-color: #ed3e3e;
+}
