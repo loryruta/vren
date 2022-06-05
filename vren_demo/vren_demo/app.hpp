@@ -31,6 +31,18 @@ namespace vren_demo
 		RendererType_Count
 	};
 
+	inline char const* renderer_type_name(renderer_type_enum_t value)
+	{
+		switch (value)
+		{
+		case RendererType_NONE:                 return "NONE";
+		case RendererType_BASIC_RENDERER:       return "BASIC_RENDERER";
+		case RendererType_MESH_SHADER_RENDERER: return "MESH_SHADER_RENDERER";
+		default:
+			return "?";
+		}
+	}
+
 	// ------------------------------------------------------------------------------------------------
 	// Profiling
 	// ------------------------------------------------------------------------------------------------
@@ -51,20 +63,21 @@ namespace vren_demo
 		ProfileSlot_Count
 	};
 
-	inline char const* get_profile_slot_name(profile_slot_enum_t profile_slot)
+	inline char const* profile_slot_nmae(profile_slot_enum_t profile_slot)
 	{
 		switch (profile_slot)
 		{
-		case ProfileSlot_NONE: return "None";
-		case ProfileSlot_CLEAR_COLOR_BUFFER: return "Clear color-buffer";
-		case ProfileSlot_CLEAR_DEPTH_BUFFER: return "Clear depth-buffer";
-		case ProfileSlot_BASIC_RENDERER: return "Basic renderer";
-		case ProfileSlot_MESH_SHADER_RENDERER: return "Mesh shader renderer";
-		case ProfileSlot_DEBUG_RENDERER: return "Debug renderer";
-		case ProfileSlot_IMGUI_RENDERER: return "ImGui renderer";
-		case ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID: return "Build depth-buffer pyramid";
-		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "Blit to swapchain";
-		default: return "Unknown";
+		case ProfileSlot_NONE: return "NONE";
+		case ProfileSlot_CLEAR_COLOR_BUFFER: return "CLEAR_COLOR_BUFFER";
+		case ProfileSlot_CLEAR_DEPTH_BUFFER: return "CLEAR_DEPTH_BUFFER";
+		case ProfileSlot_BASIC_RENDERER: return "BASIC_RENDERER";
+		case ProfileSlot_MESH_SHADER_RENDERER: return "MESH_SHADER_RENDERER";
+		case ProfileSlot_DEBUG_RENDERER: return "DEBUG_RENDERER";
+		case ProfileSlot_IMGUI_RENDERER: return "IMGUI_RENDERER";
+		case ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID: return "BUILD_DEPTH_BUFFER_PYRAMID";
+		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "BLIT_TO_SWAPCHAIN";
+		default:
+			return "?";
 		}
 	}
 

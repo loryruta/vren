@@ -353,17 +353,6 @@ VkDevice vren::context::create_logical_device()
 	VkDevice device;
 	VREN_CHECK(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
 
-	m_physical_device_mesh_shader_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV;
-	m_physical_device_mesh_shader_properties.pNext = nullptr;
-
-	VkPhysicalDeviceProperties2 physical_device_properties2{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-		.pNext = &m_physical_device_mesh_shader_properties,
-		.properties = {}
-	};
-	vkGetPhysicalDeviceProperties2(m_physical_device, &physical_device_properties2);
-	//print_nv_mesh_shader_info(m_physical_device_mesh_shader_properties);
-
 	return device;
 }
 
@@ -420,7 +409,7 @@ vren::context::context(context_info const& info) :
 }
 
 vren::context::~context()
-{;
+{
 	m_toolbox.reset();
 
 	vmaDestroyAllocator(m_vma_allocator);

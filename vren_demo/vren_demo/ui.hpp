@@ -29,11 +29,13 @@ namespace vren_demo
 	private:
 		vren_demo::app* m_app;
 
-		ImGuiID
-			m_main_dock_id,
-			m_left_sidebar_dock_id,
-			m_right_sidebar_dock_id,
-			m_bottom_toolbar_dock_id;
+		ImGuiID m_main_dock_id;
+
+		ImGuiID m_controls_window_did;
+		ImGuiID m_camera_window_did;
+		ImGuiID m_profiling_window_did;
+		ImGuiID m_legend_window_did;
+		ImGuiID m_scene_window_did;
 
 		// Render-graph dump window
 		void* m_render_graph_dump_address = nullptr; // The render-graph dump pointer address for which the descriptor set have been generated
@@ -44,12 +46,16 @@ namespace vren_demo
 	public:
 		ui(vren_demo::app& app);
 
-		void show_scene_window();
-		void show_profiling_window();
-		void show_render_graph_dump_window();
-		void show_camera_window();
-		void show_depth_buffer_pyramid_window();
+	private:
+		void set_ui_style();
 
+		void show_legend_window();
+		void show_scene_window();
+		void show_controls_window();
+		void show_profiling_window();
+		void show_camera_window();
+
+	public:
 		void show(
 			uint32_t frame_idx,
 			vren::resource_container& resource_container

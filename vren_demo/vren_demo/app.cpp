@@ -491,8 +491,8 @@ void vren_demo::app::on_frame()
 
 		m_frame_parallelism_pct.push_value(calc_frame_parallelism_percentage(frame_idx));
 
-		uint64_t frame_dt = m_frame_ended_at[frame_idx] - m_frame_started_at[frame_idx];
-		m_frame_dt.push_value(double(frame_dt) / (1000.0 * 1000.0) /* frame_dt (in ms) */);
+		float frame_dt = double(m_frame_ended_at[frame_idx] - m_frame_started_at[frame_idx]) / (1000.0 * 1000.0);
+		m_frame_dt.push_value(frame_dt);
 
 		m_frame_started_at[frame_idx] =
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -502,6 +502,10 @@ void vren_demo::app::on_frame()
 		double now = glfwGetTime();
 		if (m_last_fps_time < 0.0 || now - m_last_fps_time >= 1.0)
 		{
+			char win_title[256];
+			sprintf(win_title, "%s (FPS: %d, last dt: %.3f ms)", "vren_demo", m_fps, frame_dt);
+			glfwSetWindowTitle(m_window, win_title);
+
 			m_fps = m_fps_counter;
 			m_fps_counter = 0;
 			m_last_fps_time = now;
