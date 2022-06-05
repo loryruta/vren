@@ -1,0 +1,27 @@
+name: Sphinx docs
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "docs/**"
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    name: "Build Sphinx docs"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+    
+      - name: "Installing Python dependencies"
+        working-directory: ./docs
+        run: pip install -r requirements.txt
+    
+      - name: "Building Sphinx docs"
+        working-directory: ./docs
+        run: |
+          rm -rd _build
+          sphinx-build -b html . _build
