@@ -15,3 +15,8 @@
 .wy-menu-vertical a:active {
     background-color: #ed3e3e;
 }
+
+.title {
+    font-size: 32px !important;
+    margin-bottom: 0.3em !important;
+}

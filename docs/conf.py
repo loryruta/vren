@@ -1,5 +1,5 @@
-project = 'vren'
-#copyright = '2022, loryruta'
+project = 'VREN'
+copyright = '2022, Lorenzo Rutayisire'
 #author = 'loryruta'
 
 extensions = [
@@ -11,7 +11,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 
+html_show_sourcelink = False # Remove View page source
+
 html_theme_options = {
+    'prev_next_buttons_location': False,
     'collapse_navigation': False,
 }
 
