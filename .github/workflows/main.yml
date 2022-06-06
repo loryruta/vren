@@ -22,11 +22,11 @@ jobs:
           pip install -r requirements.txt
           sphinx-build -b html . _build
     
-      - name: "Upload artifact"
-        uses: actions/upload-artifact@v3
-        with:
-          name: "Artifact"
-          path: ./docs/_build/
+      #- name: "Upload artifact"
+      #  uses: actions/upload-artifact@v3
+      #  with:
+      #    name: "Artifact"
+      #    path: ./docs/_build/
 
       - name: "Commit gh-pages"
         run: |
