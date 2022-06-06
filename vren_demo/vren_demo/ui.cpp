@@ -117,9 +117,9 @@ void vren_demo::ui::show_legend_window()
 		ImGui::Spacing();
 
 		ImGui::Text("1 - Show meshlets");
-		ImGui::Text("2 - Show meshlet bounds");
-		ImGui::Text("3 - Show projected meshlet bounds");
-		ImGui::Text("4 - Show meshlets IDs");
+		ImGui::Text("2 - Show meshlets bounds");
+		ImGui::Text("3 - Show projected meshlets bounds");
+		ImGui::Text("4 - Show meshlets ID");
 
 		ImGui::Spacing();
 
