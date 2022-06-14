@@ -5,11 +5,11 @@
 
 #include <volk.h>
 
-#include "pipeline/render_target.hpp"
 #include "vk_helpers/image.hpp"
 #include "vk_helpers/misc.hpp"
 #include "light.hpp"
 #include "base/resource_container.hpp"
+#include "pipeline/render_graph.hpp"
 
 namespace vren
 {

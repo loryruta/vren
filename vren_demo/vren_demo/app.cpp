@@ -4,10 +4,13 @@
 
 #include <imgui_impl_glfw.h>
 
+#include <vren/base/base.hpp>
 #include <vren/model/basic_model_uploader.hpp>
 #include <vren/model/model_clusterizer.hpp>
 #include <vren/model/clusterized_model_uploader.hpp>
 #include <vren/pipeline/imgui_utils.hpp>
+
+#include <glm/gtc/random.hpp>
 
 #include "clusterized_model_debugger.hpp"
 
@@ -58,8 +61,31 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_debug_meshlet_bounds_draw_buffer(m_context),
 	m_debug_projected_meshlet_bounds_draw_buffer(m_context),
 
-	m_light_array(m_context),
+	// Lighting
+	m_light_arrays(
+		vren::create_array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
+			return vren::light_array(m_context);
+		})
+	),
 
+	m_point_light_bouncer(m_context),
+
+	// Point lights
+	m_point_light_buffer(vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vren::light_array::k_point_light_buffer_size, true)),
+	m_point_light_direction_buffer([&]()
+	{
+		std::vector<glm::vec4> point_light_directions(vren::light_array::k_max_point_light_count);
+		for (glm::vec4& direction : point_light_directions)
+		{
+			direction = glm::vec4(glm::ballRand(1.0f), 0.0f);
+		}
+
+		return vren::vk_utils::create_device_only_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, point_light_directions.data(), point_light_directions.size() * sizeof(glm::vec4));
+	}()),
+
+	m_point_lights((vren::point_light*) m_point_light_buffer.m_allocation_info.pMappedData),
+
+	// Output
 	m_color_buffers{},
 	m_depth_buffer{},
 	m_depth_buffer_pyramid{},
@@ -92,6 +118,10 @@ void vren_demo::app::late_initialize()
 		auto app = static_cast<vren_demo::app*>(glfwGetWindowUserPointer(window));
 		app->on_key_press(key, scancode, action, mods);
 	});
+
+	// Init directional light
+	m_directional_light.m_direction = glm::vec3(1.0f, 1.0f, 0.0f);
+	m_directional_light.m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
 
 void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
@@ -188,6 +218,13 @@ void vren_demo::app::load_scene(char const* gltf_model_filename)
 	vren::model parsed_model; // Intermediate model
 	gltf_parser.load_from_file(gltf_model_filename, parsed_model);
 
+	VREN_INFO("[vren_demo] Computing AABB\n");
+
+	parsed_model.compute_aabb();
+
+	m_model_min = parsed_model.m_min;
+	m_model_max = parsed_model.m_max;
+
 	// Basic model
 	vren::basic_model_uploader basic_model_uploader{};
 	m_basic_model_draw_buffer = std::make_unique<vren::basic_model_draw_buffer>(
@@ -226,6 +263,12 @@ void vren_demo::app::on_update(float dt)
 	m_camera.m_aspect_ratio = framebuffer_width / (float) framebuffer_height;
 
 	m_freecam_controller.update(m_camera, dt, m_camera_speed, glm::radians(45.0f));
+
+	// Bounce point lights
+	vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	{
+		m_point_light_bouncer.bounce(0, command_buffer, resource_container, m_point_light_buffer, m_point_light_direction_buffer, m_model_min, m_model_max, m_point_light_speed, dt);
+	});
 }
 
 void vren_demo::app::record_commands(
@@ -236,12 +279,28 @@ void vren_demo::app::record_commands(
 	vren::resource_container& resource_container
 )
 {
+	vren::light_array& light_array = m_light_arrays.at(frame_idx);
+
+	// Upload point lights
+	memcpy(light_array.get_point_light_buffer_pointer(), m_point_lights, m_point_light_count * sizeof(vren::point_light));
+	light_array.m_point_light_count = m_point_light_count;
+
+	// Upload directional light
+	memcpy(light_array.get_directional_light_buffer_pointer(), &m_directional_light, sizeof(vren::directional_light));
+	light_array.m_directional_light_count = 1;
+
+	// Upload spot lights
+	// ...
+
 	m_debug_draw_buffer.clear();
 
 	// Draw cartesian axes
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
+
+	// Draw model AABB
+	m_debug_draw_buffer.add_line({ .m_from = m_model_min, .m_to = m_model_max, .m_color = 0xffffff });
 
 	// Render-graph begin
 	vren::render_graph_builder render_graph(m_render_graph_allocator);
@@ -265,10 +324,6 @@ void vren_demo::app::record_commands(
 	auto sync_material_buffer = m_context.m_toolbox->m_material_manager.sync_buffer(m_render_graph_allocator, frame_idx);
 	render_graph.concat(sync_material_buffer);
 
-	// Light array uploading
-	auto sync_light_buffers = m_light_array.sync_buffers(m_render_graph_allocator, frame_idx);
-	render_graph.concat(sync_light_buffers);
-
 	// Clear color buffer
 	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
 	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_color_buffer, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER, frame_idx));
@@ -285,14 +340,14 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_BASIC_RENDERER:
 		if (m_basic_model_draw_buffer)
 		{
-			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_basic_model_draw_buffer);
+			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_basic_model_draw_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_clusterized_model_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
+			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 		}
 		break;
@@ -512,7 +567,5 @@ void vren_demo::app::on_frame()
 		}
 
 		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container);
-
-
 	});
 }

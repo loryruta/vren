@@ -241,8 +241,12 @@ void vren::mesh_shader_draw_pass::render(
 	resource_container.add_resource(m_context->m_toolbox->m_texture_manager.m_descriptor_set);
 
 	// Bind light array
-	auto light_array_descriptor_set = light_array.get_descriptor_set(frame_idx);
-	m_pipeline.bind_descriptor_set(command_buffer, 1, light_array_descriptor_set);
+	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 1, [&](VkDescriptorSet descriptor_set)
+	{
+		light_array.write_descriptor_set(descriptor_set);
+
+		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "light_array");
+	});
 
 	// Bind draw buffer
 	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 2, [&](VkDescriptorSet descriptor_set)

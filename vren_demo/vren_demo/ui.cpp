@@ -142,34 +142,66 @@ void vren_demo::ui::show_legend_window()
 
 void vren_demo::ui::show_scene_window()
 {
-	auto& light_arr = m_app->m_light_array;
-
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
-		/* Lighting */
-		ImGui::Text("Lighting");
+		// Point lights
+		ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-		/* Point lights */
 		ImGui::Text("Point lights");
 
-		int point_light_count = (int) light_arr.m_point_light_count;
-		ImGui::SliderInt("Num.##point_lights-lighting-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS);
+		ImGui::Spacing();
 
-		if (light_arr.m_point_light_count != point_light_count)
+		int point_light_count = (int) m_app->m_point_light_count;
+		
+		if (ImGui::SliderInt("Count##point_lights-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS))
 		{
-			for (uint32_t i = light_arr.m_point_light_count; i < point_light_count; i++)
+			for (uint32_t i = m_app->m_point_light_count; i < point_light_count; i++)
 			{
-				light_arr.m_point_lights[i] = {
+				m_app->m_point_lights[i] = {
 					.m_position = {0, 0, 0},
-					.m_color = {0.91f, 0.91f, 0.77f}
+					.m_color = m_app->m_point_light_color
 				};
 			}
-			light_arr.m_point_light_count = point_light_count;
-
-			light_arr.request_point_light_buffer_sync();
+			m_app->m_point_light_count = point_light_count;
 		}
 
-		//ImGui::SliderFloat("Speed##point_lights-lighting-scene_ui", &m_speed, 0.0f, 10.0f);
+		if (ImGui::ColorEdit3("Color##point_lights-scene_ui", reinterpret_cast<float*>(&m_app->m_point_light_color), ImGuiColorEditFlags_Float))
+		{
+			for (uint32_t i = 0; i < m_app->m_point_light_count; i++)
+			{
+				m_app->m_point_lights[i].m_color = m_app->m_point_light_color;
+			}
+		}
+
+		ImGui::SliderFloat("Speed##point_lights-scene_ui", &m_app->m_point_light_speed, 0.0f, 0.5f, "%.3f"); // Proportional to model size
+
+		ImGui::Spacing();
+
+		// Directional light
+		ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+		ImGui::Text("Directional light");
+
+		ImGui::Spacing();
+
+		vren::directional_light& directional_light = m_app->m_directional_light;
+
+		ImGui::SliderFloat3(
+			"Direction##directional_light-scene_ui",
+			reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(&directional_light) + offsetof(vren::directional_light, m_direction)),
+			-1.0f, 1.0f, "%.1f", 1.0f
+		);
+
+		ImGui::ColorEdit3(
+			"Color##directional_light-scene_ui",
+			reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(&directional_light) + offsetof(vren::directional_light, m_color)),
+			ImGuiColorEditFlags_Float
+		);
+
+		ImGui::Spacing();
+	
+		// Spot lights
+		// ...
 	}
 
 	ImGui::End();
@@ -384,7 +416,6 @@ void vren_demo::ui::show(
 
 	ImGui::SetNextWindowDockID(m_camera_window_did, ImGuiCond_Once);
 	show_camera_window();
-
 
 	//ImGui::ShowDemoWindow();
 	//ImPlot::ShowDemoWindow();

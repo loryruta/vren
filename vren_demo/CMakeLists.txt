@@ -10,7 +10,9 @@ add_executable(vren_demo
         vren_demo/ui.cpp
         vren_demo/clusterized_model_debugger.cpp
         vren_demo/clusterized_model_debugger.hpp
-)
+        vren_demo/point_light_bouncer.hpp
+        vren_demo/point_light_bouncer.cpp
+    )
 
 # ------------------------------------------------------------------------------------------------
 # ImGui GLFW backend binary
@@ -25,8 +27,7 @@ file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_glfw.h ${IMGUI_GLFW_BACKEND}
 
 add_library(vren_demo_imgui_glfw_backend
         ${IMGUI_GLFW_BACKEND}/imgui_impl_glfw.cpp
-        ${IMGUI_GLFW_BACKEND}/imgui_impl_glfw.h
-        )
+        ${IMGUI_GLFW_BACKEND}/imgui_impl_glfw.h)
 
 # ImGui
 find_package(imgui CONFIG REQUIRED)
@@ -70,3 +71,9 @@ setup_resources(vren_demo)
 
 # Models
 copy_resources(vren_demo "resources/models" "resources/models")
+
+# Shaders
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp.glsl" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
+
+add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})
+add_dependencies(vren_demo vren_demo_shaders)

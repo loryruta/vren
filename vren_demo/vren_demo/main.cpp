@@ -11,57 +11,6 @@
 
 #include "app.hpp"
 
-void initialize_point_lights_direction(std::span<glm::vec3> point_lights_dir)
-{
-	for (size_t i = 0; i < point_lights_dir.size(); i++) {
-		point_lights_dir[i] = glm::ballRand(1.0f);
-	}
-}
-
-void move_and_bounce_point_lights(std::span<vren::point_light> point_lights, std::span<glm::vec3> point_lights_dir, glm::vec3 const& sm, glm::vec3 const& sM, float speed, float dt)
-{
-	for (size_t i = 0; i < point_lights.size(); i++)
-	{
-		auto& light = point_lights[i];
-
-		glm::vec3 p = light.m_position;
-		p = glm::min(glm::max(p, sm), sM);
-
-		glm::vec3 d = point_lights_dir[i];
-
-		float rem_t = speed * dt;
-
-		for (uint32_t j = 0; j < 256 && rem_t > 0; j++)
-		{
-			float tx1 = (sm.x - p.x) / d.x; tx1 = tx1 <= 0 ? std::numeric_limits<float>::infinity() : tx1;
-			float tx2 = (sM.x - p.x) / d.x; tx2 = tx2 <= 0 ? std::numeric_limits<float>::infinity() : tx2;
-			float ty1 = (sm.y - p.y) / d.y; ty1 = ty1 <= 0 ? std::numeric_limits<float>::infinity() : ty1;
-			float ty2 = (sM.y - p.y) / d.y; ty2 = ty2 <= 0 ? std::numeric_limits<float>::infinity() : ty2;
-			float tz1 = (sm.z - p.z) / d.z; tz1 = tz1 <= 0 ? std::numeric_limits<float>::infinity() : tz1;
-			float tz2 = (sM.z - p.z) / d.z; tz2 = tz2 <= 0 ? std::numeric_limits<float>::infinity() : tz2;
-
-			float min_t = glm::min(tx1, glm::min(tx2, glm::min(ty1, glm::min(ty2, glm::min(tz1, tz2)))));
-
-			float step = glm::min(min_t - std::numeric_limits<float>::epsilon(), rem_t);
-			p += step * d;
-
-			if (min_t < rem_t)
-			{
-				d *= glm::vec3(
-					(tx1 == min_t || tx2 == min_t ? -1.0 : 1.0),
-					(ty1 == min_t || ty2 == min_t ? -1.0 : 1.0),
-					(tz1 == min_t || tz2 == min_t ? -1.0 : 1.0)
-				);
-			}
-
-			rem_t -= step;
-		}
-
-		light.m_position = p;
-		point_lights_dir[i] = d;
-	}
-}
-
 void glfw_error_callback(int error_code, const char* description)
 {
 	VREN_ERROR("GLFW error (code {}): {}\n", error_code, description);

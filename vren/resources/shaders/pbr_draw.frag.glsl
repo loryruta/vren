@@ -35,7 +35,7 @@ layout(set = 1, binding = 1) buffer readonly DirectionalLightBuffer
 
 layout(set = 1, binding = 2) buffer readonly SpotLightBuffer
 {
-    PointLight spot_lights[];
+    SpotLight spot_lights[];
 };
 
 layout(set = 3, binding = 0) buffer readonly MaterialBuffer
@@ -116,6 +116,14 @@ vec3 apply_point_light(vec3 eye, vec3 p, vec3 N, PointLight point_light, vec3 al
     return apply_light(eye, p, N, L, radiance, albedo, metallic, roughness);
 }
 
+vec3 apply_directional_light(vec3 eye, vec3 p, vec3 N, DirectionalLight directional_light, vec3 albedo, float metallic, float roughness)
+{
+    vec3 L = normalize(directional_light.direction);
+    vec3 radiance = directional_light.color;
+
+    return apply_light(eye, p, N, L, radiance, albedo, metallic, roughness);
+}
+
 vec3 gamma_correction(vec3 color)
 {
     return pow(color, vec3(1.0 / 2.2));
@@ -131,8 +139,14 @@ void main()
 
     vec3 Lo = vec3(0.0);
 
-    for (int i = 0; i < point_lights.length(); i++) {
+    for (int i = 0; i < point_lights.length(); i++)
+    {
         Lo += apply_point_light(camera.position, i_position, i_normal, point_lights[i], albedo, metallic, roughness);
+    }
+
+    for (int i = 0; i < directional_lights.length(); i++)
+    {
+        Lo += apply_directional_light(camera.position, i_position, i_normal, directional_lights[i], albedo, metallic, roughness);
     }
 
     vec3 ambient = vec3(0.03) * albedo;

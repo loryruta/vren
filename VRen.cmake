@@ -5,10 +5,10 @@ function (compile_shader _SHADERS IN_PATH OUT_PATH)
             OUTPUT
                 ${OUT_PATH}
                 ${OUT_PATH}__enforce_run # *__enforce_run is a fake output file that won't be created and is here to ensure the command is always run
-            COMMAND glslangValidator --target-env vulkan1.2 -g -o ${OUT_PATH} ${IN_PATH}  # TODO SPECIFY glslangValidator FULL PATH
+            COMMAND glslangValidator --target-env vulkan1.2 -g -I${VREN_HOME}/vren/resources/shaders -o ${OUT_PATH} ${IN_PATH}  # TODO SPECIFY glslangValidator FULL PATH
             MAIN_DEPENDENCY ${IN_PATH}
             WORKING_DIRECTORY ${VREN_HOME}
-            COMMENT "glslangValidator --target-env vulkan1.2 -g -o ${OUT_PATH} ${IN_PATH}"
+            COMMENT "glslangValidator --target-env vulkan1.2 -g -I${VREN_HOME}/vren/resources/shaders -o ${OUT_PATH} ${IN_PATH}"
     )
     set(SUPER_VAR ${${_SHADERS}})
     list(APPEND SUPER_VAR ${OUT_PATH})

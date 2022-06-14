@@ -18,6 +18,8 @@ set(SRC
         vren/model/clusterized_model_uploader.cpp
         vren/model/mesh.hpp
         vren/model/mesh_clusterizer.cpp
+        vren/model/model.cpp
+        vren/model/model.hpp
         vren/model/model_clusterizer.cpp
         vren/model/model_clusterizer.hpp
         vren/model/tinygltf_parser.cpp

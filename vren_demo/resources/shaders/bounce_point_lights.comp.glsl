@@ -1,0 +1,78 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+#define INF 1e35
+#define EPS 1e-5
+
+#define MAX_ITER 4
+#define MAX_BOUNCING_ITER 32
+
+#include "common.glsl"
+
+layout(set = 0, binding = 0) buffer PointLightBuffer
+{
+    PointLight point_lights[];
+};
+
+layout(set = 0, binding = 1) buffer PointLightDirectionBuffer
+{
+	vec4 point_lights_direction[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+	vec3 aabb_min; float _pad;
+	vec3 aabb_max; float _pad1;
+	float speed;
+	float dt;
+	float _pad2[2];
+};
+
+void main()
+{
+    for (uint i = gl_GlobalInvocationID.x * MAX_ITER; i < (gl_GlobalInvocationID.x + 1) * MAX_ITER; i++)
+    {
+        if (i < point_lights.length())
+        {
+			vec3 p = point_lights[i].position;
+			p = min(max(p, aabb_min), aabb_max);
+
+			vec3 d = point_lights_direction[i].xyz;
+
+			float rem_t = speed * dt;
+
+			for (uint j = 0; j < MAX_BOUNCING_ITER && rem_t > 0; j++)
+			{
+				float tx1 = (aabb_min.x - p.x) / d.x; tx1 = tx1 <= 0 ? INF : tx1;
+				float tx2 = (aabb_max.x - p.x) / d.x; tx2 = tx2 <= 0 ? INF : tx2;
+				float ty1 = (aabb_min.y - p.y) / d.y; ty1 = ty1 <= 0 ? INF : ty1;
+				float ty2 = (aabb_max.y - p.y) / d.y; ty2 = ty2 <= 0 ? INF : ty2;
+				float tz1 = (aabb_min.z - p.z) / d.z; tz1 = tz1 <= 0 ? INF : tz1;
+				float tz2 = (aabb_max.z - p.z) / d.z; tz2 = tz2 <= 0 ? INF : tz2;
+
+				float min_t = min(tx1, min(tx2, min(ty1, min(ty2, min(tz1, tz2)))));
+
+				float step = min(min_t - EPS, rem_t);
+				p += step * d;
+
+				if (min_t < rem_t)
+				{
+					d *= vec3(
+						(tx1 == min_t || tx2 == min_t ? -1.0 : 1.0),
+						(ty1 == min_t || ty2 == min_t ? -1.0 : 1.0),
+						(tz1 == min_t || tz2 == min_t ? -1.0 : 1.0)
+					);
+				}
+
+				rem_t -= step;
+			}
+
+			point_lights[i].position = p;
+			point_lights_direction[i] = vec4(d, 0);
+        }
+    }
+}
+

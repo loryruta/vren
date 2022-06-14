@@ -7,7 +7,7 @@ vren::basic_model_draw_buffer vren::basic_model_uploader::upload(vren::context c
 {
 	std::vector<vren::basic_model_draw_buffer::mesh> meshes;
 	meshes.reserve(model.m_meshes.size());
-	for (auto mesh : model.m_meshes)
+	for (vren::model::mesh const& mesh : model.m_meshes)
 	{
 		meshes.push_back(vren::basic_model_draw_buffer::mesh{
 			.m_vertex_offset   = mesh.m_vertex_offset,

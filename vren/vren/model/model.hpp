@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <limits>
 
 #include "gpu_repr.hpp"
 
@@ -16,6 +17,9 @@ namespace vren
 			uint32_t m_index_offset, m_index_count;
 			uint32_t m_instance_offset, m_instance_count;
 			uint32_t m_material_idx;
+
+			glm::vec3 m_min = glm::vec3(std::numeric_limits<float>::infinity());
+			glm::vec3 m_max = glm::vec3(-std::numeric_limits<float>::infinity());
 		};
 
 	public:
@@ -25,5 +29,10 @@ namespace vren
 		std::vector<uint32_t> m_indices;
 		std::vector<vren::mesh_instance> m_instances;
 		std::vector<mesh> m_meshes;
+
+		glm::vec3 m_min = glm::vec3(std::numeric_limits<float>::infinity());
+		glm::vec3 m_max = glm::vec3(-std::numeric_limits<float>::infinity());
+	
+		void compute_aabb();
 	};
 }

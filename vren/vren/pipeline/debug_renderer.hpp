@@ -56,11 +56,10 @@ namespace vren
 	{
 		friend vren::debug_renderer;
 
-	private:
+	public:
 		vren::vk_utils::resizable_buffer m_vertex_buffer;
 		size_t m_vertex_count = 0;
 
-	public:
 		explicit debug_renderer_draw_buffer(vren::context const& context);
 
 		void clear();

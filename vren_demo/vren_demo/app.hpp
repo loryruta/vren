@@ -16,6 +16,7 @@
 #include <vren/model/clusterized_model_draw_buffer.hpp>
 
 #include "camera.hpp"
+#include "point_light_bouncer.hpp"
 #include "ui.hpp"
 
 namespace vren_demo
@@ -147,12 +148,31 @@ namespace vren_demo
 		vren::debug_renderer_draw_buffer m_debug_projected_meshlet_bounds_draw_buffer;
 
 		// Model
+		glm::vec3 m_model_min = glm::vec3(std::numeric_limits<float>::infinity());
+		glm::vec3 m_model_max = glm::vec3(-std::numeric_limits<float>::infinity());
 		std::unique_ptr<vren::basic_model_draw_buffer> m_basic_model_draw_buffer;
 		std::unique_ptr<vren::clusterized_model> m_clusterized_model;
 		std::unique_ptr<vren::clusterized_model_draw_buffer> m_clusterized_model_draw_buffer;
 
-		vren::light_array m_light_array;
+		// Lighting
+		std::array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_arrays;
 
+		vren_demo::point_light_bouncer m_point_light_bouncer;
+
+		// Point light
+		vren::vk_utils::buffer m_point_light_buffer, m_point_light_direction_buffer;
+
+		vren::point_light* m_point_lights;
+		size_t m_point_light_count = 0;
+		glm::vec3 m_point_light_color = glm::vec3(1.0f, 1.0f, 1.0f);
+		float m_point_light_speed = 0.1f;
+
+		// Direction light
+		vren::directional_light m_directional_light;
+
+		// Spot light
+
+		// Output
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
 		std::unique_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;
 
@@ -205,7 +225,6 @@ namespace vren_demo
 		void late_initialize();
 
 		void on_swapchain_change(vren::swapchain const& swapchain);
-
 		void on_key_press(int key, int scancode, int action, int mods);
 
 	public:
