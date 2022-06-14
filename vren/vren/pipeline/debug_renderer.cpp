@@ -13,7 +13,7 @@
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::debug_renderer_draw_buffer::debug_renderer_draw_buffer(vren::context const& context) :
-	m_vertex_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+	m_vertex_buffer(context, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
 {}
 
 void vren::debug_renderer_draw_buffer::clear()
@@ -260,10 +260,14 @@ vren::render_graph_t vren::debug_renderer::render(
 	bool world_space
 )
 {
-	auto node = render_graph_allocator.allocate();
+	vren::render_graph_node* node = render_graph_allocator.allocate();
 	node->set_name("debug_renderer | render");
 	node->set_src_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+	node->add_buffer({
+		.m_name = "debug_draw_buffer",
+		.m_buffer = draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle,
+	}, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
 	node->add_image({
 		.m_name = "color_buffer",
 		.m_image = render_target.m_color_buffer->get_image(),

@@ -83,4 +83,10 @@ struct SpotLight
 	float radius;
 };
 
+struct DebugDrawBufferVertex
+{
+	vec3 position;
+	uint color;
+};
+
 #endif // _COMMON_H

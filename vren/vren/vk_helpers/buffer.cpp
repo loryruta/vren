@@ -144,6 +144,15 @@ vren::vk_utils::resizable_buffer::resizable_buffer(vren::context const& context,
 	m_buffer_usage(buffer_usage)
 {}
 
+vren::vk_utils::resizable_buffer::resizable_buffer(vren::vk_utils::resizable_buffer const&& other) :
+	m_context(other.m_context),
+	m_buffer_usage(other.m_buffer_usage),
+	m_buffer(std::move(other.m_buffer)),
+	m_size(other.m_size),
+	m_offset(other.m_offset)
+{
+}
+
 vren::vk_utils::resizable_buffer::~resizable_buffer()
 {}
 
@@ -154,7 +163,8 @@ void vren::vk_utils::resizable_buffer::clear()
 
 void vren::vk_utils::resizable_buffer::append_data(void const* data, size_t length)
 {
-	if (length == 0) {
+	if (length == 0)
+	{
 		return;
 	}
 
@@ -163,7 +173,7 @@ void vren::vk_utils::resizable_buffer::append_data(void const* data, size_t leng
 	{
 		size_t alloc_size = (size_t) glm::ceil(required_size / (float) k_block_size) * k_block_size;
 
-		auto new_buffer = std::make_shared<vren::vk_utils::buffer>(
+		std::shared_ptr<vren::vk_utils::buffer> new_buffer = std::make_shared<vren::vk_utils::buffer>(
 			vren::vk_utils::alloc_host_visible_buffer(*m_context, m_buffer_usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, alloc_size, false)
 		);
 
@@ -175,9 +185,11 @@ void vren::vk_utils::resizable_buffer::append_data(void const* data, size_t leng
 		m_size = alloc_size;
 	}
 
-	if (data) {
+	if (data)
+	{
 		vren::vk_utils::update_host_visible_buffer(*m_context, *m_buffer, data, length, m_offset);
 	}
+
 	m_offset += length;
 }
 

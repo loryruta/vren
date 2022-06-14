@@ -69,6 +69,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	),
 
 	m_point_light_bouncer(m_context),
+	m_fill_point_light_debug_draw_buffer(m_context),
 
 	// Point lights
 	m_point_light_buffer(vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vren::light_array::k_point_light_buffer_size, true)),
@@ -82,6 +83,16 @@ vren_demo::app::app(GLFWwindow* window) :
 
 		return vren::vk_utils::create_device_only_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, point_light_directions.data(), point_light_directions.size() * sizeof(glm::vec4));
 	}()),
+	m_point_light_debug_draw_buffers(vren::create_array<vren::debug_renderer_draw_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index)
+	{
+		vren::debug_renderer_draw_buffer draw_buffer(m_context);
+
+		// The vertex count will be later updated based on the number of point lights, while the storage is statically allocated
+		draw_buffer.m_vertex_count = 0;
+		draw_buffer.m_vertex_buffer.set_data(nullptr, vren::light_array::k_max_point_light_count * 6 * sizeof(vren::debug_renderer_vertex));
+
+		return draw_buffer;
+	})),
 
 	m_point_lights((vren::point_light*) m_point_light_buffer.m_allocation_info.pMappedData),
 
@@ -364,6 +375,15 @@ void vren_demo::app::record_commands(
 
 	// Debug general purpose objects
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
+
+	// Debug point lights
+	vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
+
+	debug_render_graph.concat(
+		m_fill_point_light_debug_draw_buffer(m_render_graph_allocator, light_array.m_point_light_buffer, light_array.m_point_light_count, point_light_debug_draw_buffer)
+	);
+	point_light_debug_draw_buffer.m_vertex_count = light_array.m_point_light_count * 6;
+	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer));
 
 	// Debug meshlets
 	if (m_show_meshlets)

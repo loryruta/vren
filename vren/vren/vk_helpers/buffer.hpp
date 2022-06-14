@@ -72,6 +72,8 @@ namespace vren::vk_utils
 		size_t m_offset = 0;
 
 		resizable_buffer(vren::context const& context, VkBufferUsageFlags buffer_usage);
+		resizable_buffer(resizable_buffer const& other) = delete;
+		resizable_buffer(resizable_buffer const&& other);
 		~resizable_buffer();
 
 		void clear();

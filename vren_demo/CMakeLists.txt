@@ -74,6 +74,7 @@ copy_resources(vren_demo "resources/models" "resources/models")
 
 # Shaders
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp.glsl" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.glsl" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.spv")
 
 add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})
 add_dependencies(vren_demo vren_demo_shaders)

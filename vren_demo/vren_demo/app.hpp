@@ -158,9 +158,11 @@ namespace vren_demo
 		std::array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_arrays;
 
 		vren_demo::point_light_bouncer m_point_light_bouncer;
+		vren_demo::fill_point_light_debug_draw_buffer m_fill_point_light_debug_draw_buffer;
 
 		// Point light
 		vren::vk_utils::buffer m_point_light_buffer, m_point_light_direction_buffer;
+		std::array<vren::debug_renderer_draw_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_point_light_debug_draw_buffers;
 
 		vren::point_light* m_point_lights;
 		size_t m_point_light_count = 0;
