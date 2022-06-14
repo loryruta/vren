@@ -303,7 +303,7 @@ void vren::render_graph_executor::place_buffer_memory_barrier(
 	vren::render_graph_buffer_info const& buffer_2 = node_2.get_allocator()->get_buffer_info_at(buffer_access_2.m_buffer_idx);
 
 	VkBufferMemoryBarrier buffer_memory_barrier{
-		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 		.pNext = nullptr,
 		.srcAccessMask = buffer_access_1.m_access_flags,
 		.dstAccessMask = buffer_access_2.m_access_flags,
