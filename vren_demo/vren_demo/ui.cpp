@@ -274,11 +274,16 @@ void vren_demo::ui::show_controls_window()
 	{
 		ImGui::Text("Renderer type: %s", vren_demo::renderer_type_name(m_app->m_selected_renderer_type));
 
-
-
+		// General
 		ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-		ImGui::Checkbox("UI visible", &m_app->m_show_ui);
+		ImGui::Checkbox("UI visible (F2)", &m_app->m_show_ui);
+
+		bool occlusion_culling = m_app->m_mesh_shader_renderer->is_occlusion_culling_enabled();
+		if (ImGui::Checkbox("Occlusion culling", &occlusion_culling))
+		{
+			m_app->m_mesh_shader_renderer = std::make_shared<vren::mesh_shader_renderer>(m_app->m_context, occlusion_culling);
+		}
 
 		// Mode clusterization debug
 		ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();

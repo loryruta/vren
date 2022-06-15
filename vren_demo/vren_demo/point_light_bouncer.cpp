@@ -9,10 +9,12 @@ vren_demo::point_light_bouncer::point_light_bouncer(vren::context const& context
 {}
 
 
-vren::vk_utils::pipeline vren_demo::point_light_bouncer::create_pipeline()
+vren::pipeline vren_demo::point_light_bouncer::create_pipeline()
 {
-    vren::vk_utils::shader shader = vren::vk_utils::load_shader_from_file(*m_context, "resources/shaders/bounce_point_lights.comp.spv");
-    return vren::vk_utils::create_compute_pipeline(*m_context, shader);
+    vren::shader_module shader_mod = vren::load_shader_module_from_file(*m_context, "resources/shaders/bounce_point_lights.comp.spv");
+    vren::specialized_shader shader = vren::specialized_shader(shader_mod, "main");
+       
+    return vren::create_compute_pipeline(*m_context, shader);
 }
 
 void vren_demo::point_light_bouncer::write_descriptor_set(
@@ -109,9 +111,12 @@ void vren_demo::point_light_bouncer::bounce(
 
 vren_demo::fill_point_light_debug_draw_buffer::fill_point_light_debug_draw_buffer(vren::context const& context) :
     m_context(&context),
-    m_pipeline([&]() {
-        vren::vk_utils::shader shader = vren::vk_utils::load_shader_from_file(*m_context, "./resources/shaders/fill_point_light_debug_draw_buffer.comp.spv");
-        return vren::vk_utils::create_compute_pipeline(*m_context, shader);
+    m_pipeline([&]()
+    {
+        vren::shader_module shader_mod = vren::load_shader_module_from_file(*m_context, "./resources/shaders/fill_point_light_debug_draw_buffer.comp.spv");
+        vren::specialized_shader shader = vren::specialized_shader(shader_mod, "main");
+
+        return vren::create_compute_pipeline(*m_context, shader);
     }())
 {
 }

@@ -133,7 +133,7 @@ namespace vren_demo
 
 		// Renderers
 		vren::basic_renderer m_basic_renderer;
-		vren::mesh_shader_renderer m_mesh_shader_renderer;
+		std::shared_ptr<vren::mesh_shader_renderer> m_mesh_shader_renderer;
 		vren::debug_renderer m_debug_renderer;
 		vren::imgui_renderer m_imgui_renderer;
 

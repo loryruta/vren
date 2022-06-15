@@ -12,13 +12,13 @@ namespace vren_demo
     {
     private:
         vren::context const* m_context;
-        vren::vk_utils::pipeline m_pipeline;
+        vren::pipeline m_pipeline;
 
     public:
         point_light_bouncer(vren::context const& context);
 
     private:
-        vren::vk_utils::pipeline create_pipeline();
+        vren::pipeline create_pipeline();
 
         void write_descriptor_set(
             VkDescriptorSet descriptor_set,
@@ -44,7 +44,7 @@ namespace vren_demo
     {
     private:
         vren::context const* m_context;
-        vren::vk_utils::pipeline m_pipeline;
+        vren::pipeline m_pipeline;
 
     public:
         fill_point_light_debug_draw_buffer(vren::context const& context);

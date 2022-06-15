@@ -37,7 +37,7 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	// Renderers
 	m_basic_renderer(m_context),
-	m_mesh_shader_renderer(m_context),
+	m_mesh_shader_renderer(std::make_shared<vren::mesh_shader_renderer>(m_context, true)),
 	m_debug_renderer(m_context),
 	m_imgui_renderer(m_context, vren::imgui_windowing_backend_hooks{
 		.m_init_callback      = [window]() { ImGui_ImplGlfw_InitForVulkan(window, true); },
@@ -358,8 +358,10 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_clusterized_model_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
+			auto mesh_shader_render = m_mesh_shader_renderer->render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
+
+			resource_container.add_resource(m_mesh_shader_renderer);
 		}
 		break;
 	default:
@@ -377,13 +379,15 @@ void vren_demo::app::record_commands(
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
 
 	// Debug point lights
-	vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
-
-	debug_render_graph.concat(
-		m_fill_point_light_debug_draw_buffer(m_render_graph_allocator, light_array.m_point_light_buffer, light_array.m_point_light_count, point_light_debug_draw_buffer)
-	);
-	point_light_debug_draw_buffer.m_vertex_count = light_array.m_point_light_count * 6;
-	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer));
+	if (light_array.m_point_light_count > 0)
+	{
+		vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
+		debug_render_graph.concat(
+			m_fill_point_light_debug_draw_buffer(m_render_graph_allocator, light_array.m_point_light_buffer, light_array.m_point_light_count, point_light_debug_draw_buffer)
+		);
+		point_light_debug_draw_buffer.m_vertex_count = light_array.m_point_light_count * 6;
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer));
+	}
 
 	// Debug meshlets
 	if (m_show_meshlets)
