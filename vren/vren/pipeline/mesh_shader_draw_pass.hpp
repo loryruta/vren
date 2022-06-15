@@ -23,13 +23,18 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
-		vren::vk_utils::pipeline m_pipeline;
+		vren::pipeline m_pipeline;
 
 	public:
-		mesh_shader_draw_pass(vren::context const& context);
+		mesh_shader_draw_pass(
+			vren::context const& context,
+			bool occlusion_culling
+		);
 
 	private:
-		vren::vk_utils::pipeline create_graphics_pipeline();
+		vren::pipeline create_graphics_pipeline(
+			bool occlusion_culling
+		);
 
 	public:
 		void render(

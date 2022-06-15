@@ -3,7 +3,7 @@
 #include "context.hpp"
 #include "toolbox.hpp"
 
-vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
+vren::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 {
 	// Vertex input state
 	VkVertexInputBindingDescription vertex_input_binding_descriptions[]{
@@ -142,13 +142,18 @@ vren::vk_utils::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeli
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 	};
 
-	/* */
+	//
+	vren::shader_module vert_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/basic_draw.vert.spv");
+	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv");
 
-	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/basic_draw.vert.spv"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv")
+	vren::specialized_shader vert_shader = vren::specialized_shader(vert_shader_mod, "main");
+	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");
+
+	vren::specialized_shader shaders[] = {
+		std::move(vert_shader),
+		std::move(frag_shader)
 	};
-	return vren::vk_utils::create_graphics_pipeline(
+	return vren::create_graphics_pipeline(
 		*m_context,
 		shaders,
 		&vertex_input_state_info,

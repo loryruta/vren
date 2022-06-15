@@ -14,7 +14,7 @@
         },
         "implot",
         "stb",
-        "spirv-reflect",
+        "spirv-cross",
         "meshoptimizer",
         "fmt",
 

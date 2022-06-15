@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-#include <spirv_reflect.h>
+#include <spirv_cross.hpp>
 
 #include "context.hpp"
 #include "toolbox.hpp"
@@ -24,7 +24,7 @@ void load_bin_file(char const* file_path, std::vector<char>& buf)
 	f.close();
 }
 
-vren::vk_shader_module vren::vk_utils::create_shader_module(vren::context const& context, size_t code_size, uint32_t* code)
+vren::vk_shader_module create_vk_shader_module(vren::context const& context, uint32_t const* code, size_t code_size)
 {
 	VkShaderModuleCreateInfo shader_info{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -38,35 +38,9 @@ vren::vk_shader_module vren::vk_utils::create_shader_module(vren::context const&
 	return vren::vk_shader_module(context, shader_module);
 }
 
-vren::vk_shader_module vren::vk_utils::load_shader_module(vren::context const& context, char const* shader_filename)
-{
-	std::vector<char> buf;
-	load_bin_file(shader_filename, buf);
-	return create_shader_module(context, buf.size(), reinterpret_cast<uint32_t*>(buf.data()));
-}
-
 // --------------------------------------------------------------------------------------------------------------------------------
 // Shader
 // --------------------------------------------------------------------------------------------------------------------------------
-
-void spirv_reflect_check(SpvReflectResult res)
-{
-	if (res != SPV_REFLECT_RESULT_SUCCESS)
-	{
-		VREN_ERROR("SPIRV-Reflect error: {}\n", res);
-		assert(false);
-	}
-}
-
-VkShaderStageFlagBits parse_shader_stage(SpvReflectShaderStageFlagBits spv_refl_shader_stage)
-{
-	return static_cast<VkShaderStageFlagBits>(spv_refl_shader_stage);
-}
-
-VkDescriptorType parse_descriptor_type(SpvReflectDescriptorType spv_refl_desc_type)
-{
-	return static_cast<VkDescriptorType>(spv_refl_desc_type);
-}
 
 char const* descriptor_type_name(VkDescriptorType desc_type)
 {
@@ -132,139 +106,220 @@ std::string composed_shader_stage_name(VkShaderStageFlags shader_stages)
 	return "[" + result + "]";
 }
 
-void vren::vk_utils::print_descriptor_set_layouts(std::unordered_map<uint32_t, descriptor_set_layout_info> const& descriptor_set_layouts)
+vren::shader_module vren::load_shader_module(vren::context const& context, uint32_t const* code, size_t code_length, char const* name)
 {
-	if (descriptor_set_layouts.size() > 0)
+	spirv_cross::Compiler compiler(code, code_length);
+
+	VREN_INFO("[shader] ----------------------------------------------------------------\n");
+	VREN_INFO("[shader] Shader module: \"{}\"\n", name);
+	VREN_INFO("[shader] ----------------------------------------------------------------\n");
+
+	// Entry points
+	std::vector<vren::shader_module_entry_point> entry_points{};
+
+	auto parse_shader_stage = [](spv::ExecutionModel execution_model) -> VkShaderStageFlags
 	{
-		for (auto const& [descriptor_set_idx, descriptor_set_info] : descriptor_set_layouts)
+		switch (execution_model)
 		{
-			for (auto const& [binding, binding_info] : descriptor_set_info.m_bindings)
-			{
-				printf("Descriptor #%d.%d, type: %s, count: %d, variable length: %s\n",
-					   descriptor_set_idx, binding,
-					   descriptor_type_name(binding_info.m_descriptor_type),
-					   binding_info.m_descriptor_count,
-					   binding_info.m_variable_descriptor_count ? "true" : "false"
-				);
-			}
+		case spv::ExecutionModelVertex:    return VK_SHADER_STAGE_VERTEX_BIT;
+		case spv::ExecutionModelFragment:  return VK_SHADER_STAGE_FRAGMENT_BIT;
+		case spv::ExecutionModelTaskNV:    return VK_SHADER_STAGE_TASK_BIT_NV;
+		case spv::ExecutionModelMeshNV:    return VK_SHADER_STAGE_MESH_BIT_NV;
+		case spv::ExecutionModelKernel:    return VK_SHADER_STAGE_COMPUTE_BIT;
+		case spv::ExecutionModelGLCompute: return VK_SHADER_STAGE_COMPUTE_BIT;
+		default:
+			throw std::runtime_error("Execution model not recognized");
 		}
-	}
-	else
+	};
+
+	for (spirv_cross::EntryPoint const& spirv_entry_point : compiler.get_entry_points_and_stages())
 	{
-		printf("No descriptors\n");
+		vren::shader_module_entry_point entry_point{
+			.m_name = spirv_entry_point.name,
+			.m_shader_stage = parse_shader_stage(spirv_entry_point.execution_model)
+		};
+		entry_points.push_back(entry_point);
+
+		VREN_INFO("[shader] Entry point: \"{}\" (shader stage: {:#010x})\n", entry_point.m_name, entry_point.m_shader_stage);
 	}
-}
 
-vren::vk_utils::shader vren::vk_utils::load_shader(vren::context const& context, size_t code_size, uint32_t* code)
-{
-	spv_reflect::ShaderModule spv_shader_module(code_size, code);
+	assert(entry_points.size() > 0);
 
-	VkShaderStageFlags shader_stage = parse_shader_stage(spv_shader_module.GetShaderStage());
+	// Descriptor set layouts
+	spirv_cross::ShaderResources shader_resources = compiler.get_shader_resources();
 
-	uint32_t num;
+	std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t> descriptor_set_layouts;
 
-	/* Descriptor sets */
-	spirv_reflect_check(spv_shader_module.EnumerateDescriptorSets(&num, nullptr));
-
-	std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets(num);
-	spirv_reflect_check(spv_shader_module.EnumerateDescriptorSets(&num, spv_descriptor_sets.data()));
-
-	std::unordered_map<uint32_t, descriptor_set_layout_info> descriptor_set_layouts;
-	for (uint32_t i = 0; i < spv_descriptor_sets.size(); i++)
+	auto load_resources = [&](
+		spirv_cross::SmallVector<spirv_cross::Resource> const& resources,
+		std::function<VkDescriptorType(spirv_cross::Resource const&)> deduct_descriptor_type
+	)
 	{
-		SpvReflectDescriptorSet* spv_descriptor_set = spv_descriptor_sets.at(i);
-
-		descriptor_set_layout_info descriptor_set_layout{};
-
-		for (uint32_t j = 0; j < spv_descriptor_set->binding_count; j++)
+		for (spirv_cross::Resource const& resource : resources)
 		{
-			SpvReflectDescriptorBinding* spv_binding = spv_descriptor_set->bindings[j];
+			assert(compiler.has_decoration(resource.id, spv::DecorationDescriptorSet));
+			assert(compiler.has_decoration(resource.id, spv::DecorationBinding));
 
-			descriptor_set_layout_binding_info binding{
-				.m_descriptor_type = parse_descriptor_type(spv_binding->descriptor_type),
-				.m_descriptor_count = 1,
-				.m_variable_descriptor_count = spv_binding->type_description->op == SpvOpTypeRuntimeArray
+			uint32_t descriptor_set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+			uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+
+			spirv_cross::SPIRType type = compiler.get_type(resource.type_id);
+
+			assert(type.array.size() == 0 || (type.array.size() == 1 && type.array_size_literal[0])); // Multi-dimensional arrays aren't supported
+
+			VkDescriptorType descriptor_type = deduct_descriptor_type(resource);
+			vren::shader_module_binding_info binding_info{
+				.m_descriptor_type = descriptor_type,
+				.m_descriptor_count = type.array.size() > 0 ? type.array[0] : 1,
 			};
-			descriptor_set_layout.m_bindings.emplace(spv_binding->binding, binding);
+			descriptor_set_layouts.emplace(descriptor_set, std::unordered_map<uint32_t, vren::shader_module_binding_info>{});
+			descriptor_set_layouts.at(descriptor_set).emplace(binding, binding_info);
+
+			VREN_INFO("[shader] Descriptor {}.{} - descriptor type: {:#010x} - count: {} - variable count: {}\n",
+				descriptor_set,
+				binding,
+				binding_info.m_descriptor_type,
+				binding_info.m_descriptor_count,
+				binding_info.is_variable_descriptor_count() ? "true" : "false"
+			);
 		}
-		descriptor_set_layouts.emplace(spv_descriptor_set->set, descriptor_set_layout);
-	}
+	};
 
-	/* Push constants */
-	spirv_reflect_check(spv_shader_module.EnumeratePushConstantBlocks(&num, nullptr));
-
-	std::vector<SpvReflectBlockVariable*> spv_refl_block_vars(num);
-	spirv_reflect_check(spv_shader_module.EnumeratePushConstantBlocks(&num, spv_refl_block_vars.data()));
-
-	std::vector<VkPushConstantRange> push_constant_ranges;
-	for (int i = 0; i < spv_refl_block_vars.size(); i++)
+	load_resources(shader_resources.sampled_images, [&](spirv_cross::Resource const& resource)
 	{
-		auto spv_refl_block_var = spv_refl_block_vars.at(i);
-		push_constant_ranges.push_back({
-			.stageFlags = shader_stage,
-			.offset = spv_refl_block_var->absolute_offset,
-			.size = spv_refl_block_var->padded_size
-		});
+		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	});
+
+	load_resources(shader_resources.separate_images, [&](spirv_cross::Resource const& resource)
+	{
+		spirv_cross::SPIRType type = compiler.get_type(resource.type_id);
+
+		return type.image.dim == spv::Dim::DimBuffer ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	});
+
+	load_resources(shader_resources.storage_images, [&](spirv_cross::Resource const& resource)
+	{
+		spirv_cross::SPIRType type = compiler.get_type(resource.type_id);
+
+		return type.image.dim == spv::Dim::DimBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	});
+
+	load_resources(shader_resources.separate_samplers, [&](spirv_cross::Resource const& resource)
+	{
+		return VK_DESCRIPTOR_TYPE_SAMPLER;
+	});
+
+	load_resources(shader_resources.uniform_buffers, [&](spirv_cross::Resource const& resource)
+	{
+		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	});
+
+	load_resources(shader_resources.storage_buffers, [&](spirv_cross::Resource const& resource)
+	{
+		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	});
+
+	// Push constants
+	size_t push_constant_block_size = 0;
+	if (shader_resources.push_constant_buffers.size() > 0)
+	{
+		spirv_cross::Resource const& resource = shader_resources.push_constant_buffers[0];
+
+		if (shader_resources.push_constant_buffers.size() > 1)
+		{
+			VREN_WARN("[shader] Only one push-constant block per stage is supported, taking: \"{}\"\n", resource.name);
+		}
+
+		std::string name = compiler.get_name(resource.id);
+		push_constant_block_size = compiler.get_declared_struct_size(compiler.get_type(resource.type_id));
+
+		VREN_INFO("[shader] Push-constant block \"{}\" - size: {}\n",
+			name,
+			push_constant_block_size
+		);
 	}
 
-	/* */
+	// Specialization constants
+	std::vector<vren::shader_module_specialization_constant> specialization_constants;
 
-	printf("Shader %s:\n", spv_shader_module.GetSourceFile());
-	print_descriptor_set_layouts(descriptor_set_layouts);
+	for (spirv_cross::SpecializationConstant const& spirv_specialization_constant : compiler.get_specialization_constants())
+	{
+		spirv_cross::SPIRConstant value = compiler.get_constant(spirv_specialization_constant.id);
+		spirv_cross::SPIRType type = compiler.get_type(value.constant_type);
 
+		std::string name = compiler.get_name(spirv_specialization_constant.id);
+		size_t constant_size = vren::divide_and_ceil(type.width, 8); // type.width seems to hold the size of the type in bits?
+
+		vren::shader_module_specialization_constant specialization_constant{
+			.m_name = name,
+			.m_constant_id = spirv_specialization_constant.constant_id,
+			.m_size = constant_size,
+		};
+		specialization_constants.push_back(specialization_constant);
+
+		VREN_INFO("[shader] Specialization constant {} (ID: {}) - size: {}\n",
+			specialization_constant.m_name,
+			specialization_constant.m_constant_id,
+			specialization_constant.m_size
+		);
+	}
+
+	//
 	return {
-		.m_module = create_shader_module(context, code_size, code),
-		.m_stage = shader_stage,
-		.m_entry_point = "main",
+		.m_name = name,
+		.m_handle = create_vk_shader_module(context, code, code_length * sizeof(uint32_t)),
+		.m_entry_points = std::move(entry_points),
 		.m_descriptor_set_layouts = std::move(descriptor_set_layouts),
-		.m_push_constant_ranges = std::move(push_constant_ranges)
+		.m_push_constant_block_size = push_constant_block_size,
+		.m_specialization_constants = std::move(specialization_constants)
 	};
 }
 
-vren::vk_utils::shader vren::vk_utils::load_shader_from_file(vren::context const& context, char const* shader_filename)
+vren::shader_module vren::load_shader_module_from_file(vren::context const& context, char const* filename)
 {
-	std::vector<char> buffer;
-	load_bin_file(shader_filename, buffer);
-	return load_shader(context, buffer.size(), reinterpret_cast<uint32_t*>(buffer.data()));
+	std::vector<char> buffer{};
+	load_bin_file(filename, buffer);
+	return load_shader_module(context, reinterpret_cast<uint32_t const*>(buffer.data()), buffer.size() / sizeof(uint32_t), filename);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Pipeline
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::pipeline::~pipeline()
+vren::pipeline::~pipeline()
 {
-	for (VkDescriptorSetLayout desc_set_layout : m_descriptor_set_layouts) {
+	for (VkDescriptorSetLayout desc_set_layout : m_descriptor_set_layouts)
+	{
 		vkDestroyDescriptorSetLayout(m_context->m_device, desc_set_layout, nullptr);
 	}
 }
 
-void vren::vk_utils::pipeline::bind(VkCommandBuffer cmd_buf) const
+void vren::pipeline::bind(VkCommandBuffer cmd_buf) const
 {
 	vkCmdBindPipeline(cmd_buf, m_bind_point, m_pipeline.m_handle);
 }
 
-void vren::vk_utils::pipeline::bind_vertex_buffer(VkCommandBuffer command_buffer, uint32_t binding, VkBuffer vertex_buffer, VkDeviceSize offset) const
+void vren::pipeline::bind_vertex_buffer(VkCommandBuffer command_buffer, uint32_t binding, VkBuffer vertex_buffer, VkDeviceSize offset) const
 {
 	vkCmdBindVertexBuffers(command_buffer, binding, 1, &vertex_buffer, &offset);
 }
 
-void vren::vk_utils::pipeline::bind_index_buffer(VkCommandBuffer command_buffer, VkBuffer index_buffer, VkIndexType index_type, VkDeviceSize offset) const
+void vren::pipeline::bind_index_buffer(VkCommandBuffer command_buffer, VkBuffer index_buffer, VkIndexType index_type, VkDeviceSize offset) const
 {
 	vkCmdBindIndexBuffer(command_buffer, index_buffer, offset, index_type);
 }
 
-void vren::vk_utils::pipeline::bind_descriptor_set(VkCommandBuffer command_buffer, uint32_t descriptor_set_idx, VkDescriptorSet descriptor_set) const
+void vren::pipeline::bind_descriptor_set(VkCommandBuffer command_buffer, uint32_t descriptor_set_idx, VkDescriptorSet descriptor_set) const
 {
 	vkCmdBindDescriptorSets(command_buffer, m_bind_point, m_pipeline_layout.m_handle, descriptor_set_idx, 1, &descriptor_set, 0, nullptr);
 }
 
-void vren::vk_utils::pipeline::push_constants(VkCommandBuffer command_buffer, VkShaderStageFlags shader_stage, void const* data, uint32_t length, uint32_t offset) const
+void vren::pipeline::push_constants(VkCommandBuffer command_buffer, VkShaderStageFlags shader_stage, void const* data, uint32_t length, uint32_t offset) const
 {
 	vkCmdPushConstants(command_buffer, m_pipeline_layout.m_handle, shader_stage, offset, length, data);
 }
 
-void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(vren::context const& context, VkCommandBuffer command_buffer, vren::resource_container& resource_container, uint32_t descriptor_set_idx, std::function<void(VkDescriptorSet)> const& update_func)
+void vren::pipeline::acquire_and_bind_descriptor_set(vren::context const& context, VkCommandBuffer command_buffer, vren::resource_container& resource_container, uint32_t descriptor_set_idx, std::function<void(VkDescriptorSet)> const& update_func)
 {
 	auto desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
 		context.m_toolbox->m_descriptor_pool.acquire(m_descriptor_set_layouts.at(descriptor_set_idx))
@@ -274,35 +329,42 @@ void vren::vk_utils::pipeline::acquire_and_bind_descriptor_set(vren::context con
 	resource_container.add_resources(desc_set);
 }
 
-void vren::vk_utils::pipeline::dispatch(VkCommandBuffer command_buffer, uint32_t workgroup_count_x, uint32_t workgroup_count_y, uint32_t workgroup_count_z) const
+void vren::pipeline::dispatch(VkCommandBuffer command_buffer, uint32_t workgroup_count_x, uint32_t workgroup_count_y, uint32_t workgroup_count_z) const
 {
 	vkCmdDispatch(command_buffer, workgroup_count_x, workgroup_count_y, workgroup_count_z);
 }
 
-void vren::vk_utils::create_descriptor_set_layouts(vren::context const& context, std::span<shader const> const& shaders, std::vector<VkDescriptorSetLayout>& descriptor_set_layouts)
-{
-	/* Merging */
-	std::unordered_map<uint32_t, descriptor_set_layout_info> merged_descriptor_set_layout_info;
-	uint32_t max_descriptor_set_idx = 0;
+// --------------------------------------------------------------------------------------------------------------------------------
 
-	for (auto const& shader : shaders)
+/** 
+ * Merge descriptor set layout info(s) from different shaders. This operation can fail whether different shaders
+ * have different definitions for the same descriptor slot (= descriptor set index and binding).
+ */
+std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t> merge_descriptor_info(
+	std::span<vren::specialized_shader const> shaders,
+	int32_t& max_descriptor_set_idx
+)
+{
+	std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t> merged_descriptor_info;
+	max_descriptor_set_idx = -1;
+
+	for (vren::specialized_shader const& shader : shaders)
 	{
-		for (auto const& [descriptor_set_idx, descriptor_set_layout_info] : shader.m_descriptor_set_layouts)
+		for (auto const& [descriptor_set_idx, descriptor_set_layout_info] : shader.get_shader_module().m_descriptor_set_layouts)
 		{
-			if (merged_descriptor_set_layout_info.contains(descriptor_set_idx)) // If the descriptor set is already taken
+			if (merged_descriptor_info.contains(descriptor_set_idx)) // If the descriptor set is already taken
 			{
-				auto& merged_bindings = merged_descriptor_set_layout_info.at(descriptor_set_idx).m_bindings;
-				for (auto const& [binding, binding_info] : descriptor_set_layout_info.m_bindings)
+				auto& merged_bindings = merged_descriptor_info.at(descriptor_set_idx);
+				for (auto const& [binding, binding_info] : descriptor_set_layout_info)
 				{
 					if (merged_bindings.contains(binding))
 					{
 						// If the descriptor set binding is already taken just verify that the merged one matches with the current
 						auto& merged_binding = merged_bindings.at(binding);
 
-						//assert(binding_info.m_binding == merged_binding.m_binding);
 						assert(binding_info.m_descriptor_type == merged_binding.m_descriptor_type);
 						assert(binding_info.m_descriptor_count == merged_binding.m_descriptor_count);
-						assert(binding_info.m_variable_descriptor_count == merged_binding.m_variable_descriptor_count);
+						assert(binding_info.is_variable_descriptor_count() == merged_binding.is_variable_descriptor_count());
 					}
 					else
 					{
@@ -312,47 +374,61 @@ void vren::vk_utils::create_descriptor_set_layouts(vren::context const& context,
 			}
 			else
 			{
-				merged_descriptor_set_layout_info.emplace(descriptor_set_idx, descriptor_set_layout_info);
-				max_descriptor_set_idx = std::max(max_descriptor_set_idx, descriptor_set_idx);
+				merged_descriptor_info.emplace(descriptor_set_idx, descriptor_set_layout_info);
+				max_descriptor_set_idx = std::max<int32_t>(max_descriptor_set_idx, descriptor_set_idx);
 			}
 		}
 	}
 
-	printf("Merged descriptor set layouts:\n");
-	print_descriptor_set_layouts(merged_descriptor_set_layout_info);
+	return merged_descriptor_info;
+}
 
-	/* Creation */
+/**
+ * Merge the descriptor definitions and create the descriptor set layouts for the given shaders. 
+ */
+std::vector<VkDescriptorSetLayout> create_descriptor_set_layouts(
+	vren::context const& context,
+	std::span<vren::specialized_shader const> shaders
+)
+{
+	int32_t max_descriptor_set_idx;
+	auto merged_descriptor_info = merge_descriptor_info(shaders, max_descriptor_set_idx);
+
+	// Descriptor set layouts
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts{};
+
 	descriptor_set_layouts.resize(max_descriptor_set_idx + 1);
 
-	for (uint32_t descriptor_set_idx = 0; descriptor_set_idx <= max_descriptor_set_idx; descriptor_set_idx++)
+	for (int32_t descriptor_set_idx = 0; descriptor_set_idx <= max_descriptor_set_idx; descriptor_set_idx++)
 	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-		std::vector<VkDescriptorBindingFlags> binding_flags;
+		std::vector<VkDescriptorSetLayoutBinding> bindings{};
+		std::vector<VkDescriptorBindingFlags> binding_flags{};
 
-		// Bindings
-		if (merged_descriptor_set_layout_info.contains(descriptor_set_idx))
+		if (merged_descriptor_info.contains(descriptor_set_idx))
 		{
-			auto const& descriptor_set_layout_info = merged_descriptor_set_layout_info.at(descriptor_set_idx);
-			for (auto const& [binding, binding_info] : descriptor_set_layout_info.m_bindings)
+			vren::shader_module_descriptor_set_layout_info_t const& descriptor_info = merged_descriptor_info.at(descriptor_set_idx);
+			for (auto const& [binding, binding_info] : descriptor_info)
 			{
 				VkDescriptorSetLayoutBinding descriptor_set_layout_binding{
 					.binding = binding,
 					.descriptorType = binding_info.m_descriptor_type,
-					.descriptorCount = binding_info.m_variable_descriptor_count ? k_max_variable_count_descriptor_count : binding_info.m_descriptor_count,
+					.descriptorCount = binding_info.is_variable_descriptor_count() ? vren::k_max_variable_count_descriptor_count : binding_info.m_descriptor_count,
 					.stageFlags = VK_SHADER_STAGE_ALL,
 					.pImmutableSamplers = nullptr
 				};
 				bindings.push_back(descriptor_set_layout_binding);
 
-				if (binding_info.m_variable_descriptor_count) {
+				if (binding_info.is_variable_descriptor_count())
+				{
 					binding_flags.push_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
-				} else {
+				}
+				else
+				{
 					binding_flags.push_back(NULL);
 				}
 			}
 		}
 
-		// Create descriptor set layout
 		VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_create_info{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
 			.pNext = nullptr,
@@ -370,45 +446,62 @@ void vren::vk_utils::create_descriptor_set_layouts(vren::context const& context,
 		VREN_CHECK(vkCreateDescriptorSetLayout(context.m_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout), &context);
 		descriptor_set_layouts[descriptor_set_idx] = descriptor_set_layout;
 	}
+
+	return descriptor_set_layouts;
 }
 
-
-vren::vk_utils::pipeline vren::vk_utils::create_compute_pipeline(vren::context const& context, shader const& shader)
+vren::pipeline vren::create_compute_pipeline(vren::context const& context, vren::specialized_shader const& shader)
 {
-	/* Descriptor set layouts */
-	std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-	create_descriptor_set_layouts(context, std::span(&shader, 1), descriptor_set_layouts);
+	vren::shader_module const& shader_module = shader.get_shader_module();
 
-	/* Push constant ranges */
-	auto& push_const_ranges = shader.m_push_constant_ranges;
+	// Descriptor set layouts
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts = create_descriptor_set_layouts(context, std::span(&shader, 1));
 
-	/* Pipeline layout */
+	// Push constant range
+	VkPushConstantRange push_constant_range{
+		.stageFlags = shader.get_shader_stage(),
+		.offset = 0,
+		.size = (uint32_t) shader_module.m_push_constant_block_size
+	};
+
+	// Pipeline layout
 	VkPipelineLayoutCreateInfo pipeline_layout_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
 		.setLayoutCount = (uint32_t) descriptor_set_layouts.size(),
 		.pSetLayouts = descriptor_set_layouts.data(),
-		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
-		.pPushConstantRanges = push_const_ranges.data(),
+		.pushConstantRangeCount = shader_module.has_push_constant_block() ? 1u : 0u,
+		.pPushConstantRanges = shader_module.has_push_constant_block() ? &push_constant_range : nullptr,
 	};
 	VkPipelineLayout pipeline_layout;
 	VREN_CHECK(vkCreatePipelineLayout(context.m_device, &pipeline_layout_info, nullptr, &pipeline_layout), &context);
 
-	/* Pipeline */
+	// Pipeline shader stage
+	std::vector<VkSpecializationMapEntry> specialization_map_entries = shader_module.create_specialization_map_entries();
+	VkSpecializationInfo specialization_info{
+		.mapEntryCount = (uint32_t) specialization_map_entries.size(),
+		.pMapEntries = specialization_map_entries.data(),
+		.dataSize = shader.get_specialization_data_length(),
+		.pData = shader.get_specialization_data()
+	};
+
+	VkPipelineShaderStageCreateInfo pipeline_shader_stage_info{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.stage = static_cast<VkShaderStageFlagBits>(shader.get_shader_stage()),
+		.module = shader_module.m_handle.m_handle,
+		.pName = shader.get_entry_point(),
+		.pSpecializationInfo = shader.has_specialization_data() ? &specialization_info : nullptr
+	};
+
+	// Compute pipeline
 	VkComputePipelineCreateInfo pipeline_info{
 		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
-		.stage = {
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = NULL,
-			.stage = static_cast<VkShaderStageFlagBits>(shader.m_stage),
-			.module = shader.m_module.m_handle,
-			.pName = shader.m_entry_point.c_str(),
-			.pSpecializationInfo = nullptr
-		},
+		.stage = pipeline_shader_stage_info,
 		.layout = pipeline_layout,
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = 0,
@@ -416,7 +509,8 @@ vren::vk_utils::pipeline vren::vk_utils::create_compute_pipeline(vren::context c
 	VkPipeline pipeline;
 	VREN_CHECK(vkCreateComputePipelines(context.m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), &context);
 
-	return vren::vk_utils::pipeline{
+	//
+	return vren::pipeline{
 		.m_context = &context,
 		.m_descriptor_set_layouts = std::move(descriptor_set_layouts),
 		.m_pipeline_layout = vren::vk_pipeline_layout(context, pipeline_layout),
@@ -425,10 +519,9 @@ vren::vk_utils::pipeline vren::vk_utils::create_compute_pipeline(vren::context c
 	};
 }
 
-vren::vk_utils::pipeline
-vren::vk_utils::create_graphics_pipeline(
+vren::pipeline vren::create_graphics_pipeline(
 	vren::context const& context,
-	std::span<shader> const& shaders,
+	std::span<vren::specialized_shader const> shaders,
 	VkPipelineVertexInputStateCreateInfo* vtx_input_state_info,
 	VkPipelineInputAssemblyStateCreateInfo* input_assembly_state_info,
 	VkPipelineTessellationStateCreateInfo* tessellation_state_info,
@@ -441,43 +534,59 @@ vren::vk_utils::create_graphics_pipeline(
 	VkPipelineRenderingCreateInfoKHR* pipeline_rendering_info
 )
 {
-	/* Descriptor set layouts */
-	std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-	create_descriptor_set_layouts(context, shaders, descriptor_set_layouts);
+	// Descriptor set layouts
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts = create_descriptor_set_layouts(context, shaders);
 
-	/* Shader stages */
-	std::vector<VkPipelineShaderStageCreateInfo> shader_stages{};
-	for (auto& shader : shaders) {
-		shader_stages.push_back({
+	// Pipeline shader stages
+	std::vector<VkPipelineShaderStageCreateInfo> pipeline_shader_stages{};
+	for (vren::specialized_shader const& shader : shaders)
+	{
+		vren::shader_module const& shader_module = shader.get_shader_module();
+
+		std::vector<VkSpecializationMapEntry> specialization_map_entries = shader_module.create_specialization_map_entries();
+		VkSpecializationInfo specialization_info{
+			.mapEntryCount = (uint32_t) specialization_map_entries.size(),
+			.pMapEntries = specialization_map_entries.data(),
+			.dataSize = shader.get_specialization_data_length(),
+			.pData = shader.get_specialization_data()
+		};
+
+		pipeline_shader_stages.push_back({
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = NULL,
-			.stage = static_cast<VkShaderStageFlagBits>(shader.m_stage),
-			.module = shader.m_module.m_handle,
-			.pName = shader.m_entry_point.c_str(),
-			.pSpecializationInfo = nullptr
+			.stage = static_cast<VkShaderStageFlagBits>(shader.get_shader_stage()),
+			.module = shader_module.m_handle.m_handle,
+			.pName = shader.get_entry_point(),
+			.pSpecializationInfo = shader.has_specialization_data() ? &specialization_info : nullptr
 		});
 	}
 
-	/* Push constant ranges */
-	std::vector<VkPushConstantRange> push_const_ranges;
-	for (auto& shader : shaders) {
-		push_const_ranges.insert(
-			push_const_ranges.end(),
-			shader.m_push_constant_ranges.begin(),
-			shader.m_push_constant_ranges.end()
-		);
+	// Push constant ranges
+	std::vector<VkPushConstantRange> push_constant_ranges{};
+	for (vren::specialized_shader const& shader : shaders)
+	{
+		vren::shader_module const& shader_mod = shader.get_shader_module();
+
+		if (shader_mod.has_push_constant_block())
+		{
+			push_constant_ranges.push_back(VkPushConstantRange{
+				.stageFlags = shader.get_shader_stage(),
+				.offset = 0,
+				.size = (uint32_t) shader_mod.m_push_constant_block_size
+			});
+		}
 	}
 
-	/* Pipeline layout */
+	// Pipeline layout
 	VkPipelineLayoutCreateInfo pipeline_layout_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = NULL,
 		.setLayoutCount = (uint32_t) descriptor_set_layouts.size(),
 		.pSetLayouts = descriptor_set_layouts.data(),
-		.pushConstantRangeCount = (uint32_t) push_const_ranges.size(),
-		.pPushConstantRanges = push_const_ranges.data(),
+		.pushConstantRangeCount = (uint32_t)push_constant_ranges.size(),
+		.pPushConstantRanges = push_constant_ranges.data(),
 	};
 	VkPipelineLayout pipeline_layout;
 	VREN_CHECK(vkCreatePipelineLayout(context.m_device, &pipeline_layout_info, nullptr, &pipeline_layout), &context);
@@ -486,8 +595,8 @@ vren::vk_utils::create_graphics_pipeline(
 	VkGraphicsPipelineCreateInfo pipeline_info{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 		.pNext = pipeline_rendering_info,
-		.stageCount = (uint32_t) shader_stages.size(),
-		.pStages = shader_stages.data(),
+		.stageCount = (uint32_t) pipeline_shader_stages.size(),
+		.pStages = pipeline_shader_stages.data(),
 		.pVertexInputState = vtx_input_state_info,
 		.pInputAssemblyState = input_assembly_state_info,
 		.pTessellationState = tessellation_state_info,
@@ -502,8 +611,7 @@ vren::vk_utils::create_graphics_pipeline(
 	VkPipeline pipeline;
 	VREN_CHECK(vkCreateGraphicsPipelines(context.m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), &context);
 
-	/* */
-
+	//
 	return {
 		.m_context = &context,
 		.m_descriptor_set_layouts = std::move(descriptor_set_layouts),

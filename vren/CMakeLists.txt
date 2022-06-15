@@ -147,9 +147,12 @@ target_link_libraries(vren PUBLIC implot::implot)
 target_include_directories(vren PUBLIC ${IMGUI_VULKAN_BACKEND_DIR})
 target_link_libraries(vren PUBLIC vren_imgui_vulkan_backend)
 
-# spirv-reflect
-find_package(unofficial-spirv-reflect CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC unofficial::spirv-reflect::spirv-reflect)
+# SPIRV-Cross
+find_package(spirv_cross_core CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC spirv-cross-core)
+
+find_package(spirv_cross_reflect CONFIG REQUIRED)
+target_link_libraries(vren PUBLIC spirv-cross-reflect)
 
 # meshoptimizer
 find_package(meshoptimizer CONFIG REQUIRED)

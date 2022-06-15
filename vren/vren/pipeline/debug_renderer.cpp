@@ -98,7 +98,7 @@ vren::debug_renderer::debug_renderer(vren::context const& ctx) :
 	m_no_depth_test_pipeline(create_graphics_pipeline(false))
 {}
 
-vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
+vren::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 {
 	VkVertexInputBindingDescription vtx_bindings[]{
 		{ .binding = 0, .stride = sizeof(vren::debug_renderer_vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX, }, // Vertex buffer
@@ -231,12 +231,18 @@ vren::vk_utils::pipeline vren::debug_renderer::create_graphics_pipeline(bool dep
 	};
 
 	//
+	vren::shader_module vert_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/debug_draw.vert.spv");
+	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/debug_draw.frag.spv");
 
-	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/debug_draw.vert.spv"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/debug_draw.frag.spv")
+	vren::specialized_shader vert_shader = vren::specialized_shader(vert_shader_mod, "main");
+	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");
+
+	vren::specialized_shader shaders[] = {
+		std::move(vert_shader),
+		std::move(frag_shader)
 	};
-	return vren::vk_utils::create_graphics_pipeline(
+
+	return vren::create_graphics_pipeline(
 		*m_context,
 		shaders,
 		&vtx_input_info,
@@ -324,7 +330,7 @@ vren::render_graph_t vren::debug_renderer::render(
 		vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
 
-		vren::vk_utils::pipeline& pipeline = world_space ? m_pipeline : m_no_depth_test_pipeline;
+		vren::pipeline& pipeline = world_space ? m_pipeline : m_no_depth_test_pipeline;
 
 		// Bind pipeline
 		pipeline.bind(command_buffer);

@@ -6,12 +6,15 @@
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
-vren::mesh_shader_draw_pass::mesh_shader_draw_pass(vren::context const& context) :
+vren::mesh_shader_draw_pass::mesh_shader_draw_pass(
+	vren::context const& context,
+	bool occlusion_culling
+) :
 	m_context(&context),
-	m_pipeline(create_graphics_pipeline())
+	m_pipeline(create_graphics_pipeline(occlusion_culling))
 {}
 
-vren::vk_utils::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline()
+vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlusion_culling)
 {
 	/* Vertex input state */
 	/* Input assembly state */
@@ -114,14 +117,23 @@ vren::vk_utils::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline()
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 	};
 
-	/* */
+	//
+	vren::shader_module task_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/draw.task.spv");
+	vren::shader_module mesh_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/draw.mesh.spv");
+	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv");
 
-	vren::vk_utils::shader shaders[]{
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/draw.task.spv"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/draw.mesh.spv"),
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv")
+	vren::specialized_shader task_shader = vren::specialized_shader(task_shader_mod, "main");
+	//task_shader.set_specialization_data("OCCLUSION_CULLING", &occlusion_culling, sizeof(occlusion_culling));
+
+	vren::specialized_shader mesh_shader = vren::specialized_shader(mesh_shader_mod, "main");
+	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");
+	
+	vren::specialized_shader shaders[] = {
+		std::move(task_shader),
+		std::move(mesh_shader),
+		std::move(frag_shader)
 	};
-	return vren::vk_utils::create_graphics_pipeline(
+	return vren::create_graphics_pipeline(
 		*m_context,
 		shaders,
 		nullptr,

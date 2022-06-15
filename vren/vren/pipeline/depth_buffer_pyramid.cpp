@@ -161,20 +161,20 @@ vren::depth_buffer_reductor::depth_buffer_reductor(vren::context const& context)
 	m_depth_buffer_sampler(create_depth_buffer_sampler())
 {}
 
-vren::vk_utils::pipeline vren::depth_buffer_reductor::create_copy_pipeline()
+vren::pipeline vren::depth_buffer_reductor::create_copy_pipeline()
 {
-	return vren::vk_utils::create_compute_pipeline(
-		*m_context,
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/depth_buffer_copy.comp.spv")
-	);
+	vren::shader_module shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/depth_buffer_copy.comp.spv");
+	vren::specialized_shader shader = vren::specialized_shader(shader_mod, "main");
+
+	return vren::create_compute_pipeline(*m_context, shader);
 }
 
-vren::vk_utils::pipeline vren::depth_buffer_reductor::create_reduce_pipeline()
+vren::pipeline vren::depth_buffer_reductor::create_reduce_pipeline()
 {
-	return vren::vk_utils::create_compute_pipeline(
-		*m_context,
-		vren::vk_utils::load_shader_from_file(*m_context, ".vren/resources/shaders/depth_buffer_reduce.comp.spv")
-	);
+	vren::shader_module shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/depth_buffer_reduce.comp.spv");
+	vren::specialized_shader shader = vren::specialized_shader(shader_mod, "main");
+
+	return vren::create_compute_pipeline(*m_context, shader);
 }
 
 vren::vk_sampler vren::depth_buffer_reductor::create_depth_buffer_sampler()

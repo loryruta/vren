@@ -6,9 +6,13 @@
 #include "vk_helpers/misc.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
-vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context) :
+vren::mesh_shader_renderer::mesh_shader_renderer(
+	vren::context const& context,
+	bool occlusion_culling
+) :
 	m_context(&context),
-	m_mesh_shader_draw_pass(context)
+	m_mesh_shader_draw_pass(context, occlusion_culling),
+	m_occlusion_culling(occlusion_culling)
 {}
 
 vren::render_graph_t vren::mesh_shader_renderer::render(

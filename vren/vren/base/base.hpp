@@ -45,6 +45,17 @@ namespace vren
 		return (uint32_t) std::ceil(double(value) / double(divider));
 	}
 
+	template<typename _iterator_t, typename _predicate_t>
+	decltype(auto) find_if_or_fail_const(_iterator_t begin, _iterator_t end, _predicate_t predicate)
+	{
+		auto found = std::find_if(begin, end, predicate);
+		if (found == end)
+		{
+			throw std::runtime_error("No element satisfying the given predicate");
+		}
+		return *found;
+	}
+
 	// ------------------------------------------------------------------------------------------------
 
 	template<typename _t, size_t _size>

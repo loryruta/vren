@@ -92,8 +92,8 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
-		vren::vk_utils::pipeline m_copy_pipeline;
-		vren::vk_utils::pipeline m_reduce_pipeline;
+		vren::pipeline m_copy_pipeline;
+		vren::pipeline m_reduce_pipeline;
 
 		vren::vk_sampler m_depth_buffer_sampler; // Used to copy the depth buffer in a depth image format (D32 sfloat) to a color image format (R32 sfloat)
 
@@ -101,8 +101,8 @@ namespace vren
 		depth_buffer_reductor(vren::context const& context);
 
 	private:
-		vren::vk_utils::pipeline create_copy_pipeline();
-		vren::vk_utils::pipeline create_reduce_pipeline();
+		vren::pipeline create_copy_pipeline();
+		vren::pipeline create_reduce_pipeline();
 
 		vren::vk_sampler create_depth_buffer_sampler();
 

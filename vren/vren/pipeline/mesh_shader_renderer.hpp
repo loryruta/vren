@@ -20,8 +20,18 @@ namespace vren
 		vren::context const* m_context;
 		vren::mesh_shader_draw_pass m_mesh_shader_draw_pass;
 
+		bool m_occlusion_culling;
+
 	public:
-		explicit mesh_shader_renderer(vren::context const& context);
+		explicit mesh_shader_renderer(
+			vren::context const& context,
+			bool occlusion_culling
+		);
+
+		inline bool is_occlusion_culling_enabled() const
+		{
+			return m_occlusion_culling;
+		}
 
 		vren::render_graph_t render(
 			vren::render_graph_allocator& render_graph_allocator,

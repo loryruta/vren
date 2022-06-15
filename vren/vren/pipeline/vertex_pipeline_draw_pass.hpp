@@ -15,13 +15,13 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
-		vren::vk_utils::pipeline m_pipeline;
+		vren::pipeline m_pipeline;
 
 	public:
 		vertex_pipeline_draw_pass(vren::context const& context);
 
 	private:
-		vren::vk_utils::pipeline create_graphics_pipeline();
+		vren::pipeline create_graphics_pipeline();
 
 	public:
 		void draw(
