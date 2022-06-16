@@ -1,14 +1,20 @@
 include_guard()
 
+find_package(Vulkan)
+
 function (compile_shader _SHADERS IN_PATH OUT_PATH)
+    if (!Vulkan_glslc_FOUND)
+        message(FATAL_ERROR "Could not compile shader: glslc could not be found")
+    endif()
+
     add_custom_command(
             OUTPUT
                 ${OUT_PATH}
                 ${OUT_PATH}__enforce_run # *__enforce_run is a fake output file that won't be created and is here to ensure the command is always run
-            COMMAND glslangValidator --target-env vulkan1.2 -g -I${VREN_HOME}/vren/resources/shaders -o ${OUT_PATH} ${IN_PATH}  # TODO SPECIFY glslangValidator FULL PATH
+            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I "${VREN_HOME}/vren/resources/shaders" -g -o ${OUT_PATH} ${IN_PATH}
             MAIN_DEPENDENCY ${IN_PATH}
             WORKING_DIRECTORY ${VREN_HOME}
-            COMMENT "glslangValidator --target-env vulkan1.2 -g -I${VREN_HOME}/vren/resources/shaders -o ${OUT_PATH} ${IN_PATH}"
+            COMMENT "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I \"${VREN_HOME}/vren/resources/shaders\" -g -o ${OUT_PATH} ${IN_PATH}"
     )
     set(SUPER_VAR ${${_SHADERS}})
     list(APPEND SUPER_VAR ${OUT_PATH})
@@ -41,14 +47,14 @@ function (setup_resources TARGET)
 
     set(SHADERS "")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_copy.comp.glsl" "${VREN_SHADERS_DIR}/depth_buffer_copy.comp.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_reduce.comp.glsl" "${VREN_SHADERS_DIR}/depth_buffer_reduce.comp.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/basic_draw.vert.glsl" "${VREN_SHADERS_DIR}/basic_draw.vert.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.vert.glsl" "${VREN_SHADERS_DIR}/debug_draw.vert.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.frag.glsl" "${VREN_SHADERS_DIR}/debug_draw.frag.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.mesh.glsl" "${VREN_SHADERS_DIR}/draw.mesh.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task.glsl" "${VREN_SHADERS_DIR}/draw.task.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag.glsl" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_copy.comp" "${VREN_SHADERS_DIR}/depth_buffer_copy.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_reduce.comp" "${VREN_SHADERS_DIR}/depth_buffer_reduce.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/basic_draw.vert" "${VREN_SHADERS_DIR}/basic_draw.vert.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.vert" "${VREN_SHADERS_DIR}/debug_draw.vert.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/debug_draw.frag" "${VREN_SHADERS_DIR}/debug_draw.frag.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.mesh" "${VREN_SHADERS_DIR}/draw.mesh.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task" "${VREN_SHADERS_DIR}/draw.task.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
 
     add_custom_target(vren_shaders DEPENDS vren_create_shaders_dir ${SHADERS})
 
