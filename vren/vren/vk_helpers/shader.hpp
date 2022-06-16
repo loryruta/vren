@@ -85,10 +85,18 @@ namespace vren
 
 		inline shader_module_specialization_constant const& get_specialization_constant(std::string const& name) const
 		{
-			return vren::find_if_or_fail_const(m_specialization_constants.begin(), m_specialization_constants.end(), [&](auto const& element)
+			auto found = std::find_if(m_specialization_constants.begin(), m_specialization_constants.end(), [&](auto const& element)
 			{
 				return element.m_name == name;
 			});
+
+			if (found == m_specialization_constants.end())
+			{
+				VREN_ERROR("[shader] Specialization constant \"{}\" not found in \"{}\"\n", name, m_name);
+				throw std::runtime_error("Failed to find specialization constant by name");
+			}
+
+			return *found;
 		}
 
 		inline std::vector<VkSpecializationMapEntry> create_specialization_map_entries() const

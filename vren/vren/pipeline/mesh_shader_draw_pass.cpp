@@ -123,7 +123,7 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv");
 
 	vren::specialized_shader task_shader = vren::specialized_shader(task_shader_mod, "main");
-	//task_shader.set_specialization_data("OCCLUSION_CULLING", &occlusion_culling, sizeof(occlusion_culling));
+	task_shader.set_specialization_data("OCCLUSION_CULLING", &occlusion_culling, sizeof(occlusion_culling));
 
 	vren::specialized_shader mesh_shader = vren::specialized_shader(mesh_shader_mod, "main");
 	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");

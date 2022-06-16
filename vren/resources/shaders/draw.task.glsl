@@ -9,11 +9,11 @@
 #define INF 1e35
 #define UINT32_MAX 4294967295u
 
-#define OCCLUSION_CULLING
-
 #include "common.glsl"
 
 layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;
+
+layout(constant_id = 0) const bool OCCLUSION_CULLING = false;
 
 layout(push_constant) uniform PushConstants
 {
@@ -135,52 +135,53 @@ void main()
 
         bool visible = true;
 
-#ifdef OCCLUSION_CULLING
-        vec4 aabb;
-
-        mat4 MV = camera.view * instance.transform;
-
-        // The center of the sphere in camera space
-        vec3 center = (MV * vec4(sphere.center, 1)).xyz;
-
-        // The radius of the sphere is scaled by the maximum of the scale along the XYZ of the MV matrix
-        float max_scale = max(length(MV[0]), max(length(MV[1]), length(MV[2])));
-        float radius = sphere.radius * max_scale;
-
-        if (project_sphere(center, radius, aabb))
+        if (OCCLUSION_CULLING)
         {
-            ivec2 depth_buffer_pyramid_base_size = textureSize(depth_buffer_pyramid, 0);
+            vec4 aabb;
 
-            float width = (aabb.z - aabb.x) * depth_buffer_pyramid_base_size.x;
-            float height = (aabb.w - aabb.y) * depth_buffer_pyramid_base_size.y;
+            mat4 MV = camera.view * instance.transform;
 
-            float level = floor(log2(max(width, height)));
+            // The center of the sphere in camera space
+            vec3 center = (MV * vec4(sphere.center, 1)).xyz;
 
-            // Retrieve the farthest Z coordinate in the AABB containing the projected sphere
-            vec2 tex_coord = (aabb.xy + aabb.zw) * 0.5;
+            // The radius of the sphere is scaled by the maximum of the scale along the XYZ of the MV matrix
+            float max_scale = max(length(MV[0]), max(length(MV[1]), length(MV[2])));
+            float radius = sphere.radius * max_scale;
 
-            // Sampler will do max reduction so it'll compute the maximum of a 2x2 texel quad
-            float depth = textureLod(depth_buffer_pyramid, tex_coord, level).x;
-
-            // Project the Z coordinate of the nearest sphere point, which is the one lying in the vector that link the camera origin to the sphere center
-            float m22 = camera.projection[2][2];
-            float m32 = camera.projection[3][2];
-
-            float nearest_depth = (center.z - radius) < camera.z_near ? -INF : ((center.z - radius) * m22 + m32) / (center.z - radius);
-
-            // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere's content
-            visible = nearest_depth < depth;
-
-            if (!visible)
+            if (project_sphere(center, radius, aabb))
             {
-                //debugPrintfEXT("ID %d occluded - center: %.3f, radius: %.3f, nearest depth: %.3f < depth: %.3f, level: %.3f (%.2v2f), tex_coord: %.2v2f\n", gl_GlobalInvocationID.x, center.z, radius, nearest_depth, depth, level, tex_coord, vec2(width, height));
+                ivec2 depth_buffer_pyramid_base_size = textureSize(depth_buffer_pyramid, 0);
+
+                float width = (aabb.z - aabb.x) * depth_buffer_pyramid_base_size.x;
+                float height = (aabb.w - aabb.y) * depth_buffer_pyramid_base_size.y;
+
+                float level = floor(log2(max(width, height)));
+
+                // Retrieve the farthest Z coordinate in the AABB containing the projected sphere
+                vec2 tex_coord = (aabb.xy + aabb.zw) * 0.5;
+
+                // Sampler will do max reduction so it'll compute the maximum of a 2x2 texel quad
+                float depth = textureLod(depth_buffer_pyramid, tex_coord, level).x;
+
+                // Project the Z coordinate of the nearest sphere point, which is the one lying in the vector that link the camera origin to the sphere center
+                float m22 = camera.projection[2][2];
+                float m32 = camera.projection[3][2];
+
+                float nearest_depth = (center.z - radius) < camera.z_near ? -INF : ((center.z - radius) * m22 + m32) / (center.z - radius);
+
+                // If the nearest sphere point is closer than the farthest point in the area, then we need to draw the sphere's content
+                visible = nearest_depth < depth;
+
+                if (!visible)
+                {
+                    //debugPrintfEXT("ID %d occluded - center: %.3f, radius: %.3f, nearest depth: %.3f < depth: %.3f, level: %.3f (%.2v2f), tex_coord: %.2v2f\n", gl_GlobalInvocationID.x, center.z, radius, nearest_depth, depth, level, tex_coord, vec2(width, height));
+                }
+            }
+            else
+            {
+                visible = false;
             }
         }
-        else
-        {
-            visible = false;
-        }
-#endif
 
         if (visible)
         {
