@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VREN</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Why do we need it?" href="render_graph/why_do_we_need_it.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+    <a href="index.html" class="title" disabled>VREN</a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="render_graph/index.html">The render-graph architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="render_graph/why_do_we_need_it.html">Why do we need it?</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="render_graph/why_do_we_need_it.html#quick-overview-to-pipeline-barriers">Quick overview to pipeline barriers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="render_graph/why_do_we_need_it.html#how-do-they-look-in-vulkan">How do they look in Vulkan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="render_graph/why_do_we_need_it.html#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">GPU radix-sort</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#how-it-works">How it works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parallelizing-it">Parallelizing it</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#count-the-number-of-symbols">Count the number of symbols</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#exclusive-scan-to-find-global-and-local-offsets">Exclusive-scan to find global and local offsets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#re-order-elements">Re-order elements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#repeat">Repeat!</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#resources">Resources</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">VREN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>GPU radix-sort</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="gpu-radix-sort">
+<h1>GPU radix-sort<a class="headerlink" href="#gpu-radix-sort" title="Permalink to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<p>VREN implements a useful parallel radix-sort algorithm. This algorithm works very well when sorting large buffers
+but is constrained to sort only 32-bit integer keys. Moreover it’s very easy to implement.</p>
+<p>Let’s see how it works by considering a practical sequential example:</p>
+<section id="how-it-works">
+<h2>How it works<a class="headerlink" href="#how-it-works" title="Permalink to this heading"></a></h2>
+<p>We have an array of 10 elements and a radix (or base) of 10:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mi">92</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We iterate every element of the array and we count the occurrences of the symbols of the least significant (LS) digit.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 35%" />
+<col style="width: 29%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Count</p></th>
+<th class="head"><p>Offset</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>2</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>2</p></td>
+<td><p>2</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>1</p></td>
+<td><p>4</p></td>
+</tr>
+<tr class="row-odd"><td><p>3</p></td>
+<td><p>1</p></td>
+<td><p>5</p></td>
+</tr>
+<tr class="row-even"><td><p>4</p></td>
+<td><p>0</p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-odd"><td><p>5</p></td>
+<td><p>2</p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-even"><td><p>6</p></td>
+<td><p>0</p></td>
+<td><p>8</p></td>
+</tr>
+<tr class="row-odd"><td><p>7</p></td>
+<td><p>0</p></td>
+<td><p>8</p></td>
+</tr>
+<tr class="row-even"><td><p>8</p></td>
+<td><p>1</p></td>
+<td><p>8</p></td>
+</tr>
+<tr class="row-odd"><td><p>9</p></td>
+<td><p>1</p></td>
+<td><p>9</p></td>
+</tr>
+</tbody>
+</table>
+<p>We obtain the Offset column by running an exclusive-scan on the Count column.</p>
+<p>Now we can iterate the array again, take the offset from the symbol of the LS digit, and place the element at its position.</p>
+<p>Note that there could be more than one element falling on the same offset: e.g. there are 2 elements whose LS digit is 0 and both should be at offset 0.
+For this reason we have to keep a counter that we increment when an element at the said offset is placed.</p>
+<p>After this run the array will look as following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">92</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">39</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The array is sorted only for the first LS digit.</p>
+<p>If we run back this algorithm considering the next LS digit until the most significant (MS) digit we would get a sorted array.
+In this case we see all numbers are &lt; 100, so we can say the MS digit is at the 1st position (starting from 0).</p>
+<p>After another run we get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">92</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Which is the sorted array!</p>
+<p>In this example we considered a radix of 10 but we can generalize it to a more computer-friendly radix such as any power-of-2 radix (e.g. 2, 4, 8 or 16…).</p>
+</section>
+<section id="parallelizing-it">
+<h2>Parallelizing it<a class="headerlink" href="#parallelizing-it" title="Permalink to this heading"></a></h2>
+<p>This algorithm can be parallelized fairly easily.</p>
+<p>In the example above we saw that the sorting is split in many runs, one for every digit, right to left.
+Every run can be split in turn in the following steps:</p>
+<ol class="arabic simple">
+<li><p>Count the number of symbols</p></li>
+<li><p>Exclusive-scan to find global and local offsets</p></li>
+<li><p>Re-order elements</p></li>
+</ol>
+<p>Consider an array of <code class="docutils literal notranslate"><span class="pre">N</span></code> elements and a radix of 16 (so 16 symbols) and let’s see these steps in detail:</p>
+<section id="count-the-number-of-symbols">
+<h3>Count the number of symbols<a class="headerlink" href="#count-the-number-of-symbols" title="Permalink to this heading"></a></h3>
+<p>How can we efficiently count the number of occurrences for a certain symbol over the array?</p>
+<p>It’s trivially convenient to visit array elements in parallel. We take a workgroup size of 32 and we dispatch the
+number of workgroups based on the array size (i.e. <code class="docutils literal notranslate"><span class="pre">ceil(N</span> <span class="pre">/</span> <span class="pre">32)</span></code>).</p>
+<p>Now, to count elements, a first dumb approach would be to create a 16 u32 buffer and perform an <code class="docutils literal notranslate"><span class="pre">atomicIncrement(buffer[i])</span></code>
+operation every time an occurrence of the symbol <code class="docutils literal notranslate"><span class="pre">i</span></code> is found. Considering we want <code class="docutils literal notranslate"><span class="pre">N</span></code> to be very large (&gt; 1M), it’s obviously
+inefficient to have a huge amount of parallel invocations to work atomically on 16x4 memory slots.</p>
+<p>We can do better by restricting the atomic operations within a workgroup and counting the occurrences for a sub-block of the original array in shared-memory.
+Then we can get the global counts through a reduction operation (that leads to additional dispatches… but that’s fine).</p>
+<p>We can do even better! Vulkan 1.1 introduced an extension that provides a more efficient - but more restrictive -
+alternative for intra-workgroup operations (<a class="reference external" href="https://www.khronos.org/blog/vulkan-subgroup-tutorial">see this</a>),
+that we can use instead of shared-memory <code class="docutils literal notranslate"><span class="pre">atomicIncrement(symbol)</span></code>.</p>
+</section>
+<section id="exclusive-scan-to-find-global-and-local-offsets">
+<h3>Exclusive-scan to find global and local offsets<a class="headerlink" href="#exclusive-scan-to-find-global-and-local-offsets" title="Permalink to this heading"></a></h3>
+<p>Now we have a global counting buffer of size 16 holding the global count for every hexadecimal symbol.
+As we introduced above, we run an exclusive-scan of it and we get 16 offsets, one for every symbol.</p>
+<p>There’s an evident issue we’ve not considered until now. Let’s examine the following example:</p>
+<p>As we’re accessing the array in parallel, there could be many threads (also of different workgroups) whose working item
+is a digit of value 5. Out of the previous step we only know the digit 5 has to go to the global offset e.g. 100. Those threads have to
+talk to each other in order to reserve to their element a unique slot within the output array.</p>
+<p>Also in this case, we have the dumb solution: 16 atomic counters. But we reject it for the same reason of before.</p>
+<p>We come up with a similar procedure: instead of having global atomic counters, we want the atomic counters to be local to the workgroup
+to maximize the parallelism.</p>
+<p>In the previous step we had a local counting buffer, stored in shared-memory that referred to a sub-block of the array. We then summed together the local
+counting buffer to get a global counting buffer.</p>
+<p>We can use the local counting buffer to get a “local offset buffer” (through workgroup exclusive-scan), that if used along with the global offset buffer,
+can better index the element within the destination buffer.</p>
+<p>Now atomic operations are restricted to the workgroup: if we have many threads (even of different workgroups) that want to place an element with the digit 5,
+the global offset buffer will tell where the symbol has to be placed (e.g. 100), and the local offset buffer will tell the position according to
+the workgroup (e.g. workgroup 0 at 0, workgroup 1 at 14…). If threads of the same workgroup want to place the same element, then an <code class="docutils literal notranslate"><span class="pre">atomicIncrement</span></code>
+on a shared-memory variable will be used (or better, Vulkan 1.1 subgroup arithmetics).</p>
+</section>
+<section id="re-order-elements">
+<h3>Re-order elements<a class="headerlink" href="#re-order-elements" title="Permalink to this heading"></a></h3>
+<p>Finally we have to re-order the array and place elements at their correct offset as described earlier.</p>
+<p>It’s trivial to understand that we can’t read and write concurrently from the same array. In fact, this parallel algorithm
+requires an additional <strong>temporary array</strong> (at least as big as the input array) where we’ll be writing to the sorted elements.</p>
+</section>
+<section id="repeat">
+<h3>Repeat!<a class="headerlink" href="#repeat" title="Permalink to this heading"></a></h3>
+<p>Now this procedure has to be repeated for every digit from LS to MS. For every run the temporary array is swapped with the input array:
+one is used as the input, the other one as the output.</p>
+<p>Considering we were working with 16 symbols (4-bit digits) per run and we want to sort 32-bit keys we would need 8 runs. While for 64-bit we would need 16 runs.</p>
+</section>
+</section>
+<section id="resources">
+<h2>Resources<a class="headerlink" href="#resources" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="http://www.heterogeneouscompute.org/wordpress/wp-content/uploads/2011/06/RadixSort.pdf">Introduction to GPU Radix Sort - T. Harada, L. Howes</a> (link is broken)</p></li>
+<li><p><a class="reference external" href="https://vgc.poly.edu/~csilva/papers/cgf.pdf">Fast 4-way parallel radix sorting on GPUs - L. Ha, J. Kruger, C. T. Silva</a></p></li>
+<li><p><a class="reference external" href="https://github.com/Devsh-Graphics-Programming/Nabla/tree/42301f6861f928e4eff2c5305feffaa681a9e111/include/nbl/builtin/glsl/ext/RadixSort">Nabla’s RadixSort</a></p></li>
+<li><p><a class="reference external" href="https://www.youtube.com/watch?v=F620ommtjqk&amp;list=PLAwxTw4SYaPnFKojVQrmyOGFCqHTxfdv2">Udacity parallel programming tutorial</a></p></li>
+<li><p><a class="reference external" href="https://www.khronos.org/blog/vulkan-subgroup-tutorial">Vulkan subgroup tutorial</a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Lorenzo Rutayisire.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
