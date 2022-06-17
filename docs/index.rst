@@ -6,5 +6,6 @@ vren's documentation
    intro
    render_graph/index
    user_docs/index
+   gpu_radix_sort
 
-Hello world!2
+Hello world!
