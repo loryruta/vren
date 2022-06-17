@@ -48,6 +48,12 @@ namespace vren
 		uint32_t m_color;
 	};
 
+	struct debug_renderer_cube
+	{
+		glm::vec3 m_min, m_max;
+		uint32_t m_color;
+	};
+
 	// ------------------------------------------------------------------------------------------------
 	// Debug renderer draw buffer
 	// ------------------------------------------------------------------------------------------------
@@ -83,6 +89,13 @@ namespace vren
 		inline void add_sphere(vren::debug_renderer_sphere const& sphere)
 		{
 			add_spheres(&sphere, 1);
+		}
+
+		void add_cubes(vren::debug_renderer_cube const* cubes, size_t cube_count);
+
+		inline void add_cube(vren::debug_renderer_cube const& cube)
+		{
+			add_cubes(&cube, 1);
 		}
 	};
 

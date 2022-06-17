@@ -311,7 +311,7 @@ void vren_demo::app::record_commands(
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
 	// Draw model AABB
-	m_debug_draw_buffer.add_line({ .m_from = m_model_min, .m_to = m_model_max, .m_color = 0xffffff });
+	m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
 
 	// Render-graph begin
 	vren::render_graph_builder render_graph(m_render_graph_allocator);

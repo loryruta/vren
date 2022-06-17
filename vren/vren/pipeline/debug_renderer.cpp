@@ -88,6 +88,36 @@ void vren::debug_renderer_draw_buffer::add_spheres(vren::debug_renderer_sphere c
 	add_lines(lines.data(), lines.size());
 }
 
+void vren::debug_renderer_draw_buffer::add_cubes(vren::debug_renderer_cube const* cubes, size_t count)
+{
+	std::vector<vren::debug_renderer_line> lines(count * 6);
+
+	for (uint32_t i = 0; i < count; i++)
+	{
+		vren::debug_renderer_cube const& cube = cubes[i];
+	
+		glm::vec3 m = cube.m_min;
+		glm::vec3 M = cube.m_max;
+
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = m, .m_to = glm::vec3(M.x, m.y, m.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, m.y, m.z), .m_to = glm::vec3(M.x, m.y, M.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, m.y, M.z), .m_to = glm::vec3(m.x, m.y, M.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(m.x, m.y, M.z), .m_to = m, .m_color = cube.m_color });
+
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(m.x, M.y, m.z), .m_to = glm::vec3(M.x, M.y, m.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, M.y, m.z), .m_to = glm::vec3(M.x, M.y, M.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, M.y, M.z), .m_to = glm::vec3(m.x, M.y, M.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(m.x, M.y, M.z), .m_to = glm::vec3(m.x, M.y, m.z), .m_color = cube.m_color });
+
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(m.x, m.y, m.z), .m_to = glm::vec3(m.x, M.y, m.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, m.y, m.z), .m_to = glm::vec3(M.x, M.y, m.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(M.x, m.y, M.z), .m_to = glm::vec3(M.x, M.y, M.z), .m_color = cube.m_color });
+		lines.emplace_back<vren::debug_renderer_line>({ .m_from = glm::vec3(m.x, m.y, M.z), .m_to = glm::vec3(m.x, M.y, M.z), .m_color = cube.m_color });
+	}
+
+	add_lines(lines.data(), lines.size());
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Debug renderer
 // --------------------------------------------------------------------------------------------------------------------------------
