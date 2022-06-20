@@ -7,14 +7,17 @@ function (compile_shader _SHADERS IN_PATH OUT_PATH)
         message(FATAL_ERROR "Could not compile shader: glslc could not be found")
     endif()
 
+    # Definitions
+    set(DEFINITIONS_ ${ARGV3})
+
     add_custom_command(
             OUTPUT
                 ${OUT_PATH}
                 ${OUT_PATH}__enforce_run # *__enforce_run is a fake output file that won't be created and is here to ensure the command is always run
-            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I "${VREN_HOME}/vren/resources/shaders" -g -o ${OUT_PATH} ${IN_PATH}
+            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I "${VREN_HOME}/vren/resources/shaders" ${DEFINITIONS_} -g -o ${OUT_PATH} ${IN_PATH}
             MAIN_DEPENDENCY ${IN_PATH}
             WORKING_DIRECTORY ${VREN_HOME}
-            COMMENT "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I \"${VREN_HOME}/vren/resources/shaders\" -g -o ${OUT_PATH} ${IN_PATH}"
+            COMMENT "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.2 -I \"${VREN_HOME}/vren/resources/shaders\" ${DEFINITIONS_} -g -o ${OUT_PATH} ${IN_PATH}"
     )
     set(SUPER_VAR ${${_SHADERS}})
     list(APPEND SUPER_VAR ${OUT_PATH})
@@ -38,12 +41,12 @@ function (setup_resources TARGET)
     # Shaders
     set(VREN_SHADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/.vren/resources/shaders")
 
-    add_custom_target(
-            vren_create_shaders_dir
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${VREN_SHADERS_DIR}
-            # TODO WORKING_DIR
-            COMMENT "Creating directory: ${VREN_SHADERS_DIR}"
-    )
+    #add_custom_target(
+    #        vren_create_shaders_dir
+    #        COMMAND ${CMAKE_COMMAND} -E make_directory ${VREN_SHADERS_DIR}
+    #        # TODO WORKING_DIR
+    #        COMMENT "Creating directory: ${VREN_SHADERS_DIR}"
+    #)
 
     set(SHADERS "")
 
@@ -55,9 +58,12 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.mesh" "${VREN_SHADERS_DIR}/draw.mesh.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task" "${VREN_SHADERS_DIR}/draw.task.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan.comp" "${VREN_SHADERS_DIR}/blelloch_scan_upsweep.comp.spv" "-DMAIN_UPSWEEP=main")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" "-DMAIN_DOWNSWEEP=main")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/pbr_draw.reduce.spv")
 
-    add_custom_target(vren_shaders DEPENDS vren_create_shaders_dir ${SHADERS})
+    add_custom_target(vren_${TARGET}_shaders DEPENDS ${SHADERS})
 
-    add_dependencies(${TARGET} vren_shaders)
+    add_dependencies(${TARGET} vren_${TARGET}_shaders)
 
 endfunction()

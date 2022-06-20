@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include <vren/base/base.hpp>
+#include <vren/base/kd_tree.hpp>
 
 void linear_nearest_neighbour_search(float const* points, size_t point_stride, uint32_t* indices, size_t count, float const* sample, uint32_t& best_point, float& best_distance_squared)
 {

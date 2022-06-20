@@ -6,7 +6,9 @@ include(CheckCXXSourceCompiles)
 set(SRC
         vren/base/base.hpp
         vren/base/bounding_shape.cpp
+        vren/base/fixed_capacity_vector.hpp
         vren/base/kd_tree.cpp
+        vren/base/kd_tree.hpp
         vren/base/resource_container.hpp
 
         vren/model/basic_model_draw_buffer.hpp
@@ -49,6 +51,11 @@ set(SRC
         vren/pool/descriptor_pool.hpp
         vren/pool/descriptor_pool.cpp
         vren/pool/object_pool.hpp
+        
+        vren/primitive/blelloch_scan.cpp
+        vren/primitive/blelloch_scan.hpp
+        vren/primitive/radix_sort.cpp
+        vren/primitive/radix_sort.hpp
 
         vren/third_party/impl.cpp
 

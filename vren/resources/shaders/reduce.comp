@@ -1,0 +1,31 @@
+#version 460
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+#define MAX_ITERS 4
+#define NUM_ITEMS (gl_WorkGroupSize.x * MAX_ITERS) 
+
+layout(push_constant) uniform PushConstants
+{
+	uint offset;
+	uint stride;
+};
+
+layout(set = 0, binding = 0) buffer Buffer
+{
+	uint values[];
+};
+
+void main()
+{
+	for (uint i = 0; i < MAX_ITERS; i++)
+	{
+		uint a_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2;
+		uint b_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2 + stride;
+
+		if (b_idx < values.length())
+		{
+			values[b_idx] = values[a_idx] + values[b_idx];
+		}
+	}
+}

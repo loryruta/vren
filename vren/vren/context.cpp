@@ -106,6 +106,7 @@ VkInstance vren::context::create_instance()
 	/* Extensions */
 	std::vector<char const*> extensions = m_info.m_extensions;
 	extensions.insert(extensions.end(), {
+		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 		VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME,
 	});

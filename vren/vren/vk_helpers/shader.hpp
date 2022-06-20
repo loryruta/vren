@@ -135,7 +135,7 @@ namespace vren
 	public:
 		inline specialized_shader(
 			vren::shader_module const& shader_module,
-			std::string const& entry_point
+			std::string const& entry_point = "main"
 		) :
 			m_shader_module(&shader_module),
 			m_entry_point(&shader_module.get_entry_point(entry_point))

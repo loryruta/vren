@@ -30,6 +30,6 @@ void main()
     v_position = p.xyz;
     v_normal = a_normal;
     v_texcoords = a_texcoords;
-    v_material_idx = 0;
+    v_material_idx = 0; // TODO
     v_color = vec3(1);
 }
