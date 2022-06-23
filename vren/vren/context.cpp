@@ -178,6 +178,7 @@ VkPhysicalDevice vren::context::find_physical_device()
 		throw std::runtime_error("Unsupported timestamp queries for compute and graphics queue families");
 	}
 
+	/*
 	std::cout << "Physical device found:" << std::endl;
 	std::cout << "- Type:           " << m_physical_device_properties.deviceType << std::endl;
 	std::cout << "- Vendor ID:      " << m_physical_device_properties.vendorID << std::endl;
@@ -185,6 +186,7 @@ VkPhysicalDevice vren::context::find_physical_device()
 	std::cout << "- Driver version: " << m_physical_device_properties.driverVersion << std::endl;
 	std::cout << "- Name:           " << m_physical_device_properties.deviceName << std::endl;
 	std::cout << "- API version:    " << m_physical_device_properties.apiVersion << std::endl;
+	*/
 
 	return found;
 }
@@ -253,18 +255,22 @@ VkDevice vren::context::create_logical_device()
 	uint32_t queue_families_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_families_count, nullptr);
 
-	/* Queue infos */
+	// Queue infos
 	std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_families_count);
-	for (int i = 0; i < queue_families_count; i++)
+	float priority = 1.0f;
+	for (uint32_t i = 0; i < queue_families_count; i++)
 	{
-		float priority = 1.0f;
-		queue_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queue_infos[i].queueFamilyIndex = i;
-		queue_infos[i].queueCount = 1;
-		queue_infos[i].pQueuePriorities = &priority;
+		queue_infos[i] = {
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = NULL,
+			.queueFamilyIndex = i,
+			.queueCount = 1,
+			.pQueuePriorities = &priority
+		};
 	}
-
-	/* Extensions */
+	
+	// Extensions
 	std::vector<char const*> dev_ext = m_info.m_device_extensions;
 	dev_ext.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	dev_ext.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
