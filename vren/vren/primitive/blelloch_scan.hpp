@@ -7,10 +7,14 @@ namespace vren
 {
     class blelloch_scan
     {
+    public:
+        inline static const uint32_t k_workgroup_size = 32;
+        inline static const uint32_t k_iterations_num = 4;
+
     private:
         vren::context const* m_context;
 
-        vren::pipeline m_upsweep_pipeline;
+        vren::pipeline m_reduce_pipeline;
         vren::pipeline m_downsweep_pipeline;
 
     public:

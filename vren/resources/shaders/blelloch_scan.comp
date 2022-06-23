@@ -1,12 +1,13 @@
 #version 460
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 #define MAX_ITERS 4
-#define NUM_ITEMS (gl_WorkGroupSize.x * MAX_ITERS) 
 
-#if !defined(MAIN_UPSWEEP) && !defined(MAIN_DOWNSWEEP)
-#	error "Entrypoint not defined. MAIN_UPSWEEP or MAIN_DOWNSWEEP must be set to 'main'"
+#if !defined(MAIN_REDUCE) && !defined(MAIN_DOWNSWEEP)
+#	error "Entrypoint not defined. MAIN_REDUCE or MAIN_DOWNSWEEP must be set to 'main'"
 #endif
 
 layout(push_constant) uniform PushConstants
@@ -17,20 +18,59 @@ layout(push_constant) uniform PushConstants
 
 layout(set = 0, binding = 0) buffer Buffer
 {
-	uint values[]; // Count must be a power of 2
+	uint data[]; // Length must be a power of 2
 };
 
-void MAIN_UPSWEEP()
+shared uint s_data[32 * MAX_ITERS * 2];
+
+void MAIN_REDUCE()
 {
+	// Data is firstly copied to shared memory
 	for (uint i = 0; i < MAX_ITERS; i++)
 	{
 		uint a_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2;
 		uint b_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2 + stride;
 
-		if (b_idx < values.length())
+		uint item_idx = gl_LocalInvocationID.x * MAX_ITERS + i;
+
+		s_data[item_idx << 1] = data[a_idx];
+		s_data[(item_idx << 1) + 1] = data[b_idx];
+
+		// a_idx and b_idx won't go out of bounds whether the size of data is at least (32 * MAX_ITERS * 2).
+		// E.g. if 32 * MAX_ITERS * 2 = 128 * 2 = 256, since data length is constrained to be a power of 2,
+		// any higher power of 2 will be a multiple of 256 and therefore will perfectly fit the workgroups.
+	}
+
+	memoryBarrierShared();
+
+	// Reduce on shared memory
+	for (uint j = 0; j < log2(32 * MAX_ITERS * 2); j++)
+	{
+		for (uint i = 0; i < MAX_ITERS; i++)
 		{
-			values[b_idx] = values[a_idx] + values[b_idx];
+			uint item_idx = gl_LocalInvocationID.x * MAX_ITERS + i;
+
+			if (item_idx < ((32 * MAX_ITERS) >> j))
+			{
+				uint la_idx = (1 << j) - 1 + (item_idx << (j + 1));
+				uint lb_idx = (1 << j) - 1 + (item_idx << (j + 1)) + (1 << j); 
+
+				s_data[lb_idx] = s_data[la_idx] + s_data[lb_idx];
+			}
 		}
+		
+		memoryBarrierShared();
+	}
+
+	// Finally the data is copied back to global memory
+	for (uint i = 0; i < MAX_ITERS; i++)
+	{
+		uint a_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2;
+		uint b_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2 + stride;
+		
+		uint item_idx = gl_LocalInvocationID.x * MAX_ITERS + i;
+		data[a_idx] = s_data[item_idx << 1];
+		data[b_idx] = s_data[(item_idx << 1) + 1];
 	}
 }
 
@@ -41,11 +81,11 @@ void MAIN_DOWNSWEEP()
 		uint a_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2;
 		uint b_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2 + stride;
 
-		if (b_idx < values.length())
+		if (b_idx < data.length())
 		{
-			uint tmp = values[b_idx];
-			values[b_idx] = values[a_idx] + values[b_idx];
-			values[a_idx] = tmp;
+			uint tmp = data[b_idx];
+			data[b_idx] = data[a_idx] + data[b_idx];
+			data[a_idx] = tmp;
 		}
 	}
 }

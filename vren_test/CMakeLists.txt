@@ -13,7 +13,7 @@ function (vren_test_executable_setup TARGET_NAME)
     target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
     # vren
-    target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_WARN)
+    target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_ERROR)
 
     target_include_directories(${TARGET_NAME} PUBLIC "${VREN_HOME}/vren")
     target_link_libraries(${TARGET_NAME} PUBLIC vren)
