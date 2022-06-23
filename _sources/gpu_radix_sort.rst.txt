@@ -74,6 +74,7 @@ Every run can be split in turn in the following steps:
 1. Count the number of symbols
 2. Exclusive-scan to find global and local offsets
 3. Re-order elements
+4. Repeat 1. 2. 3. for every digit until MS digit included
 
 Consider an array of ``N`` elements and a radix of 16 (so 16 symbols) and let's see these steps in detail:
 
