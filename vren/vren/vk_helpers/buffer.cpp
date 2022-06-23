@@ -72,6 +72,49 @@ vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
 	};
 }
 
+vren::vk_utils::buffer vren::vk_utils::alloc_buffer(
+	vren::context const& context,
+	VkBufferUsageFlags buffer_usage,
+	VkDeviceSize size,
+	VmaAllocationCreateFlags allocation_flags,
+	VkMemoryPropertyFlags memory_property_flags
+)
+{
+	VkBufferCreateInfo buffer_create_info{
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.size = size,
+		.usage = buffer_usage,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = nullptr
+	};
+
+	VmaAllocationCreateInfo allocation_create_info{
+		.flags = allocation_flags,
+		.usage = VMA_MEMORY_USAGE_UNKNOWN,
+		.requiredFlags = memory_property_flags,
+		.preferredFlags = NULL,
+		.memoryTypeBits = UINT32_MAX,
+		.pool = VK_NULL_HANDLE,
+		.pUserData = nullptr,
+		.priority = 0.0f
+	};
+
+
+	VkBuffer buffer;
+	VmaAllocation allocation;
+	VmaAllocationInfo allocation_info;
+	VREN_CHECK(vmaCreateBuffer(context.m_vma_allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info), &context);
+
+	return vren::vk_utils::buffer{
+		.m_buffer = vren::vk_buffer(context, buffer),
+		.m_allocation = vren::vma_allocation(context, allocation),
+		.m_allocation_info = allocation_info
+	};
+}
+
 void vren::vk_utils::update_host_visible_buffer(
 	vren::context const& ctx,
 	vren::vk_utils::buffer& buf,
