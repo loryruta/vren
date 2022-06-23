@@ -30,6 +30,13 @@ namespace vren
 		vren::vk_query_pool create_query_pool() const;
 
 	public:
+		void profile(
+			VkCommandBuffer command_buffer,
+			vren::resource_container& resource_container,
+			uint32_t slot_idx,
+			std::function<void(VkCommandBuffer command_buffer, vren::resource_container& resource_container)> const& sample_func
+		);
+
 		vren::render_graph_t profile(
 			vren::render_graph_allocator& allocator,
 			vren::render_graph_t const& sample,

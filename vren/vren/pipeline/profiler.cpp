@@ -29,6 +29,22 @@ vren::vk_query_pool vren::profiler::create_query_pool() const
 	return vren::vk_query_pool(*m_context, query_pool);
 }
 
+void vren::profiler::profile(
+	VkCommandBuffer command_buffer,
+	vren::resource_container& resource_container,
+	uint32_t slot_idx,
+	std::function<void(VkCommandBuffer command_buffer, vren::resource_container& resource_container)> const& sample_func
+)
+{
+	vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, slot_idx * 2, 2);
+	vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 0);
+
+	sample_func(command_buffer, resource_container);
+
+	vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);
+}
+
+
 vren::render_graph_t vren::profiler::profile(
 	vren::render_graph_allocator& allocator,
 	vren::render_graph_t const& sample,
