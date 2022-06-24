@@ -4,13 +4,15 @@ include("${VREN_HOME}/VRen.cmake")
 
 set(SRC
         vren_test/kd_tree.cpp
-        vren_test/blelloch_scan.cpp
+        vren_test/primitives/blelloch_scan.cpp
+        vren_test/primitives/reduce.cpp
+        vren_test/gpu_test_bench.hpp
         vren_test/main.cpp
         )
 
 function (vren_test_executable_setup TARGET_NAME)
     # Self include
-    target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/vren_test")
 
     # vren
     target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_ERROR)

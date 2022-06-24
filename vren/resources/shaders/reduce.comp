@@ -1,9 +1,14 @@
 #version 460
 
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-#define MAX_ITERS 4
-#define NUM_ITEMS (gl_WorkGroupSize.x * MAX_ITERS) 
+#define NUM_ITERS 16
 
 layout(push_constant) uniform PushConstants
 {
@@ -13,19 +18,66 @@ layout(push_constant) uniform PushConstants
 
 layout(set = 0, binding = 0) buffer Buffer
 {
-	uint values[];
+	uint data[]; // Length must be a power of 2
 };
 
 void main()
 {
-	for (uint i = 0; i < MAX_ITERS; i++)
-	{
-		uint a_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2;
-		uint b_idx = offset + (gl_GlobalInvocationID.x * MAX_ITERS + i) * stride * 2 + stride;
+	uint thread_values[NUM_ITERS];
 
-		if (b_idx < values.length())
+	// Read values from global memory
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		thread_values[i] = data[offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride];
+	}
+
+	// Perform a invocation-wide reduction
+	for (uint level = 0; level < log2(NUM_ITERS); level++)
+	{
+        for (uint item_idx = 0; item_idx < (NUM_ITERS >> (level + 1)); item_idx++)
+        {
+            uint a_idx = (1 << level) - 1 + (item_idx << (level + 1));
+            uint b_idx = (1 << level) - 1 + (item_idx << (level + 1)) + (1 << level);
+
+            thread_values[b_idx] = thread_values[a_idx] + thread_values[b_idx];
+        }
+	}
+
+	// Perform a subgroup-wide reduction
+	uint thread_value = thread_values[NUM_ITERS - 1];
+
+	for (uint level = 0; level < log2(32); level++)
+	{
+		uint thread_idx = gl_LocalInvocationID.x;
+
+		uint level_mask = (1 << level) - 1; 
+		uint active_threads = subgroupBallot((thread_idx & level_mask) == level_mask).x;
+
+		uint sum_mask = 1;
+		for (uint i = 1 << (level + 1); i > 1; i--)
 		{
-			values[b_idx] = values[a_idx] + values[b_idx];
+			sum_mask <<= 1; sum_mask |= 1;
 		}
+
+		uint shift_by = 1 << (level + 1);
+		for (; sum_mask != 0; sum_mask = shift_by < 32 ? sum_mask << shift_by : 0) // Left shifting by 32 or higher is UB
+		{
+			if (subgroupInverseBallot(uvec4(active_threads & sum_mask)))
+			{
+				uint sum = subgroupAdd(thread_value);
+				if (subgroupInverseBallot(uvec4(1 << uint(log2(sum_mask)))))
+				{
+					thread_value = sum;
+				}
+			}
+		}
+	}
+
+	thread_values[NUM_ITERS - 1] = thread_value;
+
+	// Write values back to global memory
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		data[offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride] = thread_values[i];
 	}
 }
