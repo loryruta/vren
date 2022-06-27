@@ -4,7 +4,7 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 
-#extension GL_EXT_debug_printf : enable
+#define UINT32_MAX 0xffffffffu
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -20,6 +20,16 @@ layout(set = 0, binding = 0) buffer Buffer
 {
 	uint data[]; // Length must be a power of 2
 };
+
+uint previous_power_of_2(uint v)
+{
+	 v |= v >> 1;
+     v |= v >> 2;
+     v |= v >> 4;
+     v |= v >> 8;
+     v |= v >> 16;
+     return v - (v >> 1);
+}
 
 void main()
 {
@@ -53,19 +63,19 @@ void main()
 		uint level_mask = (1 << level) - 1; 
 		uint active_threads = subgroupBallot((thread_idx & level_mask) == level_mask).x;
 
-		uint sum_mask = 1;
-		for (uint i = 1 << (level + 1); i > 1; i--)
-		{
-			sum_mask <<= 1; sum_mask |= 1;
-		}
+		uint sum_mask = (level + 1) < 5 ? (1 << (1 << (level + 1))) - 1 : UINT32_MAX; // level + 1 >= 5 then 2^(2^(level + 1)) overflows (2^32 overflows)
 
 		uint shift_by = 1 << (level + 1);
 		for (; sum_mask != 0; sum_mask = shift_by < 32 ? sum_mask << shift_by : 0) // Left shifting by 32 or higher is UB
 		{
-			if (subgroupInverseBallot(uvec4(active_threads & sum_mask)))
+			uint sum_threads = active_threads & sum_mask;
+
+			if (subgroupInverseBallot(uvec4(sum_threads)))
 			{
 				uint sum = subgroupAdd(thread_value);
-				if (subgroupInverseBallot(uvec4(1 << uint(log2(sum_mask)))))
+
+				uint last_thread = previous_power_of_2(sum_threads);
+				if (subgroupInverseBallot(uvec4(last_thread)))
 				{
 					thread_value = sum;
 				}

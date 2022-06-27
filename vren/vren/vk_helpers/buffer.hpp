@@ -28,7 +28,7 @@ namespace vren::vk_utils
 		VmaAllocationInfo m_allocation_info;
 	};
 
-	// Deprecated
+	// TODO Rename to alloc_host_visible_device_local_buffer
 	vren::vk_utils::buffer alloc_host_visible_buffer(
 		vren::context const& ctx,
 		VkBufferUsageFlags buffer_usage,
@@ -36,19 +36,21 @@ namespace vren::vk_utils
 		bool persistently_mapped = false
 	);
 
-	// Deprecated
+	// TODO Rename to alloc_device_only_buffer
 	vren::vk_utils::buffer alloc_device_only_buffer(
 		vren::context const& ctx,
 		VkBufferUsageFlags buffer_usage,
 		size_t size
 	);
 
-	vren::vk_utils::buffer alloc_buffer(
+	/** 
+	 * Allocate a host-only buffer: for sure host visible, possibly host coherent and host cached but not device local.
+	 */
+	vren::vk_utils::buffer alloc_host_only_buffer(
 		vren::context const& context,
 		VkBufferUsageFlags buffer_usage,
 		VkDeviceSize size,
-		VmaAllocationCreateFlags allocation_flags,
-		VkMemoryPropertyFlags memory_property_flags
+		bool persistently_mapped = false
 	);
 
 	void update_host_visible_buffer(vren::context const& context, vren::vk_utils::buffer& buffer, void const* data, size_t size, size_t dst_offset);

@@ -34,23 +34,20 @@ namespace vren_test
             m_reference_buffer.resize(length);
 
             m_host_buffer = std::make_unique<vren::vk_utils::buffer>(
-                vren::vk_utils::alloc_buffer(
+                vren::vk_utils::alloc_host_only_buffer(
                     VREN_TEST_APP()->m_context,
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                     length * sizeof(uint32_t),
-                    VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    true
                 )
             );
             m_host_buffer_mapped_pointer = reinterpret_cast<uint32_t*>(m_host_buffer->m_allocation_info.pMappedData);
 
             m_gpu_buffer = std::make_unique<vren::vk_utils::buffer>(
-                vren::vk_utils::alloc_buffer(
+                vren::vk_utils::alloc_device_only_buffer(
                     VREN_TEST_APP()->m_context,
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    length * sizeof(uint32_t),
-                    NULL,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                    length * sizeof(uint32_t)
                 )
             );
 

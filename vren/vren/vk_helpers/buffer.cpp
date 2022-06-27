@@ -1,5 +1,7 @@
 #include "buffer.hpp"
 
+#include <span>
+
 #include <volk.h>
 
 #define VMA_IMPLEMENTATION
@@ -11,75 +13,71 @@
 // References:
 // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html
 
-vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
-	vren::context const& ctx,
-	VkBufferUsageFlags buffer_usage,
-	size_t size,
-	bool persistently_mapped
-)
+uint32_t find_memory_type_bits(vren::context const& context, uint32_t required_flags, uint32_t forbidden_flags)
 {
-	assert(size > 0);
+	VkPhysicalDeviceMemoryProperties memory_properties{};
+	vkGetPhysicalDeviceMemoryProperties(context.m_physical_device, &memory_properties);
 
-	VkBufferCreateInfo buf_info{};
-	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	buf_info.usage = buffer_usage;
-	buf_info.size = size;
-	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	uint32_t memory_type_bits = 0;
+	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+	{
+		VkMemoryPropertyFlags flags = memory_properties.memoryTypes[i].propertyFlags;
 
-	VmaAllocationCreateInfo alloc_create_info{};
-	alloc_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	alloc_create_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	alloc_create_info.flags = persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL;
+		bool match = true;
+		match &= ((flags & required_flags) ^ required_flags) == 0;
+		match &= (flags & forbidden_flags) == 0;
 
-	VkBuffer buf;
-	VmaAllocation alloc;
-	VmaAllocationInfo alloc_info;
-	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_create_info, &buf, &alloc, &alloc_info), &ctx);
-
-	return vren::vk_utils::buffer{
-		.m_buffer = vren::vk_buffer(ctx, buf),
-		.m_allocation = vren::vma_allocation(ctx, alloc),
-		.m_allocation_info = alloc_info
-	};
+		if (match)
+		{
+			memory_type_bits |= 1 << i;
+		}
+	}
+	return memory_type_bits;
 }
 
-vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
-	vren::context const& ctx,
-	VkBufferUsageFlags buffer_usage,
-	size_t size
-)
+std::string to_string(VkMemoryPropertyFlags memory_property_flags)
 {
-	assert(size > 0);
+	std::string result = "";
+	uint32_t i = 1;
+	while (i)
+	{
+		VkMemoryPropertyFlags memory_property_flag = memory_property_flags & i;
 
-	VkBufferCreateInfo buf_info{};
-	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	buf_info.usage = buffer_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	buf_info.size = size;
-	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		if (memory_property_flag != 0)
+		{
+			switch (memory_property_flag)
+			{
+			case VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT:  result += "DEVICE_LOCAL";  break;
+			case VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT:  result += "HOST_VISIBLE";  break;
+			case VK_MEMORY_PROPERTY_HOST_COHERENT_BIT: result += "HOST_COHERENT"; break;
+			case VK_MEMORY_PROPERTY_HOST_CACHED_BIT:   result += "HOST_CACHED";   break;
+			default:
+				result += "UNKNOWN";
+				break;
+			}
 
-	VmaAllocationCreateInfo alloc_create_info{};
-	alloc_create_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			if (memory_property_flags & ~((1 << (i << 1)) - 1))
+			{
+				result += ", ";
+			}
+		}
 
-	VkBuffer buf;
-	VmaAllocation alloc;
-	VmaAllocationInfo alloc_info;
-	VREN_CHECK(vmaCreateBuffer(ctx.m_vma_allocator, &buf_info, &alloc_create_info, &buf, &alloc, &alloc_info), &ctx);
-
-	return vren::vk_utils::buffer{
-		.m_buffer = vren::vk_buffer(ctx, buf),
-		.m_allocation = vren::vma_allocation(ctx, alloc),
-		.m_allocation_info = alloc_info
-	};
+		i <<= 1;
+	}
+	return result;
 }
 
-vren::vk_utils::buffer vren::vk_utils::alloc_buffer(
+vren::vk_utils::buffer alloc_buffer(
 	vren::context const& context,
 	VkBufferUsageFlags buffer_usage,
-	VkDeviceSize size,
-	VmaAllocationCreateFlags allocation_flags,
-	VkMemoryPropertyFlags memory_property_flags
+	size_t size,
+	std::vector<VkMemoryPropertyFlags> const& required_flags_attempts,
+	VkMemoryPropertyFlags forbidden_flags,
+	VmaAllocationCreateFlags allocation_create_flags
 )
 {
+	assert(size > 0);
+
 	VkBufferCreateInfo buffer_create_info{
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		.pNext = nullptr,
@@ -91,28 +89,119 @@ vren::vk_utils::buffer vren::vk_utils::alloc_buffer(
 		.pQueueFamilyIndices = nullptr
 	};
 
-	VmaAllocationCreateInfo allocation_create_info{
-		.flags = allocation_flags,
-		.usage = VMA_MEMORY_USAGE_UNKNOWN,
-		.requiredFlags = memory_property_flags,
-		.preferredFlags = NULL,
-		.memoryTypeBits = UINT32_MAX,
-		.pool = VK_NULL_HANDLE,
-		.pUserData = nullptr,
-		.priority = 0.0f
-	};
+	for (uint32_t i = 0; i < std::size(required_flags_attempts); i++)
+	{
+		uint32_t memory_type_bits = find_memory_type_bits(
+			context,
+			required_flags_attempts.at(i),
+			forbidden_flags
+		);
+
+		VmaAllocationCreateInfo allocation_create_info{
+			.flags = allocation_create_flags,
+			.usage = VMA_MEMORY_USAGE_UNKNOWN,
+			.requiredFlags = NULL,
+			.preferredFlags = NULL,
+			.memoryTypeBits = memory_type_bits,
+			.pool = VK_NULL_HANDLE,
+			.pUserData = nullptr,
+			.priority = 0.0f
+		};
+
+		VkBuffer buffer{};
+		VmaAllocation allocation{};
+		VmaAllocationInfo allocation_info{};
+		VkResult result = vmaCreateBuffer(context.m_vma_allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info);
+
+		if (result == VK_SUCCESS)
+		{
+#if VREN_LOG_LEVEL >= VREN_LOG_LEVEL_DEBUG
+			VkPhysicalDeviceMemoryProperties memory_properties{};
+			vkGetPhysicalDeviceMemoryProperties(context.m_physical_device, &memory_properties);
+
+			VkMemoryType memory_type = memory_properties.memoryTypes[allocation_info.memoryType];
+			VREN_DEBUG("[buffer] Buffer allocated - Size: {}, Memory type: {}, Memory property flags: {}, Heap: {}\n",
+				allocation_info.size,
+				allocation_info.memoryType,
+				to_string(memory_type.propertyFlags),
+				memory_type.heapIndex
+			);
+#endif
+
+			return vren::vk_utils::buffer{
+				.m_buffer = vren::vk_buffer(context, buffer),
+				.m_allocation = vren::vma_allocation(context, allocation),
+				.m_allocation_info = allocation_info
+			};
+		}
+		else if (i == std::size(required_flags_attempts) - 1)
+		{
+			VREN_ERROR("[buffer] Failed to allocate buffer - Size: {} - Memory type bits: {:x}\n", size, memory_type_bits);
+
+			// If even the last attempt fails then we can't allocate the buffer
+			VREN_CHECK(result, &context);
+		}
+	}
 
 
-	VkBuffer buffer;
-	VmaAllocation allocation;
-	VmaAllocationInfo allocation_info;
-	VREN_CHECK(vmaCreateBuffer(context.m_vma_allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info), &context);
+}
 
-	return vren::vk_utils::buffer{
-		.m_buffer = vren::vk_buffer(context, buffer),
-		.m_allocation = vren::vma_allocation(context, allocation),
-		.m_allocation_info = allocation_info
-	};
+vren::vk_utils::buffer vren::vk_utils::alloc_host_visible_buffer(
+	vren::context const& context,
+	VkBufferUsageFlags buffer_usage,
+	size_t size,
+	bool persistently_mapped
+)
+{
+	return alloc_buffer(
+		context,
+		buffer_usage,
+		size,
+		{
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+		},
+		NULL,
+		persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL
+	);
+}
+
+vren::vk_utils::buffer vren::vk_utils::alloc_device_only_buffer(
+	vren::context const& context,
+	VkBufferUsageFlags buffer_usage,
+	size_t size
+)
+{
+	return alloc_buffer(
+		context,
+		buffer_usage,
+		size,
+		{
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+		},
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		NULL
+	);
+}
+
+vren::vk_utils::buffer vren::vk_utils::alloc_host_only_buffer(
+	vren::context const& context,
+	VkBufferUsageFlags buffer_usage,
+	VkDeviceSize size,
+	bool persistently_mapped
+)
+{
+	return alloc_buffer(
+		context,
+		buffer_usage,
+		size,
+		{
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+		},
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		persistently_mapped ? VMA_ALLOCATION_CREATE_MAPPED_BIT : NULL
+	);
 }
 
 void vren::vk_utils::update_host_visible_buffer(

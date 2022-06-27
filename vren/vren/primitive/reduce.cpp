@@ -100,8 +100,5 @@ void vren::reduce::operator()(
         m_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
     }
 
-    if (result)
-    {
-        *result = 2;
-    }
+    // TODO write result
 }
