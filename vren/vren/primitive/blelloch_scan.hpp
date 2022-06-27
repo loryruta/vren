@@ -2,6 +2,7 @@
 
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/shader.hpp"
+#include "primitive/reduce.hpp"
 
 namespace vren
 {
@@ -9,12 +10,12 @@ namespace vren
     {
     public:
         inline static const uint32_t k_workgroup_size = 32;
-        inline static const uint32_t k_iterations_num = 4;
+        inline static const uint32_t k_num_iterations = 16;
 
     private:
         vren::context const* m_context;
 
-        vren::pipeline m_reduce_pipeline;
+        vren::reduce m_reduce;
         vren::pipeline m_downsweep_pipeline;
 
     public:

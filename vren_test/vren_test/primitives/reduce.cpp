@@ -67,17 +67,6 @@ BENCHMARK(BM_gpu_reduce)
 // Unit testing
 // ------------------------------------------------------------------------------------------------
 
-template<typename _t>
-void print_buffer(_t* buffer, size_t length)
-{
-    for (uint32_t i = 0; i < length; i++)
-    {
-        fmt::print("{}, ", buffer[i]);
-    }
-
-    printf("\n");
-}
-
 void run_cpu_reduce(uint32_t* data, size_t length, size_t stride, size_t offset)
 {
     for (uint32_t i = 0; i < glm::log2<uint32_t>(length); i++)
@@ -92,25 +81,26 @@ void run_cpu_reduce(uint32_t* data, size_t length, size_t stride, size_t offset)
     }
 }
 
-TEST(reduce, main)
+void run_reduce_test(uint32_t sample_length, bool verbose)
 {
-    const size_t length = vren::reduce::k_min_buffer_size;
-
-    std::vector<uint32_t> cpu_buffer(length);
+    std::vector<uint32_t> cpu_buffer(sample_length);
     vren::vk_utils::buffer gpu_buffer =
-        vren::vk_utils::alloc_host_visible_buffer(VREN_TEST_APP()->m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, length * sizeof(uint32_t), true);
+        vren::vk_utils::alloc_host_visible_buffer(VREN_TEST_APP()->m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, sample_length * sizeof(uint32_t), true);
 
     uint32_t* gpu_buffer_ptr = reinterpret_cast<uint32_t*>(gpu_buffer.m_allocation_info.pMappedData);
 
     std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
 
-    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), length * sizeof(uint32_t));
+    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(uint32_t));
 
-    VREN_DEBUG("Before reduction:\n");
-    VREN_DEBUG("CPU buffer:\n"); print_buffer<uint32_t>(cpu_buffer.data(), length);
-    VREN_DEBUG("GPU buffer:\n"); print_buffer<uint32_t>(gpu_buffer_ptr, length);
+    if (verbose)
+    {
+        VREN_DEBUG("Before reduction:\n");
+        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+    }
 
-    run_cpu_reduce(cpu_buffer.data(), length, 1, 0);
+    run_cpu_reduce(cpu_buffer.data(), sample_length, 1, 0);
 
     vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
@@ -121,19 +111,36 @@ TEST(reduce, main)
            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
            .buffer = gpu_buffer.m_buffer.m_handle,
            .offset = 0,
-           .size = length * sizeof(uint32_t)
+           .size = sample_length * sizeof(uint32_t)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
-        
-        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, length, 1, 0, nullptr);
+
+        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 1, 0, nullptr);
     });
 
-    VREN_DEBUG("After reduction:\n");
-    VREN_DEBUG("CPU buffer:\n"); print_buffer<uint32_t>(cpu_buffer.data(), length);
-    VREN_DEBUG("GPU buffer:\n"); print_buffer<uint32_t>(gpu_buffer_ptr, length);
+    if (verbose)
+    {
+        VREN_DEBUG("After reduction:\n");
+        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+    }
 
-    for (uint32_t i = 0; i < length; i++)
+    ASSERT_EQ(cpu_buffer.at(sample_length - 1), gpu_buffer_ptr[sample_length - 1]);
+
+    for (uint32_t i = 0; i < sample_length; i++)
     {
         ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
+    }
+}
+
+TEST(reduce, main)
+{
+    run_reduce_test(1 << 7, true);
+
+    size_t length = 1 << 10;
+    while (length <= (1 << 20))
+    {
+        run_reduce_test(length, false);
+        length <<= 1;
     }
 }

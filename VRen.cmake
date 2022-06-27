@@ -59,7 +59,7 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task" "${VREN_SHADERS_DIR}/draw.task.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce.comp.spv")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" "-DMAIN_DOWNSWEEP=main")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv")
 
     add_custom_target(vren_${TARGET}_shaders DEPENDS ${SHADERS})
 

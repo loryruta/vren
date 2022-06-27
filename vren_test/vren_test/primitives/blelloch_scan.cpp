@@ -118,26 +118,58 @@ BENCHMARK(BM_std_exclusive_scan)
 // Unit testing
 // ------------------------------------------------------------------------------------------------
 
-/*
+void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
+{
+    std::vector<uint32_t> cpu_buffer(sample_length);
+    vren::vk_utils::buffer gpu_buffer =
+        vren::vk_utils::alloc_host_visible_buffer(VREN_TEST_APP()->m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sample_length * sizeof(uint32_t), true);
+
+    uint32_t* gpu_buffer_ptr = reinterpret_cast<uint32_t*>(gpu_buffer.m_allocation_info.pMappedData);
+
+    std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
+
+    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(uint32_t));
+
+    if (verbose)
+    {
+        VREN_DEBUG("Before reduction:\n");
+        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+    }
+
+    std::exclusive_scan(cpu_buffer.begin(), cpu_buffer.end(), cpu_buffer.begin(), 0);
+
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    {
+        VkBufferMemoryBarrier buffer_memory_barrier{
+           .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+           .pNext = nullptr,
+           .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT,
+           .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+           .buffer = gpu_buffer.m_buffer.m_handle,
+           .offset = 0,
+           .size = sample_length * sizeof(uint32_t)
+        };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+
+        VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, gpu_buffer, sample_length, 1, 0);
+    });
+
+    if (verbose)
+    {
+        VREN_DEBUG("After reduction:\n");
+        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+    }
+
+    for (uint32_t i = 0; i < sample_length; i++)
+    {
+        ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
+    }
+}
+
 TEST(blelloch_scan, main)
 {
-    const size_t k_data_length = 1 << 8; // 2^8 = 256
-
-    blelloch_scan_test_bench test_bench{};
-
-    test_bench.set_fixed_data(k_data_length, 1);
-
-    printf("Reference buffer:\n"); test_bench.print_reference_buffer();
-    printf("GPU buffer:\n"); test_bench.print_host_buffer();
-
-    test_bench.run_gpu_blelloch_scan();
-    test_bench.run_std_exclusive_scan();
-
-    test_bench.copy_gpu_buffer_to_staging_buffer();
-
-    printf("Scanned reference buffer:\n"); test_bench.print_reference_buffer();
-    printf("Scanned GPU buffer:\n"); test_bench.print_host_buffer();
-
-    test_bench.assert_eq();
+    run_blelloch_scan_test(1 << 7, true);
 }
-*/
+

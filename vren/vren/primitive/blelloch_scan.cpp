@@ -5,12 +5,7 @@
 
 vren::blelloch_scan::blelloch_scan(vren::context const& context) :
     m_context(&context),
-    m_reduce_pipeline([&]()
-    {
-        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/reduce.comp.spv");
-        vren::specialized_shader shader = vren::specialized_shader(shader_mod);
-        return vren::create_compute_pipeline(context, shader);
-    }()),
+    m_reduce(context),
     m_downsweep_pipeline([&]()
     {
         vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_downsweep.comp.spv");
@@ -54,59 +49,10 @@ void vren::blelloch_scan::operator()(
     uint32_t offset
 )
 {
-    assert(vren::is_power_of_2(length));
-    assert(stride > 0);
-    assert(length >= k_workgroup_size * k_iterations_num * 2);
-
-    struct
-    {
-        uint32_t m_offset;
-        uint32_t m_stride;
-    } push_constants;
-
-    auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-        m_context->m_toolbox->m_descriptor_pool.acquire(m_reduce_pipeline.m_descriptor_set_layouts.at(0))
-    );
-    resource_container.add_resource(descriptor_set);
-    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer);
-
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
     // Reduce
-    // A single workgroup can process many levels of the reduction tree, the num. of levels is calculated here
-    uint32_t levels_per_workgroup = glm::log2<int32_t>(k_workgroup_size * k_iterations_num);
-
-    for (uint32_t level = 0; level < glm::log2<int32_t>(length); level += levels_per_workgroup)
-    {
-        if (level > 0)
-        {
-            buffer_memory_barrier = {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .pNext = nullptr,
-                .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                .buffer = buffer.m_buffer.m_handle,
-                .offset = offset,
-                .size = length * sizeof(uint32_t)
-            };
-            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
-        }
-
-        m_reduce_pipeline.bind(command_buffer);
-
-        push_constants = {
-            .m_offset = offset + (1 << level) - 1,
-            .m_stride = stride << level
-        };
-        m_reduce_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
-
-        m_reduce_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
-
-        // Num. of workgroups is the length / (workgroup_size * num_of_iters * 2)
-        uint32_t workgroups_num = length >> (levels_per_workgroup + 1);
-
-        m_reduce_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
-    }
+    m_reduce(command_buffer, resource_container, buffer, length, stride, offset, nullptr);
 
     // Clear last
     buffer_memory_barrier = {
@@ -116,11 +62,25 @@ void vren::blelloch_scan::operator()(
         .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .size = length * sizeof(uint32_t)
+        .size = VK_WHOLE_SIZE
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
     vkCmdFillBuffer(command_buffer, buffer.m_buffer.m_handle, offset + (length - 1) * sizeof(uint32_t), sizeof(uint32_t), 0);
+
+    // Downsweep
+    struct
+    {
+        uint32_t m_offset;
+        uint32_t m_stride;
+        uint32_t m_step_levels;
+    } push_constants;
+
+    auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+        m_context->m_toolbox->m_descriptor_pool.acquire(m_downsweep_pipeline.m_descriptor_set_layouts.at(0))
+        );
+    resource_container.add_resource(descriptor_set);
+    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer);
 
     buffer_memory_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -129,24 +89,29 @@ void vren::blelloch_scan::operator()(
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .size = length * sizeof(uint32_t)
+        .size = VK_WHOLE_SIZE
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-    // Downsweep
-    for (int32_t level = glm::log2(length) - 1; level >= 0; level--)
+    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * k_num_iterations);
+    int32_t levels = glm::log2<int32_t>(length);
+
+    for (int32_t level = glm::log2(length) - 1; level >= 0; level -= max_levels_per_dispatch)
     {
         m_downsweep_pipeline.bind(command_buffer);
 
+        uint32_t step_levels = glm::min<int32_t>(level, max_levels_per_dispatch);
+
         push_constants = {
-             .m_offset = offset + (1 << level) - 1,
-             .m_stride = stride << level
+            .m_offset = offset + (1 << level) - 1,
+            .m_stride = stride << level,
+            .m_step_levels = step_levels
         };
         m_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        uint32_t workgroups_num = vren::divide_and_ceil(length, k_workgroup_size * k_iterations_num);
+        uint32_t workgroups_num = vren::divide_and_ceil((1 << (levels - level)), step_levels);
         m_downsweep_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
 
         if (level > 0)
@@ -158,7 +123,7 @@ void vren::blelloch_scan::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = offset,
-                .size = length * sizeof(uint32_t)
+                .size = VK_WHOLE_SIZE
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }

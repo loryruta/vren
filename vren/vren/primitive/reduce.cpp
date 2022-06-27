@@ -1,5 +1,7 @@
 #include "reduce.hpp"
 
+#include <iostream>
+
 #include <glm/gtc/integer.hpp>
 
 #include "toolbox.hpp"
@@ -58,6 +60,7 @@ void vren::reduce::operator()(
     {
         uint32_t m_offset;
         uint32_t m_stride;
+        uint32_t m_step_levels;
     } push_constants;
 
     auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
@@ -68,9 +71,10 @@ void vren::reduce::operator()(
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
-    uint32_t levels_per_workgroup = glm::log2<int32_t>(k_workgroup_size * k_num_iterations);
+    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * k_num_iterations);
+    int32_t levels = glm::log2<int32_t>(length);
 
-    for (uint32_t level = 0; level < glm::log2<int32_t>(length); level += levels_per_workgroup)
+    for (uint32_t level = 0; level < levels; level += max_levels_per_dispatch)
     {
         if (level > 0)
         {
@@ -81,24 +85,27 @@ void vren::reduce::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = offset,
-                .size = length * sizeof(uint32_t)
+                .size = VK_WHOLE_SIZE
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }
 
         m_pipeline.bind(command_buffer);
 
+        uint32_t step_levels = glm::min<int32_t>(levels - level, max_levels_per_dispatch);
+
         push_constants = {
             .m_offset = offset + (1 << level) - 1,
-            .m_stride = stride << level
+            .m_stride = stride << level,
+            .m_step_levels = step_levels
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        uint32_t workgroups_num = length >> levels_per_workgroup;
+        uint32_t workgroups_num = vren::divide_and_ceil((1 << (levels - level)), step_levels);
         m_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
     }
 
-    // TODO write result
+    // TODO write to `result` if set
 }

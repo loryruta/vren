@@ -37,4 +37,16 @@ namespace vren_test
             return &singleton;
         }
     };
+
+    template<typename _t>
+    void print_buffer(_t* buffer, size_t length)
+    {
+        for (uint32_t i = 0; i < length; i++)
+        {
+            fmt::print("{}, ", buffer[i]);
+        }
+
+        printf("\n");
+    }
+
 }
