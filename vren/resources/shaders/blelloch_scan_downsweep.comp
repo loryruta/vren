@@ -11,20 +11,44 @@
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-#define NUM_ITERS 16
+#ifndef NUM_ITERS
+#	error NUM_ITERS not defined
+#endif
+
+// Requirements:
+// - data.length() must be a power of 2
+// - data.length() must be at least gl_SubgroupSize.x * NUM_ITERS
+// - MAIN_DOWNSWEEP defined to "main" or MAIN_SUBGROUP_DOWNSWEEP defined to "main"
 
 layout(push_constant) uniform PushConstants
 {
 	uint offset;
 	uint stride;
-	uint step_levels;
+	uint clear_last; // 0 if shouldn't clear last value, otherwise 1
 };
 
 layout(set = 0, binding = 0) buffer Buffer
 {
-	uint data[]; // Length must be a power of 2
+	uint data[];
 };
 
+#ifdef MAIN_DOWNSWEEP
+void main()
+{
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		uint a_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2;
+		uint b_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2 + stride;
+
+		uint b = clear_last != 0 && b_idx == data.length() - 1 ? 0 : data[b_idx];
+
+		data[b_idx] = data[a_idx] + b;
+		data[a_idx] = b;
+	}
+}
+#endif
+
+#ifdef MAIN_SUBGROUP_DOWNSWEEP
 void main()
 {
 	uint thread_values[NUM_ITERS];
@@ -32,42 +56,42 @@ void main()
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
-		thread_values[i] = data_idx < data.length() ? data[data_idx] : 0;
+		uint val = clear_last != 0 && data_idx == (data.length() - 1) ? 0 : data[data_idx];
+		thread_values[i] = val;
 	}
 	
-	uint remaining_levels = step_levels;
-
 	uint thread_value = thread_values[NUM_ITERS - 1];
 
-	for (int level = int(log2(32)) - 1; level >= 0 && remaining_levels > 0; level--, remaining_levels--)
+	for (int level = int(log2(32)) - 1; level >= 0; level--)
 	{
 		uint thread_idx = gl_SubgroupInvocationID.x;
 
 		uint level_mask = (1 << level) - 1; 
 		uint active_threads = subgroupBallot((thread_idx & level_mask) == level_mask).x;
 
-		uint sum_mask = (level + 1) < 5 ? (1 << (1 << (level + 1))) - 1 : UINT32_MAX;
+		uint op_mask = (level + 1) < 5 ? (1 << (1 << (level + 1))) - 1 : UINT32_MAX; // level + 1 >= 5 then 2^(2^(level + 1)) overflows (2^32 overflows)
 
 		uint shift_by = 1 << (level + 1);
-		for (; sum_mask != 0; sum_mask = shift_by < 32 ? sum_mask << shift_by : 0)
+		for (; op_mask != 0; op_mask = shift_by < 32 ? op_mask << shift_by : 0) // Left shifting by 32 or higher is UB
 		{
-			uint op_threads = active_threads & sum_mask;
+			uint op_threads = active_threads & op_mask;
 
 			if (subgroupInverseBallot(uvec4(op_threads)))
 			{
 				uint sum = subgroupAdd(thread_value);
 
+				uint right_thread_idx = findMSB(op_threads);
 				uint right_thread_mask = 1 << findMSB(op_threads);
-				uint right_value = subgroupShuffle(thread_value, right_thread_mask);
-
-				if (subgroupInverseBallot(uvec4(1 << findLSB(op_threads))))
-				{
-					thread_value = right_value;
-				}
+				uint right_value = subgroupShuffle(thread_value, right_thread_idx);
 
 				if (subgroupInverseBallot(uvec4(right_thread_mask)))
 				{
 					thread_value = sum;
+				}
+
+				if (subgroupInverseBallot(uvec4(1 << findLSB(op_threads))))
+				{
+					thread_value = right_value;
 				}
 			}
 		}
@@ -75,9 +99,9 @@ void main()
 
 	thread_values[NUM_ITERS - 1] = thread_value;
 
-	for (int level = int(log2(NUM_ITERS)) - 1; level >= 0 && remaining_levels > 0; level--, remaining_levels--)
+	for (int level = int(log2(NUM_ITERS)) - 1; level >= 0; level--)
 	{
-        for (uint item_idx = 0; item_idx < (NUM_ITERS >> (level + 1)); item_idx++)
+		for (uint item_idx = 0; item_idx < (NUM_ITERS >> (level + 1)); item_idx++)
         {
             uint a_idx = (1 << level) - 1 + (item_idx << (level + 1));
             uint b_idx = (1 << level) - 1 + (item_idx << (level + 1)) + (1 << level);
@@ -91,9 +115,7 @@ void main()
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
-		if (data_idx < data.length())
-		{
-			data[data_idx] = thread_values[i];
-		}
+		data[data_idx] = thread_values[i];
 	}
 }
+#endif

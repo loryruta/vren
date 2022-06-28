@@ -135,9 +135,7 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
 
 TEST(reduce, main)
 {
-    run_reduce_test(1 << 7, true);
-
-    size_t length = 1 << 10;
+    size_t length = vren::reduce::k_min_buffer_length;
     while (length <= (1 << 20))
     {
         run_reduce_test(length, false);

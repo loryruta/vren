@@ -93,7 +93,7 @@ static void BM_gpu_blelloch_scan(benchmark::State& state)
 
 BENCHMARK(BM_gpu_blelloch_scan)
     ->Unit(benchmark::kMicrosecond)
-    ->Range(1 << 16, 1 << 28)
+    ->Range(1 << 10, 1 << 29 /* < maxStorageBufferRange */)
     ->UseManualTime();
 
 static void BM_std_exclusive_scan(benchmark::State& state)
@@ -170,6 +170,11 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
 TEST(blelloch_scan, main)
 {
-    run_blelloch_scan_test(1 << 7, true);
+    uint32_t length = vren::blelloch_scan::k_min_buffer_length;
+    while (length <= (1 << 20))
+    {
+        run_blelloch_scan_test(length, false);
+        length <<= 1;
+    }
 }
 

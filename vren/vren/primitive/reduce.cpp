@@ -54,7 +54,7 @@ void vren::reduce::operator()(
 {
     assert(vren::is_power_of_2(length));
     assert(stride > 0);
-    assert(length >= k_workgroup_size * k_num_iterations);
+    assert(length >= k_subgroup_size * k_num_iterations);
 
     struct
     {
@@ -71,7 +71,7 @@ void vren::reduce::operator()(
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
-    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * k_num_iterations);
+    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_subgroup_size * k_num_iterations);
     int32_t levels = glm::log2<int32_t>(length);
 
     for (uint32_t level = 0; level < levels; level += max_levels_per_dispatch)
