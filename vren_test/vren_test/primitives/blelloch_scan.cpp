@@ -8,7 +8,7 @@
 #include <fmt/format.h>
 
 #include <vren/context.hpp>
-#include <vren/primitive/blelloch_scan.hpp>
+#include <vren/primitives/blelloch_scan.hpp>
 #include <vren/vk_helpers/misc.hpp>
 #include <vren/pipeline/profiler.hpp>
 
@@ -37,7 +37,7 @@ public:
 
             auto sample = [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, *m_gpu_buffer, m_length, 1, 0);
+                VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, *m_gpu_buffer, m_length, 0);
             };
 
             if (elapsed_time)
@@ -126,7 +126,8 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
     uint32_t* gpu_buffer_ptr = reinterpret_cast<uint32_t*>(gpu_buffer.m_allocation_info.pMappedData);
 
-    std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
+    vren_test::fill_with_random_int_values(cpu_buffer.begin(), cpu_buffer.end(), 0, 100);
+    //std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
 
     std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(uint32_t));
 
@@ -152,7 +153,7 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, gpu_buffer, sample_length, 1, 0);
+        VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, gpu_buffer, sample_length, 0);
     });
 
     if (verbose)
@@ -170,9 +171,13 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
 TEST(blelloch_scan, main)
 {
+    run_blelloch_scan_test(1 << 20, false);
+
     uint32_t length = vren::blelloch_scan::k_min_buffer_length;
     while (length <= (1 << 20))
     {
+        fmt::print("LENGTH: {}\n", length);
+
         run_blelloch_scan_test(length, false);
         length <<= 1;
     }
