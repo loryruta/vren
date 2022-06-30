@@ -20,6 +20,7 @@ vren::reduce::reduce(vren::context const& context) :
 void vren::reduce::write_descriptor_set(
     VkDescriptorSet descriptor_set,
     vren::vk_utils::buffer const& buffer,
+    uint32_t length,
     uint32_t offset
 )
 {
@@ -29,7 +30,7 @@ void vren::reduce::write_descriptor_set(
     buffer_info = {
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .range = VK_WHOLE_SIZE
+        .range = length * sizeof(uint32_t)
     };
     descriptor_set_write = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -69,7 +70,7 @@ void vren::reduce::operator()(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
     );
     resource_container.add_resource(descriptor_set);
-    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer, offset);
+    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer, length, offset);
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
@@ -87,7 +88,7 @@ void vren::reduce::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = offset,
-                .size = VK_WHOLE_SIZE
+                .size = length * sizeof(uint32_t)
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }

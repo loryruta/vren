@@ -7,6 +7,9 @@
 #include "vk_helpers/image.hpp"
 #include "texture_manager.hpp"
 #include "material.hpp"
+#include "primitives/reduce.hpp"
+#include "primitives/blelloch_scan.hpp"
+#include "primitives/radix_sort.hpp"
 
 namespace vren
 {
@@ -37,6 +40,10 @@ namespace vren
 
 		vren::texture_manager m_texture_manager;
 		vren::material_manager m_material_manager;
+
+		vren::reduce m_reduce;
+		vren::blelloch_scan m_blelloch_scan;
+		vren::radix_sort m_radix_sort;
 
 		explicit toolbox(vren::context const& ctx);
 	};

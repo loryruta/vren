@@ -1,0 +1,67 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+#define NUM_ITERS 16
+
+#define RADIX_BITS 4
+#define RADIX      (1 << RADIX_BITS)
+#define RADIX_MASK (RADIX - 1)
+
+layout(push_constant) uniform PushConstants
+{
+    uint symbol_position;
+	uint block_length;
+};
+
+layout(set = 0, binding = 0) readonly buffer InputBuffer
+{
+	uint data[];
+};
+
+layout(set = 0, binding = 1) buffer OutputBuffer
+{
+	uint output_data[];
+};
+
+layout(set = 0, binding = 2) writeonly buffer LocalCountBuffer
+{
+	uint local_counts[];
+};
+
+layout(set = 0, binding = 3) buffer GlobalOffsetBuffer
+{
+	uint global_offsets[RADIX];
+};
+
+void main()
+{
+	uint thread_values[RADIX];
+
+	for (uint i = 0; i < RADIX; i++)
+	{
+		thread_values[i] = 0;
+	}
+
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
+
+        uint symbol = data[data_idx] >> (symbol_position * RADIX_BITS) & RADIX_MASK;
+
+		for (uint j = 0; j < RADIX; j++)
+		{
+			thread_values[j] += subgroupAdd(symbol == j ? 1 : 0);
+		}
+	}
+
+	if (gl_SubgroupInvocationID < RADIX)
+	{
+		local_counts[gl_SubgroupInvocationID * block_length + gl_WorkGroupID.x] = thread_values[gl_SubgroupInvocationID];
+	}
+}

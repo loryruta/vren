@@ -105,7 +105,7 @@ void vren::blelloch_scan::downsweep(
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
             .buffer = buffer.m_buffer.m_handle,
             .offset = offset,
-            .size = VK_WHOLE_SIZE
+            .size = length * sizeof(uint32_t)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -150,7 +150,7 @@ void vren::blelloch_scan::operator()(
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .size = VK_WHOLE_SIZE
+        .size = length * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 

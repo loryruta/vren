@@ -23,6 +23,7 @@ namespace vren
         void write_descriptor_set(
             VkDescriptorSet descriptor_set,
             vren::vk_utils::buffer const& buffer,
+            uint32_t length,
             uint32_t offset
         );
 

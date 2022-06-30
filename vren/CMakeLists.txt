@@ -52,12 +52,12 @@ set(SRC
         vren/pool/descriptor_pool.cpp
         vren/pool/object_pool.hpp
         
-        vren/primitive/blelloch_scan.cpp
-        vren/primitive/blelloch_scan.hpp
-        vren/primitive/radix_sort.cpp
-        vren/primitive/radix_sort.hpp
-        vren/primitive/reduce.cpp
-        vren/primitive/reduce.hpp
+        vren/primitives/blelloch_scan.cpp
+        vren/primitives/blelloch_scan.hpp
+        vren/primitives/radix_sort.cpp
+        vren/primitives/radix_sort.hpp
+        vren/primitives/reduce.cpp
+        vren/primitives/reduce.hpp
 
         vren/third_party/impl.cpp
 

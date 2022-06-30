@@ -4,8 +4,11 @@ include("${VREN_HOME}/VRen.cmake")
 
 set(SRC
         vren_test/kd_tree.cpp
+
         vren_test/primitives/blelloch_scan.cpp
+        vren_test/primitives/radix_sort.cpp
         vren_test/primitives/reduce.cpp
+
         vren_test/gpu_test_bench.hpp
         vren_test/main.cpp
         )

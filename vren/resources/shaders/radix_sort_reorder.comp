@@ -1,2 +1,99 @@
+#version 460
 
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
 
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+#define NUM_ITERS 16
+
+#define RADIX_BITS 4
+#define RADIX      (1 << RADIX_BITS)
+#define RADIX_MASK (RADIX - 1)
+
+layout(push_constant) uniform PushConstants
+{
+    uint symbol_position;
+	uint local_offset_block_length;
+};
+
+layout(set = 0, binding = 0) readonly buffer InputBuffer
+{
+	uint data[];
+};
+
+layout(set = 0, binding = 1) writeonly buffer OutputBuffer
+{
+	uint output_data[];
+};
+
+layout(set = 0, binding = 2) readonly buffer LocalOffsetBuffer
+{
+	uint local_offsets[];
+};
+
+layout(set = 0, binding = 3) readonly buffer GlobalOffsetBuffer
+{
+	uint global_offsets[RADIX];
+};
+
+void main()
+{
+	// Count symbols in the current thread
+	uint thread_counts[RADIX];
+	uint thread_offsets[RADIX];
+	uint item_offsets[RADIX];
+
+	for (uint j = 0; j < RADIX; j++)
+	{
+		thread_counts[j] = 0;
+		thread_offsets[j] = 0;
+		item_offsets[j] = 0;
+	}
+
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
+        uint symbol = (data[data_idx] >> (symbol_position * RADIX_BITS)) & RADIX_MASK;
+
+		thread_counts[symbol]++;
+	}
+
+	// Exclusive scan to find thread offsets
+	for (uint j = 0; j < RADIX; j++)
+	{
+		thread_offsets[j] = 0;
+
+		for (uint i = 0; i < 32; i++)
+		{
+			uint sum = subgroupAdd(i == gl_SubgroupInvocationID ? thread_counts[j] : 0);
+			if (i == gl_SubgroupInvocationID)
+			{
+				break;
+			}
+
+			thread_offsets[j] += sum;
+		}
+	}
+
+	// Reordering
+	for (uint i = 0; i < NUM_ITERS; i++)
+	{
+		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
+
+        uint symbol = (data[data_idx] >> (symbol_position * RADIX_BITS)) & RADIX_MASK;
+
+		uint global_offset = global_offsets[symbol];
+		uint local_offset = local_offsets[symbol * local_offset_block_length + gl_WorkGroupID.x];
+		uint thread_offset = thread_offsets[symbol];
+		uint item_offset = item_offsets[symbol];
+
+		uint output_idx = global_offset + local_offset + thread_offset + item_offset;
+		output_data[output_idx] = data[data_idx];
+
+		item_offsets[symbol]++;
+	}
+}

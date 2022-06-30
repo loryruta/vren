@@ -1,0 +1,57 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 16, local_size_y = 1, local_size_z = 1) in;
+
+#define RADIX 16
+
+layout(push_constant) uniform PushConstants
+{
+	uint offset;
+    uint stride;
+};
+
+layout(set = 0, binding = 0) buffer InputBuffer
+{
+	uint data[];
+};
+
+layout(set = 0, binding = 1) buffer OutputBuffer
+{
+	uint output_data[];
+};
+
+layout(set = 0, binding = 2) readonly buffer ReducedLocalCountBuffer
+{
+	uint reduced_local_counts[];
+};
+
+layout(set = 0, binding = 3) writeonly buffer GlobalOffsetBuffer
+{
+	uint global_offsets[RADIX];
+};
+
+void main()
+{
+	// I know, this is bad for cache but will only read 16 scattered entries
+	uint global_count = reduced_local_counts[offset + gl_SubgroupInvocationID.x * stride];
+	
+	// Subgroup-wide exclusive scan
+	uint value = 0;
+	for (uint i = 0; i < RADIX; i++)
+	{
+		uint sum = subgroupAdd(i == gl_SubgroupInvocationID ? global_count : 0);
+		if (i == gl_SubgroupInvocationID)
+		{
+			break;
+		}
+
+		value += sum;
+	}
+
+	global_offsets[gl_SubgroupInvocationID] = value;
+}
