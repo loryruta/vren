@@ -31,7 +31,12 @@ namespace vren
 
 	inline constexpr bool is_power_of_2(uint32_t value)
 	{
-		return (value & (value - 1)) == 0;
+		return value > 0 && (value & (value - 1)) == 0;
+	}
+
+	inline uint32_t round_to_next_power_of_2(uint32_t value)
+	{
+		
 	}
 
 	inline uint32_t round_to_nearest_multiple_of_power_of_2(uint32_t value, uint32_t power_of_2)

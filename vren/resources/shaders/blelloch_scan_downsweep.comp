@@ -40,10 +40,13 @@ void main()
 		uint a_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2;
 		uint b_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2 + stride;
 
-		uint b = clear_last != 0 && b_idx == data.length() - 1 ? 0 : data[b_idx];
+		if (a_idx < data.length())
+		{
+			uint b = clear_last != 0 && b_idx == data.length() - 1 ? 0 : data[b_idx];
 
-		data[b_idx] = data[a_idx] + b;
-		data[a_idx] = b;
+			data[b_idx] = data[a_idx] + b;
+			data[a_idx] = b;
+		}
 	}
 }
 #endif
@@ -55,7 +58,7 @@ void main()
 
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
-		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
+		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i; // Array is tightly packed here: offset and stride ignored
 		uint val = clear_last != 0 && data_idx == (data.length() - 1) ? 0 : data[data_idx];
 		thread_values[i] = val;
 	}
@@ -114,7 +117,7 @@ void main()
 
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
-		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
+		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
 		data[data_idx] = thread_values[i];
 	}
 }

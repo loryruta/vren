@@ -17,14 +17,18 @@ vren::reduce::reduce(vren::context const& context) :
 {
 }
 
-void vren::reduce::write_descriptor_set(VkDescriptorSet descriptor_set, vren::vk_utils::buffer const& buffer)
+void vren::reduce::write_descriptor_set(
+    VkDescriptorSet descriptor_set,
+    vren::vk_utils::buffer const& buffer,
+    uint32_t offset
+)
 {
     VkWriteDescriptorSet descriptor_set_write{};
     VkDescriptorBufferInfo buffer_info{};
 
     buffer_info = {
         .buffer = buffer.m_buffer.m_handle,
-        .offset = 0,
+        .offset = offset,
         .range = VK_WHOLE_SIZE
     };
     descriptor_set_write = {
@@ -47,13 +51,11 @@ void vren::reduce::operator()(
     vren::resource_container& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
-    uint32_t stride,
     uint32_t offset,
     uint32_t* result
 )
 {
     assert(vren::is_power_of_2(length));
-    assert(stride > 0);
     assert(length >= k_subgroup_size * k_num_iterations);
 
     struct
@@ -67,7 +69,7 @@ void vren::reduce::operator()(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
     );
     resource_container.add_resource(descriptor_set);
-    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer);
+    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer, offset);
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
@@ -95,17 +97,20 @@ void vren::reduce::operator()(
         uint32_t step_levels = glm::min<int32_t>(levels - level, max_levels_per_dispatch);
 
         push_constants = {
-            .m_offset = offset + (1 << level) - 1,
-            .m_stride = stride << level,
+            .m_offset = (1u << level) - 1,
+            .m_stride = 1u << level,
             .m_step_levels = step_levels
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        uint32_t workgroups_num = vren::divide_and_ceil((1 << (levels - level)), step_levels);
+        uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_subgroup_size * k_num_iterations);
         m_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
     }
 
-    // TODO write to `result` if set
+    if (result)
+    {
+        // TODO write to `result` if set
+    }
 }

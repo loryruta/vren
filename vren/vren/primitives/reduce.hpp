@@ -20,7 +20,11 @@ namespace vren
         reduce(vren::context const& context);
 
     private:
-        void write_descriptor_set(VkDescriptorSet descriptor_set, vren::vk_utils::buffer const& buffer);
+        void write_descriptor_set(
+            VkDescriptorSet descriptor_set,
+            vren::vk_utils::buffer const& buffer,
+            uint32_t offset
+        );
 
     public:
         void operator()(
@@ -28,7 +32,6 @@ namespace vren
             vren::resource_container& resource_container,
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
-            uint32_t stride = 1,
             uint32_t offset = 0,
             uint32_t* result = nullptr
         );

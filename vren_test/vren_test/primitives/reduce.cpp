@@ -8,7 +8,7 @@
 #include <fmt/format.h>
 
 #include <vren/context.hpp>
-#include <vren/primitive/blelloch_scan.hpp>
+#include <vren/primitives/blelloch_scan.hpp>
 #include <vren/vk_helpers/misc.hpp>
 #include <vren/pipeline/profiler.hpp>
 
@@ -48,7 +48,7 @@ static void BM_gpu_reduce(benchmark::State& state)
 
             VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                VREN_TEST_APP()->m_reduce(command_buffer, resource_container, buffer, length, 1, 0, nullptr);
+                VREN_TEST_APP()->m_reduce(command_buffer, resource_container, buffer, length, 0, nullptr);
             });
         });
 
@@ -115,7 +115,7 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 1, 0, nullptr);
+        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 0, nullptr);
     });
 
     if (verbose)
@@ -138,6 +138,8 @@ TEST(reduce, main)
     size_t length = vren::reduce::k_min_buffer_length;
     while (length <= (1 << 20))
     {
+        fmt::print("LENGTH: {}\n", length);
+
         run_reduce_test(length, false);
         length <<= 1;
     }
