@@ -39,6 +39,7 @@ namespace vren
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
             uint32_t offset,
+            uint32_t blocks_num,
             bool clear_last
         );
 
@@ -47,7 +48,8 @@ namespace vren
             vren::resource_container& resource_container,
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
-            uint32_t offset
+            uint32_t offset,
+            uint32_t blocks_num
         );
     };
 }

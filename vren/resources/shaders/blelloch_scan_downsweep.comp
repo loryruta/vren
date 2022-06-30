@@ -16,15 +16,13 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 #endif
 
 // Requirements:
-// - data.length() must be a power of 2
-// - data.length() must be at least gl_SubgroupSize.x * NUM_ITERS
 // - MAIN_DOWNSWEEP defined to "main" or MAIN_SUBGROUP_DOWNSWEEP defined to "main"
 
 layout(push_constant) uniform PushConstants
 {
-	uint offset;
-	uint stride;
+	uint level;
 	uint clear_last; // 0 if shouldn't clear last value, otherwise 1
+	uint block_length;
 };
 
 layout(set = 0, binding = 0) buffer Buffer
@@ -35,17 +33,22 @@ layout(set = 0, binding = 0) buffer Buffer
 #ifdef MAIN_DOWNSWEEP
 void main()
 {
+	uint block_offset = gl_WorkGroupID.y * block_length;
+	
+    uint offset = (1u << level) - 1;
+    uint stride = 1u << level;
+
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint a_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2;
 		uint b_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2 + stride;
 
-		if (a_idx < data.length())
+		if (a_idx < block_length)
 		{
-			uint b = clear_last != 0 && b_idx == data.length() - 1 ? 0 : data[b_idx];
+			uint b = clear_last != 0 && b_idx == block_length - 1 ? 0 : data[block_offset + b_idx];
 
-			data[b_idx] = data[a_idx] + b;
-			data[a_idx] = b;
+			data[block_offset + b_idx] = data[block_offset + a_idx] + b;
+			data[block_offset + a_idx] = b;
 		}
 	}
 }
@@ -54,12 +57,14 @@ void main()
 #ifdef MAIN_SUBGROUP_DOWNSWEEP
 void main()
 {
+	uint block_offset = gl_WorkGroupID.y * block_length;
+
 	uint thread_values[NUM_ITERS];
 
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i; // Array is tightly packed here: offset and stride ignored
-		uint val = clear_last != 0 && data_idx == (data.length() - 1) ? 0 : data[data_idx];
+		uint val = clear_last != 0 && data_idx == (block_length - 1) ? 0 : data[block_offset + data_idx];
 		thread_values[i] = val;
 	}
 	
@@ -118,7 +123,7 @@ void main()
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
-		data[data_idx] = thread_values[i];
+		data[block_offset + data_idx] = thread_values[i];
 	}
 }
 #endif

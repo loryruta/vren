@@ -37,7 +37,7 @@ public:
 
             auto sample = [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, *m_gpu_buffer, m_length, 0);
+                VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, *m_gpu_buffer, m_length, 0, 1);
             };
 
             if (elapsed_time)
@@ -153,7 +153,7 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, gpu_buffer, sample_length, 0);
+        VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, gpu_buffer, sample_length, 0, 1);
     });
 
     if (verbose)
