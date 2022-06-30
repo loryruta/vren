@@ -118,8 +118,8 @@ void run_radix_sort_test(uint32_t sample_length, bool verbose)
         //fmt::print(">>> Scratch buffer 2 dump:\n");
         //vren_test::print_gpu_buffer<uint32_t>(VREN_TEST_APP()->m_context, scratch_buffer_2, sample_length,"{:08x}");
 
-        //fmt::print(">>> GPU buffer:\n");
-        //vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length, "{:08x}");
+        fmt::print(">>> GPU buffer:\n");
+        vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length, "{:08x}");
 
         //fmt::print(">>> CPU buffer:\n");
        // vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length, "{:08x}");
@@ -135,6 +135,9 @@ void run_radix_sort_test(uint32_t sample_length, bool verbose)
 
 TEST(radix_sort, main)
 {
+
+    //run_radix_sort_test(1 << 9, true);
+
     uint32_t length = 1 << 9;
     while (length <= (1 << 20))
     {

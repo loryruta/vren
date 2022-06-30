@@ -39,29 +39,26 @@ layout(set = 0, binding = 3) buffer GlobalOffsetBuffer
 	uint global_offsets[RADIX];
 };
 
+shared uint s_local_counts[RADIX];
+
 void main()
 {
-	uint thread_values[RADIX];
-
-	for (uint i = 0; i < RADIX; i++)
+	if (gl_SubgroupInvocationID < RADIX)
 	{
-		thread_values[i] = 0;
+		s_local_counts[gl_SubgroupInvocationID] = 0;
 	}
+
+	memoryBarrierShared();
 
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
-
         uint symbol = data[data_idx] >> (symbol_position * RADIX_BITS) & RADIX_MASK;
-
-		for (uint j = 0; j < RADIX; j++)
-		{
-			thread_values[j] += subgroupAdd(symbol == j ? 1 : 0);
-		}
+		atomicAdd(s_local_counts[symbol], 1);
 	}
 
 	if (gl_SubgroupInvocationID < RADIX)
 	{
-		local_counts[gl_SubgroupInvocationID * block_length + gl_WorkGroupID.x] = thread_values[gl_SubgroupInvocationID];
+		local_counts[gl_SubgroupInvocationID * block_length + gl_WorkGroupID.x] = s_local_counts[gl_SubgroupInvocationID];
 	}
 }

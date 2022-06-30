@@ -271,17 +271,15 @@ void vren::radix_sort::operator()(
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
         // Downsweep on reduced local counts (therefore blelloch scan to obtain local offsets)
-        for (uint32_t j = 0; j < k_radix; j++)
-        {
-            m_context->m_toolbox->m_blelloch_scan.downsweep(
-                command_buffer,
-                resource_container,
-                scratch_buffer_1,
-                local_offset_block_length,
-                local_offset_block_length * sizeof(uint32_t) * j,
-                true // Clear last
-            );
-        }
+        m_context->m_toolbox->m_blelloch_scan.downsweep(
+            command_buffer,
+            resource_container,
+            scratch_buffer_1,
+            local_offset_block_length,
+            0,
+            16,
+            true // Clear last
+        );
 
         buffer_memory_barrier = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -313,7 +311,6 @@ void vren::radix_sort::operator()(
 
             m_reorder_pipeline.dispatch(command_buffer, num_workgroups, 1, 1);
         }
-
 
         if (i < (8 - 1))
         {
