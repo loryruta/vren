@@ -30,7 +30,7 @@ void vren::reduce::write_descriptor_set(
     buffer_info = {
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .range = length * sizeof(uint32_t)
+        .range = VK_WHOLE_SIZE
     };
     descriptor_set_write = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -53,17 +53,19 @@ void vren::reduce::operator()(
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     uint32_t offset,
+    uint32_t block_num,
     uint32_t* result
 )
 {
     assert(vren::is_power_of_2(length));
     assert(length >= k_subgroup_size * k_num_iterations);
+    assert(block_num > 0);
 
     struct
     {
-        uint32_t m_offset;
-        uint32_t m_stride;
+        uint32_t m_level;
         uint32_t m_step_levels;
+        uint32_t m_block_length;
     } push_constants;
 
     auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
@@ -88,7 +90,7 @@ void vren::reduce::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = offset,
-                .size = length * sizeof(uint32_t)
+                .size = VK_WHOLE_SIZE
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }
@@ -98,16 +100,16 @@ void vren::reduce::operator()(
         uint32_t step_levels = glm::min<int32_t>(levels - level, max_levels_per_dispatch);
 
         push_constants = {
-            .m_offset = (1u << level) - 1,
-            .m_stride = 1u << level,
-            .m_step_levels = step_levels
+            .m_level = level,
+            .m_step_levels = step_levels,
+            .m_block_length = length,
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
         uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_subgroup_size * k_num_iterations);
-        m_pipeline.dispatch(command_buffer, workgroups_num, 1, 1);
+        m_pipeline.dispatch(command_buffer, workgroups_num, block_num, 1);
     }
 
     if (result)

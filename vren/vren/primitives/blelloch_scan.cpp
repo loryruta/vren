@@ -59,6 +59,7 @@ void vren::blelloch_scan::downsweep(
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     uint32_t offset,
+    uint32_t block_num,
     bool clear_last
 )
 {
@@ -141,7 +142,7 @@ void vren::blelloch_scan::operator()(
 )
 {
     // Reduce
-    m_context->m_toolbox->m_reduce(command_buffer, resource_container, buffer, length, offset, nullptr);
+    m_context->m_toolbox->m_reduce(command_buffer, resource_container, buffer, length, offset, 1, nullptr);
 
     VkBufferMemoryBarrier buffer_memory_barrier{
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,

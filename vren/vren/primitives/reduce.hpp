@@ -33,7 +33,8 @@ namespace vren
             vren::resource_container& resource_container,
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
-            uint32_t offset = 0,
+            uint32_t offset,
+            uint32_t block_num,
             uint32_t* result = nullptr
         );
     };

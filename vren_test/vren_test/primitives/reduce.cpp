@@ -48,7 +48,7 @@ static void BM_gpu_reduce(benchmark::State& state)
 
             VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                VREN_TEST_APP()->m_reduce(command_buffer, resource_container, buffer, length, 0, nullptr);
+                VREN_TEST_APP()->m_reduce(command_buffer, resource_container, buffer, length, 0, 1, nullptr);
             });
         });
 
@@ -61,6 +61,7 @@ static void BM_gpu_reduce(benchmark::State& state)
 BENCHMARK(BM_gpu_reduce)
     ->Unit(benchmark::kMicrosecond)
     ->Range(1 << 10, 1 << 29 /* < maxStorageBufferRange */)
+    ->Iterations(1)
     ->UseManualTime();
 
 // ------------------------------------------------------------------------------------------------
@@ -115,7 +116,7 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 0, nullptr);
+        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 0, 1, nullptr);
     });
 
     if (verbose)

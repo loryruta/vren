@@ -14,9 +14,9 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	uint offset;
-	uint stride;
+	uint level;
 	uint step_levels; // How many levels to step before stop, -1 means as much as possible
+	uint block_length;
 };
 
 layout(set = 0, binding = 0) buffer Buffer
@@ -27,12 +27,17 @@ layout(set = 0, binding = 0) buffer Buffer
 void main()
 {
 	uint thread_values[NUM_ITERS];
+	
+	uint block_offset = gl_WorkGroupID.y * block_length;
+	
+    uint offset = (1u << level) - 1;
+    uint stride = 1u << level;
 
 	// Read values from global memory
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
-		thread_values[i] = data_idx < data.length() ? data[data_idx] : 0;
+		thread_values[i] = data_idx < block_length ? data[block_offset + data_idx] : 0;
 	}
 
 	uint remaining_levels = step_levels;
@@ -83,9 +88,9 @@ void main()
 	for (uint i = 0; i < NUM_ITERS; i++)
 	{
 		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
-		if (data_idx < data.length())
+		if (data_idx < block_length)
 		{
-			data[data_idx] = thread_values[i];
+			data[block_offset + data_idx] = thread_values[i];
 		}
 	}
 }
