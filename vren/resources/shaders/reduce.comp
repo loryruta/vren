@@ -6,91 +6,82 @@
 
 #extension GL_EXT_debug_printf : enable
 
+#ifndef _VREN_WORKGROUP_SIZE_
+#	define _VREN_WORKGROUP_SIZE_ 1024
+#endif
+
 #define UINT32_MAX 0xffffffffu
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+#define MAX_ITEMS 4
 
-#define NUM_ITERS 16
+layout(local_size_x = _VREN_WORKGROUP_SIZE_, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
+	uint num_items;
 	uint level;
-	uint step_levels; // How many levels to step before stop, -1 means as much as possible
 	uint block_length;
 };
 
-layout(set = 0, binding = 0) buffer Buffer
+layout(set = 0, binding = 0) buffer InputBuffer
 {
-	uint data[]; // Length must be a power of 2
+	uint data[];
 };
+
+shared uint s_data[1024 * MAX_ITEMS];
 
 void main()
 {
-	uint thread_values[NUM_ITERS];
-	
 	uint block_offset = gl_WorkGroupID.y * block_length;
 	
     uint offset = (1u << level) - 1;
     uint stride = 1u << level;
 
-	// Read values from global memory
-	for (uint i = 0; i < NUM_ITERS; i++)
+	// Global memory read
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
-		thread_values[i] = data_idx < block_length ? data[block_offset + data_idx] : 0;
+		uint data_idx = offset + (gl_GlobalInvocationID.x * num_items + i) * stride;
+		s_data[gl_LocalInvocationID.x * num_items + i] = data_idx < block_length ? data[block_offset + data_idx] : 0;
 	}
 
-	uint remaining_levels = step_levels;
-
-	// Perform a invocation-wide reduction
-	for (uint level = 0; level < log2(NUM_ITERS) && remaining_levels > 0; level++, remaining_levels--)
+	// Invocation-wide reduction
+	for (uint level = 0; level < log2(num_items); level++)
 	{
-        for (uint item_idx = 0; item_idx < (NUM_ITERS >> (level + 1)); item_idx++)
+        for (uint i = 0; i < (num_items >> (level + 1)); i++)
         {
-            uint a_idx = (1 << level) - 1 + (item_idx << (level + 1));
-            uint b_idx = (1 << level) - 1 + (item_idx << (level + 1)) + (1 << level);
+            uint a_idx = (gl_LocalInvocationID.x * num_items) + (1 << level) - 1 + (i << (level + 1));
+            uint b_idx = a_idx + (1 << level);
 
-            thread_values[b_idx] = thread_values[a_idx] + thread_values[b_idx];
+            s_data[b_idx] = s_data[a_idx] + s_data[b_idx];
         }
 	}
+	
+	barrier();
 
-	// Perform a subgroup-wide reduction
-	uint thread_value = thread_values[NUM_ITERS - 1];
+	// Workgroup-wide reduction
+	uint thread_value_idx = (gl_LocalInvocationID.x + 1) * num_items - 1;
 
-	for (uint level = 0; level < log2(32) && remaining_levels > 0; level++, remaining_levels--)
+	for (uint level = 0; level < uint(log2(_VREN_WORKGROUP_SIZE_)); level++)
 	{
-		uint thread_idx = gl_SubgroupInvocationID.x;
-
-		uint level_mask = (1 << level) - 1; 
-		uint active_threads = subgroupBallot((thread_idx & level_mask) == level_mask).x;
-
-		uint sum_mask = (level + 1) < 5 ? (1 << (1 << (level + 1))) - 1 : UINT32_MAX; // level + 1 >= 5 then 2^(2^(level + 1)) overflows (2^32 overflows)
-
-		uint shift_by = 1 << (level + 1);
-		for (; sum_mask != 0; sum_mask = shift_by < 32 ? sum_mask << shift_by : 0) // Left shifting by 32 or higher is UB
+		uint level_mask = (1 << (level + 1)) - 1; 
+		if ((gl_LocalInvocationID.x & level_mask) == level_mask)
 		{
-			uint op_threads = active_threads & sum_mask;
+			uint b_idx = thread_value_idx;
+			uint a_idx = b_idx - (1 << level) * num_items;
 
-			if (subgroupInverseBallot(uvec4(op_threads)))
-			{
-				uint sum = subgroupAdd(thread_value);
-				if (subgroupInverseBallot(uvec4(1 << findMSB(op_threads))))
-				{
-					thread_value = sum;
-				}
-			}
+			s_data[b_idx] = s_data[b_idx] + s_data[a_idx];
 		}
+		
+		barrier();
 	}
 
-	thread_values[NUM_ITERS - 1] = thread_value;
-
-	// Write values back to global memory
-	for (uint i = 0; i < NUM_ITERS; i++)
+	// Global memory write
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint data_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride;
+		uint data_idx = offset + (gl_GlobalInvocationID.x * num_items + i) * stride;
 		if (data_idx < block_length)
 		{
-			data[block_offset + data_idx] = thread_values[i];
+			data[block_offset + data_idx] = s_data[gl_LocalInvocationID.x * num_items + i];
 		}
 	}
 }

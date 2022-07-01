@@ -96,9 +96,11 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
 
     if (verbose)
     {
-        VREN_DEBUG("Before reduction:\n");
-        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
-        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+        /*
+        fmt::print("Before reduction:\n");
+        fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+        */
     }
 
     run_cpu_reduce(cpu_buffer.data(), sample_length, 1, 0);
@@ -121,9 +123,9 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
 
     if (verbose)
     {
-        VREN_DEBUG("After reduction:\n");
-        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
-        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+        fmt::print("After reduction:\n");
+        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
     }
 
     ASSERT_EQ(cpu_buffer.at(sample_length - 1), gpu_buffer_ptr[sample_length - 1]);
@@ -136,7 +138,9 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
 
 TEST(reduce, main)
 {
-    size_t length = vren::reduce::k_min_buffer_length;
+    //run_reduce_test(1 << 6, true);
+
+    size_t length = 1 << 5;
     while (length <= (1 << 20))
     {
         fmt::print("LENGTH: {}\n", length);

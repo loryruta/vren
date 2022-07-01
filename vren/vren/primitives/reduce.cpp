@@ -53,18 +53,17 @@ void vren::reduce::operator()(
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     uint32_t offset,
-    uint32_t block_num,
+    uint32_t blocks_num,
     uint32_t* result
 )
 {
     assert(vren::is_power_of_2(length));
-    assert(length >= k_subgroup_size * k_num_iterations);
-    assert(block_num > 0);
+    assert(blocks_num > 0);
 
     struct
     {
+        uint32_t m_num_items;
         uint32_t m_level;
-        uint32_t m_step_levels;
         uint32_t m_block_length;
     } push_constants;
 
@@ -76,7 +75,8 @@ void vren::reduce::operator()(
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
-    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_subgroup_size * k_num_iterations);
+    uint32_t num_items = 1;
+    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * num_items);
     int32_t levels = glm::log2<int32_t>(length);
 
     for (uint32_t level = 0; level < levels; level += max_levels_per_dispatch)
@@ -97,19 +97,17 @@ void vren::reduce::operator()(
 
         m_pipeline.bind(command_buffer);
 
-        uint32_t step_levels = glm::min<int32_t>(levels - level, max_levels_per_dispatch);
-
         push_constants = {
+            .m_num_items = num_items,
             .m_level = level,
-            .m_step_levels = step_levels,
             .m_block_length = length,
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_subgroup_size * k_num_iterations);
-        m_pipeline.dispatch(command_buffer, workgroups_num, block_num, 1);
+        uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_workgroup_size * num_items);
+        m_pipeline.dispatch(command_buffer, workgroups_num, blocks_num, 1);
     }
 
     if (result)

@@ -8,9 +8,7 @@ namespace vren
     class reduce
     {
     public:
-        inline static const uint32_t k_subgroup_size  = 32;
-        inline static const uint32_t k_num_iterations = 16;
-        inline static const uint32_t k_min_buffer_length = k_subgroup_size * k_num_iterations;
+        inline static const uint32_t k_workgroup_size = 1024;
 
     private:
         vren::context const* m_context;
@@ -34,7 +32,7 @@ namespace vren
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
             uint32_t offset,
-            uint32_t block_num,
+            uint32_t blocks_num,
             uint32_t* result = nullptr
         );
     };
