@@ -9,20 +9,20 @@
 
 #define UINT32_MAX 0xffffffffu
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
-
-#ifndef NUM_ITERS
-#	error NUM_ITERS not defined
+#ifndef _VREN_WORKGROUP_SIZE
+#	define _VREN_WORKGROUP_SIZE 1024
 #endif
 
-// Requirements:
-// - MAIN_DOWNSWEEP defined to "main" or MAIN_SUBGROUP_DOWNSWEEP defined to "main"
+#define _VREN_MAX_ITEMS 1
+
+layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	uint level;
-	uint clear_last; // 0 if shouldn't clear last value, otherwise 1
+	uint swept_level; // Used only by downsweep entrypoint to find offset and stride
+	uint clear_last;  // 0 if shouldn't clear last value, otherwise 1
 	uint block_length;
+	uint num_items;
 };
 
 layout(set = 0, binding = 0) buffer Buffer
@@ -30,23 +30,22 @@ layout(set = 0, binding = 0) buffer Buffer
 	uint data[];
 };
 
-#ifdef MAIN_DOWNSWEEP
+#ifdef _VREN_DOWNSWEEP_ENTRYPOINT
 void main()
 {
 	uint block_offset = gl_WorkGroupID.y * block_length;
-	
-    uint offset = (1u << level) - 1;
-    uint stride = 1u << level;
 
-	for (uint i = 0; i < NUM_ITERS; i++)
+	uint offset = (1 << swept_level) - 1;
+	uint stride = 1 << swept_level;
+
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint a_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2;
-		uint b_idx = offset + (gl_GlobalInvocationID.x * NUM_ITERS + i) * stride * 2 + stride;
+		uint a_idx = offset + (gl_GlobalInvocationID.x * num_items + i) * stride * 2;
+		uint b_idx = offset + (gl_GlobalInvocationID.x * num_items + i) * stride * 2 + stride;
 
-		if (a_idx < block_length)
+		if (b_idx < block_length)
 		{
-			uint b = clear_last != 0 && b_idx == block_length - 1 ? 0 : data[block_offset + b_idx];
-
+			uint b = (clear_last != 0) && (b_idx == block_length - 1) ? 0 : data[block_offset + b_idx];
 			data[block_offset + b_idx] = data[block_offset + a_idx] + b;
 			data[block_offset + a_idx] = b;
 		}
@@ -54,76 +53,63 @@ void main()
 }
 #endif
 
-#ifdef MAIN_SUBGROUP_DOWNSWEEP
+#ifdef _VREN_WORKGROUP_DOWNSWEEP_ENTRYPOINT
+shared uint s_data[1024 * _VREN_MAX_ITEMS];
+
 void main()
 {
 	uint block_offset = gl_WorkGroupID.y * block_length;
 
-	uint thread_values[NUM_ITERS];
-
-	for (uint i = 0; i < NUM_ITERS; i++)
+	// Read global memory to shared memory
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i; // Array is tightly packed here: offset and stride ignored
-		uint val = clear_last != 0 && data_idx == (block_length - 1) ? 0 : data[block_offset + data_idx];
-		thread_values[i] = val;
+		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
+		uint val = (clear_last != 0) && (data_idx == block_length - 1) ? 0 : data[block_offset + data_idx];
+		s_data[gl_LocalInvocationID.x * num_items + i] = val;
 	}
 	
-	uint thread_value = thread_values[NUM_ITERS - 1];
+	barrier();
 
-	for (int level = int(log2(32)) - 1; level >= 0; level--)
+	// Workgroup-wide reduction
+	uint thread_value_idx = (gl_LocalInvocationID.x + 1) * num_items - 1;
+
+	for (int level = int(log2(_VREN_WORKGROUP_SIZE)) - 1; level >= 0; level--)
 	{
-		uint thread_idx = gl_SubgroupInvocationID.x;
-
-		uint level_mask = (1 << level) - 1; 
-		uint active_threads = subgroupBallot((thread_idx & level_mask) == level_mask).x;
-
-		uint op_mask = (level + 1) < 5 ? (1 << (1 << (level + 1))) - 1 : UINT32_MAX; // level + 1 >= 5 then 2^(2^(level + 1)) overflows (2^32 overflows)
-
-		uint shift_by = 1 << (level + 1);
-		for (; op_mask != 0; op_mask = shift_by < 32 ? op_mask << shift_by : 0) // Left shifting by 32 or higher is UB
+		uint level_mask = (1 << (level + 1)) - 1; 
+		if ((gl_LocalInvocationID.x & level_mask) == level_mask)
 		{
-			uint op_threads = active_threads & op_mask;
+			uint b_idx = thread_value_idx;
+			uint a_idx = b_idx - (1 << level) * num_items;
 
-			if (subgroupInverseBallot(uvec4(op_threads)))
-			{
-				uint sum = subgroupAdd(thread_value);
-
-				uint right_thread_idx = findMSB(op_threads);
-				uint right_thread_mask = 1 << findMSB(op_threads);
-				uint right_value = subgroupShuffle(thread_value, right_thread_idx);
-
-				if (subgroupInverseBallot(uvec4(right_thread_mask)))
-				{
-					thread_value = sum;
-				}
-
-				if (subgroupInverseBallot(uvec4(1 << findLSB(op_threads))))
-				{
-					thread_value = right_value;
-				}
-			}
+			uint tmp = s_data[b_idx];
+            s_data[b_idx] = s_data[a_idx] + tmp;
+			s_data[a_idx] = tmp;
 		}
+		
+		barrier();
 	}
 
-	thread_values[NUM_ITERS - 1] = thread_value;
-
-	for (int level = int(log2(NUM_ITERS)) - 1; level >= 0; level--)
+	// Invocation-wide reduction
+	for (int level = int(log2(num_items)) - 1; level >= 0; level--)
 	{
-		for (uint item_idx = 0; item_idx < (NUM_ITERS >> (level + 1)); item_idx++)
+        for (uint i = 0; i < (num_items >> (level + 1)); i++)
         {
-            uint a_idx = (1 << level) - 1 + (item_idx << (level + 1));
-            uint b_idx = (1 << level) - 1 + (item_idx << (level + 1)) + (1 << level);
+		    uint a_idx = (gl_LocalInvocationID.x * num_items) + (1 << level) - 1 + (i << (level + 1));
+            uint b_idx = a_idx + (1 << level);
 
-			uint tmp = thread_values[b_idx];
-            thread_values[b_idx] = thread_values[a_idx] + tmp;
-			thread_values[a_idx] = tmp;
+			uint tmp = s_data[b_idx];
+            s_data[b_idx] = s_data[a_idx] + tmp;
+			s_data[a_idx] = tmp;
         }
 	}
+	
+	barrier();
 
-	for (uint i = 0; i < NUM_ITERS; i++)
+	// Write shared memory to global memory
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
-		data[block_offset + data_idx] = thread_values[i];
+		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
+		data[block_offset + data_idx] = s_data[gl_LocalInvocationID.x * num_items + i];
 	}
 }
 #endif

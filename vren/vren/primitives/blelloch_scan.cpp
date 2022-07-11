@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <glm/gtc/integer.hpp>
+#include <fmt/format.h>
 
 #include "toolbox.hpp"
 
@@ -14,9 +15,9 @@ vren::blelloch_scan::blelloch_scan(vren::context const& context) :
         vren::specialized_shader shader = vren::specialized_shader(shader_mod);
         return vren::create_compute_pipeline(context, shader);
     }()),
-    m_subgroup_downsweep_pipeline([&]()
+    m_workgroup_downsweep_pipeline([&]()
     {
-        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_subgroup_downsweep.comp.spv");
+        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_workgroup_downsweep.comp.spv");
         vren::specialized_shader shader = vren::specialized_shader(shader_mod);
         return vren::create_compute_pipeline(context, shader);
     }())
@@ -72,6 +73,7 @@ void vren::blelloch_scan::downsweep(
         uint32_t m_level;
         uint32_t m_clear_last;
         uint32_t m_block_length;
+        uint32_t m_num_items;
     } push_constants;
 
     auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
@@ -80,10 +82,13 @@ void vren::blelloch_scan::downsweep(
     resource_container.add_resource(descriptor_set);
     write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer, length, offset);
 
-    int32_t levels_per_subgroup = glm::log2<int32_t>(k_downsweep_subgroup_size * k_downsweep_num_iterations);
+    uint32_t num_items = 1; // TODO num_items could be dynamically calculated
+    assert(num_items <= k_max_items);
+
+    int32_t levels_per_workgroup = glm::log2<int32_t>(k_workgroup_size * num_items);
 
     // Downsweep (on global memory)
-    for (uint32_t level = glm::log2(length) - 1, i = 0; level > levels_per_subgroup; level--, i++)
+    for (uint32_t level = glm::log2(length) - 1, i = 0; level > levels_per_workgroup - 1; level--, i++)
     {
         m_downsweep_pipeline.bind(command_buffer);
 
@@ -91,13 +96,13 @@ void vren::blelloch_scan::downsweep(
             .m_level = level,
             .m_clear_last = clear_last ? 1u : 0,
             .m_block_length = length,
+            .m_num_items = num_items,
         };
         m_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         m_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        uint32_t workgroups_num = vren::divide_and_ceil(1 << i, k_downsweep_subgroup_size * k_downsweep_num_iterations);
-
+        uint32_t workgroups_num = vren::divide_and_ceil(1 << i, k_workgroup_size * num_items);
         m_downsweep_pipeline.dispatch(command_buffer, workgroups_num, blocks_num, 1);
 
         VkBufferMemoryBarrier buffer_memory_barrier{
@@ -117,21 +122,21 @@ void vren::blelloch_scan::downsweep(
         }
     }
     
-    // Subgroup downsweep (per-subgroup: efficient)
-    m_subgroup_downsweep_pipeline.bind(command_buffer);
+    // Workgroup downsweep
+    m_workgroup_downsweep_pipeline.bind(command_buffer);
 
     push_constants = {
         .m_level = 0, // Ignored
         .m_clear_last = clear_last ? 1u : 0,
         .m_block_length = length,
+        .m_num_items = num_items,
     };
-    m_subgroup_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+    m_workgroup_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
-    m_subgroup_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
+    m_workgroup_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-    uint32_t workgroups_num = vren::divide_and_ceil(length, k_subgroup_downsweep_subgroup_size * k_subgroup_downseep_num_iterations);
-
-    m_subgroup_downsweep_pipeline.dispatch(command_buffer, workgroups_num, blocks_num, 1);
+    uint32_t workgroups_num = vren::divide_and_ceil(length, k_workgroup_size * num_items);
+    m_workgroup_downsweep_pipeline.dispatch(command_buffer, workgroups_num, blocks_num, 1);
 }
 
 void vren::blelloch_scan::operator()(

@@ -9,17 +9,13 @@ namespace vren
     class blelloch_scan
     {
     public:
-        inline static const uint32_t k_downsweep_subgroup_size = 32;
-        inline static const uint32_t k_downsweep_num_iterations = 8;
-
-        inline static const uint32_t k_subgroup_downsweep_subgroup_size = 32;
-        inline static const uint32_t k_subgroup_downseep_num_iterations = 16;
-
-        inline static const uint32_t k_min_buffer_length = k_subgroup_downsweep_subgroup_size * k_subgroup_downseep_num_iterations;
+        inline static const uint32_t k_workgroup_size = 1024;
+        inline static const uint32_t k_max_items = 1;
+        inline static const uint32_t k_min_buffer_length = k_workgroup_size;
 
     private:
         vren::context const* m_context;
-        vren::pipeline m_downsweep_pipeline, m_subgroup_downsweep_pipeline;
+        vren::pipeline m_downsweep_pipeline, m_workgroup_downsweep_pipeline;
 
     public:
         blelloch_scan(vren::context const& context);

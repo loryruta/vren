@@ -93,6 +93,7 @@ static void BM_gpu_blelloch_scan(benchmark::State& state)
 
 BENCHMARK(BM_gpu_blelloch_scan)
     ->Unit(benchmark::kMicrosecond)
+    ->Iterations(1)
     ->Range(1 << 10, 1 << 29 /* < maxStorageBufferRange */)
     ->UseManualTime();
 
@@ -126,17 +127,10 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
     uint32_t* gpu_buffer_ptr = reinterpret_cast<uint32_t*>(gpu_buffer.m_allocation_info.pMappedData);
 
-    vren_test::fill_with_random_int_values(cpu_buffer.begin(), cpu_buffer.end(), 0, 100);
-    //std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
+    //vren_test::fill_with_random_int_values(cpu_buffer.begin(), cpu_buffer.end(), 0, 100);
+    std::fill(cpu_buffer.begin(), cpu_buffer.end(), 1);
 
     std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(uint32_t));
-
-    if (verbose)
-    {
-        VREN_DEBUG("Before reduction:\n");
-        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
-        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
-    }
 
     std::exclusive_scan(cpu_buffer.begin(), cpu_buffer.end(), cpu_buffer.begin(), 0);
 
@@ -158,20 +152,25 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
     if (verbose)
     {
-        VREN_DEBUG("After reduction:\n");
-        VREN_DEBUG("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
-        VREN_DEBUG("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
+        //fmt::print("After prefix-sum:\n");
+        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length);
+        //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length);
     }
 
     for (uint32_t i = 0; i < sample_length; i++)
     {
+        if (cpu_buffer.at(i) != gpu_buffer_ptr[i])
+        {
+            fmt::print("ERROR AT: {}\n", i);
+        }
+
         ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
     }
 }
 
 TEST(blelloch_scan, main)
 {
-    run_blelloch_scan_test(1 << 20, false);
+   // run_blelloch_scan_test(1 << 11, true);
 
     uint32_t length = vren::blelloch_scan::k_min_buffer_length;
     while (length <= (1 << 20))
