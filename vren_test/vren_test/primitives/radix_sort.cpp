@@ -112,17 +112,11 @@ void run_radix_sort_test(uint32_t sample_length, bool verbose)
 
     if (verbose)
     {
-        //fmt::print(">>> Scratch buffer 1 dump:\n");
-        //vren_test::print_gpu_buffer<uint32_t>(VREN_TEST_APP()->m_context, scratch_buffer_1, (1024 * 16 + 16));
+        //fmt::print("Scratch buffer 1:\n"); vren_test::print_gpu_buffer<uint32_t>(VREN_TEST_APP()->m_context, scratch_buffer_1, (1 * 16 + 16));
+        //fmt::print("Scratch buffer 2:\n"); vren_test::print_gpu_buffer<uint32_t>(VREN_TEST_APP()->m_context, scratch_buffer_2, sample_length,"{:08x}");
 
-        //fmt::print(">>> Scratch buffer 2 dump:\n");
-        //vren_test::print_gpu_buffer<uint32_t>(VREN_TEST_APP()->m_context, scratch_buffer_2, sample_length,"{:08x}");
-
-        fmt::print(">>> GPU buffer:\n");
-        vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length, "{:08x}");
-
-        //fmt::print(">>> CPU buffer:\n");
-       // vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length, "{:08x}");
+        //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, sample_length, "{:08x}");
+        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), sample_length, "{:08x}");
     }
 
     ASSERT_EQ(cpu_buffer.at(sample_length - 1), gpu_buffer_ptr[sample_length - 1]);
@@ -135,10 +129,9 @@ void run_radix_sort_test(uint32_t sample_length, bool verbose)
 
 TEST(radix_sort, main)
 {
+    run_radix_sort_test(1 << 10, true);
 
-    //run_radix_sort_test(1 << 9, true);
-
-    uint32_t length = 1 << 9;
+    uint32_t length = 1 << 10;
     while (length <= (1 << 20))
     {
         fmt::print("LENGTH: {}\n", length);

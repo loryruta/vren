@@ -67,7 +67,6 @@ vren::vk_descriptor_set_layout vren::radix_sort::create_descriptor_set_layout()
         .bindingCount = std::size(bindings),
         .pBindings = bindings
     };
-    
     VkDescriptorSetLayout descriptor_set_layout;
     VREN_CHECK(vkCreateDescriptorSetLayout(m_context->m_device, &descriptor_set_layout_info, nullptr, &descriptor_set_layout), m_context);
     return vren::vk_descriptor_set_layout(*m_context, descriptor_set_layout);
@@ -81,8 +80,8 @@ void vren::radix_sort::write_descriptor_set(
     vren::vk_utils::buffer const& scratch_buffer_1
 )
 {
-    uint32_t num_workgroups = length / (32 * 16);
-    uint32_t local_offset_block_length = glm::max(num_workgroups, vren::blelloch_scan::k_min_buffer_length);
+    uint32_t num_workgroups = vren::divide_and_ceil(length, k_workgroup_size); // * num_items = 1
+    uint32_t local_offset_block_length = num_workgroups;
 
     VkDescriptorBufferInfo buffer_infos[]{
         { // Input buffer
@@ -124,8 +123,8 @@ void vren::radix_sort::write_descriptor_set(
 
 vren::vk_utils::buffer vren::radix_sort::create_scratch_buffer_1(uint32_t length)
 {
-    uint32_t num_workgroups = length / (32 * 16);
-    uint32_t local_offset_block_length = glm::max(num_workgroups, vren::blelloch_scan::k_min_buffer_length);
+    uint32_t num_workgroups = vren::divide_and_ceil(length, k_workgroup_size); // * num_items = 1
+    uint32_t local_offset_block_length = num_workgroups;
 
     auto scratch_buffer_1 =
         vren::vk_utils::alloc_device_only_buffer(
@@ -156,12 +155,18 @@ void vren::radix_sort::operator()(
     vren::vk_utils::buffer const& scratch_buffer_2
 )
 {
-    assert(vren::is_power_of_2(length));
+    if (!(length >= k_workgroup_size && vren::is_power_of_2(length)))
+    {
+        throw std::invalid_argument("Length must be higher than 1024 and a power of 2");
+    }
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
-    uint32_t num_workgroups = length / (32 * 16);
-    uint32_t local_offset_block_length = glm::max(num_workgroups, vren::blelloch_scan::k_min_buffer_length); // and reduce k_min_buffer_length
+    uint32_t num_items = 1; // TODO calculate dynamically
+    assert(num_items <= k_max_items);
+
+    uint32_t num_workgroups = vren::divide_and_ceil(length, k_workgroup_size); // * num_items = 1
+    uint32_t local_offset_block_length = num_workgroups;
 
     for (int32_t i = 0; i < 8; i++)
     {
@@ -198,10 +203,12 @@ void vren::radix_sort::operator()(
             {
                 uint32_t m_symbol_position;
                 uint32_t m_block_length;
+                uint32_t m_num_items;
             } push_constants;
 
             push_constants.m_symbol_position = i;
             push_constants.m_block_length = local_offset_block_length;
+            push_constants.m_num_items = num_items;
 
             m_local_count_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants));
 
@@ -302,10 +309,12 @@ void vren::radix_sort::operator()(
             {
                 uint32_t m_symbol_position;
                 uint32_t m_local_offset_block_length;
+                uint32_t m_num_items;
             } push_constants;
 
             push_constants.m_symbol_position = i;
             push_constants.m_local_offset_block_length = local_offset_block_length;
+            push_constants.m_num_items = num_items;
 
             m_reorder_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants));
 

@@ -9,6 +9,9 @@ namespace vren
     class radix_sort
     {
     public:
+        inline static const uint32_t k_workgroup_size = 1024;
+        inline static const uint32_t k_max_items = 1;
+
         inline static constexpr uint32_t k_radix_bits = 4;
         inline static constexpr uint32_t k_radix = 1 << k_radix_bits;
 

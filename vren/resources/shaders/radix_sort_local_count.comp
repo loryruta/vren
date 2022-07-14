@@ -5,9 +5,13 @@
 
 #extension GL_EXT_debug_printf : enable
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+#ifndef _VREN_WORKGROUP_SIZE
+#	define _VREN_WORKGROUP_SIZE 1024
+#endif
 
-#define NUM_ITERS 16
+layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+#define _VREN_MAX_ITERS 1
 
 #define RADIX_BITS 4
 #define RADIX      (1 << RADIX_BITS)
@@ -17,6 +21,7 @@ layout(push_constant) uniform PushConstants
 {
     uint symbol_position;
 	uint block_length;
+	uint num_items;
 };
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
@@ -43,22 +48,24 @@ shared uint s_local_counts[RADIX];
 
 void main()
 {
-	if (gl_SubgroupInvocationID < RADIX)
+	if (gl_LocalInvocationID.x < RADIX)
 	{
-		s_local_counts[gl_SubgroupInvocationID] = 0;
+		s_local_counts[gl_LocalInvocationID.x] = 0;
 	}
 
-	memoryBarrierShared();
+	barrier();
 
-	for (uint i = 0; i < NUM_ITERS; i++)
+	for (uint i = 0; i < num_items; i++)
 	{
-		uint data_idx = gl_GlobalInvocationID.x * NUM_ITERS + i;
+		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
         uint symbol = data[data_idx] >> (symbol_position * RADIX_BITS) & RADIX_MASK;
 		atomicAdd(s_local_counts[symbol], 1);
 	}
+	
+	barrier();
 
-	if (gl_SubgroupInvocationID < RADIX)
+	if (gl_LocalInvocationID.x < RADIX)
 	{
-		local_counts[gl_SubgroupInvocationID * block_length + gl_WorkGroupID.x] = s_local_counts[gl_SubgroupInvocationID];
+		local_counts[gl_LocalInvocationID.x * block_length + gl_WorkGroupID.x] = s_local_counts[gl_LocalInvocationID.x];
 	}
 }
