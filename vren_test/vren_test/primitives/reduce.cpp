@@ -140,12 +140,10 @@ TEST(reduce, main)
 {
     //run_reduce_test(1 << 6, true);
 
-    size_t length = 1 << 5;
-    while (length <= (1 << 20))
+    for (uint32_t length = 1; length >> 20 == 0; length <<= 1)
     {
-        fmt::print("LENGTH: {}\n", length);
+        fmt::print("[reduce] Length: {}\n", length);
 
         run_reduce_test(length, false);
-        length <<= 1;
     }
 }

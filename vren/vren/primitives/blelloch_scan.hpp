@@ -11,7 +11,6 @@ namespace vren
     public:
         inline static const uint32_t k_workgroup_size = 1024;
         inline static const uint32_t k_max_items = 1;
-        inline static const uint32_t k_min_buffer_length = k_workgroup_size;
 
     private:
         vren::context const* m_context;

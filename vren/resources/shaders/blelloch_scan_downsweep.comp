@@ -64,8 +64,15 @@ void main()
 	for (uint i = 0; i < num_items; i++)
 	{
 		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
-		uint val = (clear_last != 0) && (data_idx == block_length - 1) ? 0 : data[block_offset + data_idx];
-		s_data[gl_LocalInvocationID.x * num_items + i] = val;
+
+		if (data_idx < block_length - clear_last)//(clear_last != 0 ? 1 : 0)
+		{
+			s_data[gl_LocalInvocationID.x * num_items + i] = data[block_offset + data_idx];
+		}
+		else
+		{
+			s_data[gl_LocalInvocationID.x * num_items + i] = 0;
+		}
 	}
 	
 	barrier();
@@ -109,7 +116,11 @@ void main()
 	for (uint i = 0; i < num_items; i++)
 	{
 		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
-		data[block_offset + data_idx] = s_data[gl_LocalInvocationID.x * num_items + i];
+
+		if (data_idx < block_length)
+		{
+			data[block_offset + data_idx] = s_data[gl_LocalInvocationID.x * num_items + i];
+		}
 	}
 }
 #endif

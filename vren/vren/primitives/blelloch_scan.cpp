@@ -65,7 +65,6 @@ void vren::blelloch_scan::downsweep(
 )
 {
     assert(vren::is_power_of_2(length));
-    assert(length >= k_min_buffer_length);
     assert(blocks_num > 0);
 
     struct
@@ -88,12 +87,12 @@ void vren::blelloch_scan::downsweep(
     int32_t levels_per_workgroup = glm::log2<int32_t>(k_workgroup_size * num_items);
 
     // Downsweep (on global memory)
-    for (uint32_t level = glm::log2(length) - 1, i = 0; level > levels_per_workgroup - 1; level--, i++)
+    for (int32_t level = glm::log2(length) - 1, i = 0; level > levels_per_workgroup - 1; level--, i++)
     {
         m_downsweep_pipeline.bind(command_buffer);
 
         push_constants = {
-            .m_level = level,
+            .m_level = (uint32_t) level,
             .m_clear_last = clear_last ? 1u : 0,
             .m_block_length = length,
             .m_num_items = num_items,

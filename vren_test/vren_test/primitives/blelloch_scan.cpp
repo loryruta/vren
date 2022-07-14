@@ -159,26 +159,19 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
     for (uint32_t i = 0; i < sample_length; i++)
     {
-        if (cpu_buffer.at(i) != gpu_buffer_ptr[i])
-        {
-            fmt::print("ERROR AT: {}\n", i);
-        }
-
         ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
     }
 }
 
 TEST(blelloch_scan, main)
 {
-   // run_blelloch_scan_test(1 << 11, true);
+    //run_blelloch_scan_test(1 << 11, true);
 
-    uint32_t length = vren::blelloch_scan::k_min_buffer_length;
-    while (length <= (1 << 20))
+    for (uint32_t length = 1; length >> 20 == 0; length <<= 1)
     {
-        fmt::print("LENGTH: {}\n", length);
+        fmt::print("[blelloch_scan] Length: {}\n", length);
 
         run_blelloch_scan_test(length, false);
-        length <<= 1;
     }
 }
 
