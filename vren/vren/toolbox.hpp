@@ -10,6 +10,7 @@
 #include "primitives/reduce.hpp"
 #include "primitives/blelloch_scan.hpp"
 #include "primitives/radix_sort.hpp"
+#include "primitives/bucket_sort.hpp"
 
 namespace vren
 {
@@ -44,6 +45,7 @@ namespace vren
 		vren::reduce m_reduce;
 		vren::blelloch_scan m_blelloch_scan;
 		vren::radix_sort m_radix_sort;
+		vren::bucket_sort m_bucket_sort;
 
 		explicit toolbox(vren::context const& ctx);
 	};

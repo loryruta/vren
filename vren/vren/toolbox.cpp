@@ -60,7 +60,8 @@ vren::toolbox::toolbox(vren::context const& context) :
 	m_material_manager(context),
 	m_reduce(context),
 	m_blelloch_scan(context),
-	m_radix_sort(context)
+	m_radix_sort(context),
+	m_bucket_sort(context)
 {}
 
 void vren::toolbox::lazy_initialize()

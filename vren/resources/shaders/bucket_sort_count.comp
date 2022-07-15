@@ -1,0 +1,45 @@
+#version 460
+
+#extension GL_EXT_shader_16bit_storage : require
+
+#extension GL_EXT_debug_printf : enable
+
+#ifndef _VREN_WORKGROUP_SIZE
+#	define _VREN_WORKGROUP_SIZE 1024
+#endif
+
+layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+#define _VREN_MAX_ITERS 1
+
+#define _VREN_KEY_SIZE (1 << 16)
+
+layout(push_constant) uniform PushConstants
+{
+	uint num_items;
+};
+
+layout(set = 0, binding = 0) readonly buffer InputBuffer
+{
+	uint16_t input_buffer[];
+};
+
+layout(set = 0, binding = 1) writeonly buffer OutputBuffer
+{
+	uint16_t output_buffer[];
+};
+
+layout(set = 0, binding = 2) buffer BucketCountBuffer
+{
+	uint bucket_counters[_VREN_KEY_SIZE];
+};
+
+
+void main()
+{
+	for (uint i = 0; i < num_items; i++)
+	{
+		uint v = uint(input_buffer[gl_GlobalInvocationID.x * num_items + i]);
+		atomicAdd(bucket_counters[v], 1);
+	}
+}

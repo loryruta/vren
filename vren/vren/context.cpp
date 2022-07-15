@@ -311,19 +311,18 @@ VkDevice vren::context::create_logical_device()
 		.storagePushConstant8 = true,
 	};
 
-	/*
 	VkPhysicalDevice16BitStorageFeatures khr_16bit_storage_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
 		.pNext = &khr_8bit_storage_features,
 		.storageBuffer16BitAccess = true,
 		.uniformAndStorageBuffer16BitAccess = true,
 		.storagePushConstant16 = true,
-		.storageInputOutput16 = true,
-	};*/
+		.storageInputOutput16 = false,
+	};
 
 	VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV,
-		.pNext = &khr_8bit_storage_features,
+		.pNext = &khr_16bit_storage_features,
 		.taskShader = true,
 		.meshShader = true
 	};
@@ -340,14 +339,18 @@ VkDevice vren::context::create_logical_device()
 		.separateDepthStencilLayouts = true,
 	};
 
-	VkPhysicalDeviceFeatures features{
-		.fillModeNonSolid = VK_TRUE,
+	VkPhysicalDeviceFeatures2 features2{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+		.pNext = &separate_depth_stencil_layouts_features,
+		.features = {
+			.fillModeNonSolid = VK_TRUE,
+		},
 	};
 
 	/* Device */
 	VkDeviceCreateInfo device_info{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = &separate_depth_stencil_layouts_features,
+		.pNext = &features2,
 		.flags = NULL,
 		.queueCreateInfoCount = (uint32_t) queue_infos.size(),
 		.pQueueCreateInfos = queue_infos.data(),
@@ -355,11 +358,10 @@ VkDevice vren::context::create_logical_device()
 		.ppEnabledLayerNames = nullptr,
 		.enabledExtensionCount = (uint32_t) dev_ext.size(),
 		.ppEnabledExtensionNames = dev_ext.data(),
-		.pEnabledFeatures = &features
+		.pEnabledFeatures = nullptr,
 	};
 	VkDevice device;
 	VREN_CHECK(vkCreateDevice(m_physical_device, &device_info, nullptr, &device));
-
 	return device;
 }
 

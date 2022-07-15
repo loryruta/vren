@@ -64,6 +64,8 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_local_count.comp" "${VREN_SHADERS_DIR}/radix_sort_local_count.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_global_offset.comp" "${VREN_SHADERS_DIR}/radix_sort_global_offset.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_reorder.comp" "${VREN_SHADERS_DIR}/radix_sort_reorder.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_count.comp" "${VREN_SHADERS_DIR}/bucket_sort_count.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_write.comp" "${VREN_SHADERS_DIR}/bucket_sort_write.comp.spv")
 
     add_custom_target(vren_${TARGET}_shaders DEPENDS ${SHADERS})
 

@@ -54,6 +54,8 @@ set(SRC
         
         vren/primitives/blelloch_scan.cpp
         vren/primitives/blelloch_scan.hpp
+        vren/primitives/bucket_sort.cpp
+        vren/primitives/bucket_sort.hpp
         vren/primitives/radix_sort.cpp
         vren/primitives/radix_sort.hpp
         vren/primitives/reduce.cpp
