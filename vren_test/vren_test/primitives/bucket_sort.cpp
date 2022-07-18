@@ -6,6 +6,7 @@
 #include <numeric>
 #include <memory>
 
+#include <glm/glm.hpp>
 #include <glm/gtc/integer.hpp>
 #include <fmt/format.h>
 
@@ -66,27 +67,34 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
 {
     vren::bucket_sort& bucket_sort = VREN_TEST_APP()->m_context.m_toolbox->m_bucket_sort;
 
-    std::vector<uint16_t> cpu_buffer(sample_length);
+    std::vector<glm::uvec2> cpu_buffer(sample_length);
 
     vren::vk_utils::buffer gpu_buffer = vren::vk_utils::alloc_host_visible_buffer(
         VREN_TEST_APP()->m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        sample_length * sizeof(uint16_t),
+        sample_length * sizeof(glm::uvec2),
         true
     );
 
     vren::vk_utils::buffer scratch_buffer_1 = bucket_sort.create_scratch_buffer_1(sample_length);
 
-    uint16_t* gpu_buffer_ptr = reinterpret_cast<uint16_t*>(gpu_buffer.m_allocation_info.pMappedData);
+    glm::uvec2* gpu_buffer_ptr = reinterpret_cast<glm::uvec2*>(gpu_buffer.m_allocation_info.pMappedData);
 
-    //std::iota(cpu_buffer.begin(), cpu_buffer.end(), 0);
-    //std::reverse(cpu_buffer.begin(), cpu_buffer.end());
-    vren_test::fill_with_random_int_values(cpu_buffer.begin(), cpu_buffer.end(), (uint16_t) 0, (uint16_t) UINT16_MAX);
+    // Initialization
+    for (uint32_t i = 0; i < sample_length; i++)
+    {
+        cpu_buffer[i].x = sample_length - i;
+        cpu_buffer[i].y = i; // This can't be checked as for the same key it'll be unsorted
+    }
 
-    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(uint16_t));
+    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(glm::uvec2));
 
-    std::sort(cpu_buffer.begin(), cpu_buffer.end());
+    // Sort CPU array
+    std::sort(cpu_buffer.begin(), cpu_buffer.end(), [&](glm::uvec2 const& a, glm::uvec2 const& b) {
+        return (a.x & vren::bucket_sort::k_key_mask) < (b.x & vren::bucket_sort::k_key_mask);
+    });
 
+    // Sort GPU array
     vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
         VkBufferMemoryBarrier buffer_memory_barrier{
@@ -96,7 +104,7 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
             .buffer = gpu_buffer.m_buffer.m_handle,
             .offset = 0,
-            .size = sample_length * sizeof(uint16_t)
+            .size = sample_length * sizeof(glm::uvec2)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -111,20 +119,38 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
 
     if (verbose)
     {
-        //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint16_t>(gpu_buffer_ptr, sample_length, "{:08x}");
-        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint16_t>(cpu_buffer.data(), sample_length, "{:08x}");
+        // CPU buffer
+        fmt::print("CPU buffer:\n");
+        for (uint32_t i = 0; i < sample_length; i++)
+        {
+            fmt::print("{}, ", cpu_buffer.at(i).x);
+        }
+        fmt::print("\n");
+
+        // GPU buffer
+        fmt::print("GPU buffer:\n");
+        for (uint32_t i = 0; i < sample_length; i++)
+        {
+            fmt::print("{}, ", gpu_buffer_ptr[i].x);
+        }
+        fmt::print("\n");
     }
 
     for (uint32_t i = 0; i < sample_length; i++)
     {
-        ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
+        ASSERT_EQ(cpu_buffer.at(i).x & vren::bucket_sort::k_key_mask, gpu_buffer_ptr[i].x & vren::bucket_sort::k_key_mask);
+        //ASSERT_EQ(cpu_buffer.at(i).y, gpu_buffer_ptr[i].y);
     }
 }
 
 TEST(bucket_sort, main)
 {
-    run_bucket_sort_test(1 << 10, false);
-
+    /*
+    run_bucket_sort_test(1 << 18, false);
+    run_bucket_sort_test(1 << 19, false);
+    run_bucket_sort_test(1 << 20, false);
+    run_bucket_sort_test(1 << 21, false);
+    */
     uint32_t length = 1 << 10;
     while (length <= (1 << 20))
     {

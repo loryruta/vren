@@ -12,7 +12,8 @@ namespace vren
         inline static const uint32_t k_workgroup_size = 1024;
         inline static const uint32_t k_max_items = 1;
 
-        inline static const uint32_t k_key_size = sizeof(uint16_t);
+        inline static const uint32_t k_key_size = 1 << 16;
+        inline static const uint32_t k_key_mask = k_key_size - 1;
 
     private:
         vren::context const* m_context;

@@ -69,17 +69,17 @@ void vren::bucket_sort::write_descriptor_set(
         { // Input buffer
             .buffer = input_buffer.m_buffer.m_handle,
             .offset = 0,
-            .range = length * sizeof(uint16_t),
+            .range = length * sizeof(glm::uvec2),
         },
         { // Output buffer
             .buffer = scratch_buffer_1.m_buffer.m_handle,
             .offset = 0,
-            .range = length * sizeof(uint16_t),
+            .range = length * sizeof(glm::uvec2),
         },
         { // Bucket count/offset buffer
             .buffer = scratch_buffer_1.m_buffer.m_handle,
-            .offset = length * sizeof(uint16_t),
-            .range = (1 << (k_key_size * 8)) * sizeof(uint32_t),
+            .offset = length * sizeof(glm::uvec2),
+            .range = k_key_size * sizeof(uint32_t),
         }
     };
 
@@ -104,7 +104,7 @@ vren::vk_utils::buffer vren::bucket_sort::create_scratch_buffer_1(uint32_t lengt
         vren::vk_utils::alloc_device_only_buffer(
             *m_context,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            length * k_key_size + (1 << (k_key_size * 8)) * sizeof(uint32_t)
+            length * sizeof(glm::uvec2) + k_key_size * sizeof(uint32_t)
         );
     return scratch_buffer_1;
 }
@@ -129,7 +129,13 @@ void vren::bucket_sort::operator()(
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
     // Clear
-    vkCmdFillBuffer(command_buffer, scratch_buffer_1.m_buffer.m_handle, length * k_key_size, (1 << (k_key_size * 8)) * sizeof(uint32_t), 0);
+    vkCmdFillBuffer(
+        command_buffer,
+        scratch_buffer_1.m_buffer.m_handle,
+        length * sizeof(glm::uvec2),
+        k_key_size * sizeof(uint32_t),
+        0
+    );
 
     buffer_memory_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -137,8 +143,8 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = scratch_buffer_1.m_buffer.m_handle,
-        .offset = length * k_key_size,
-        .size = (1 << (k_key_size * 8)) * sizeof(uint32_t)
+        .offset = length * sizeof(glm::uvec2),
+        .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -156,8 +162,8 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = scratch_buffer_1.m_buffer.m_handle,
-        .offset = length * k_key_size,
-        .size = (1 << (k_key_size * 8)) * sizeof(uint32_t)
+        .offset = length * sizeof(glm::uvec2),
+        .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -166,8 +172,8 @@ void vren::bucket_sort::operator()(
         command_buffer,
         resource_container,
         scratch_buffer_1,
-        1 << (k_key_size * 8),
-        length * k_key_size,
+        k_key_size,
+        length * sizeof(glm::uvec2),
         1
     );
 
@@ -177,8 +183,8 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = scratch_buffer_1.m_buffer.m_handle,
-        .offset = length * k_key_size,
-        .size = (1 << (k_key_size * 8)) * sizeof(uint32_t)
+        .offset = length * sizeof(glm::uvec2),
+        .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -197,7 +203,7 @@ void vren::bucket_sort::operator()(
         .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         .buffer = scratch_buffer_1.m_buffer.m_handle,
         .offset = 0,
-        .size = length * k_key_size
+        .size = length * sizeof(glm::uvec2)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
@@ -205,7 +211,7 @@ void vren::bucket_sort::operator()(
     VkBufferCopy region{
         .srcOffset = 0,
         .dstOffset = 0,
-        .size = length * k_key_size,
+        .size = length * sizeof(glm::uvec2),
     };
     vkCmdCopyBuffer(command_buffer, scratch_buffer_1.m_buffer.m_handle, buffer.m_buffer.m_handle, 1, &region);
 }
