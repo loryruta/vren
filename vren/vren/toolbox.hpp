@@ -42,7 +42,14 @@ namespace vren
 		vren::texture_manager m_texture_manager;
 		vren::material_manager m_material_manager;
 
-		vren::reduce m_reduce;
+		// Reduce
+		vren::reduce m_reduce_uint_add;
+		vren::reduce m_reduce_uint_min;
+		vren::reduce m_reduce_uint_max;
+		vren::reduce m_reduce_vec3_add;
+		vren::reduce m_reduce_vec3_min;
+		vren::reduce m_reduce_vec3_max;
+
 		vren::blelloch_scan m_blelloch_scan;
 		vren::radix_sort m_radix_sort;
 		vren::bucket_sort m_bucket_sort;

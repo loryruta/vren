@@ -26,13 +26,11 @@ namespace vren_test
         vren::context m_context;
         vren::profiler m_profiler;
 
-        vren::reduce m_reduce;
         vren::blelloch_scan m_blelloch_scan;
 
         inline app() :
             m_context(m_context_info),
             m_profiler(m_context),
-            m_reduce(m_context),
             m_blelloch_scan(m_context)
         {
         }

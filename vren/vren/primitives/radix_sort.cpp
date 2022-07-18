@@ -227,7 +227,7 @@ void vren::radix_sort::operator()(
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
         // Reduce local counts to obtain scattered global counts
-        m_context->m_toolbox->m_reduce(
+        m_context->m_toolbox->m_reduce_uint_add(
             command_buffer,
             resource_container,
             scratch_buffer_1,

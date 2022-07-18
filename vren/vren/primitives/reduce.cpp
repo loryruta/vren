@@ -6,12 +6,25 @@
 
 #include "toolbox.hpp"
 
-vren::reduce::reduce(vren::context const& context) :
+std::string build_shader_path(vren::reduce_data_type::enum_t data_type, vren::reduce_operation::enum_t operation)
+{
+    auto result = std::string(".vren/resources/shaders/reduce_");
+    result += std::string( vren::reduce_data_type::get_name(data_type)) + "_" + vren::reduce_operation::get_name(operation);
+    result += ".comp.spv";
+    return result;
+}
+
+vren::reduce::reduce(
+    vren::context const& context,
+    vren::reduce_data_type::enum_t data_type,
+    vren::reduce_operation::enum_t operation
+) :
     m_context(&context),
     m_pipeline([&]()
     {
-        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/reduce.comp.spv");
-        vren::specialized_shader shader = vren::specialized_shader(shader_mod);
+        std::string shader_path = build_shader_path(data_type, operation);
+        vren::shader_module shader_module = vren::load_shader_module_from_file(context, shader_path.c_str());
+        vren::specialized_shader shader = vren::specialized_shader(shader_module);
         return vren::create_compute_pipeline(context, shader);
     }())
 {
@@ -63,7 +76,7 @@ void vren::reduce::operator()(
     struct
     {
         uint32_t m_num_items;
-        uint32_t m_level;
+        uint32_t m_base_level;
         uint32_t m_block_length;
     } push_constants;
 
@@ -99,7 +112,7 @@ void vren::reduce::operator()(
 
         push_constants = {
             .m_num_items = num_items,
-            .m_level = level,
+            .m_base_level = level,
             .m_block_length = length,
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);

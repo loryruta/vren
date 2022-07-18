@@ -5,6 +5,48 @@
 
 namespace vren
 {
+    class reduce_data_type
+    {
+    public:
+        enum enum_t
+        {
+            Uint,
+            Float,
+            Vec3,
+        };
+
+        inline static char const* get_name(vren::reduce_data_type::enum_t data_type)
+        {
+            switch (data_type)
+            {
+            case Uint:  return "uint";
+            case Float: return "float";
+            case Vec3:  return "vec3";
+            }
+        }
+    };
+
+    class reduce_operation
+    {
+    public:
+        enum enum_t
+        {
+            Add,
+            Min,
+            Max,
+        };
+
+        inline static char const* get_name(vren::reduce_operation::enum_t data_type)
+        {
+            switch (data_type)
+            {
+            case Add: return "add";
+            case Min: return "min";
+            case Max: return "max";
+            }
+        }
+    };
+
     class reduce
     {
     public:
@@ -15,7 +57,11 @@ namespace vren
         vren::pipeline m_pipeline;
 
     public:
-        reduce(vren::context const& context);
+        reduce(
+            vren::context const& context,
+            vren::reduce_data_type::enum_t data_type,
+            vren::reduce_operation::enum_t operation
+        );
 
     private:
         void write_descriptor_set(

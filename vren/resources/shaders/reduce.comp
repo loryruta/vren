@@ -6,42 +6,50 @@
 
 #extension GL_EXT_debug_printf : enable
 
-#ifndef _VREN_WORKGROUP_SIZE_
-#	define _VREN_WORKGROUP_SIZE_ 1024
+#ifndef _VREN_WORKGROUP_SIZE
+#	define _VREN_WORKGROUP_SIZE 1024
+#endif
+
+#define _VREN_MAX_ITEMS 1
+
+#ifndef _VREN_DATA_TYPE
+#	error "Required definition not specified `_VREN_DATA_TYPE`"
+#endif
+
+#ifndef _VREN_OPERATION
+#	error "Required definition not specified `_VREN_OPERATION`"
 #endif
 
 #define UINT32_MAX 0xffffffffu
 
-#define MAX_ITEMS 4
-
-layout(local_size_x = _VREN_WORKGROUP_SIZE_, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
 	uint num_items;
-	uint level;
+	uint base_level;
 	uint block_length;
 };
 
 layout(set = 0, binding = 0) buffer InputBuffer
 {
-	uint data[];
+	_VREN_DATA_TYPE data[];
 };
 
-shared uint s_data[1024 * MAX_ITEMS];
+shared _VREN_DATA_TYPE s_data[1024 * _VREN_MAX_ITEMS];
 
 void main()
 {
 	uint block_offset = gl_WorkGroupID.y * block_length;
 	
-    uint offset = (1u << level) - 1;
-    uint stride = 1u << level;
+    uint offset = (1u << base_level) - 1;
+    uint stride = 1u << base_level;
 
 	// Global memory read
 	for (uint i = 0; i < num_items; i++)
 	{
 		uint data_idx = offset + (gl_GlobalInvocationID.x * num_items + i) * stride;
-		s_data[gl_LocalInvocationID.x * num_items + i] = data_idx < block_length ? data[block_offset + data_idx] : 0;
+		s_data[gl_LocalInvocationID.x * num_items + i] = data_idx < block_length ? data[block_offset + data_idx] : _VREN_DATA_TYPE(0);
 	}
 
 	// Invocation-wide reduction
@@ -52,7 +60,7 @@ void main()
             uint a_idx = (gl_LocalInvocationID.x * num_items) + (1 << level) - 1 + (i << (level + 1));
             uint b_idx = a_idx + (1 << level);
 
-            s_data[b_idx] = s_data[a_idx] + s_data[b_idx];
+            s_data[b_idx] = _VREN_OPERATION(s_data[a_idx], s_data[b_idx]);
         }
 	}
 	
@@ -61,7 +69,7 @@ void main()
 	// Workgroup-wide reduction
 	uint thread_value_idx = (gl_LocalInvocationID.x + 1) * num_items - 1;
 
-	for (uint level = 0; level < uint(log2(_VREN_WORKGROUP_SIZE_)); level++)
+	for (uint level = 0; level < uint(log2(_VREN_WORKGROUP_SIZE)); level++)
 	{
 		uint level_mask = (1 << (level + 1)) - 1; 
 		if ((gl_LocalInvocationID.x & level_mask) == level_mask)
@@ -69,7 +77,7 @@ void main()
 			uint b_idx = thread_value_idx;
 			uint a_idx = b_idx - (1 << level) * num_items;
 
-			s_data[b_idx] = s_data[b_idx] + s_data[a_idx];
+			s_data[b_idx] = _VREN_OPERATION(s_data[b_idx], s_data[a_idx]);
 		}
 		
 		barrier();

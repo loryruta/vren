@@ -148,7 +148,7 @@ void vren::blelloch_scan::operator()(
 )
 {
     // Reduce
-    m_context->m_toolbox->m_reduce(command_buffer, resource_container, buffer, length, offset, 1, nullptr);
+    m_context->m_toolbox->m_reduce_uint_add(command_buffer, resource_container, buffer, length, offset, 1, nullptr);
 
     VkBufferMemoryBarrier buffer_memory_barrier{
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,

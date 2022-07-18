@@ -13,6 +13,7 @@
 #include <vren/pipeline/profiler.hpp>
 
 #include "app.hpp"
+#include "toolbox.hpp"
 #include "gpu_test_bench.hpp"
 
 // ------------------------------------------------------------------------------------------------
@@ -48,7 +49,7 @@ static void BM_gpu_reduce(benchmark::State& state)
 
             VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                VREN_TEST_APP()->m_reduce(command_buffer, resource_container, buffer, length, 0, 1, nullptr);
+                VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_add(command_buffer, resource_container, buffer, length, 0, 1, nullptr);
             });
         });
 
@@ -118,7 +119,7 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        VREN_TEST_APP()->m_reduce(command_buffer, resource_container, gpu_buffer, sample_length, 0, 1, nullptr);
+        VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_add(command_buffer, resource_container, gpu_buffer, sample_length, 0, 1, nullptr);
     });
 
     if (verbose)
@@ -135,6 +136,8 @@ void run_reduce_test(uint32_t sample_length, bool verbose)
         ASSERT_EQ(cpu_buffer.at(i), gpu_buffer_ptr[i]);
     }
 }
+
+// TODO write tests also for other type of operations and data types (now only uint/add)
 
 TEST(reduce, main)
 {
