@@ -22,6 +22,8 @@ namespace vren
             case Uint:  return "uint";
             case Float: return "float";
             case Vec3:  return "vec3";
+            default:
+                throw std::runtime_error("Unknown `data_type`");
             }
         }
     };
@@ -36,13 +38,15 @@ namespace vren
             Max,
         };
 
-        inline static char const* get_name(vren::reduce_operation::enum_t data_type)
+        inline static char const* get_name(vren::reduce_operation::enum_t operation)
         {
-            switch (data_type)
+            switch (operation)
             {
             case Add: return "add";
             case Min: return "min";
             case Max: return "max";
+            default:
+                throw std::runtime_error("Unknown `operation`");
             }
         }
     };

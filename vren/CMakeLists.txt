@@ -60,6 +60,8 @@ set(SRC
         vren/primitives/radix_sort.hpp
         vren/primitives/reduce.cpp
         vren/primitives/reduce.hpp
+        vren/primitives/build_bvh.cpp
+        vren/primitives/build_bvh.hpp
 
         vren/third_party/impl.cpp
 

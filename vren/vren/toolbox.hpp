@@ -11,6 +11,7 @@
 #include "primitives/blelloch_scan.hpp"
 #include "primitives/radix_sort.hpp"
 #include "primitives/bucket_sort.hpp"
+#include "primitives/build_bvh.hpp"
 
 namespace vren
 {
@@ -53,6 +54,8 @@ namespace vren
 		vren::blelloch_scan m_blelloch_scan;
 		vren::radix_sort m_radix_sort;
 		vren::bucket_sort m_bucket_sort;
+
+		vren::build_bvh m_build_bvh;
 
 		explicit toolbox(vren::context const& ctx);
 	};

@@ -63,4 +63,34 @@ namespace vren::vk_utils
 	);
 
 	std::vector<VkQueueFamilyProperties> get_queue_families_properties(VkPhysicalDevice phy_dev);
+
+	// ------------------------------------------------------------------------------------------------
+
+	inline void write_buffer_descriptor(
+		vren::context const& context,
+		VkDescriptorSet descriptor_set,
+		uint32_t binding,
+		VkBuffer buffer,
+		uint32_t range = VK_WHOLE_SIZE,
+		uint32_t offset = 0
+	)
+	{
+		VkDescriptorBufferInfo buffer_info{
+			.buffer = buffer, .offset = offset, .range = range,
+		};
+		VkWriteDescriptorSet descriptor_set_write{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = descriptor_set,
+			.dstBinding = binding,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.pImageInfo = nullptr,
+			.pBufferInfo = &buffer_info,
+			.pTexelBufferView = nullptr
+		};
+		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+	}
+
 }

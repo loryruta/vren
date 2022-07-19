@@ -1,0 +1,66 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#define UINT32_MAX 0xFFFFFFFFu
+
+layout(push_constant) uniform PushConstants
+{
+	uint src_level_idx; // Index at the start of the current level that has to be reduced
+	uint dst_level_idx; // Index at the start of the next level
+};
+
+struct BvhNode
+{
+	vec3 _min; uint next; // 0 if this is a leaf node, UINT32_MAX if this is an invalid node (therefore invalid AABB) otherwise a valid pointer to child level
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) buffer BvhBuffer
+{
+	BvhNode bvh[];
+};
+
+#define BVH_LEAF_NODE 0x80000000
+#define BVH_INVALID_NODE 0xB0000000
+
+bool is_bvh_leaf_node(BvhNode node)
+{
+	return node.next == BVH_LEAF_NODE;
+}
+
+bool is_bvh_invalid_node(BvhNode node)
+{
+	return node.next == BVH_INVALID_NODE;
+}
+
+void main()
+{
+	if (src_level_idx + gl_GlobalInvocationID.x < dst_level_idx)
+	{
+		BvhNode node = bvh[src_level_idx + gl_GlobalInvocationID.x];
+	
+		BvhNode parent_node;
+
+		uint subgroup_valid = subgroupBallot(!is_bvh_invalid_node(node)).x;
+		if ((subgroup_valid & (1 << gl_SubgroupInvocationID)) != 0)
+		{
+			parent_node._min = subgroupMin(node._min);
+			parent_node._max = subgroupMax(node._max);
+		}
+
+		if (gl_LocalInvocationID.x % gl_SubgroupSize == 0)
+		{
+			// If all the children are invalid, then also the parent is invalid. Otherwise make the parent point to the start of the children
+			parent_node.next = subgroup_valid == 0 ? BVH_INVALID_NODE : src_level_idx + gl_GlobalInvocationID.x;
+
+			uint subgroup_idx = gl_GlobalInvocationID.x / gl_SubgroupSize;
+			bvh[dst_level_idx + subgroup_idx] = parent_node;
+		}
+	}
+}

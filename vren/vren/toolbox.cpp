@@ -68,7 +68,9 @@ vren::toolbox::toolbox(vren::context const& context) :
 
 	m_blelloch_scan(context),
 	m_radix_sort(context),
-	m_bucket_sort(context)
+	m_bucket_sort(context),
+
+	m_build_bvh(context)
 {}
 
 void vren::toolbox::lazy_initialize()

@@ -53,6 +53,7 @@ function (setup_resources TARGET)
 
     set(SHADERS "")
 
+    # Pipeline
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_copy.comp" "${VREN_SHADERS_DIR}/depth_buffer_copy.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/depth_buffer_reduce.comp" "${VREN_SHADERS_DIR}/depth_buffer_reduce.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/basic_draw.vert" "${VREN_SHADERS_DIR}/basic_draw.vert.spv")
@@ -62,6 +63,8 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task" "${VREN_SHADERS_DIR}/draw.task.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
     
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/build_bvh.comp" "${VREN_SHADERS_DIR}/build_bvh.comp.spv")
+
     # Reduce
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_add.comp.spv" "-D_VREN_DATA_TYPE=uint" "-D_VREN_OPERATION(a,b)=a+b")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_min.comp.spv" "-D_VREN_DATA_TYPE=uint" "-D_VREN_OPERATION(a,b)=min(a,b)")
@@ -70,11 +73,16 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec3_min.comp.spv" "-D_VREN_DATA_TYPE=vec3" "-D_VREN_OPERATION(a,b)=min(a,b)")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec3_max.comp.spv" "-D_VREN_DATA_TYPE=vec3" "-D_VREN_OPERATION(a,b)=max(a,b)")
 
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" -D_VREN_DOWNSWEEP_ENTRYPOINT)
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_workgroup_downsweep.comp.spv" -D_VREN_WORKGROUP_DOWNSWEEP_ENTRYPOINT)
+    # Blelloch scan
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" "-D_VREN_DOWNSWEEP_ENTRYPOINT")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_workgroup_downsweep.comp.spv" "-D_VREN_WORKGROUP_DOWNSWEEP_ENTRYPOINT")
+
+    # Radix sort
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_local_count.comp" "${VREN_SHADERS_DIR}/radix_sort_local_count.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_global_offset.comp" "${VREN_SHADERS_DIR}/radix_sort_global_offset.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/radix_sort_reorder.comp" "${VREN_SHADERS_DIR}/radix_sort_reorder.comp.spv")
+
+    # Bucket sort
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_count.comp" "${VREN_SHADERS_DIR}/bucket_sort_count.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_write.comp" "${VREN_SHADERS_DIR}/bucket_sort_write.comp.spv")
 
