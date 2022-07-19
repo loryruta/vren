@@ -16,12 +16,10 @@ layout(set = 0, binding = 3, r16ui)   uniform image2D gbuffer_material_indices;
 
 void main()
 {
-	ivec2 p = ivec2(gl_FragCoord.xy);
+	ivec2 pos = ivec2(gl_FragCoord.xy);
 
-	imageStore(gbuffer_positions, p, vec4(i_position, 1.0));
-	imageStore(gbuffer_normals, p, vec4(i_normal, 0.0));
-	imageStore(gbuffer_texcoords, p, vec4(i_texcoord, 0, 0));
-	imageStore(gbuffer_material_indices, p, uvec4(i_material_idx));
+	imageStore(gbuffer_positions, pos, vec4(i_position, 1.0));
+	imageStore(gbuffer_normals, pos, vec4(i_normal, 0.0));
+	imageStore(gbuffer_texcoords, pos, vec4(i_texcoord, 0, 0));
+	imageStore(gbuffer_material_indices, pos, uvec4(i_material_idx));
 }
-
-

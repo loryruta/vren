@@ -1,0 +1,53 @@
+#version 460
+
+// Initialize the BVH by writing lights AABB min/max to the leaves of the BVH
+
+#extension GL_KHR_vulkan_glsl : require
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#define UINT32_MAX 0xFFFFFFFFu
+
+#include "common.glsl"
+
+struct BvhNode
+{
+	vec3 _min; uint next;
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) readonly buffer PointLightBuffer
+{
+	PointLight point_lights[];
+};
+
+layout(set = 0, binding = 1) writeonly buffer MortonCodeBuffer
+{
+	uvec2 morton_codes[];
+};
+
+layout(set = 0, binding = 2) writeonly buffer BvhBuffer
+{
+	BvhNode bvh[];
+};
+
+void main()
+{
+	BvhNode node;
+
+	if (gl_GlobalInvocationID.x < morton_codes.length())
+	{
+		PointLight point_light = point_lights[morton_codes[gl_GlobalInvocationID.x].y];
+
+		node._min = point_light.position - vec3(point_light.intensity);
+		node._max = point_light.position + vec3(point_light.intensity);
+		node.next = 0; // Leaf node
+	}
+	else
+	{
+		node.next = UINT32_MAX; // Invalid node
+	}
+
+	bvh[gl_GlobalInvocationID.x] = node;
+}

@@ -1,0 +1,50 @@
+#version 460
+
+#extension GL_KHR_vulkan_glsl : require
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#define UINT32_MAX 0xFFFFFFFFu
+
+layout(push_constant) uniform PushConstants
+{
+	uint base_level_offset;
+};
+
+struct BvhNode
+{
+	vec3 _min; uint next; // 0 if this is a leaf node, UINT32_MAX if this is an invalid node (therefore invalid AABB) otherwise a valid pointer to child level
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) buffer BvhBuffer
+{
+	BvhNode bvh[];
+};
+
+void main()
+{
+	BvhNode node = bvh[gl_GlobalInvocationID.x];
+	
+	BvhNode parent_node;
+
+	uint valid = subgroupBallot(node.next < UINT32_MAX).x;
+	if (node.next < UINT32_MAX)
+	{
+		parent_node._min = subgroupMin(node._min);
+		parent_node._max = subgroupMax(node._max);
+	}
+
+	if (gl_LocalInvocationID.x % gl_SubgroupSize == 0)
+	{
+		// If all the children are invalid, then also the parent is invalid
+		parent_node.next = valid == 0 ? UINT32_MAX : base_level_offset + gl_GlobalInvocationID.x;
+
+		uint subgroup_idx = gl_LocalInvocationID.x / gl_SubgroupSize;
+		bvh[gl_NumWorkGroups.x * gl_WorkGroupSize.x + subgroup_idx] = parent_node;
+	}
+}

@@ -66,8 +66,8 @@ struct Material
 
 struct PointLight
 {
-	vec3 position; float _pad;
-	vec3 color;    float _pad1;
+	vec3 position;   float _pad;
+	vec3 color;      float intensity;
 };
 
 struct DirectionalLight
