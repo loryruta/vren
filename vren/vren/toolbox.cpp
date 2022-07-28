@@ -59,12 +59,12 @@ vren::toolbox::toolbox(vren::context const& context) :
 	m_texture_manager(context),
 	m_material_manager(context),
 
-	m_reduce_uint_add(context, vren::reduce_data_type::Uint, vren::reduce_operation::Add),
-	m_reduce_uint_min(context, vren::reduce_data_type::Uint, vren::reduce_operation::Min),
-	m_reduce_uint_max(context, vren::reduce_data_type::Uint, vren::reduce_operation::Max),
-	m_reduce_vec3_add(context, vren::reduce_data_type::Vec3, vren::reduce_operation::Add),
-	m_reduce_vec3_min(context, vren::reduce_data_type::Vec3, vren::reduce_operation::Min),
-	m_reduce_vec3_max(context, vren::reduce_data_type::Vec3, vren::reduce_operation::Max),
+	m_reduce_uint_add(context),
+	m_reduce_uint_min(context),
+	m_reduce_uint_max(context),
+	m_reduce_vec4_add(context),
+	m_reduce_vec4_min(context),
+	m_reduce_vec4_max(context),
 
 	m_blelloch_scan(context),
 	m_radix_sort(context),

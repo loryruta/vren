@@ -10,6 +10,7 @@ set(SRC
         vren/base/kd_tree.cpp
         vren/base/kd_tree.hpp
         vren/base/resource_container.hpp
+        vren/base/operation_fork.hpp
 
         vren/model/basic_model_draw_buffer.hpp
         vren/model/basic_model_uploader.cpp
@@ -45,6 +46,8 @@ set(SRC
         vren/pipeline/debug_renderer.cpp
         vren/pipeline/render_graph.hpp
         vren/pipeline/render_graph.cpp
+        vren/pipeline/construct_light_array_bvh.hpp
+        vren/pipeline/construct_light_array_bvh.cpp
 
         vren/pool/command_pool.hpp
         vren/pool/command_pool.cpp

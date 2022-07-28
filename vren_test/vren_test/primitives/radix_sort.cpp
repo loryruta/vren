@@ -131,6 +131,7 @@ TEST(radix_sort, main)
 {
     run_radix_sort_test(1 << 10, true);
 
+    /*
     uint32_t length = 1 << 10;
     while (length <= (1 << 20))
     {
@@ -138,5 +139,5 @@ TEST(radix_sort, main)
 
         run_radix_sort_test(length, false);
         length <<= 1;
-    }
+    }*/
 }

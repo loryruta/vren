@@ -4,11 +4,13 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_debug_printf : require
 
-#include "common.glsl"
+#include <common.glsl>
 
 #define PI 3.14
 #define EPSILON 0.0001
 #define INFINITE 1e35
+
+//#define SHADE
 
 layout(location = 0) in vec3 i_position;
 layout(location = 1) in vec3 i_normal;
@@ -23,17 +25,22 @@ layout(push_constant) uniform PushConstants
 
 layout(set = 0, binding = 0) uniform sampler2D textures[];
 
-layout(set = 1, binding = 0) buffer readonly PointLightBuffer
+layout(set = 1, binding = 0) buffer readonly PointLightPositionBuffer
+{
+    vec4 point_light_positions[];
+};
+
+layout(set = 1, binding = 1) buffer readonly PointLightBuffer
 {
     PointLight point_lights[];
 };
 
-layout(set = 1, binding = 1) buffer readonly DirectionalLightBuffer
+layout(set = 1, binding = 2) buffer readonly DirectionalLightBuffer
 {
     DirectionalLight directional_lights[];
 };
 
-layout(set = 1, binding = 2) buffer readonly SpotLightBuffer
+layout(set = 1, binding = 3) buffer readonly SpotLightBuffer
 {
     SpotLight spot_lights[];
 };
@@ -106,9 +113,9 @@ vec3 apply_light(vec3 eye, vec3 p, vec3 N, vec3 L, vec3 radiance, vec3 albedo, f
     return max((kD * albedo / PI + kS * specular) * radiance * NdotL, 0);
 }
 
-vec3 apply_point_light(vec3 eye, vec3 p, vec3 N, PointLight point_light, vec3 albedo, float metallic, float roughness)
+vec3 apply_point_light(vec3 eye, vec3 p, vec3 N, vec3 point_light_position, PointLight point_light, vec3 albedo, float metallic, float roughness)
 {
-    vec3 d = p - point_light.position;
+    vec3 d = p - point_light_position;
     vec3 L = normalize(d);
     float intensity = 1.0 / pow(length(d), 0.81);
     vec3 radiance = point_light.color * intensity;
@@ -134,6 +141,8 @@ void main()
     Material material = materials[i_material_idx];
 
     vec3 albedo = texture(textures[material.base_color_texture_idx], i_texcoord).rgb * i_color;
+
+#ifdef SHADE
     float metallic = texture(textures[material.metallic_roughness_texture_idx], i_texcoord).b;
     float roughness = texture(textures[material.metallic_roughness_texture_idx], i_texcoord).g;
 
@@ -141,7 +150,7 @@ void main()
 
     for (int i = 0; i < point_lights.length(); i++)
     {
-        Lo += apply_point_light(camera.position, i_position, i_normal, point_lights[i], albedo, metallic, roughness);
+        Lo += apply_point_light(camera.position, i_position, i_normal, point_light_positions[i].xyz, point_lights[i], albedo, metallic, roughness);
     }
 
     for (int i = 0; i < directional_lights.length(); i++)
@@ -153,4 +162,7 @@ void main()
     vec3 color = ambient + Lo;
     color = gamma_correction(color);
     f_color = vec4(color, 1.0);
+#else
+    f_color = vec4(albedo, 1.0);
+#endif
 }

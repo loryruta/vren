@@ -1,0 +1,68 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#include <common.glsl>
+
+#define UINT32_MAX 0xFFFFFFFFu
+
+struct Cluster
+{
+	vec3 _min; uint key; // If UINT32_MAX then the clsuter is invalid
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) readonly buffer ClusterBuffer
+{
+	Cluster clusters[]; // Unique list of clusters
+};
+
+struct BvhNode
+{
+	vec3 _min; uint next;
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 1) readonly buffer BvhBuffer
+{
+	BvhNode bvh[];
+};
+
+layout(set = 0, binding = 2) writeonly buffer ClusterLightListBuffer
+{
+	uint cluster_light_lists[]; // If MSB bit is set, then it's a valid entry for the list (all valid entries are contiguous)
+};
+
+bool test_aabb(vec3 a_min, vec3 a_max, vec3 b_min, vec3 b_max)
+{
+	return true;
+}
+
+void main()
+{
+	if (gl_GlobalInvocationID.x < clusters.length())
+	{
+		Cluster cluster = clusters[gl_GlobalInvocationID.x];
+
+		uint light_list_idx = 0;
+
+		BvhNode node;
+		uint current_node_idx;
+		while (true)
+		{
+			if (node.next < UINT32_MAX && test_aabb(cluster._min, cluster._max, node._min, node._max))
+			{
+				if (node.next == 0) // Leaf node
+				{
+					cluster_light_lists[light_list_idx] = current_node_idx;
+					light_list_idx++;
+				}
+			}
+		}
+	}
+
+
+
+}

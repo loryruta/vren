@@ -29,22 +29,18 @@ namespace vren
     private:
         vren::vk_descriptor_set_layout create_descriptor_set_layout();
 
-        void write_descriptor_set(
-            VkDescriptorSet descriptor_set,
-            vren::vk_utils::buffer const& input_buffer,
-            uint32_t length,
-            vren::vk_utils::buffer const& scratch_buffer_1
-        );
-
     public:
-        vren::vk_utils::buffer create_scratch_buffer_1(uint32_t length);
-
+        static VkBufferUsageFlags get_required_output_buffer_usage_flags();
+        static size_t get_required_output_buffer_size(uint32_t length);
+        
         void operator()(
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,
-            vren::vk_utils::buffer const& buffer,
-            uint32_t length,
-            vren::vk_utils::buffer const& scratch_buffer_1
+            vren::vk_utils::buffer const& input_buffer,
+            uint32_t input_buffer_length,
+            size_t input_buffer_offset,
+            vren::vk_utils::buffer const& output_buffer,
+            size_t output_buffer_offset
         );
     };
 }

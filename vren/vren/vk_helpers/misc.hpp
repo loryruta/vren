@@ -76,7 +76,9 @@ namespace vren::vk_utils
 	)
 	{
 		VkDescriptorBufferInfo buffer_info{
-			.buffer = buffer, .offset = offset, .range = range,
+			.buffer = buffer,
+			.offset = offset,
+			.range = range > 0 ? range : 1, // TODO Better way to handle the case where range is 0?
 		};
 		VkWriteDescriptorSet descriptor_set_write{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

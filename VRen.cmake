@@ -62,16 +62,14 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.mesh" "${VREN_SHADERS_DIR}/draw.mesh.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/draw.task" "${VREN_SHADERS_DIR}/draw.task.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
-    
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/build_bvh.comp" "${VREN_SHADERS_DIR}/build_bvh.comp.spv")
 
     # Reduce
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_add.comp.spv" "-D_VREN_DATA_TYPE=uint" "-D_VREN_OPERATION(a,b)=a+b")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_min.comp.spv" "-D_VREN_DATA_TYPE=uint" "-D_VREN_OPERATION(a,b)=min(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_max.comp.spv" "-D_VREN_DATA_TYPE=uint" "-D_VREN_OPERATION(a,b)=max(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec3_add.comp.spv" "-D_VREN_DATA_TYPE=vec3" "-D_VREN_OPERATION(a,b)=a+b")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec3_min.comp.spv" "-D_VREN_DATA_TYPE=vec3" "-D_VREN_OPERATION(a,b)=min(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec3_max.comp.spv" "-D_VREN_DATA_TYPE=vec3" "-D_VREN_OPERATION(a,b)=max(a,b)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_add.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=a+b")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_min.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=min(a,b)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_max.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=max(a,b)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_add.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=a+b")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_min.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=min(a,b)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_max.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=max(a,b)")
 
     # Blelloch scan
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" "-D_VREN_DOWNSWEEP_ENTRYPOINT")
@@ -85,6 +83,13 @@ function (setup_resources TARGET)
     # Bucket sort
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_count.comp" "${VREN_SHADERS_DIR}/bucket_sort_count.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/bucket_sort_write.comp" "${VREN_SHADERS_DIR}/bucket_sort_write.comp.spv")
+
+    # Build BVH
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/build_bvh.comp" "${VREN_SHADERS_DIR}/build_bvh.comp.spv")
+
+    # Clusterized shading
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clusterized_shading/discretize_light_positions.comp" "${VREN_SHADERS_DIR}/clusterized_shading/discretize_light_positions.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clusterized_shading/init_light_array_bvh.comp" "${VREN_SHADERS_DIR}/clusterized_shading/init_light_array_bvh.comp.spv")
 
     add_custom_target(vren_${TARGET}_shaders DEPENDS ${SHADERS})
 

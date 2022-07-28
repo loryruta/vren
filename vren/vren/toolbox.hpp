@@ -44,12 +44,12 @@ namespace vren
 		vren::material_manager m_material_manager;
 
 		// Reduce
-		vren::reduce m_reduce_uint_add;
-		vren::reduce m_reduce_uint_min;
-		vren::reduce m_reduce_uint_max;
-		vren::reduce m_reduce_vec3_add;
-		vren::reduce m_reduce_vec3_min;
-		vren::reduce m_reduce_vec3_max;
+		vren::reduce<glm::uint, vren::ReduceOperationAdd> m_reduce_uint_add;
+		vren::reduce<glm::uint, vren::ReduceOperationMin> m_reduce_uint_min;
+		vren::reduce<glm::uint, vren::ReduceOperationMax> m_reduce_uint_max;
+		vren::reduce<glm::vec4, vren::ReduceOperationAdd> m_reduce_vec4_add;
+		vren::reduce<glm::vec4, vren::ReduceOperationMin> m_reduce_vec4_min;
+		vren::reduce<glm::vec4, vren::ReduceOperationMax> m_reduce_vec4_max;
 
 		vren::blelloch_scan m_blelloch_scan;
 		vren::radix_sort m_radix_sort;

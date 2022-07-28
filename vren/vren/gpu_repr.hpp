@@ -69,8 +69,7 @@ namespace vren
 
 	struct point_light
 	{
-		glm::vec3 m_position; float _pad;
-		glm::vec3 m_color;    float _pad1;
+		glm::vec3 m_color; float m_intensity;
 	};
 
 	struct directional_light

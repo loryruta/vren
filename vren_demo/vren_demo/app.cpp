@@ -72,10 +72,9 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_fill_point_light_debug_draw_buffer(m_context),
 
 	// Point lights
-	m_point_light_buffer(vren::vk_utils::alloc_host_visible_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, vren::light_array::k_point_light_buffer_size, true)),
 	m_point_light_direction_buffer([&]()
 	{
-		std::vector<glm::vec4> point_light_directions(vren::light_array::k_max_point_light_count);
+		std::vector<glm::vec4> point_light_directions(VREN_MAX_POINT_LIGHT_COUNT);
 		for (glm::vec4& direction : point_light_directions)
 		{
 			direction = glm::vec4(glm::ballRand(1.0f), 0.0f);
@@ -89,12 +88,10 @@ vren_demo::app::app(GLFWwindow* window) :
 
 		// The vertex count will be later updated based on the number of point lights, while the storage is statically allocated
 		draw_buffer.m_vertex_count = 0;
-		draw_buffer.m_vertex_buffer.set_data(nullptr, vren::light_array::k_max_point_light_count * 6 * sizeof(vren::debug_renderer_vertex));
+		draw_buffer.m_vertex_buffer.set_data(nullptr, VREN_MAX_POINT_LIGHT_COUNT * 6 * sizeof(vren::debug_renderer_vertex));
 
 		return draw_buffer;
 	})),
-
-	m_point_lights((vren::point_light*) m_point_light_buffer.m_allocation_info.pMappedData),
 
 	// Output
 	m_color_buffers{},
@@ -131,8 +128,16 @@ void vren_demo::app::late_initialize()
 	});
 
 	// Init directional light
-	m_directional_light.m_direction = glm::vec3(1.0f, 1.0f, 0.0f);
-	m_directional_light.m_color = glm::vec3(1.0f, 1.0f, 1.0f);
+	m_light_array_fork.enqueue([](vren::light_array& light_array)
+	{
+		vren::directional_light* directional_lights = light_array.m_directional_light_buffer.get_mapped_pointer<vren::directional_light>();
+
+		directional_lights[0].m_direction = glm::vec3(1.0f, 1.0f, 0.0f);
+		directional_lights[0].m_color = glm::vec3(1.0f, 1.0f, 1.0f);
+
+		light_array.m_directional_light_count = 1;
+	});
+
 }
 
 void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
@@ -275,10 +280,23 @@ void vren_demo::app::on_update(float dt)
 
 	m_freecam_controller.update(m_camera, dt, m_camera_speed, glm::radians(45.0f));
 
-	// Bounce point lights
-	vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	m_light_array_fork.enqueue([this, dt](vren::light_array& light_array)
 	{
-		m_point_light_bouncer.bounce(0, command_buffer, resource_container, m_point_light_buffer, m_point_light_direction_buffer, m_model_min, m_model_max, m_point_light_speed, dt);
+		vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+		{
+			m_point_light_bouncer.bounce(
+				0,
+				command_buffer,
+				resource_container,
+				light_array.m_point_light_position_buffer,
+				m_point_light_direction_buffer,
+				VREN_MAX_POINT_LIGHT_COUNT,
+				m_model_min,
+				m_model_max,
+				m_point_light_speed,
+				dt
+			);
+		});
 	});
 }
 
@@ -287,25 +305,17 @@ void vren_demo::app::record_commands(
 	uint32_t swapchain_image_idx,
 	vren::swapchain const& swapchain,
 	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container
+	vren::resource_container& resource_container,
+	float dt
 )
 {
 	vren::light_array& light_array = m_light_arrays.at(frame_idx);
 
-	// Upload point lights
-	memcpy(light_array.get_point_light_buffer_pointer(), m_point_lights, m_point_light_count * sizeof(vren::point_light));
-	light_array.m_point_light_count = m_point_light_count;
-
-	// Upload directional light
-	memcpy(light_array.get_directional_light_buffer_pointer(), &m_directional_light, sizeof(vren::directional_light));
-	light_array.m_directional_light_count = 1;
-
-	// Upload spot lights
-	// ...
-
-	m_debug_draw_buffer.clear();
+	m_light_array_fork.apply(frame_idx, light_array);
 
 	// Draw cartesian axes
+	m_debug_draw_buffer.clear();
+
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
@@ -381,12 +391,15 @@ void vren_demo::app::record_commands(
 	// Debug point lights
 	if (light_array.m_point_light_count > 0)
 	{
+		/* Point lights visualization 
 		vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
 		debug_render_graph.concat(
 			m_fill_point_light_debug_draw_buffer(m_render_graph_allocator, light_array.m_point_light_buffer, light_array.m_point_light_count, point_light_debug_draw_buffer)
 		);
 		point_light_debug_draw_buffer.m_vertex_count = light_array.m_point_light_count * 6;
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer));
+		debug_render_graph.concat(
+			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer)
+		);*/
 	}
 
 	// Debug meshlets
@@ -561,7 +574,7 @@ float vren_demo::app::calc_frame_parallelism_percentage(uint32_t frame_idx)
 	}
 }
 
-void vren_demo::app::on_frame()
+void vren_demo::app::on_frame(float dt)
 {
 	m_presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
@@ -590,6 +603,6 @@ void vren_demo::app::on_frame()
 			m_last_fps_time = now;
 		}
 
-		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container);
+		record_commands(frame_idx, swapchain_image_idx, swapchain, command_buffer, resource_container, dt);
 	});
 }

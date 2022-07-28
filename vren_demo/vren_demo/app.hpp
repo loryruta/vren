@@ -14,6 +14,7 @@
 #include <vren/model/basic_model_draw_buffer.hpp>
 #include <vren/model/clusterized_model.hpp>
 #include <vren/model/clusterized_model_draw_buffer.hpp>
+#include <vren/base/operation_fork.hpp>
 
 #include "camera.hpp"
 #include "point_light_bouncer.hpp"
@@ -156,23 +157,16 @@ namespace vren_demo
 
 		// Lighting
 		std::array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_arrays;
+		vren::operation_fork<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_array_fork;
 
 		vren_demo::point_light_bouncer m_point_light_bouncer;
 		vren_demo::fill_point_light_debug_draw_buffer m_fill_point_light_debug_draw_buffer;
 
 		// Point light
-		vren::vk_utils::buffer m_point_light_buffer, m_point_light_direction_buffer;
+		vren::vk_utils::buffer m_point_light_direction_buffer;
 		std::array<vren::debug_renderer_draw_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_point_light_debug_draw_buffers;
 
-		vren::point_light* m_point_lights;
-		size_t m_point_light_count = 0;
-		glm::vec3 m_point_light_color = glm::vec3(1.0f, 1.0f, 1.0f);
 		float m_point_light_speed = 0.1f;
-
-		// Direction light
-		vren::directional_light m_directional_light;
-
-		// Spot light
 
 		// Output
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
@@ -239,9 +233,18 @@ namespace vren_demo
 		float calc_frame_parallelism_percentage(uint32_t frame_idx);
 
 	private:
-		void record_commands(uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container);
+		void record_commands(
+			uint32_t frame_idx,
+			uint32_t swapchain_image_idx,
+			vren::swapchain const& swapchain,
+			VkCommandBuffer command_buffer,
+			vren::resource_container& resource_container,
+			float dt
+		);
 
 	public:
-		void on_frame();
+		void on_frame(
+			float dt
+		);
 	};
 }

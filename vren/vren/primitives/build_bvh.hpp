@@ -42,6 +42,11 @@ namespace vren
         static uint32_t get_padded_leaf_count(uint32_t leaf_count);
         static size_t get_buffer_length(uint32_t leaf_count);
 
+        inline static size_t get_buffer_size(uint32_t leaf_count)
+        {
+            return get_buffer_length(leaf_count) * sizeof(vren::bvh_node);
+        }
+
         void operator()(
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,

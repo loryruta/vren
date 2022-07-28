@@ -37,11 +37,11 @@ namespace vren_demo
 		ImGuiID m_legend_window_did;
 		ImGuiID m_scene_window_did;
 
-		// Render-graph dump window
-		void* m_render_graph_dump_address = nullptr; // The render-graph dump pointer address for which the descriptor set have been generated
-		VkDescriptorSet m_render_graph_dump_descriptor_set = VK_NULL_HANDLE;
+		int m_point_light_count = 0;
+		glm::vec3 m_point_light_color = glm::vec3(1, 0, 0);
 
-		glm::vec2 m_image_uv_0 = glm::vec2(0, 0), m_image_uv_1 = glm::vec2(1, 1);
+		glm::vec3 m_directional_light_direction{};
+		glm::vec3 m_directional_light_color = glm::vec3(1, 1, 0);
 
 	public:
 		ui(vren_demo::app& app);

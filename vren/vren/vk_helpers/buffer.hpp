@@ -26,6 +26,12 @@ namespace vren::vk_utils
 		vren::vk_buffer m_buffer;
 		vren::vma_allocation m_allocation;
 		VmaAllocationInfo m_allocation_info;
+
+		template<typename _t = void>
+		inline _t* get_mapped_pointer()
+		{
+			return reinterpret_cast<_t*>(m_allocation_info.pMappedData);
+		}
 	};
 
 	// TODO Rename to alloc_host_visible_device_local_buffer

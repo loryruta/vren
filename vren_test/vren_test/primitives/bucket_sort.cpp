@@ -29,13 +29,17 @@ static void BM_gpu_bucket_sort(benchmark::State& state)
 
     size_t length = state.range(0);
 
-    vren::vk_utils::buffer buffer = vren::vk_utils::alloc_device_only_buffer(
+    vren::vk_utils::buffer input_buffer = vren::vk_utils::alloc_device_only_buffer(
         VREN_TEST_APP()->m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         length * sizeof(uint16_t)
     );
 
-    vren::vk_utils::buffer scratch_buffer_1 = bucket_sort.create_scratch_buffer_1(length);
+    vren::vk_utils::buffer output_buffer = vren::vk_utils::alloc_device_only_buffer(
+        VREN_TEST_APP()->m_context,
+        vren::bucket_sort::get_required_output_buffer_usage_flags(),
+        vren::bucket_sort::get_required_output_buffer_size(length)
+    );
 
     for (auto _ : state)
     {
@@ -43,7 +47,7 @@ static void BM_gpu_bucket_sort(benchmark::State& state)
         {
             VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
             {
-                bucket_sort(command_buffer, resource_container, buffer, length, scratch_buffer_1);
+                bucket_sort(command_buffer, resource_container, input_buffer, length, 0, output_buffer, 0);
             });
         });
 
@@ -69,16 +73,19 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
 
     std::vector<glm::uvec2> cpu_buffer(sample_length);
 
-    vren::vk_utils::buffer gpu_buffer = vren::vk_utils::alloc_host_visible_buffer(
+    vren::vk_utils::buffer gpu_input_buffer = vren::vk_utils::alloc_host_only_buffer(
         VREN_TEST_APP()->m_context,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         sample_length * sizeof(glm::uvec2),
         true
     );
 
-    vren::vk_utils::buffer scratch_buffer_1 = bucket_sort.create_scratch_buffer_1(sample_length);
-
-    glm::uvec2* gpu_buffer_ptr = reinterpret_cast<glm::uvec2*>(gpu_buffer.m_allocation_info.pMappedData);
+    vren::vk_utils::buffer gpu_output_buffer = vren::vk_utils::alloc_host_only_buffer(
+        VREN_TEST_APP()->m_context,
+        vren::bucket_sort::get_required_output_buffer_usage_flags(),
+        vren::bucket_sort::get_required_output_buffer_size(sample_length),
+        true
+    );
 
     // Initialization
     for (uint32_t i = 0; i < sample_length; i++)
@@ -87,7 +94,7 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
         cpu_buffer[i].y = i; // This can't be checked as for the same key it'll be unsorted
     }
 
-    std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), sample_length * sizeof(glm::uvec2));
+    std::memcpy(gpu_input_buffer.m_allocation_info.pMappedData, cpu_buffer.data(), sample_length * sizeof(glm::uvec2));
 
     // Sort CPU array
     std::sort(cpu_buffer.begin(), cpu_buffer.end(), [&](glm::uvec2 const& a, glm::uvec2 const& b) {
@@ -102,7 +109,7 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-            .buffer = gpu_buffer.m_buffer.m_handle,
+            .buffer = gpu_input_buffer.m_buffer.m_handle,
             .offset = 0,
             .size = sample_length * sizeof(glm::uvec2)
         };
@@ -111,11 +118,15 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
         bucket_sort(
             command_buffer,
             resource_container,
-            gpu_buffer,
+            gpu_input_buffer,
             sample_length,
-            scratch_buffer_1
+            0,
+            gpu_output_buffer,
+            0
         );
     });
+
+    glm::uvec2* gpu_output_buffer_ptr = reinterpret_cast<glm::uvec2*>(gpu_output_buffer.m_allocation_info.pMappedData);
 
     if (verbose)
     {
@@ -131,15 +142,14 @@ void run_bucket_sort_test(uint32_t sample_length, bool verbose)
         fmt::print("GPU buffer:\n");
         for (uint32_t i = 0; i < sample_length; i++)
         {
-            fmt::print("{}, ", gpu_buffer_ptr[i].x);
+            fmt::print("{}, ", gpu_output_buffer_ptr[i].x);
         }
         fmt::print("\n");
     }
 
     for (uint32_t i = 0; i < sample_length; i++)
     {
-        ASSERT_EQ(cpu_buffer.at(i).x & vren::bucket_sort::k_key_mask, gpu_buffer_ptr[i].x & vren::bucket_sort::k_key_mask);
-        //ASSERT_EQ(cpu_buffer.at(i).y, gpu_buffer_ptr[i].y);
+        ASSERT_EQ(cpu_buffer.at(i).x & vren::bucket_sort::k_key_mask, gpu_output_buffer_ptr[i].x & vren::bucket_sort::k_key_mask);
     }
 }
 

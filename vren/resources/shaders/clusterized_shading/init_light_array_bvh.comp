@@ -2,14 +2,13 @@
 
 // Initialize the BVH by writing lights AABB min/max to the leaves of the BVH
 
-#extension GL_KHR_vulkan_glsl : require
 #extension GL_GOOGLE_include_directive : require
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #define UINT32_MAX 0xFFFFFFFFu
 
-#include "common.glsl"
+#include <common.glsl>
 
 struct BvhNode
 {
@@ -22,12 +21,17 @@ layout(set = 0, binding = 0) readonly buffer PointLightBuffer
 	PointLight point_lights[];
 };
 
-layout(set = 0, binding = 1) writeonly buffer MortonCodeBuffer
+layout(set = 0, binding = 1) readonly buffer LightPositionBuffer
+{
+	vec4 point_light_positions[];
+};
+
+layout(set = 0, binding = 2) readonly buffer MortonCodeBuffer
 {
 	uvec2 morton_codes[];
 };
 
-layout(set = 0, binding = 2) writeonly buffer BvhBuffer
+layout(set = 0, binding = 3) writeonly buffer BvhBuffer
 {
 	BvhNode bvh[];
 };
@@ -38,10 +42,11 @@ void main()
 
 	if (gl_GlobalInvocationID.x < morton_codes.length())
 	{
-		PointLight point_light = point_lights[morton_codes[gl_GlobalInvocationID.x].y];
+		uint point_light_idx = morton_codes[gl_GlobalInvocationID.x].y;
+		PointLight point_light = point_lights[point_light_idx];
 
-		node._min = point_light.position - vec3(point_light.intensity);
-		node._max = point_light.position + vec3(point_light.intensity);
+		node._min = point_light_positions[point_light_idx].xyz - vec3(point_light.intensity);
+		node._max = point_light_positions[point_light_idx].xyz + vec3(point_light.intensity);
 		node.next = 0; // Leaf node
 	}
 	else

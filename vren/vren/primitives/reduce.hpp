@@ -5,52 +5,14 @@
 
 namespace vren
 {
-    class reduce_data_type
+    enum reduce_operation
     {
-    public:
-        enum enum_t
-        {
-            Uint,
-            Float,
-            Vec3,
-        };
-
-        inline static char const* get_name(vren::reduce_data_type::enum_t data_type)
-        {
-            switch (data_type)
-            {
-            case Uint:  return "uint";
-            case Float: return "float";
-            case Vec3:  return "vec3";
-            default:
-                throw std::runtime_error("Unknown `data_type`");
-            }
-        }
+        ReduceOperationAdd,
+        ReduceOperationMin,
+        ReduceOperationMax
     };
 
-    class reduce_operation
-    {
-    public:
-        enum enum_t
-        {
-            Add,
-            Min,
-            Max,
-        };
-
-        inline static char const* get_name(vren::reduce_operation::enum_t operation)
-        {
-            switch (operation)
-            {
-            case Add: return "add";
-            case Min: return "min";
-            case Max: return "max";
-            default:
-                throw std::runtime_error("Unknown `operation`");
-            }
-        }
-    };
-
+    template<typename _data_type_t, vren::reduce_operation _operation_t>
     class reduce
     {
     public:
@@ -61,29 +23,26 @@ namespace vren
         vren::pipeline m_pipeline;
 
     public:
-        reduce(
-            vren::context const& context,
-            vren::reduce_data_type::enum_t data_type,
-            vren::reduce_operation::enum_t operation
+        reduce(vren::context const& context);
+
+        void operator()(
+            VkCommandBuffer command_buffer,
+            vren::resource_container& resource_container,
+            vren::vk_utils::buffer const& input_buffer,
+            uint32_t input_buffer_length,
+            size_t input_buffer_offset,
+            vren::vk_utils::buffer const& output_buffer,
+            size_t output_buffer_offset,
+            uint32_t blocks_num
         );
 
-    private:
-        void write_descriptor_set(
-            VkDescriptorSet descriptor_set,
-            vren::vk_utils::buffer const& buffer,
-            uint32_t length,
-            uint32_t offset
-        );
-
-    public:
         void operator()(
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,
             vren::vk_utils::buffer const& buffer,
             uint32_t length,
-            uint32_t offset,
-            uint32_t blocks_num,
-            uint32_t* result = nullptr
+            size_t offset,
+            uint32_t blocks_num
         );
     };
 }

@@ -1,0 +1,64 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#include <common.glsl>
+
+layout(push_constant) uniform PushConstants
+{
+    uint level_offset;
+    uint level_count;
+    uint color;
+};
+
+struct BvhNode
+{
+	vec3 _min; uint next;
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) buffer BvhBuffer
+{
+    BvhNode bvh[];
+};
+
+layout(set = 0, binding = 1) buffer DebugDrawBuffer
+{
+    DebugDrawBufferVertex vertices[];
+};
+
+#define VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset, _from, _to, _color) \
+    _buffer[_offset].position = _from; \
+    _buffer[_offset].color = _color; \
+    \
+    _buffer[_offset + 1].position = _to; \
+    _buffer[_offset + 1].color = _color
+
+#define VREN_WRITE_DEBUG_DRAW_BUFFER_AABB(_buffer, _offset, _m, _M, _color) \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 0, _m, vec3(_M.x, _m.y, _m.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 2, vec3(_M.x, _m.y, _m.z), vec3(_M.x, _m.y, _M.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 4, vec3(_M.x, _m.y, _M.z), vec3(_m.x, _m.y, _M.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 8, vec3(_m.x, _m.y, _M.z), _m, _color); \
+    \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 10, vec3(_m.x, _M.y, _m.z), vec3(_M.x, _M.y, _m.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 12, vec3(_M.x, _M.y, _m.z), vec3(_M.x, _M.y, _M.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 14, vec3(_M.x, _M.y, _M.z), vec3(_m.x, _M.y, _M.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 16, vec3(_m.x, _M.y, _M.z), vec3(_m.x, _M.y, _m.z), _color); \
+    \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 18, vec3(_m.x, _m.y, _m.z), vec3(_m.x, _M.y, _m.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 20, vec3(_M.x, _m.y, _m.z), vec3(_M.x, _M.y, _m.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 22, vec3(_M.x, _m.y, _M.z), vec3(_M.x, _M.y, _M.z), _color); \
+    VREN_WRITE_DEBUG_DRAW_BUFFER_LINE(_buffer, _offset + 24, vec3(_m.x, _m.y, _M.z), vec3(_m.x, _M.y, _M.z), _color)
+
+void main()
+{
+    if (gl_GlobalInvocationID.x < level_count)
+    {
+        uint node_idx = gl_GlobalInvocationID.x + level_offset;
+        BvhNode node = bvh[node_idx];
+        
+        VREN_WRITE_DEBUG_DRAW_BUFFER_AABB(vertices, 0, node._min, node._max, color);
+    }
+}

@@ -70,11 +70,12 @@ include("${VREN_HOME}/VRen.cmake")
 setup_resources(vren_demo)
 
 # Models
-copy_resources(vren_demo "resources/models" "resources/models")
+#copy_resources(vren_demo "resources/models" "resources/models")
 
 # Shaders
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.spv")
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/write_bvh_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/write_bvh_draw_buffer.comp.spv")
 
 add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})
 add_dependencies(vren_demo vren_demo_shaders)

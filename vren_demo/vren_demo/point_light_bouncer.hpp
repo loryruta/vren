@@ -10,6 +10,9 @@ namespace vren_demo
 {
     class point_light_bouncer
     {
+    public:
+        static const uint32_t k_workgroup_size = 1024;
+
     private:
         vren::context const* m_context;
         vren::pipeline m_pipeline;
@@ -17,22 +20,14 @@ namespace vren_demo
     public:
         point_light_bouncer(vren::context const& context);
 
-    private:
-        vren::pipeline create_pipeline();
-
-        void write_descriptor_set(
-            VkDescriptorSet descriptor_set,
-            vren::vk_utils::buffer const& point_light_buffer,
-            vren::vk_utils::buffer const& point_light_direction_buffer
-        );
-
     public:
         void bounce(
             uint32_t frame_idx,
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,
-            vren::vk_utils::buffer const& point_light_buffer,
+            vren::vk_utils::buffer const& point_light_position_buffer,
             vren::vk_utils::buffer const& point_light_direction_buffer,
+            uint32_t point_light_count,
             glm::vec3 const& aabb_min,
             glm::vec3 const& aabb_max,
             float speed,

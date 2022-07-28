@@ -1,21 +1,19 @@
 #version 460
 
-#extension GL_KHR_vulkan_glsl : require
 #extension GL_GOOGLE_include_directive : require
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
-#include "common.glsl"
+#include <common.glsl>
 
 layout(set = 0, binding = 0) readonly buffer LightMinMaxBuffer
 {
-	vec3 aabb_min; float _pad;
-	vec3 aabb_max;
+	vec4 _min, _max;
 };
 
-layout(set = 0, binding = 1) readonly buffer PointLightBuffer
+layout(set = 0, binding = 1) readonly buffer LightPositionBuffer
 {
-	PointLight point_lights[];
+	vec4 light_positions[];
 };
 
 layout(set = 0, binding = 2) writeonly buffer MortonCodeBuffer
@@ -25,11 +23,11 @@ layout(set = 0, binding = 2) writeonly buffer MortonCodeBuffer
 
 void main()
 {
-	if (gl_GlobalInvocationID.x < point_lights.length())
+	if (gl_GlobalInvocationID.x < light_positions.length())
 	{
-		vec3 pos = point_lights[gl_GlobalInvocationID.x].position;
+		vec3 pos = light_positions[gl_GlobalInvocationID.x].xyz;
 		
-		uvec3 discretized_pos = uvec3(floor((pos - aabb_min) / (aabb_max - aabb_min) * (1 << 5)));
+		uvec3 discretized_pos = uvec3(floor((pos - _min.xyz) / (_max.xyz - _min.xyz) * (1 << 5)));
 
 		uint morton_code = 0;
 		for (uint i = 0; i < 16; i++)

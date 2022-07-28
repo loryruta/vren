@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
 		app->on_update(dt);
 
 		// Draw and present frame
-		app->on_frame();
+		app->on_frame(dt);
 	}
 
 	app.reset();

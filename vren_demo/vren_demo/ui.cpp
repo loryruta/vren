@@ -151,26 +151,41 @@ void vren_demo::ui::show_scene_window()
 
 		ImGui::Spacing();
 
-		int point_light_count = (int) m_app->m_point_light_count;
+		int point_light_count = m_point_light_count;
 		
-		if (ImGui::SliderInt("Count##point_lights-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHTS))
+		if (ImGui::SliderInt("Count##point_lights-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHT_COUNT))
 		{
-			for (uint32_t i = m_app->m_point_light_count; i < point_light_count; i++)
+			m_app->m_light_array_fork.enqueue([from_count = m_point_light_count, to_count = point_light_count, color = m_point_light_color](vren::light_array& light_array)
 			{
-				m_app->m_point_lights[i] = {
-					.m_position = {0, 0, 0},
-					.m_color = m_app->m_point_light_color
-				};
-			}
-			m_app->m_point_light_count = point_light_count;
+				vren::point_light* point_lights = light_array.m_point_light_buffer.get_mapped_pointer<vren::point_light>();
+				glm::vec4* point_light_positions = light_array.m_point_light_position_buffer.get_mapped_pointer<glm::vec4>();
+
+				for (uint32_t i = from_count; i < to_count; i++)
+				{
+					point_lights[i] = {
+						.m_color = color,
+						.m_intensity = 1.0f,
+					};
+					point_light_positions[i] = glm::vec4{ 0, 0, 0, 1 };
+				}
+
+				light_array.m_point_light_count = to_count;
+			});
+
+			m_point_light_count = point_light_count;
 		}
 
-		if (ImGui::ColorEdit3("Color##point_lights-scene_ui", reinterpret_cast<float*>(&m_app->m_point_light_color), ImGuiColorEditFlags_Float))
+		if (ImGui::ColorEdit3("Color##point_lights-scene_ui", reinterpret_cast<float*>(&m_point_light_color), ImGuiColorEditFlags_Float))
 		{
-			for (uint32_t i = 0; i < m_app->m_point_light_count; i++)
+			m_app->m_light_array_fork.enqueue([color = m_point_light_color](vren::light_array& light_array)
 			{
-				m_app->m_point_lights[i].m_color = m_app->m_point_light_color;
-			}
+				vren::point_light* point_lights = light_array.m_point_light_buffer.get_mapped_pointer<vren::point_light>();
+
+				for (uint32_t i = 0; i < light_array.m_point_light_count; i++)
+				{
+					point_lights[i].m_color = color;
+				}
+			});
 		}
 
 		ImGui::SliderFloat("Speed##point_lights-scene_ui", &m_app->m_point_light_speed, 0.0f, 0.5f, "%.3f"); // Proportional to model size
@@ -184,24 +199,24 @@ void vren_demo::ui::show_scene_window()
 
 		ImGui::Spacing();
 
-		vren::directional_light& directional_light = m_app->m_directional_light;
+		bool changed = false;
+		changed |= ImGui::SliderFloat3("Direction##directional_light-scene_ui", reinterpret_cast<float*>(&m_directional_light_direction), -1.0f, 1.0f, "%.1f", 1.0f);
+		changed |= ImGui::ColorEdit3("Color##directional_light-scene_ui", reinterpret_cast<float*>(&m_directional_light_color), ImGuiColorEditFlags_Float);
 
-		ImGui::SliderFloat3(
-			"Direction##directional_light-scene_ui",
-			reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(&directional_light) + offsetof(vren::directional_light, m_direction)),
-			-1.0f, 1.0f, "%.1f", 1.0f
-		);
+		if (changed)
+		{
+			m_app->m_light_array_fork.enqueue([](vren::light_array& light_array)
+			{
+				vren::directional_light* directional_lights = light_array.m_directional_light_buffer.get_mapped_pointer<vren::directional_light>();
 
-		ImGui::ColorEdit3(
-			"Color##directional_light-scene_ui",
-			reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(&directional_light) + offsetof(vren::directional_light, m_color)),
-			ImGuiColorEditFlags_Float
-		);
+				directional_lights[0].m_direction = glm::vec3(1.0f, 1.0f, 0.0f);
+				directional_lights[0].m_color = glm::vec3(1.0f, 1.0f, 1.0f);
+
+				light_array.m_directional_light_count = 1;
+			});
+		}
 
 		ImGui::Spacing();
-	
-		// Spot lights
-		// ...
 	}
 
 	ImGui::End();
