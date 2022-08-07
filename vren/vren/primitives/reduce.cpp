@@ -41,7 +41,9 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
     uint32_t blocks_num
 )
 {
-    assert(vren::is_power_of_2(input_buffer_length));
+    size_t output_buffer_size = vren::round_to_next_power_of_2(input_buffer_length) * sizeof(_data_type_t);
+
+    assert(output_buffer.m_allocation_info.size >= output_buffer_size);
     assert(blocks_num > 0);
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
@@ -60,13 +62,13 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
     auto descriptor_set_1 = std::make_shared<vren::pooled_vk_descriptor_set>(m_context->m_toolbox->m_descriptor_pool.acquire(descriptor_set_layout));
     
     vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 0, input_buffer.m_buffer.m_handle, input_buffer_length * sizeof(_data_type_t), input_buffer_offset);
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(_data_type_t), output_buffer_offset);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, output_buffer_size, output_buffer_offset);
 
     // Descriptor set used after the first dispatch that only use the OutputBuffer
     auto descriptor_set_2 = std::make_shared<vren::pooled_vk_descriptor_set>(m_context->m_toolbox->m_descriptor_pool.acquire(descriptor_set_layout));
 
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_2->m_handle.m_descriptor_set, 0, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(_data_type_t), output_buffer_offset);
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_2->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(_data_type_t), output_buffer_offset);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_2->m_handle.m_descriptor_set, 0, output_buffer.m_buffer.m_handle, output_buffer_size, output_buffer_offset);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_2->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, output_buffer_size, output_buffer_offset);
 
     resource_container.add_resources(
         descriptor_set_1,
@@ -75,7 +77,7 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
 
     uint32_t num_items = 1;
     int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * num_items);
-    int32_t levels = glm::log2<int32_t>(input_buffer_length);
+    int32_t levels = glm::max(glm::log2<int32_t>(input_buffer_length), 1);
 
     for (uint32_t level = 0; level < levels; level += max_levels_per_dispatch)
     {
@@ -88,7 +90,7 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .buffer = output_buffer.m_buffer.m_handle,
                 .offset = output_buffer_offset,
-                .size = input_buffer_length * sizeof(_data_type_t)
+                .size = output_buffer_size
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }
@@ -130,3 +132,8 @@ template class vren::reduce<glm::vec4, vren::ReduceOperationMax>;
 template class vren::reduce<glm::uint, vren::ReduceOperationAdd>;
 template class vren::reduce<glm::uint, vren::ReduceOperationMin>;
 template class vren::reduce<glm::uint, vren::ReduceOperationMax>;
+
+uint32_t vren::calc_reduce_output_buffer_length(uint32_t count)
+{
+    return vren::round_to_next_power_of_2(count);
+}

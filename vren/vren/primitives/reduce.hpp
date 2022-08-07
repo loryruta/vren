@@ -45,4 +45,6 @@ namespace vren
             uint32_t blocks_num
         );
     };
+
+    uint32_t calc_reduce_output_buffer_length(uint32_t count);
 }
