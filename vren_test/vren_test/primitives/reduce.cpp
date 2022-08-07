@@ -72,6 +72,8 @@ BENCHMARK(BM_gpu_reduce)
 template<typename _t>
 void run_cpu_reduce(_t* data, uint32_t length, std::function<_t(_t const& a, _t const& b)> const& operation)
 {
+    assert(vren::is_power_of_2(length));
+
     for (uint32_t i = 0; i < glm::log2<uint32_t>(length); i++)
     {
         for (uint32_t j = 0; j < (length >> (i + 1)); j++)
@@ -84,18 +86,18 @@ void run_cpu_reduce(_t* data, uint32_t length, std::function<_t(_t const& a, _t 
     }
 }
 
-template<typename _t, vren::reduce_operation operation>
+template<typename _t, vren::reduce_operation _operation>
 void run_cpu_reduce(_t* data, uint32_t length)
 {
     run_cpu_reduce<_t>(data, length, [](_t const& a, _t const& b) -> _t
     {
-        if constexpr (operation == vren::ReduceOperationAdd)      return a + b;
-        else if constexpr (operation == vren::ReduceOperationMin) return glm::min(a, b);
-        else if constexpr (operation == vren::ReduceOperationMax) return glm::max(a, b);
+        if constexpr (_operation == vren::ReduceOperationAdd)      return a + b;
+        else if constexpr (_operation == vren::ReduceOperationMin) return glm::min(a, b);
+        else if constexpr (_operation == vren::ReduceOperationMax) return glm::max(a, b);
     });
 }
 
-template<typename _t, vren::reduce_operation operation>
+template<typename _t, vren::reduce_operation _operation>
 void run_gpu_reduce(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
 }
@@ -137,89 +139,123 @@ void run_gpu_reduce<glm::vec4, vren::ReduceOperationMax>(VkCommandBuffer command
 }
 
 template<typename _t>
+void fill_reduce_cpu_buffer(_t* buffer, uint32_t length, std::function<_t()> const& init_func, _t out_of_bound_value)
+{
+    for (uint32_t i = 0; i < vren::round_to_next_power_of_2(length); i++)
+    {
+        buffer[i] = i < length ? init_func() : out_of_bound_value;
+    }
+
+}
+
+template<typename _t, vren::reduce_operation operation>
 void fill_reduce_cpu_buffer(_t* buffer, uint32_t length)
 {
 }
 
 template<>
-void fill_reduce_cpu_buffer<uint32_t>(uint32_t* buffer, uint32_t length)
+void fill_reduce_cpu_buffer<uint32_t, vren::reduce_operation::ReduceOperationAdd>(uint32_t* buffer, uint32_t length)
 {
-    for (uint32_t i = 0; i < length; i++)
-    {
-        buffer[i] = std::rand() % 100;
-    }
+    fill_reduce_cpu_buffer<uint32_t>(buffer, length, []() { return 1; }, 0);
 }
 
 template<>
-void fill_reduce_cpu_buffer<glm::vec4>(glm::vec4* buffer, uint32_t length)
+void fill_reduce_cpu_buffer<uint32_t, vren::reduce_operation::ReduceOperationMin>(uint32_t* buffer, uint32_t length)
 {
-    for (uint32_t i = 0; i < length; i++)
-    {
-        buffer[i] = glm::vec4(
-            std::rand() % 100,
-            std::rand() % 100,
-            std::rand() % 100,
-            std::rand() % 100
-        );
-    }
+    fill_reduce_cpu_buffer<uint32_t>(buffer, length, []() { return std::rand() % 100; }, UINT32_MAX);
 }
 
-template<typename _t, vren::reduce_operation operation>
+template<>
+void fill_reduce_cpu_buffer<uint32_t, vren::reduce_operation::ReduceOperationMax>(uint32_t* buffer, uint32_t length)
+{
+    fill_reduce_cpu_buffer<uint32_t>(buffer, length, []() { return std::rand() % 100; }, 0);
+}
+
+template<>
+void fill_reduce_cpu_buffer<glm::vec4, vren::reduce_operation::ReduceOperationAdd>(glm::vec4* buffer, uint32_t length)
+{
+    fill_reduce_cpu_buffer<glm::vec4>(buffer, length, []() {
+        return glm::vec4(std::rand() % 100, std::rand() % 100, std::rand() % 100, std::rand() % 100);
+    }, glm::vec4(0));
+}
+
+template<>
+void fill_reduce_cpu_buffer<glm::vec4, vren::reduce_operation::ReduceOperationMin>(glm::vec4* buffer, uint32_t length)
+{
+    fill_reduce_cpu_buffer<glm::vec4>(buffer, length, []() {
+        return glm::vec4(std::rand() % 100, std::rand() % 100, std::rand() % 100, std::rand() % 100);
+    }, glm::vec4(1e35));
+}
+
+template<>
+void fill_reduce_cpu_buffer<glm::vec4, vren::reduce_operation::ReduceOperationMax>(glm::vec4* buffer, uint32_t length)
+{
+    fill_reduce_cpu_buffer<glm::vec4>(buffer, length, []() {
+        return glm::vec4(std::rand() % 100, std::rand() % 100, std::rand() % 100, std::rand() % 100);
+    }, glm::vec4(-1e35));
+}
+
+template<typename _t, vren::reduce_operation _operation>
 void run_reduce_test(uint32_t length, bool verbose)
 {
-    vren::vk_utils::buffer cpu_buffer = vren::vk_utils::alloc_host_visible_buffer(
+    uint32_t length_power_of_2 = vren::round_to_next_power_of_2(length);
+
+    vren::vk_utils::buffer cpu_buffer = vren::vk_utils::alloc_host_visible_buffer( // Input buffer
         VREN_TEST_APP()->m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        length * sizeof(_t),
+        length_power_of_2 * sizeof(_t),
         true
     );
 
-    vren::vk_utils::buffer gpu_buffer = vren::vk_utils::alloc_host_visible_buffer(
+    vren::vk_utils::buffer gpu_buffer = vren::vk_utils::alloc_host_visible_buffer( // Output buffer
         VREN_TEST_APP()->m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        length * sizeof(_t),
+        length_power_of_2 * sizeof(_t),
         true
     );
 
     _t* cpu_buffer_ptr = reinterpret_cast<_t*>(cpu_buffer.m_allocation_info.pMappedData);
     _t* gpu_buffer_ptr = reinterpret_cast<_t*>(gpu_buffer.m_allocation_info.pMappedData);
 
-    fill_reduce_cpu_buffer<_t>(cpu_buffer_ptr, length);
+    fill_reduce_cpu_buffer<_t, _operation>(cpu_buffer_ptr, length);
 
     if (verbose)
     {
         //fmt::print("Before reduction:\n");
-        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), length);
+        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>((uint32_t*) cpu_buffer_ptr, length_power_of_2);
         //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, length);
     }
 
     // Run GPU reduction
     vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
-        run_gpu_reduce<_t, operation>(command_buffer, resource_container, cpu_buffer, gpu_buffer, length);
+        run_gpu_reduce<_t, _operation>(command_buffer, resource_container, cpu_buffer, gpu_buffer, length);
     });
 
     // Run CPU reduction
-    run_cpu_reduce<_t, operation>(cpu_buffer_ptr, length);
+    run_cpu_reduce<_t, _operation>(cpu_buffer_ptr, length_power_of_2);
 
     if (verbose)
     {
         //fmt::print("After reduction:\n");
-        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>(cpu_buffer.data(), length);
-        //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>(gpu_buffer_ptr, length);
+        //fmt::print("CPU buffer:\n"); vren_test::print_buffer<uint32_t>((uint32_t*) cpu_buffer_ptr, length_power_of_2);
+        //fmt::print("GPU buffer:\n"); vren_test::print_buffer<uint32_t>((uint32_t*) gpu_buffer_ptr, length_power_of_2);
     }
 
-    for (uint32_t i = 0; i < length; i++)
+    for (uint32_t i = 0; i < length_power_of_2; i++)
     {
+        if (cpu_buffer_ptr[i] != gpu_buffer_ptr[i])
+        {
+            fmt::print("ERROR: {}\n", i);
+        }
+
         ASSERT_EQ(cpu_buffer_ptr[i], gpu_buffer_ptr[i]);
     }
 }
 
-// TODO write tests also for other type of operations and data types (now only uint/add)
-
 TEST(reduce, type_uint)
 {
-    uint32_t length = 1 << 15;
+    uint32_t length = 10000;
 
     fmt::print("[reduce.type_uint] Reduce uint add, length {}\n", length);
     run_reduce_test<uint32_t, vren::ReduceOperationAdd>(length, false);
@@ -233,7 +269,7 @@ TEST(reduce, type_uint)
 
 TEST(reduce, type_vec4)
 {
-    uint32_t length = 1 << 13;
+    uint32_t length = 10000;
 
     fmt::print("[reduce.type_vec4] Reduce vec4 add, length {}\n", length);
     run_reduce_test<glm::vec4, vren::ReduceOperationAdd>(length, false);
@@ -247,7 +283,7 @@ TEST(reduce, type_vec4)
 
 TEST(reduce, var_length)
 {
-    for (uint32_t length = 1; length >> 15 == 0; length <<= 1)
+    for (uint32_t length = 1; length < 10e5; length *= 10)
     {
         fmt::print("[reduce.var_length] Reduce uint add, length {}\n", length);
         run_reduce_test<uint32_t, vren::ReduceOperationAdd>(length, false);

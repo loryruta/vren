@@ -64,12 +64,12 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/pbr_draw.frag" "${VREN_SHADERS_DIR}/pbr_draw.frag.spv")
 
     # Reduce
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_add.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=a+b")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_min.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=min(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_max.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=max(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_add.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=a+b")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_min.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=min(a,b)")
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_max.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=max(a,b)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_add.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=a+b" "-DVREN_OUT_OF_BOUND_VALUE=0")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_min.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=min(a,b)" "-DVREN_OUT_OF_BOUND_VALUE=(~0u)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_uint_max.comp.spv" "-DVREN_DATA_TYPE=uint" "-DVREN_OPERATION(a,b)=max(a,b)" "-DVREN_OUT_OF_BOUND_VALUE=0")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_add.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=a+b" "-DVREN_OUT_OF_BOUND_VALUE=vec4(0)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_min.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=min(a,b)" "-DVREN_OUT_OF_BOUND_VALUE=vec4(1e35)")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/reduce.comp" "${VREN_SHADERS_DIR}/reduce_vec4_max.comp.spv" "-DVREN_DATA_TYPE=vec4" "-DVREN_OPERATION(a,b)=max(a,b)" "-DVREN_OUT_OF_BOUND_VALUE=vec4(-1e35)")
 
     # Blelloch scan
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/blelloch_scan_downsweep.comp" "${VREN_SHADERS_DIR}/blelloch_scan_downsweep.comp.spv" "-D_VREN_DOWNSWEEP_ENTRYPOINT")

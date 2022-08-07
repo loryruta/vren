@@ -41,7 +41,9 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
     uint32_t blocks_num
 )
 {
-    size_t output_buffer_size = vren::round_to_next_power_of_2(input_buffer_length) * sizeof(_data_type_t);
+    uint32_t length_power_of_2 = vren::round_to_next_power_of_2(input_buffer_length);
+
+    size_t output_buffer_size = length_power_of_2 * sizeof(_data_type_t);
 
     assert(output_buffer.m_allocation_info.size >= output_buffer_size);
     assert(blocks_num > 0);
@@ -51,9 +53,9 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
 
     struct
     {
-        uint32_t m_num_items;
         uint32_t m_base_level;
-        uint32_t m_block_length;
+        uint32_t m_input_length;
+        uint32_t m_output_length;
     } push_constants;
 
     VkDescriptorSetLayout descriptor_set_layout = m_pipeline.m_descriptor_set_layouts.at(0);
@@ -75,9 +77,8 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
         descriptor_set_2
     );
 
-    uint32_t num_items = 1;
-    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size * num_items);
-    int32_t levels = glm::max(glm::log2<int32_t>(input_buffer_length), 1);
+    int32_t max_levels_per_dispatch = glm::log2<int32_t>(k_workgroup_size);
+    int32_t levels = glm::max(glm::log2<int32_t>(length_power_of_2), 1);
 
     for (uint32_t level = 0; level < levels; level += max_levels_per_dispatch)
     {
@@ -98,16 +99,16 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
         m_pipeline.bind(command_buffer);
 
         push_constants = {
-            .m_num_items = num_items,
             .m_base_level = level,
-            .m_block_length = input_buffer_length,
+            .m_input_length = level == 0 ? input_buffer_length : length_power_of_2,
+            .m_output_length = length_power_of_2,
         };
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         VkDescriptorSet descriptor_set = level == 0 ? descriptor_set_1->m_handle.m_descriptor_set : descriptor_set_2->m_handle.m_descriptor_set;
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set);
 
-        uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_workgroup_size * num_items);
+        uint32_t workgroups_num = vren::divide_and_ceil(1 << (levels - level), k_workgroup_size);
         m_pipeline.dispatch(command_buffer, workgroups_num, blocks_num, 1);
     }
 }
@@ -122,7 +123,7 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
     uint32_t blocks_num
 )
 {
-    // InputBuffer is the same as the OutputBuffer (this is legal for the reduction operation)
+    // InputBuffer is the same of the OutputBuffer (this is legal for the reduction operation)
     this->operator()(command_buffer, resource_container, buffer, length, offset, buffer, offset, blocks_num);
 }
 
