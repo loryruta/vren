@@ -1,5 +1,6 @@
 #include "bucket_sort.hpp"
 
+#include "context.hpp"
 #include "toolbox.hpp"
 #include "vk_helpers/misc.hpp"
 
@@ -65,7 +66,7 @@ VkBufferUsageFlags vren::bucket_sort::get_required_output_buffer_usage_flags()
 
 size_t vren::bucket_sort::get_required_output_buffer_size(uint32_t length)
 {
-    return length * sizeof(glm::uvec2) + k_key_size * sizeof(uint32_t);
+    return vren::round_to_next_multiple_of(length * sizeof(glm::uvec2), (size_t) VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT) + k_key_size * sizeof(uint32_t);
 }
 
 void vren::bucket_sort::operator()(
@@ -78,25 +79,28 @@ void vren::bucket_sort::operator()(
     size_t output_buffer_offset
 )
 {
-    assert(output_buffer.m_allocation_info.size >= get_required_output_buffer_size(input_buffer_length));
+    assert(input_buffer_offset % VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0);
+    assert(output_buffer_offset % VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0);
+    assert((output_buffer.m_allocation_info.size - output_buffer_offset) >= get_required_output_buffer_size(input_buffer_length));
 
-    const uint32_t num_items = 1;
-    const uint32_t num_workgroups = vren::divide_and_ceil(input_buffer_length, k_workgroup_size * num_items);
+    size_t bucket_count_buffer_offset = output_buffer_offset + vren::round_to_next_multiple_of(input_buffer_length * sizeof(glm::uvec2), (size_t) VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT);
+
+    const uint32_t num_workgroups = vren::divide_and_ceil(input_buffer_length, k_workgroup_size);
 
     auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_descriptor_set_layout.m_handle)
     );
 
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, input_buffer.m_buffer.m_handle, input_buffer_length * sizeof(glm::uvec2), 0);
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(glm::uvec2), 0);
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 2, output_buffer.m_buffer.m_handle, k_key_size * sizeof(glm::uint), input_buffer_length * sizeof(glm::uvec2));
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, input_buffer.m_buffer.m_handle, input_buffer_length * sizeof(glm::uvec2), input_buffer_offset);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 1, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(glm::uvec2), output_buffer_offset);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 2, output_buffer.m_buffer.m_handle, k_key_size * sizeof(uint32_t), bucket_count_buffer_offset);
 
     resource_container.add_resource(descriptor_set);
 
     VkBufferMemoryBarrier buffer_memory_barrier{};
 
     // Clear
-    vkCmdFillBuffer(command_buffer, output_buffer.m_buffer.m_handle, input_buffer_length * sizeof(glm::uvec2), k_key_size * sizeof(uint32_t), 0);
+    vkCmdFillBuffer(command_buffer, output_buffer.m_buffer.m_handle, bucket_count_buffer_offset, k_key_size * sizeof(uint32_t), 0);
 
     buffer_memory_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -104,7 +108,7 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = output_buffer.m_buffer.m_handle,
-        .offset = input_buffer_length * sizeof(glm::uvec2),
+        .offset = bucket_count_buffer_offset,
         .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
@@ -112,7 +116,6 @@ void vren::bucket_sort::operator()(
     // Per-bucket count
     m_count_pipeline.bind(command_buffer);
 
-    m_count_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &num_items, sizeof(num_items), 0);
     m_count_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
     m_count_pipeline.dispatch(command_buffer, num_workgroups, 1, 1);
@@ -123,7 +126,7 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = output_buffer.m_buffer.m_handle,
-        .offset = input_buffer_length * sizeof(glm::uvec2),
+        .offset = bucket_count_buffer_offset,
         .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
@@ -134,7 +137,7 @@ void vren::bucket_sort::operator()(
         resource_container,
         output_buffer,
         k_key_size,
-        input_buffer_length * sizeof(glm::uvec2),
+        bucket_count_buffer_offset,
         1
     );
 
@@ -144,7 +147,7 @@ void vren::bucket_sort::operator()(
         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = output_buffer.m_buffer.m_handle,
-        .offset = input_buffer_length * sizeof(glm::uvec2),
+        .offset = bucket_count_buffer_offset,
         .size = k_key_size * sizeof(uint32_t)
     };
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
@@ -152,19 +155,7 @@ void vren::bucket_sort::operator()(
     // Write
     m_write_pipeline.bind(command_buffer);
 
-    m_write_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &num_items, sizeof(num_items), 0);
     m_write_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
     m_write_pipeline.dispatch(command_buffer, num_workgroups, 1, 1);
-
-    buffer_memory_barrier = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-        .pNext = nullptr,
-        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-        .buffer = output_buffer.m_buffer.m_handle,
-        .offset = 0,
-        .size = input_buffer_length * sizeof(glm::uvec2)
-    };
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 }

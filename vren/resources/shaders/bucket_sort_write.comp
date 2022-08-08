@@ -4,21 +4,10 @@
 
 #extension GL_EXT_debug_printf : enable
 
-#ifndef VREN_WORKGROUP_SIZE
-#	define VREN_WORKGROUP_SIZE 1024
-#endif
-
-layout(local_size_x = VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
-
-#define VREN_MAX_ITERS 1
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #define VREN_KEY_SIZE (1 << 16)
 #define VREN_KEY_MASK (VREN_KEY_SIZE - 1)
-
-layout(push_constant) uniform PushConstants
-{
-	uint num_items;
-};
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
 {
@@ -37,9 +26,9 @@ layout(set = 0, binding = 2) buffer BucketOffsetBuffer
 
 void main()
 {
-	for (uint i = 0; i < num_items; i++)
+	if (gl_GlobalInvocationID.x < input_buffer.length())
 	{
-		uvec2 v = input_buffer[gl_GlobalInvocationID.x * num_items + i];
+		uvec2 v = input_buffer[gl_GlobalInvocationID.x];
 		uint offset = atomicAdd(bucket_offsets[v.x & VREN_KEY_MASK], 1);
 		output_buffer[offset] = v;
 	}
