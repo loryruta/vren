@@ -1,5 +1,7 @@
 #include "build_bvh.hpp"
 
+#include <glm/gtc/integer.hpp>
+
 #include "toolbox.hpp"
 #include "vk_helpers/misc.hpp"
 
@@ -20,41 +22,17 @@ void vren::build_bvh::write_descriptor_set(
     uint32_t leaf_count
 )
 {
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 0, buffer.m_buffer.m_handle, get_buffer_length(leaf_count) * sizeof(vren::bvh_node), 0);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 0, buffer.m_buffer.m_handle, get_required_buffer_size(leaf_count), 0);
 }
 
-uint32_t vren::build_bvh::get_padded_leaf_count(uint32_t leaf_count)
+VkBufferUsageFlags vren::build_bvh::get_required_buffer_usage_flags()
 {
-    uint32_t i;
-    for (i = 0; i < 32; i += 5)
-    {
-        if (leaf_count == (1 << i) || (leaf_count >> i) == 0)
-        {
-            break;
-        }
-    }
-
-    if (i == 32)
-    {
-        throw std::runtime_error("leaf_count is too high");
-    }
-
-    return 1 << i;
+    return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 }
 
-size_t vren::build_bvh::get_buffer_length(uint32_t leaf_count)
+size_t vren::build_bvh::get_required_buffer_size(uint32_t leaf_count)
 {
-    uint32_t padded_leaf_count = get_padded_leaf_count(leaf_count);
-
-    size_t length = 0;
-    while (padded_leaf_count != 0)
-    {
-        assert(padded_leaf_count % 32 == 0 || padded_leaf_count == 1);
-
-        length += padded_leaf_count;
-        padded_leaf_count >>= 5;
-    }
-    return length;
+    return calc_bvh_buffer_size(leaf_count);
 }
 
 void vren::build_bvh::operator()(
@@ -65,13 +43,16 @@ void vren::build_bvh::operator()(
     uint32_t* root_node_idx
 )
 {
-    // Leaf count is required to be a multiple of 32, if it's not consider adding invalid nodes
-    assert(leaf_count % 32 == 0);
+    assert(vren::is_power_of(leaf_count, 32u));
 
     uint32_t level_count = leaf_count;
 
-    uint32_t length = get_buffer_length(leaf_count);
-    *root_node_idx = length - 1;
+    uint32_t length = calc_bvh_buffer_length(leaf_count);
+
+    if (root_node_idx != nullptr)
+    {
+        *root_node_idx = length - 1;
+    }
 
     m_pipeline.bind(command_buffer);
 
@@ -116,4 +97,41 @@ void vren::build_bvh::operator()(
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }
     }
+}
+
+uint32_t vren::calc_bvh_padded_leaf_count(uint32_t leaf_count)
+{
+    return vren::round_to_next_power_of(leaf_count, 32u);
+}
+
+uint32_t vren::calc_bvh_buffer_length(uint32_t leaf_count)
+{
+    uint32_t padded_leaf_count = calc_bvh_padded_leaf_count(leaf_count);
+    size_t length = 0;
+    while (padded_leaf_count != 0)
+    {
+        assert(padded_leaf_count % 32 == 0 || padded_leaf_count == 1);
+
+        length += padded_leaf_count;
+        padded_leaf_count >>= 5;
+    }
+    return length;
+}
+
+size_t vren::calc_bvh_buffer_size(uint32_t leaf_count)
+{
+    uint32_t padded_leaf_count = calc_bvh_padded_leaf_count(leaf_count);
+    return calc_bvh_buffer_length(padded_leaf_count) * sizeof(vren::bvh_node);
+}
+
+uint32_t vren::calc_bvh_root_index(uint32_t leaf_count)
+{
+    uint32_t padded_leaf_count = calc_bvh_padded_leaf_count(leaf_count);
+    return vren::calc_bvh_buffer_length(padded_leaf_count) - 1;
+}
+
+uint32_t vren::calc_bvh_level_count(uint32_t leaf_count)
+{
+    uint32_t padded_leaf_count = calc_bvh_padded_leaf_count(leaf_count);
+    return (glm::log2(padded_leaf_count) / 5) + 1;
 }

@@ -8,6 +8,8 @@ namespace vren
 {
 	// All the following GPU structures are at least 16 bytes aligned (supporting minStorageBufferOffsetAlignment <= 16).
 
+	// TODO GPU structures alignment should be at least VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT
+
 	// ------------------------------------------------------------------------------------------------
 
 	struct camera

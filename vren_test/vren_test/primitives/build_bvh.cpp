@@ -103,8 +103,8 @@ void run_build_bvh_test(
 {
     vren::build_bvh& build_bvh = VREN_TEST_APP()->m_context.m_toolbox->m_build_bvh;
 
-    uint32_t padded_leaf_count = vren::build_bvh::get_padded_leaf_count(leaf_count);
-    std::vector<vren::bvh_node> cpu_buffer(padded_leaf_count);
+    uint32_t padded_leaf_count = vren::calc_bvh_padded_leaf_count(leaf_count);
+    std::vector<vren::bvh_node> cpu_buffer(leaf_count);
 
     // Init
     std::random_device rd;
@@ -130,7 +130,7 @@ void run_build_bvh_test(
     }
 
     // Copy to GPU buffer
-    size_t gpu_buffer_length = vren::build_bvh::get_buffer_length(padded_leaf_count);
+    size_t gpu_buffer_length = vren::calc_bvh_buffer_length(padded_leaf_count);
     vren::vk_utils::buffer gpu_buffer = vren::vk_utils::alloc_host_visible_buffer(
         VREN_TEST_APP()->m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -216,5 +216,5 @@ TEST(build_bvh, main)
     run_build_bvh_test(100, 8, false);
     run_build_bvh_test(1000, 4, false);
     run_build_bvh_test(10000, 2, false);
-    run_build_bvh_test(100000, 1, false);
+    //run_build_bvh_test(100000, 1, false);
 }

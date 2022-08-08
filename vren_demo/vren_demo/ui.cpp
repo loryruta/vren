@@ -1,5 +1,8 @@
 #include "ui.hpp"
 
+#include <algorithm>
+#include <execution>
+
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -153,9 +156,15 @@ void vren_demo::ui::show_scene_window()
 
 		int point_light_count = m_point_light_count;
 		
-		if (ImGui::SliderInt("Count##point_lights-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHT_COUNT))
+		// Count
+		if (ImGui::SliderInt("Count##point_lights-scene_ui", &point_light_count, 0, VREN_MAX_POINT_LIGHT_COUNT, "%d", ImGuiSliderFlags_Logarithmic))
 		{
-			m_app->m_light_array_fork.enqueue([from_count = m_point_light_count, to_count = point_light_count, color = m_point_light_color](vren::light_array& light_array)
+			m_app->m_light_array_fork.enqueue([
+				from_count = m_point_light_count,
+				to_count = point_light_count,
+				color = m_point_light_color,
+				intensity = m_point_light_intensity
+			](vren::light_array& light_array)
 			{
 				vren::point_light* point_lights = light_array.m_point_light_buffer.get_mapped_pointer<vren::point_light>();
 				glm::vec4* point_light_positions = light_array.m_point_light_position_buffer.get_mapped_pointer<glm::vec4>();
@@ -164,7 +173,7 @@ void vren_demo::ui::show_scene_window()
 				{
 					point_lights[i] = {
 						.m_color = color,
-						.m_intensity = 1.0f,
+						.m_intensity = intensity,
 					};
 					point_light_positions[i] = glm::vec4{ 0, 0, 0, 1 };
 				}
@@ -175,20 +184,34 @@ void vren_demo::ui::show_scene_window()
 			m_point_light_count = point_light_count;
 		}
 
+		// Color
 		if (ImGui::ColorEdit3("Color##point_lights-scene_ui", reinterpret_cast<float*>(&m_point_light_color), ImGuiColorEditFlags_Float))
 		{
 			m_app->m_light_array_fork.enqueue([color = m_point_light_color](vren::light_array& light_array)
 			{
 				vren::point_light* point_lights = light_array.m_point_light_buffer.get_mapped_pointer<vren::point_light>();
-
-				for (uint32_t i = 0; i < light_array.m_point_light_count; i++)
+				std::for_each(std::execution::par, point_lights, point_lights + light_array.m_point_light_count, [&](vren::point_light& point_light)
 				{
-					point_lights[i].m_color = color;
-				}
+					point_light.m_color = color;
+				});
 			});
 		}
 
+		// Speed
 		ImGui::SliderFloat("Speed##point_lights-scene_ui", &m_app->m_point_light_speed, 0.0f, 0.5f, "%.3f"); // Proportional to model size
+
+		// Intensity
+		if (ImGui::SliderFloat("Intensity##point_lights-scene_ui", &m_point_light_intensity, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic))
+		{
+			m_app->m_light_array_fork.enqueue([intensity = m_point_light_intensity](vren::light_array& light_array)
+			{
+				vren::point_light* point_lights = light_array.m_point_light_buffer.get_mapped_pointer<vren::point_light>();
+				std::for_each(std::execution::par, point_lights, point_lights + light_array.m_point_light_count, [&](vren::point_light& point_light)
+				{
+					point_light.m_intensity = intensity;
+				});
+			});
+		}
 
 		ImGui::Spacing();
 

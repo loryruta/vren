@@ -39,6 +39,7 @@ namespace vren_demo
 
 		int m_point_light_count = 0;
 		glm::vec3 m_point_light_color = glm::vec3(1, 0, 0);
+		float m_point_light_intensity = 0.01f;
 
 		glm::vec3 m_directional_light_direction{};
 		glm::vec3 m_directional_light_color = glm::vec3(1, 1, 0);

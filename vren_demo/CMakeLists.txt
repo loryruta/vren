@@ -12,6 +12,8 @@ add_executable(vren_demo
         vren_demo/clusterized_model_debugger.hpp
         vren_demo/point_light_bouncer.hpp
         vren_demo/point_light_bouncer.cpp
+        vren_demo/visualize_bvh.hpp
+        vren_demo/visualize_bvh.cpp
     )
 
 # ------------------------------------------------------------------------------------------------
@@ -75,7 +77,7 @@ setup_resources(vren_demo)
 # Shaders
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.spv")
-compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/write_bvh_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/write_bvh_draw_buffer.comp.spv")
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/visualize_bvh.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/visualize_bvh.comp.spv")
 
 add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})
 add_dependencies(vren_demo vren_demo_shaders)

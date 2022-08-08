@@ -25,10 +25,10 @@ namespace vren
 	public:
 		vren::vk_utils::buffer m_point_light_position_buffer; // A buffer holding only the position of the point lights, useful for finding min/max for clustered shading
 		vren::vk_utils::buffer m_point_light_buffer;
-		size_t m_point_light_count = 0;
+		uint32_t m_point_light_count = 0;
 
 		vren::vk_utils::buffer m_directional_light_buffer;
-		size_t m_directional_light_count = 0;
+		uint32_t m_directional_light_count = 0;
 
 		light_array(vren::context const& context);
 

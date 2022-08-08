@@ -71,6 +71,34 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_point_light_bouncer(m_context),
 	m_fill_point_light_debug_draw_buffer(m_context),
 
+	m_visualize_bvh(m_context),
+
+	// Light array BVH
+	m_point_light_bvh_buffer([&]()
+	{
+		return vren::vk_utils::alloc_device_only_buffer(
+			m_context,
+			vren::construct_light_array_bvh::get_required_bvh_buffer_usage_flags(),
+			vren::construct_light_array_bvh::get_required_bvh_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
+		);
+	}()),
+	m_point_light_index_buffer([&]()
+	{
+		return vren::vk_utils::alloc_device_only_buffer(
+			m_context,
+			vren::construct_light_array_bvh::get_required_light_index_buffer_usage_flags(),
+			vren::construct_light_array_bvh::get_required_light_index_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
+		);
+	}()),
+	m_point_light_bvh_draw_buffer([&]()
+	{
+		vren::debug_renderer_draw_buffer draw_buffer(m_context);
+		draw_buffer.m_vertex_count = 0;
+		draw_buffer.m_vertex_buffer.set_data(nullptr, vren::calc_bvh_buffer_length(VREN_MAX_POINT_LIGHT_COUNT) * 12 * sizeof(vren::debug_renderer_vertex));
+		return draw_buffer;
+	}()),
+	m_construct_light_array_bvh(m_context),
+
 	// Point lights
 	m_point_light_direction_buffer([&]()
 	{
@@ -280,24 +308,27 @@ void vren_demo::app::on_update(float dt)
 
 	m_freecam_controller.update(m_camera, dt, m_camera_speed, glm::radians(45.0f));
 
-	m_light_array_fork.enqueue([this, dt](vren::light_array& light_array)
+	if (m_point_light_speed > std::numeric_limits<float>::epsilon())
 	{
-		vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+		m_light_array_fork.enqueue([this, dt](vren::light_array& light_array)
 		{
-			m_point_light_bouncer.bounce(
-				0,
-				command_buffer,
-				resource_container,
-				light_array.m_point_light_position_buffer,
-				m_point_light_direction_buffer,
-				VREN_MAX_POINT_LIGHT_COUNT,
-				m_model_min,
-				m_model_max,
-				m_point_light_speed,
-				dt
-			);
+			vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+			{
+				m_point_light_bouncer.bounce(
+					0,
+					command_buffer,
+					resource_container,
+					light_array.m_point_light_position_buffer,
+					m_point_light_direction_buffer,
+					VREN_MAX_POINT_LIGHT_COUNT,
+					glm::vec3(-1.0f),
+					glm::vec3(1.0f),
+					m_point_light_speed,
+					dt
+				);
+			});
 		});
-	});
+	}
 }
 
 void vren_demo::app::record_commands(
@@ -311,8 +342,6 @@ void vren_demo::app::record_commands(
 {
 	vren::light_array& light_array = m_light_arrays.at(frame_idx);
 
-	m_light_array_fork.apply(frame_idx, light_array);
-
 	// Draw cartesian axes
 	m_debug_draw_buffer.clear();
 
@@ -321,7 +350,7 @@ void vren_demo::app::record_commands(
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
 	// Draw model AABB
-	m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
+	//m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
 
 	// Render-graph begin
 	vren::render_graph_builder render_graph(m_render_graph_allocator);
@@ -376,6 +405,47 @@ void vren_demo::app::record_commands(
 		break;
 	default:
 		break;
+	}
+
+	// Apply user operations to the light_array
+	m_light_array_fork.apply(frame_idx, light_array);
+
+	if (light_array.m_point_light_count > 0)
+	{
+		// Construct light_array BVH
+		render_graph.concat(
+			m_profiler.profile(
+				m_render_graph_allocator,
+				m_construct_light_array_bvh.construct(
+					m_render_graph_allocator,
+					light_array,
+					m_point_light_bvh_buffer,
+					0,
+					m_point_light_index_buffer,
+					0
+				),
+				vren_demo::ProfileSlot_CONSTRUCT_LIGHT_ARRAY_BVH
+			)
+		);
+
+		// Visualize BVH
+		render_graph.concat(
+			m_visualize_bvh.write(
+				m_render_graph_allocator,
+				m_point_light_bvh_buffer,
+				vren::calc_bvh_level_count(light_array.m_point_light_count),
+				m_point_light_bvh_draw_buffer
+			)
+		);
+		m_point_light_bvh_draw_buffer.m_vertex_count = vren::calc_bvh_buffer_length(light_array.m_point_light_count) * 12 * 2;
+		render_graph.concat(
+			m_debug_renderer.render(
+				m_render_graph_allocator,
+				render_target,
+				m_camera.to_vren(),
+				m_point_light_bvh_draw_buffer
+			)
+		);
 	}
 
 	// Build depth buffer pyramid

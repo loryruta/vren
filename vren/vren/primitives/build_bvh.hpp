@@ -5,7 +5,6 @@
 
 namespace vren
 {
-
     struct bvh_node
     {
         inline static const uint32_t k_leaf_node = 0x80000000;
@@ -39,13 +38,8 @@ namespace vren
         );
 
     public:
-        static uint32_t get_padded_leaf_count(uint32_t leaf_count);
-        static size_t get_buffer_length(uint32_t leaf_count);
-
-        inline static size_t get_buffer_size(uint32_t leaf_count)
-        {
-            return get_buffer_length(leaf_count) * sizeof(vren::bvh_node);
-        }
+        static VkBufferUsageFlags get_required_buffer_usage_flags();
+        static size_t get_required_buffer_size(uint32_t leaf_count);
 
         void operator()(
             VkCommandBuffer command_buffer,
@@ -55,4 +49,10 @@ namespace vren
             uint32_t* root_node_idx
         );
     };
+
+    uint32_t calc_bvh_padded_leaf_count(uint32_t leaf_count);
+    uint32_t calc_bvh_buffer_length(uint32_t leaf_count);
+    size_t calc_bvh_buffer_size(uint32_t leaf_count);
+    uint32_t calc_bvh_root_index(uint32_t leaf_count);
+    uint32_t calc_bvh_level_count(uint32_t leaf_count);
 }

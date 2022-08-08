@@ -34,15 +34,43 @@ namespace vren
 		return value > 0 && (value & (value - 1)) == 0;
 	}
 
-	inline uint32_t round_to_next_power_of_2(uint32_t value)
+	inline uint32_t round_to_next_power_of_2(uint32_t v)
 	{
-		
+		v--;
+		v |= v >> 1;
+		v |= v >> 2;
+		v |= v >> 4;
+		v |= v >> 8;
+		v |= v >> 16;
+		v++;
+		return v;
 	}
 
 	inline uint32_t round_to_nearest_multiple_of_power_of_2(uint32_t value, uint32_t power_of_2)
 	{
 		assert(power_of_2 > 0 && is_power_of_2(power_of_2));
 		return (value + power_of_2 - 1) & ~(power_of_2 - 1);
+	}
+
+	template<typename _integer_t>
+	_integer_t round_to_next_multiple_of(_integer_t value, _integer_t multiple)
+	{
+		_integer_t reminder = value % multiple;
+		return reminder == 0 ? value : (value + multiple - reminder);
+	}
+
+	template<typename _integer_t>
+	bool is_power_of(_integer_t n, _integer_t base)
+	{
+		double exp = glm::log((double) n) / glm::log((double) base);
+		return (exp - glm::floor(exp)) < std::numeric_limits<double>::epsilon();
+	}
+
+	template<typename _integer_t>
+	_integer_t round_to_next_power_of(_integer_t n, _integer_t base)
+	{
+		double exp = glm::log((double) n) / glm::log((double) base);
+		return (uint32_t) glm::pow(base, glm::ceil(exp));
 	}
 
 	inline uint32_t divide_and_ceil(uint32_t value, uint32_t divider)

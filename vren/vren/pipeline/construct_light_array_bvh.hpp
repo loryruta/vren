@@ -18,7 +18,10 @@ namespace vren
     public:
         construct_light_array_bvh(vren::context const& context);
 
+        static VkBufferUsageFlags get_required_bvh_buffer_usage_flags();
         static size_t get_required_bvh_buffer_size(uint32_t light_count);
+
+        static VkBufferUsageFlags get_required_light_index_buffer_usage_flags();
         static size_t get_required_light_index_buffer_size(uint32_t light_count);
 
         vren::render_graph_t construct(

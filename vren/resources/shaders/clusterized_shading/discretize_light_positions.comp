@@ -2,13 +2,15 @@
 
 #extension GL_GOOGLE_include_directive : require
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #include <common.glsl>
 
 layout(set = 0, binding = 0) readonly buffer LightMinMaxBuffer
 {
-	vec4 _min, _max;
+	vec4 _min; vec4 _max;
 };
 
 layout(set = 0, binding = 1) readonly buffer LightPositionBuffer
@@ -26,17 +28,16 @@ void main()
 	if (gl_GlobalInvocationID.x < light_positions.length())
 	{
 		vec3 pos = light_positions[gl_GlobalInvocationID.x].xyz;
-		
 		uvec3 discretized_pos = uvec3(floor((pos - _min.xyz) / (_max.xyz - _min.xyz) * (1 << 5)));
 
 		uint morton_code = 0;
-		for (uint i = 0; i < 16; i++)
+		for (uint i = 0; i < 5; i++)
 		{
 			morton_code |= ((discretized_pos.x >> i) & 1) << (i * 3);
 			morton_code |= ((discretized_pos.y >> i) & 1) << (i * 3 + 1);
 			morton_code |= ((discretized_pos.z >> i) & 1) << (i * 3 + 2);
 		}
-
+		
 		morton_codes[gl_GlobalInvocationID.x] = uvec2(morton_code, gl_GlobalInvocationID.x);
 	}
 }

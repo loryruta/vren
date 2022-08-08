@@ -9,6 +9,9 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #define UINT32_MAX 0xFFFFFFFFu
 
+#define BVH_LEAF_NODE 0x80000000
+#define BVH_INVALID_NODE 0xB0000000
+
 layout(push_constant) uniform PushConstants
 {
 	uint src_level_idx; // Index at the start of the current level that has to be reduced
@@ -25,9 +28,6 @@ layout(set = 0, binding = 0) buffer BvhBuffer
 {
 	BvhNode bvh[];
 };
-
-#define BVH_LEAF_NODE 0x80000000
-#define BVH_INVALID_NODE 0xB0000000
 
 bool is_bvh_leaf_node(BvhNode node)
 {

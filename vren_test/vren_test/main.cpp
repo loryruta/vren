@@ -6,6 +6,8 @@
 #ifdef VREN_TEST_UNIT_TESTS
 int main(int argc, char* argv[])
 {
+    std::srand(std::time(NULL));
+
 	::testing::GTEST_FLAG(catch_exceptions) = false;
 
 	::testing::InitGoogleTest(&argc, argv);
@@ -16,6 +18,8 @@ int main(int argc, char* argv[])
 #ifdef VREN_TEST_BENCHMARK
 int main(int argc, char** argv)
 {
+    std::srand(std::time(NULL));
+
     ::benchmark::Initialize(&argc, argv);
     
     if (::benchmark::ReportUnrecognizedArguments(argc, argv))

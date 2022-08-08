@@ -71,10 +71,12 @@ namespace vren::vk_utils
 		VkDescriptorSet descriptor_set,
 		uint32_t binding,
 		VkBuffer buffer,
-		uint32_t range = VK_WHOLE_SIZE,
-		uint32_t offset = 0
+		size_t range,
+		size_t offset
 	)
 	{
+		assert(offset % VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0);
+
 		VkDescriptorBufferInfo buffer_info{
 			.buffer = buffer,
 			.offset = offset,

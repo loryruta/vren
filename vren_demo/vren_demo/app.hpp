@@ -11,6 +11,7 @@
 #include "vren/pipeline/depth_buffer_pyramid.hpp"
 #include <vren/presenter.hpp>
 #include "vren/pipeline/profiler.hpp"
+#include <vren/pipeline/construct_light_array_bvh.hpp>
 #include <vren/model/basic_model_draw_buffer.hpp>
 #include <vren/model/clusterized_model.hpp>
 #include <vren/model/clusterized_model_draw_buffer.hpp>
@@ -19,6 +20,7 @@
 #include "camera.hpp"
 #include "point_light_bouncer.hpp"
 #include "ui.hpp"
+#include "visualize_bvh.hpp"
 
 namespace vren_demo
 {
@@ -49,7 +51,6 @@ namespace vren_demo
 	// Profiling
 	// ------------------------------------------------------------------------------------------------
 
-
 	enum profile_slot_enum_t
 	{
 		ProfileSlot_NONE = 0,
@@ -61,6 +62,7 @@ namespace vren_demo
 		ProfileSlot_IMGUI_RENDERER,
 		ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID,
 		ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE,
+		ProfileSlot_CONSTRUCT_LIGHT_ARRAY_BVH,
 
 		ProfileSlot_Count
 	};
@@ -78,6 +80,7 @@ namespace vren_demo
 		case ProfileSlot_IMGUI_RENDERER: return "IMGUI_RENDERER";
 		case ProfileSlot_BUILD_DEPTH_BUFFER_PYRAMID: return "BUILD_DEPTH_BUFFER_PYRAMID";
 		case ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE: return "BLIT_TO_SWAPCHAIN";
+		case ProfileSlot_CONSTRUCT_LIGHT_ARRAY_BVH: return "CONSTRUCT_LIGHT_ARRAY_BVH";
 		default:
 			return "?";
 		}
@@ -132,6 +135,8 @@ namespace vren_demo
 
 		vren::context m_context;
 
+		vren_demo::visualize_bvh m_visualize_bvh;
+
 		// Renderers
 		vren::basic_renderer m_basic_renderer;
 		std::shared_ptr<vren::mesh_shader_renderer> m_mesh_shader_renderer;
@@ -161,6 +166,14 @@ namespace vren_demo
 
 		vren_demo::point_light_bouncer m_point_light_bouncer;
 		vren_demo::fill_point_light_debug_draw_buffer m_fill_point_light_debug_draw_buffer;
+
+		// Light array BVH
+		vren::vk_utils::buffer m_point_light_bvh_buffer;
+		vren::vk_utils::buffer m_point_light_index_buffer;
+
+		vren::debug_renderer_draw_buffer m_point_light_bvh_draw_buffer;
+
+		vren::construct_light_array_bvh m_construct_light_array_bvh;
 
 		// Point light
 		vren::vk_utils::buffer m_point_light_direction_buffer;

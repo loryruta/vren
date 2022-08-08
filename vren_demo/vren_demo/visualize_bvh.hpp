@@ -5,9 +5,9 @@
 #include "pipeline/debug_renderer.hpp"
 #include "vk_helpers/buffer.hpp"
 
-namespace vren
+namespace vren_demo
 {
-    class debug_bvh
+    class visualize_bvh
     {
 	private:
 		vren::context const* m_context;
@@ -15,11 +15,12 @@ namespace vren
 		vren::pipeline m_pipeline;
 
 	public:
-		debug_bvh(vren::context const& context);
+		visualize_bvh(vren::context const& context);
 
 		vren::render_graph_t write(
 			vren::render_graph_allocator& render_graph_allocator,
 			vren::vk_utils::buffer const& bvh,
+			uint32_t level_count,
 			vren::debug_renderer_draw_buffer const& draw_buffer
 		);
     };

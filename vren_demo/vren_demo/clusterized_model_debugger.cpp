@@ -74,7 +74,6 @@ bool project_sphere(glm::vec3 C, float r, vren::camera const& camera, glm::vec4&
 
 	if (C.z + r < camera.m_z_near) // The sphere is entirely clipped by the near plane
 	{
-		//debugPrintfEXT("CLIPPED BY NEAR-PLANE: ID: %d, C.z: %.2f, r: %.2f, m22: %.2f, m32: %.2f\n", gl_GlobalInvocationID.x, C.z, r, m22, m32);
 		return false; // The sphere is entirely clipped by the near plane
 	}
 
@@ -117,7 +116,6 @@ bool project_sphere(glm::vec3 C, float r, vren::camera const& camera, glm::vec4&
 
 	if (aabb.x > aabb.z || aabb.y > aabb.w || isnan(aabb.x) || isnan(aabb.y) || isnan(aabb.z) || isnan(aabb.w)) {
 		assert(false);
-		//debugPrintfEXT("INVALID SITUATION -> ID: %d, C: %.2v3f, aabb min: %.2v2f, aabb max: %.2v2f\n", gl_GlobalInvocationID.x, (camera.projection * vec4(C, 1)).xyz, aabb.xy, aabb.zw);
 	}
 
 	// Convert the AABB to UV space

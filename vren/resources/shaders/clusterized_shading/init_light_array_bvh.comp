@@ -4,9 +4,14 @@
 
 #extension GL_GOOGLE_include_directive : require
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #define UINT32_MAX 0xFFFFFFFFu
+
+#define BVH_LEAF_NODE 0x80000000
+#define BVH_INVALID_NODE 0xB0000000
 
 #include <common.glsl>
 
@@ -26,7 +31,7 @@ layout(set = 0, binding = 1) readonly buffer LightPositionBuffer
 	vec4 point_light_positions[];
 };
 
-layout(set = 0, binding = 2) readonly buffer MortonCodeBuffer
+layout(set = 0, binding = 2) readonly buffer SortedMortonCodeBuffer
 {
 	uvec2 morton_codes[];
 };
@@ -47,12 +52,15 @@ void main()
 
 		node._min = point_light_positions[point_light_idx].xyz - vec3(point_light.intensity);
 		node._max = point_light_positions[point_light_idx].xyz + vec3(point_light.intensity);
-		node.next = 0; // Leaf node
+		node.next = BVH_LEAF_NODE; // Leaf node
 	}
 	else
 	{
-		node.next = UINT32_MAX; // Invalid node
+		node.next = BVH_INVALID_NODE; // Invalid node
 	}
 
-	bvh[gl_GlobalInvocationID.x] = node;
+	if (gl_GlobalInvocationID.x < bvh.length())
+	{
+		bvh[gl_GlobalInvocationID.x] = node;
+	}
 }

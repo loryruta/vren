@@ -13,6 +13,7 @@
 #define VREN_MAX_POINT_LIGHT_COUNT (1 << 20)
 #define VREN_MAX_DIRECTIONAL_LIGHT_COUNT (1 << 4)
 
+
 #define VREN_POINT_LIGHTS_BUFFER_SIZE       (2 * 1024 * 1024) // TODO derive from MAX_*_LIGHTS
 #define VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE (1 * 1024 * 1024)
 #define VREN_SPOT_LIGHTS_BUFFER_SIZE        (1 * 1024 * 1024)
@@ -29,3 +30,9 @@
 #define VREN_LIGHT_ARRAY_POINT_LIGHT_BUFFER_BINDING 0
 #define VREN_LIGHT_ARRAY_DIRECTIONAL_LIGHT_BUFFER_BINDING 1
 #define VREN_LIGHT_ARRAY_SPOT_LIGHT_BUFFER_BINDING 2
+
+// ------------------------------------------------------------------------------------------------
+// NOT configurable values
+// ------------------------------------------------------------------------------------------------
+
+#define VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT 256ull
