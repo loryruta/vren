@@ -14,11 +14,7 @@
 #   error "Invalid threads/iterations number (not sufficient to output all vertices/indices)"
 #endif
 
-#define UINT32_MAX 4294967295u
-
-//#define DEBUG_MESHLETS
-
-#include "common.glsl"
+#include <common.glsl>
 
 layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;
 
@@ -68,7 +64,6 @@ layout(location = 0) out vec3 o_position[];
 layout(location = 1) out vec3 o_normal[];
 layout(location = 2) out vec2 o_texcoord[];
 layout(location = 3) out flat uint o_material_idx[];
-layout(location = 4) out vec3 o_color[];
 
 uint hash(uint a)
 {
@@ -89,19 +84,6 @@ void main()
     Meshlet meshlet = meshlets[instanced_meshlet.meshlet_idx];
     MeshInstance mesh_instance = mesh_instances[instanced_meshlet.instance_idx];
 
-    uint material_idx;
-    vec3 color;
-
-#ifdef DEBUG_MESHLETS
-    material_idx = 0;
-
-    uint meshlet_hash = hash(instanced_meshlet.meshlet_idx);
-    color = vec3(float(meshlet_hash & 255u), float((meshlet_hash >> 8) & 255u), float((meshlet_hash >> 16) & 255u)) / 255.0;
-#else
-    material_idx = instanced_meshlet.material_idx;
-    color = vec3(1);
-#endif
-
     for (uint i = gl_LocalInvocationIndex * ITERATIONS_NUM; i < (gl_LocalInvocationIndex + 1) * ITERATIONS_NUM; i++)
     {
         if (i < meshlet.vertex_count)
@@ -114,8 +96,7 @@ void main()
             o_position[i] = world_position.xyz;
             o_normal[i] = vertex.normal;
             o_texcoord[i] = vertex.texcoord;
-            o_material_idx[i] = material_idx;
-            o_color[i] = color;
+            o_material_idx[i] = instanced_meshlet.material_idx;
         }
     }
 

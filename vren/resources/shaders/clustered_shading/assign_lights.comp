@@ -1,0 +1,172 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+#include <common.glsl>
+
+#define INF 1e35
+#define UINT32_MAX 0xFFFFFFFFu
+
+#define VREN_MAX_LIGHTS_PER_CLUSTER 8
+#define VREN_MAX_STACK_DEPTH 8
+#define VREN_BVH_LEAF_NODE 0x80000000
+#define VREN_BVH_INVALID_NODE 0xB0000000
+
+layout(push_constant) uniform PushConstants
+{
+	float camera_near;
+	float camera_half_fov_y;
+	float camera_aspect_ratio;
+	mat4 camera_trs;
+	uint bvh_root_index;
+	uvec2 num_tiles;
+};
+
+struct BvhNode
+{
+	vec3 _min; uint next;
+	vec3 _max; uint _pad;
+};
+
+layout(set = 0, binding = 0) readonly buffer UniqueClusterKeyBuffer
+{
+	uint cluster_keys[];
+};
+
+layout(set = 0, binding = 1) readonly buffer AllocationIndexBuffer
+{
+	uvec4 allocation_index;
+};
+
+layout(set = 0, binding = 2) readonly buffer BvhBuffer
+{
+	BvhNode bvh[];
+};
+
+layout(set = 0, binding = 3) readonly buffer LightIndexBuffer
+{
+	uvec2 light_indices[];
+};
+
+layout(set = 0, binding = 4) writeonly buffer AssignedLightBuffer
+{
+	uint assigned_lights[];
+};
+
+bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
+{
+	return p.x >= _min.x && p.y >= _min.y && p.z >= _min.z &&
+		p.x <= _max.x && p.y <= _max.y && p.z <= _max.z;
+}
+
+bool test_aabb_aabb(vec3 _min_1, vec3 _max_1, vec3 _min_2, vec3 _max_2)
+{
+	return test_point_aabb(_min_1, _min_2, _max_2) || test_point_aabb(_max_1, _min_2, _max_2) ||
+		test_point_aabb(_min_2, _min_1, _max_1) || test_point_aabb(_max_2, _min_1, _max_1);
+}
+
+void main()
+{
+	uint cluster_key_length = allocation_index.w;
+
+	if (gl_GlobalInvocationID.x < cluster_key_length)
+	{
+		uint cluster_key = cluster_keys[gl_GlobalInvocationID.x];
+
+		uvec3 cluster_ijk = uvec3(
+			cluster_key & 0xFF,
+			(cluster_key >> 8) & 0xFF,
+			(cluster_key >> 16) & 0x3FF
+		);
+
+		vec2 tile_min = ((cluster_ijk.xy - vec2(0.5)) / vec2(num_tiles)) * 2.0 - 1.0; // [-1, 1]
+		vec2 tile_max = ((cluster_ijk.xy + vec2(0.5)) / vec2(num_tiles)) * 2.0 - 1.0;
+
+		float half_fov_tan = tan(camera_half_fov_y);
+	
+		float near_k = camera_near * pow((1 + (2 * half_fov_tan)) / num_tiles.y, cluster_ijk.z);
+		float far_k = camera_near * pow((1 + (2 * half_fov_tan)) / num_tiles.y, cluster_ijk.z + 1);
+
+		vec4 cluster_min;
+		cluster_min.x = near_k * half_fov_tan * camera_aspect_ratio * tile_min.x;
+		cluster_min.y = near_k * half_fov_tan * tile_min.y;
+		cluster_min.z = near_k;
+		cluster_min.w = 1.0;
+
+		vec4 cluster_max;
+		cluster_max.x = far_k * half_fov_tan * camera_aspect_ratio * tile_max.x;
+		cluster_max.y = far_k * half_fov_tan * tile_max.y;
+		cluster_max.z = far_k;
+		cluster_max.w = 1.0;
+
+		cluster_min = camera_trs * cluster_min;
+		cluster_max = camera_trs * cluster_max;
+
+		vec4 tmp = cluster_min;
+		cluster_min = min(cluster_min, cluster_max);
+		cluster_max = max(tmp, cluster_max);
+
+		uint assigned_light_alloc_idx = 0;
+
+		if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh[bvh_root_index]._min, bvh[bvh_root_index]._max)) // BVH root test
+		{
+			uint stack[VREN_MAX_STACK_DEPTH];
+			uint stack_ptr = 0;
+			uint node_addr = bvh_root_index - 32; // Start from first level under root
+
+			bool keep_running = true;
+			while (keep_running)
+			{
+				BvhNode node = bvh[node_addr];
+				if (node.next != VREN_BVH_INVALID_NODE && test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max))
+				{
+					if (node.next == VREN_BVH_LEAF_NODE)
+					{
+						uint point_light_idx = light_indices[node_addr].y;
+
+						assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = point_light_idx;
+						assigned_light_alloc_idx++;
+
+						if (assigned_light_alloc_idx >= VREN_MAX_LIGHTS_PER_CLUSTER)
+						{
+							keep_running = false;
+							break;
+						}
+					}
+					else
+					{
+						// Push
+						stack[stack_ptr] = node_addr;
+						stack_ptr++;
+					}
+				}
+				else
+				{
+					// Advance
+					node_addr++;
+
+					while ((node_addr - 1) % 32 == 0) // After being incremented the module is returned to 0, so the 32 row is finished
+					{
+						if (stack_ptr == 0)
+						{
+							keep_running = false;
+							break;
+						}
+
+						// Pop
+						stack_ptr--;
+						node_addr = stack[stack_ptr];
+						node_addr++;
+					}
+				}
+			}
+		}
+
+		for (; assigned_light_alloc_idx < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_alloc_idx++)
+		{
+			assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = UINT32_MAX;
+		}
+	}
+}

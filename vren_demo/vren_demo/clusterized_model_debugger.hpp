@@ -24,7 +24,7 @@ namespace vren_demo
 
 		void write_debug_info_for_projected_sphere_bounds(
 			vren::clusterized_model const& model,
-			vren::camera const& camera,
+			vren::camera_data const& camera,
 			vren::debug_renderer_draw_buffer& draw_buffer
 		);
 	};

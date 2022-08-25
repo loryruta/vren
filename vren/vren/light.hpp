@@ -11,6 +11,7 @@
 #include "vk_helpers/buffer.hpp"
 #include "gpu_repr.hpp"
 #include "pool/descriptor_pool.hpp"
+#include "pipeline/render_graph.hpp"
 
 namespace vren
 {
@@ -32,6 +33,7 @@ namespace vren
 
 		light_array(vren::context const& context);
 
+		void add_render_graph_node_resources(vren::render_graph_node& node, VkAccessFlags access_flags) const;
 		void write_descriptor_set(VkDescriptorSet descriptor_set) const;
 	};
 }

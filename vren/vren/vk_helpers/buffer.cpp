@@ -10,6 +10,14 @@
 #include "context.hpp"
 #include "vk_helpers/misc.hpp"
 
+#include "log.hpp"
+
+#ifdef VREN_LOG_BUFFER_DETAILED
+#	define VREN_DEBUG0(m, ...) VREN_DEBUG(m, __VA_ARGS__)
+#else
+#	define VREN_DEBUG0
+#endif
+
 // References:
 // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html
 
@@ -115,18 +123,16 @@ vren::vk_utils::buffer alloc_buffer(
 
 		if (result == VK_SUCCESS)
 		{
-#if VREN_LOG_LEVEL >= VREN_LOG_LEVEL_DEBUG
 			VkPhysicalDeviceMemoryProperties memory_properties{};
 			vkGetPhysicalDeviceMemoryProperties(context.m_physical_device, &memory_properties);
 
 			VkMemoryType memory_type = memory_properties.memoryTypes[allocation_info.memoryType];
-			VREN_DEBUG("[buffer] Buffer allocated - Size: {}, Memory type: {}, Memory property flags: {}, Heap: {}\n",
+			VREN_DEBUG0("[buffer] Buffer allocated - Size: {}, Memory type: {}, Memory property flags: {}, Heap: {}\n",
 				allocation_info.size,
 				allocation_info.memoryType,
 				to_string(memory_type.propertyFlags),
 				memory_type.heapIndex
 			);
-#endif
 
 			return vren::vk_utils::buffer{
 				.m_buffer = vren::vk_buffer(context, buffer),

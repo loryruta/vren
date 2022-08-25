@@ -8,13 +8,13 @@ vren::construct_light_array_bvh::construct_light_array_bvh(vren::context const& 
     m_context(&context),
     m_discretize_light_positions_pipeline([&]()
     {
-        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clusterized_shading/discretize_light_positions.comp.spv");
+        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clustered_shading/discretize_light_positions.comp.spv");
         vren::specialized_shader shader = vren::specialized_shader(shader_module);
         return vren::create_compute_pipeline(context, shader);
     }()),
     m_init_light_array_bvh_pipeline([&]()
     {
-        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clusterized_shading/init_light_array_bvh.comp.spv");
+        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clustered_shading/init_light_array_bvh.comp.spv");
         vren::specialized_shader shader = vren::specialized_shader(shader_module);
         return vren::create_compute_pipeline(context, shader);
     }())

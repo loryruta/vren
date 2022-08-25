@@ -7,6 +7,7 @@
 #include "render_target.hpp"
 #include "render_graph.hpp"
 #include "gpu_repr.hpp"
+#include "camera.hpp"
 
 namespace vren
 {
@@ -127,7 +128,7 @@ namespace vren
 		vren::render_graph_t render(
 			vren::render_graph_allocator& render_graph_allocator,
 			vren::render_target const& render_target,
-			vren::camera const& camera,
+			vren::camera_data const& camera_data,
 			vren::debug_renderer_draw_buffer const& draw_buffer,
 			bool world_space = true
 		);

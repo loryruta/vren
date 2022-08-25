@@ -59,11 +59,17 @@ namespace vren::vk_utils
 	// ------------------------------------------------------------------------------------------------
 
 	vren::vk_image_view create_image_view(
-		vren::context const& ctx,
+		vren::context const& context,
 		VkImage image,
 		VkFormat format,
-		VkImageAspectFlagBits aspect
+		VkImageAspectFlags image_aspect_flags
 	);
+
+	struct combined_image_view_ref // Non-owning reference to combined_image_view
+	{
+		VkImage m_image;
+		VkImageView m_image_view;
+	};
 
 	struct combined_image_view
 	{
@@ -79,6 +85,14 @@ namespace vren::vk_utils
 		{
 			return m_image_view.m_handle;
 		}
+
+		inline vren::vk_utils::combined_image_view_ref get_ref() const
+		{
+			return vren::vk_utils::combined_image_view_ref{
+				.m_image = get_image(),
+				.m_image_view = get_image_view()
+			};
+		}
 	};
 
 	// ------------------------------------------------------------------------------------------------
@@ -93,6 +107,25 @@ namespace vren::vk_utils
 		VkSamplerAddressMode address_mode_u,
 		VkSamplerAddressMode address_mode_v,
 		VkSamplerAddressMode address_mode_w
+	);
+
+	// ------------------------------------------------------------------------------------------------
+	// Image buffer
+	// ------------------------------------------------------------------------------------------------
+	
+	struct storage_image
+	{
+		vren::vk_utils::image m_image;
+		vren::vk_image_view m_image_view;
+	};
+
+	vren::vk_utils::storage_image create_storage_image(
+		vren::context const& context,
+		uint32_t width,
+		uint32_t height,
+		VkFormat format,
+		VkMemoryPropertyFlags memory_property_flags,
+		VkImageUsageFlags image_usage_flags
 	);
 
 	// ------------------------------------------------------------------------------------------------
@@ -134,7 +167,14 @@ namespace vren::vk_utils
 
 	using color_buffer_t = vren::vk_utils::combined_image_view;
 
-	color_buffer_t create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage);
+	color_buffer_t create_color_buffer(
+		vren::context const& context,
+		uint32_t width,
+		uint32_t height,
+		VkFormat image_format,
+		VkMemoryPropertyFlags memory_property_flags,
+		VkImageUsageFlags image_usage_flags
+	);
 
 	// ------------------------------------------------------------------------------------------------
 	// Depth buffer

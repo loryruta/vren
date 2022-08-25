@@ -18,6 +18,12 @@
 #define VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE (1 * 1024 * 1024)
 #define VREN_SPOT_LIGHTS_BUFFER_SIZE        (1 * 1024 * 1024)
 
+#define VREN_MAX_SCREEN_WIDTH 1920
+#define VREN_MAX_SCREEN_HEIGHT 1080
+
+#define VREN_MAX_UNIQUE_CLUSTER_KEYS (1 << 17)
+#define VREN_MAX_ASSIGNED_LIGHTS_PER_CLUSTER 8
+
 // ------------------------------------------------------------------------------------------------
 // Bindings
 // ------------------------------------------------------------------------------------------------
@@ -32,7 +38,7 @@
 #define VREN_LIGHT_ARRAY_SPOT_LIGHT_BUFFER_BINDING 2
 
 // ------------------------------------------------------------------------------------------------
-// NOT configurable values
+// NON configurable values
 // ------------------------------------------------------------------------------------------------
 
 #define VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT 256ull

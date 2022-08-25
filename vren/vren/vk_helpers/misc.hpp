@@ -97,4 +97,61 @@ namespace vren::vk_utils
 		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
 	}
 
+	inline void write_storage_image_descriptor(
+		vren::context const& context,
+		VkDescriptorSet descriptor_set,
+		uint32_t binding,
+		VkImageView image_view,
+		VkImageLayout image_layout
+	)
+	{
+		VkDescriptorImageInfo image_info{
+			.sampler = nullptr,
+			.imageView = image_view,
+			.imageLayout = image_layout,
+		};
+		VkWriteDescriptorSet descriptor_set_write{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = descriptor_set,
+			.dstBinding = binding,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+			.pImageInfo = &image_info,
+			.pBufferInfo = nullptr,
+			.pTexelBufferView = nullptr
+		};
+		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+	}
+
+	inline void write_combined_image_sampler_descriptor(
+		vren::context const& context,
+		VkDescriptorSet descriptor_set,
+		uint32_t binding,
+		VkSampler sampler,
+		VkImageView image_view,
+		VkImageLayout image_layout
+	)
+	{
+		VkDescriptorImageInfo image_info{
+			.sampler = sampler,
+			.imageView = image_view,
+			.imageLayout = image_layout,
+		};
+		VkWriteDescriptorSet descriptor_set_write{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = descriptor_set,
+			.dstBinding = binding,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = &image_info,
+			.pBufferInfo = nullptr,
+			.pTexelBufferView = nullptr
+		};
+		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
+	}
+
 }

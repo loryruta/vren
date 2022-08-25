@@ -291,7 +291,7 @@ vren::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 vren::render_graph_t vren::debug_renderer::render(
 	vren::render_graph_allocator& render_graph_allocator,
 	vren::render_target const& render_target,
-	vren::camera const& camera,
+	vren::camera_data const& camera_data,
 	vren::debug_renderer_draw_buffer const& draw_buffer,
 	bool world_space
 )
@@ -368,15 +368,15 @@ vren::render_graph_t vren::debug_renderer::render(
 		// Camera
 		if (world_space)
 		{
-			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera, sizeof(vren::camera));
+			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera_data, sizeof(vren::camera_data));
 		}
 		else
 		{
-			vren::camera no_camera{
+			vren::camera_data no_camera{
 				.m_view = glm::identity<glm::mat4>(),
 				.m_projection = glm::identity<glm::mat4>()
 			};
-			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &no_camera, sizeof(vren::camera));
+			pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &no_camera, sizeof(vren::camera_data));
 		}
 
 		VkDeviceSize offsets[]{0};

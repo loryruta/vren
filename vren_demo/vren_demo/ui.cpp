@@ -358,7 +358,7 @@ void vren_demo::ui::show_controls_window()
 
 void vren_demo::ui::show_camera_window()
 {
-	vren_demo::camera& camera = m_app->m_camera;
+	vren::camera& camera = m_app->m_camera;
 
 	glm::vec4 a(0, 0, 0, 1);
 	glm::vec4 b(0, 0, 1, 1);

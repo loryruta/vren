@@ -120,26 +120,30 @@ void vren::vk_utils::clear_depth_image(VkCommandBuffer cmd_buf, VkImage img, VkC
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::vk_image_view vren::vk_utils::create_image_view(
-	vren::context const& ctx,
+	vren::context const& context,
 	VkImage image,
 	VkFormat format,
-	VkImageAspectFlagBits aspect
+	VkImageAspectFlags image_aspect_flags
 )
 {
-	VkImageViewCreateInfo image_view_info{};
-	image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	image_view_info.image = image;
-	image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	image_view_info.format = format;
-	image_view_info.subresourceRange.aspectMask = aspect;
-	image_view_info.subresourceRange.baseMipLevel = 0;
-	image_view_info.subresourceRange.levelCount = 1;
-	image_view_info.subresourceRange.baseArrayLayer = 0;
-	image_view_info.subresourceRange.layerCount = 1;
+	VkImageViewCreateInfo image_view_info{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = NULL,
+		.image = image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = format,
+		.components = {},
+		.subresourceRange = {
+			.aspectMask = image_aspect_flags,
+			.levelCount = 1,
+			.layerCount = 1,
+		},
+	};
 
 	VkImageView image_view;
-	VREN_CHECK(vkCreateImageView(ctx.m_device, &image_view_info, nullptr, &image_view), &ctx);
-	return vren::vk_image_view(ctx, image_view);
+	VREN_CHECK(vkCreateImageView(context.m_device, &image_view_info, nullptr, &image_view), &context);
+	return vren::vk_image_view(context, image_view);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -179,6 +183,31 @@ vren::vk_sampler vren::vk_utils::create_sampler(
 	VkSampler sampler;
 	VREN_CHECK(vkCreateSampler(ctx.m_device, &sampler_info, nullptr, &sampler), &ctx);
 	return vren::vk_sampler(ctx, sampler);
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------
+// Storage image
+// --------------------------------------------------------------------------------------------------------------------------------
+
+vren::vk_utils::storage_image create_storage_image(
+	vren::context const& context,
+	uint32_t width,
+	uint32_t height,
+	VkFormat format,
+	VkMemoryPropertyFlags memory_property_flags,
+	VkImageUsageFlags image_usage_flags
+)
+{
+	vren::vk_utils::image image =
+		vren::vk_utils::create_image(context, width, height, format, memory_property_flags, VK_IMAGE_USAGE_STORAGE_BIT | image_usage_flags);
+
+	vren::vk_image_view image_view =
+		vren::vk_utils::create_image_view(context, image.m_image.m_handle, format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+	return vren::vk_utils::storage_image{
+		.m_image = std::move(image),
+		.m_image_view = std::move(image_view)
+	};
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -284,14 +313,20 @@ vren::vk_framebuffer vren::vk_utils::create_framebuffer(vren::context const& con
 // Color buffer
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::color_buffer_t vren::vk_utils::create_color_buffer(vren::context const& context, uint32_t width, uint32_t height, VkImageUsageFlags image_usage)
+vren::vk_utils::color_buffer_t vren::vk_utils::create_color_buffer(
+	vren::context const& context,
+	uint32_t width,
+	uint32_t height,
+	VkFormat image_format,
+	VkMemoryPropertyFlags memory_property_flags,
+	VkImageUsageFlags image_usage_flags
+)
 {
-	VkFormat image_format = VREN_COLOR_BUFFER_OUTPUT_FORMAT;
-	auto image = vren::vk_utils::create_image(context, width, height, image_format, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | image_usage);
-	auto image_view = vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
+	vren::vk_utils::image image =
+		vren::vk_utils::create_image(context, width, height, image_format, memory_property_flags, image_usage_flags);
 
-	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE, (uint64_t) image.m_image.m_handle, "color_buffer");
-	vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t) image_view.m_handle, "color_buffer");
+	vren::vk_image_view image_view =
+		vren::vk_utils::create_image_view(context, image.m_image.m_handle, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	return {
 		.m_image = std::move(image),

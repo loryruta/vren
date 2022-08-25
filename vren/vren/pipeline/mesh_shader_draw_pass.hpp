@@ -41,7 +41,7 @@ namespace vren
 			uint32_t frame_idx,
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
-			vren::camera const& camera,
+			vren::camera_data const& camera_data,
 			vren::clusterized_model_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array,
 			vren::depth_buffer_pyramid const& depth_buffer_pyramid

@@ -121,6 +121,9 @@ vren_demo::app::app(GLFWwindow* window) :
 		return draw_buffer;
 	})),
 
+	// Clustered shading
+	m_cluster_and_shade(m_context),
+
 	// Output
 	m_color_buffers{},
 	m_depth_buffer{},
@@ -173,22 +176,30 @@ void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
 	uint32_t width = swapchain.m_image_width;
 	uint32_t height = swapchain.m_image_height;
 
-	// Resize color buffers
 	m_color_buffers.clear();
 	for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
 	{
 		m_color_buffers.push_back(
-			vren::vk_utils::create_color_buffer(m_context, width, height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+			vren::vk_utils::create_color_buffer(
+				m_context,
+				width, height,
+				VREN_COLOR_BUFFER_OUTPUT_FORMAT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+			)
 		);
 	}
 
-	// Resize depth buffer
-	m_depth_buffer = std::make_unique<vren::vk_utils::depth_buffer_t>(
-		vren::vk_utils::create_depth_buffer(m_context, width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+	m_depth_buffer = std::make_shared<vren::vk_utils::depth_buffer_t>(
+		vren::vk_utils::create_depth_buffer(
+			m_context,
+			width, height,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+		)
 	);
+	m_gbuffer = std::make_shared<vren::gbuffer>(m_context, width, height);
 
-	// Resize depth buffer pyramid
-	m_depth_buffer_pyramid = std::make_unique<vren::depth_buffer_pyramid>(m_context, width, height);
+	m_depth_buffer_pyramid = std::make_shared<vren::depth_buffer_pyramid>(m_context, width, height);
 }
 
 void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
@@ -340,6 +351,21 @@ void vren_demo::app::record_commands(
 	float dt
 )
 {
+	// We make sure that every frame is processed sequentially GPU-side
+	VkMemoryBarrier memory_barrier{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+		.pNext = nullptr,
+		.srcAccessMask = NULL,
+		.dstAccessMask = NULL
+	};
+	vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 1, &memory_barrier, 0, nullptr, 0, nullptr);
+
+	resource_container.add_resources(
+		m_depth_buffer,
+		m_depth_buffer_pyramid,
+		m_gbuffer
+	);
+
 	vren::light_array& light_array = m_light_arrays.at(frame_idx);
 
 	// Draw cartesian axes
@@ -365,8 +391,16 @@ void vren_demo::app::record_commands(
 	}
 
 	vkCmdSetCheckpointNV(command_buffer, "Frame start");
+	
+	glm::uvec2 screen(swapchain.m_image_width, swapchain.m_image_height);
+	vren::camera_data camera_data{
+		.m_position = m_camera.m_position,
+		.m_view = m_camera.get_view(),
+		.m_projection = m_camera.get_projection(),
+		.m_z_near = m_camera.m_near_plane,
+	};
 
-	auto& color_buffer = m_color_buffers.at(frame_idx);
+	vren::vk_utils::color_buffer_t& color_buffer = m_color_buffers.at(frame_idx);
 
 	auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *m_depth_buffer);
 
@@ -390,14 +424,14 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_BASIC_RENDERER:
 		if (m_basic_model_draw_buffer)
 		{
-			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_basic_model_draw_buffer);
+			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, screen, camera_data, light_array, *m_basic_model_draw_buffer, *m_gbuffer, *m_depth_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_clusterized_model_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer->render(m_render_graph_allocator, render_target, m_camera.to_vren(), light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid);
+			auto mesh_shader_render = m_mesh_shader_renderer->render(m_render_graph_allocator, screen, camera_data, light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid, *m_gbuffer, *m_depth_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 
 			resource_container.add_resource(m_mesh_shader_renderer);
@@ -406,6 +440,21 @@ void vren_demo::app::record_commands(
 	default:
 		break;
 	}
+
+	// Cluster and shade
+	render_graph.concat(
+		m_cluster_and_shade(
+			m_render_graph_allocator,
+			screen,
+			m_camera,
+			*m_gbuffer,
+			m_point_light_bvh_buffer,
+			m_point_light_bvh_root_index,
+			m_point_light_index_buffer,
+			light_array,
+			color_buffer
+		)
+	);
 
 	// Apply user operations to the light_array
 	m_light_array_fork.apply(frame_idx, light_array);
@@ -442,7 +491,7 @@ void vren_demo::app::record_commands(
 			m_debug_renderer.render(
 				m_render_graph_allocator,
 				render_target,
-				m_camera.to_vren(),
+				camera_data,
 				m_point_light_bvh_draw_buffer
 			)
 		);
@@ -456,7 +505,7 @@ void vren_demo::app::record_commands(
 	vren::render_graph_builder debug_render_graph(m_render_graph_allocator);
 
 	// Debug general purpose objects
-	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_draw_buffer));
+	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
 
 	// Debug point lights
 	if (light_array.m_point_light_count > 0)
@@ -475,13 +524,13 @@ void vren_demo::app::record_commands(
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlets_draw_buffer));
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_meshlets_draw_buffer));
 	}
 
 	// Debug meshlet bounds
 	if (m_show_meshlets_bounds)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), m_debug_meshlet_bounds_draw_buffer));
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_meshlet_bounds_draw_buffer));
 	}
 
 	// Debug depth buffer pyramid
@@ -501,20 +550,18 @@ void vren_demo::app::record_commands(
 	// Debug projected meshlet bounds
 	if (m_show_projected_meshlet_bounds)
 	{
-		auto camera = m_camera.to_vren();
-
 		m_debug_projected_meshlet_bounds_draw_buffer.clear();
 
 		vren_demo::clusterized_model_debugger clusterized_model_debugger{};
-		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera, m_debug_projected_meshlet_bounds_draw_buffer);
+		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera_data, m_debug_projected_meshlet_bounds_draw_buffer);
 
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
 	}
 
 	// Debug meshlet instances number
 	if (m_show_instanced_meshlets_indices)
 	{
-		debug_render_graph.concat(m_imgui_renderer.render(m_render_graph_allocator, render_target, [this]()
+		debug_render_graph.concat(m_imgui_renderer.render(m_render_graph_allocator, render_target, [&]()
 		{
 			for (uint32_t i = 0; i < m_clusterized_model->m_instanced_meshlets.size(); i++)
 			{
@@ -531,7 +578,7 @@ void vren_demo::app::record_commands(
 				auto draw_list = ImGui::GetForegroundDrawList();
 				vren::imgui_utils::add_world_space_text(
 					draw_list,
-					m_camera.to_vren(),
+					camera_data,
 					p,
 					meshlet_tag.c_str(),
 					vren::imgui_utils::to_im_color((~instanced_meshlet_color) | 0xff000000),

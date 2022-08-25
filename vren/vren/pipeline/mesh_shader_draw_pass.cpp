@@ -120,7 +120,7 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 	//
 	vren::shader_module task_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/draw.task.spv");
 	vren::shader_module mesh_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/draw.mesh.spv");
-	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv");
+	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/deferred.frag.spv");
 
 	vren::specialized_shader task_shader = vren::specialized_shader(task_shader_mod, "main");
 	task_shader.set_specialization_data("OCCLUSION_CULLING", &occlusion_culling, sizeof(occlusion_culling));
@@ -237,7 +237,7 @@ void vren::mesh_shader_draw_pass::render(
 	uint32_t frame_idx,
 	VkCommandBuffer command_buffer,
 	vren::resource_container& resource_container,
-	vren::camera const& camera,
+	vren::camera_data const& camera_data,
 	vren::clusterized_model_draw_buffer const& draw_buffer,
 	vren::light_array const& light_array,
 	vren::depth_buffer_pyramid const& depth_buffer_pyramid
@@ -246,7 +246,7 @@ void vren::mesh_shader_draw_pass::render(
 	m_pipeline.bind(command_buffer);
 
 	// Push constants
-	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_TASK_BIT_NV | VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(vren::camera));
+	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_TASK_BIT_NV | VK_SHADER_STAGE_MESH_BIT_NV, &camera_data, sizeof(camera_data));
 
 	// Bind texture manager
 	m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);

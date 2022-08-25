@@ -142,16 +142,15 @@ vren::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 	};
 
-	//
-	vren::shader_module vert_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/basic_draw.vert.spv");
-	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/pbr_draw.frag.spv");
+	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/basic_draw.vert.spv");
+	vren::shader_module fragment_shader_module = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/deferred.frag.spv");
 
-	vren::specialized_shader vert_shader = vren::specialized_shader(vert_shader_mod, "main");
-	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");
+	vren::specialized_shader vertex_shader = vren::specialized_shader(vertex_shader_module, "main");
+	vren::specialized_shader fragment_shader = vren::specialized_shader(fragment_shader_module, "main");
 
 	vren::specialized_shader shaders[] = {
-		std::move(vert_shader),
-		std::move(frag_shader)
+		std::move(vertex_shader),
+		std::move(fragment_shader)
 	};
 	return vren::create_graphics_pipeline(
 		*m_context,
@@ -202,7 +201,7 @@ void vren::vertex_pipeline_draw_pass::draw(
 	uint32_t frame_idx,
 	VkCommandBuffer command_buffer,
 	vren::resource_container& resource_container,
-	vren::camera const& camera,
+	vren::camera_data const& camera_data,
 	vren::basic_model_draw_buffer const& draw_buffer,
 	vren::light_array const& light_array
 )
@@ -210,40 +209,19 @@ void vren::vertex_pipeline_draw_pass::draw(
 	m_pipeline.bind(command_buffer);
 
 	// Camera
-	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, &camera, sizeof(camera));
+	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_VERTEX_BIT, &camera_data, sizeof(camera_data));
 
-	m_pipeline.bind_vertex_buffer(command_buffer, 0, draw_buffer.m_vertex_buffer.m_buffer.m_handle); // Vertex buffer
-	m_pipeline.bind_vertex_buffer(command_buffer, 1, draw_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
-	m_pipeline.bind_index_buffer(command_buffer, draw_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32); // Index buffer
+	// Vertex buffer
+	m_pipeline.bind_vertex_buffer(command_buffer, 0, draw_buffer.m_vertex_buffer.m_buffer.m_handle);
+
+	// Instance buffer
+	m_pipeline.bind_vertex_buffer(command_buffer, 1, draw_buffer.m_instance_buffer.m_buffer.m_handle);
+
+	// Index buffer
+	m_pipeline.bind_index_buffer(command_buffer, draw_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32);
 
 	for (auto const& mesh : draw_buffer.m_meshes)
 	{
-		// Texture manager
-		m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);
-		resource_container.add_resource(m_context->m_toolbox->m_texture_manager.m_descriptor_set);
-
-		// Light array
-		m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 1, [&](VkDescriptorSet descriptor_set)
-		{
-			light_array.write_descriptor_set(descriptor_set);
-
-			vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "light_array");
-		});
-
-		// Material manager
-		auto material_descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(3))
-		);
-		write_material_descriptor_set(
-			*m_context,
-			material_descriptor_set->m_handle.m_descriptor_set,
-			m_context->m_toolbox->m_material_manager.get_buffer(frame_idx),
-			mesh.m_material_idx
-		);
-		m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set->m_handle.m_descriptor_set);
-		resource_container.add_resource(material_descriptor_set);
-
-		//
 		vkCmdDrawIndexed(command_buffer, mesh.m_index_count, mesh.m_instance_count, mesh.m_index_offset, mesh.m_vertex_offset, mesh.m_instance_offset);
 	}
 }

@@ -2,8 +2,6 @@ set(VREN_HOME "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "The path to the vren 
 
 add_executable(vren_demo
         vren_demo/main.cpp
-        vren_demo/camera.hpp
-        vren_demo/camera.cpp
         vren_demo/app.hpp
         vren_demo/app.cpp
         vren_demo/ui.hpp
@@ -14,6 +12,8 @@ add_executable(vren_demo
         vren_demo/point_light_bouncer.cpp
         vren_demo/visualize_bvh.hpp
         vren_demo/visualize_bvh.cpp
+        vren_demo/camera_controller.hpp
+        vren_demo/camera_controller.cpp
     )
 
 # ------------------------------------------------------------------------------------------------
@@ -46,8 +46,7 @@ target_link_libraries(vren_demo_imgui_glfw_backend PRIVATE glfw)
 # Self include
 target_include_directories(vren_demo PRIVATE "${VREN_HOME}/vren_demo/vren_demo")
 
-# vren
-target_compile_definitions(vren PUBLIC VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
+target_compile_definitions(vren_demo PRIVATE VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG)
 
 target_include_directories(vren_demo PRIVATE "${VREN_HOME}/vren")
 target_link_libraries(vren_demo PRIVATE vren)

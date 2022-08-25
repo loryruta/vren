@@ -1,0 +1,121 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+#include <common.glsl>
+#include <primitives.glsl>
+#include <pbr.glsl>
+
+#define VREN_MAX_LIGHTS_PER_CLUSTER 8
+
+layout(push_constant) uniform PushConstants
+{
+	vec3 camera_position; float _pad;
+};
+
+// gBuffer
+layout(set = 0, binding = 0) uniform sampler2D gbuffer_positions;
+layout(set = 0, binding = 1) uniform sampler2D gbuffer_normals;
+layout(set = 0, binding = 2) uniform sampler2D gbuffer_texcoords;
+layout(set = 0, binding = 3) uniform usampler2D gbuffer_material_indices;
+
+layout(set = 1, binding = 0, r32ui) uniform uimage2D u_cluster_references;
+
+layout(set = 1, binding = 1) readonly buffer AssignedLightBuffer
+{
+	uint assigned_lights[];
+};
+
+layout(set = 2, binding = 0) uniform sampler2D textures[];
+
+layout(set = 3, binding = 0) readonly buffer PointLightPositionBuffer
+{
+    vec4 point_light_positions[];
+};
+
+layout(set = 3, binding = 1) readonly buffer PointLightBuffer
+{
+    PointLight point_lights[];
+};
+
+layout(set = 3, binding = 2) readonly buffer DirectionalLightBuffer
+{
+    DirectionalLight directional_lights[];
+};
+
+layout(set = 4, binding = 0) readonly buffer MaterialBuffer
+{
+    Material materials[];
+};
+
+layout(set = 5, binding = 0, rgba32f) uniform image2D u_output; 
+
+void main()
+{
+	uvec2 screen_size = textureSize(gbuffer_positions, 0);
+
+	if (gl_GlobalInvocationID.x < screen_size.x && gl_GlobalInvocationID.y < screen_size.y)
+	{
+		vec2 frag_coord = (vec2(gl_GlobalInvocationID.xy) + 0.5) / vec2(screen_size);
+
+		vec3 frag_pos = texture(gbuffer_positions, frag_coord).rgb;
+		vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
+		vec2 frag_texcoord = texture(gbuffer_texcoords, frag_coord).rg;
+		uint frag_material_idx = texture(gbuffer_material_indices, frag_coord).r;
+
+		Material material = materials[frag_material_idx];
+		vec3 albedo = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb;
+		float metallic = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b;
+		float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g;
+		
+		vec3 Lo = vec3(0);
+
+		// Apply point lights
+		uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
+
+		for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
+		{
+			uint light_idx = assigned_lights[cluster_idx * VREN_MAX_LIGHTS_PER_CLUSTER + i];
+		
+			vec3 light_pos = point_light_positions[light_idx].xyz;
+			PointLight light = point_lights[light_idx];
+
+			Lo += pbr_apply_point_light(
+				camera_position,
+				frag_pos,
+				frag_normal,
+				light_pos,
+				light.color,
+				albedo,
+				metallic,
+				roughness
+			);
+		}
+
+		// Apply directional lights
+		for (int i = 0; i < directional_lights.length(); i++)
+		{
+			DirectionalLight dir_light = directional_lights[i];
+
+			Lo += pbr_apply_directional_light(
+				camera_position,
+				frag_pos,
+				frag_normal,
+				dir_light.direction,
+				dir_light.color,
+				albedo,
+				metallic,
+				roughness
+			);
+		}
+		
+		vec3 ambient = vec3(0.03) * albedo;
+		vec3 color = ambient + Lo;
+		color = pbr_gamma_correct(color);
+		
+		imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
+	}
+}

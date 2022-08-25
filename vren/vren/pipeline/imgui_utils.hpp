@@ -15,7 +15,7 @@ namespace vren::imgui_utils
 
 	inline void add_world_space_text(
 		ImDrawList* draw_list,
-		vren::camera const& camera,
+		vren::camera_data const& camera_data,
 		glm::vec3 const& position,
 		char const* text,
 		ImColor text_color,
@@ -24,7 +24,7 @@ namespace vren::imgui_utils
 	{
 		auto viewport = ImGui::GetMainViewport();
 
-		glm::vec4 p = camera.m_projection * camera.m_view * glm::vec4(position, 1.0f);
+		glm::vec4 p = camera_data.m_projection * camera_data.m_view * glm::vec4(position, 1.0f);
 
 		if (p.z / p.w < 0.0f) {
 			return;

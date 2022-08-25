@@ -5,6 +5,8 @@
 #include "render_target.hpp"
 #include "render_graph.hpp"
 #include "model/clusterized_model_draw_buffer.hpp"
+#include "gbuffer.hpp"
+#include "camera.hpp"
 
 namespace vren
 {
@@ -35,11 +37,13 @@ namespace vren
 
 		vren::render_graph_t render(
 			vren::render_graph_allocator& render_graph_allocator,
-			vren::render_target const& render_target,
-			vren::camera const& camera,
+			glm::uvec2 const& screen,
+			vren::camera_data const& camera_data,
 			vren::light_array const& light_array,
 			vren::clusterized_model_draw_buffer const& draw_buffer,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid
+			vren::depth_buffer_pyramid const& depth_buffer_pyramid,
+			vren::gbuffer const& gbuffer,
+			vren::vk_utils::depth_buffer_t const& depth_buffer
 		);
 	};
 }

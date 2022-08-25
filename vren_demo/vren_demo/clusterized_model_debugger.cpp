@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-#include "vren/log.hpp"
+#include <vren/log.hpp>
 
 void vren_demo::clusterized_model_debugger::write_debug_info_for_meshlet_geometry(
 	vren::clusterized_model const& model,
@@ -62,7 +62,7 @@ void vren_demo::clusterized_model_debugger::write_debug_info_for_meshlet_bounds(
 	}
 }
 
-bool project_sphere(glm::vec3 C, float r, vren::camera const& camera, glm::vec4& aabb) // C and r in camera space
+bool project_sphere(glm::vec3 C, float r, vren::camera_data const& camera, glm::vec4& aabb) // C and r in camera space
 {
 	using namespace glm;
 	using glm::isnan;
@@ -126,7 +126,7 @@ bool project_sphere(glm::vec3 C, float r, vren::camera const& camera, glm::vec4&
 
 void vren_demo::clusterized_model_debugger::write_debug_info_for_projected_sphere_bounds(
 	vren::clusterized_model const& model,
-	vren::camera const& camera,
+	vren::camera_data const& camera,
 	vren::debug_renderer_draw_buffer& draw_buffer
 )
 {

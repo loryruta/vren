@@ -19,17 +19,15 @@ layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_normal;
 layout(location = 2) out vec2 v_texcoords;
 layout(location = 3) out flat uint v_material_idx;
-layout(location = 4) out vec3 v_color;
 
 void main()
 {
-    vec4 p = i_transform * vec4(a_position, 1.0);
+    vec4 pos = i_transform * vec4(a_position, 1.0);
 
-    gl_Position = camera.projection * camera.view * p;
+    gl_Position = camera.projection * camera.view * pos;
 
-    v_position = p.xyz;
+    v_position = pos.xyz;
     v_normal = a_normal;
     v_texcoords = a_texcoords;
-    v_material_idx = 0; // TODO
-    v_color = vec3(1);
+    v_material_idx = 0;
 }

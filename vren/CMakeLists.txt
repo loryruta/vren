@@ -48,6 +48,10 @@ set(SRC
         vren/pipeline/render_graph.cpp
         vren/pipeline/construct_light_array_bvh.hpp
         vren/pipeline/construct_light_array_bvh.cpp
+        vren/pipeline/gbuffer.cpp
+        vren/pipeline/gbuffer.hpp
+        vren/pipeline/clustered_shading.cpp
+        vren/pipeline/clustered_shading.hpp
 
         vren/pool/command_pool.hpp
         vren/pool/command_pool.cpp
@@ -97,9 +101,18 @@ set(SRC
         vren/light.cpp
         vren/light.hpp
         vren/log.hpp
+        vren/camera.hpp
+        vren/camera.cpp
 )
 
 add_library(vren ${SRC})
+
+target_compile_definitions(vren PRIVATE
+    VREN_LOG_LEVEL=VREN_LOG_LEVEL_DEBUG
+    #VREN_LOG_RENDER_GRAPH_DETAILED
+    #VREN_LOG_BUFFER_DETAILED
+    #VREN_LOG_SHADER_DETAILED
+)
 
 # ------------------------------------------------------------------------------------------------
 # ImGui Vulkan backend binary

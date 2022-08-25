@@ -1,6 +1,10 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+#define UINT32_MAX 0xFFFFFFFFu
+#define INF 1e35
+#define PI 3.14
+
 struct Camera
 {
 	vec3 position; float _pad;

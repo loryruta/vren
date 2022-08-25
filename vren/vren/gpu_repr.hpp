@@ -12,7 +12,7 @@ namespace vren
 
 	// ------------------------------------------------------------------------------------------------
 
-	struct camera
+	struct camera_data
 	{
 		glm::vec3 m_position; float _pad;
 		glm::mat4 m_view;

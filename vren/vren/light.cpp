@@ -46,10 +46,16 @@ vren::light_array::light_array(vren::context const& context) :
 {
 }
 
+void vren::light_array::add_render_graph_node_resources(vren::render_graph_node& node, VkAccessFlags access_flags) const
+{
+	node.add_buffer({ .m_buffer = m_point_light_position_buffer.m_buffer.m_handle, }, access_flags);
+	node.add_buffer({ .m_buffer = m_point_light_buffer.m_buffer.m_handle, }, access_flags);
+	node.add_buffer({ .m_buffer = m_directional_light_buffer.m_buffer.m_handle, }, access_flags);
+}
+
 void vren::light_array::write_descriptor_set(VkDescriptorSet descriptor_set) const
 {
 	vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 0, m_point_light_position_buffer.m_buffer.m_handle, m_point_light_count * sizeof(glm::vec4), 0);
 	vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 1, m_point_light_buffer.m_buffer.m_handle, m_point_light_count * sizeof(vren::point_light), 0);
-
 	vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 2, m_directional_light_buffer.m_buffer.m_handle, m_directional_light_count * sizeof(vren::directional_light), 0);
 }

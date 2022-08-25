@@ -6,6 +6,14 @@
 
 #include <fmt/format.h>
 
+#include "log.hpp"
+
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+#	define VREN_DEBUG0(m, ...) VREN_DEBUG(m, __VA_ARGS__)
+#else
+#	define VREN_DEBUG0
+#endif
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // Render-graph
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -163,6 +171,10 @@ void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& 
 			}
 
 			// Execute the node and mark it as executed
+			VREN_DEBUG0("[render_graph] Node: {}\n",
+				fmt::format(fmt::fg(fmt::color::yellow), node->get_name())
+			);
+
 			execute_node(*node);
 			executed_nodes[node_idx] = true;
 
@@ -177,6 +189,16 @@ void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& 
 					{
 						if (image_access.m_image_idx == image_access_2.m_image_idx)
 						{
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+							vren::render_graph_image_info const& image_info = allocator.get_image_info_at(image_access.m_image_idx);
+							VREN_DEBUG0("[render_graph] Image barrier for: {}, node 1: {}, node 2: {}, mip: {}, layer: {}\n",
+								fmt::format(fmt::fg(fmt::color::fuchsia), image_info.m_name),
+								fmt::format(fmt::fg(fmt::color::yellow), node->get_name()),
+								fmt::format(fmt::fg(fmt::color::yellow), node_2->get_name()),
+								image_info.m_mip_level,
+								image_info.m_layer
+							);
+#endif
 							place_image_memory_barrier(*node, *node_2, image_access, image_access_2);
 							return false; // If the barrier has been placed we don't descend this node's children
 						}
@@ -197,6 +219,15 @@ void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& 
 					{
 						if (buffer_access.m_buffer_idx == buffer_access_2.m_buffer_idx)
 						{
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+							vren::render_graph_buffer_info const& buffer_info = allocator.get_buffer_info_at(buffer_access.m_buffer_idx);
+							VREN_DEBUG0("[render_graph] Buffer barrier for: {}, node 1: {}, node 2: {}\n",
+								fmt::format(fmt::fg(fmt::color::fuchsia), buffer_info.m_name),
+								fmt::format(fmt::fg(fmt::color::yellow), node->get_name()),
+								fmt::format(fmt::fg(fmt::color::yellow), node_2->get_name())
+							);
+#endif
+
 							place_buffer_memory_barrier(*node, *node_2, buffer_access, buffer_access_2);
 							return false;
 						}

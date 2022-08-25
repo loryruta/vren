@@ -3,6 +3,7 @@
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "light.hpp"
+#include "camera.hpp"
 #include "gpu_repr.hpp"
 #include "model/basic_model_draw_buffer.hpp"
 
@@ -28,7 +29,7 @@ namespace vren
 			uint32_t frame_idx,
 			VkCommandBuffer command_buffer,
 			vren::resource_container& resource_container,
-			vren::camera const& camera,
+			vren::camera_data const& camera_data,
 			vren::basic_model_draw_buffer const& draw_buffer,
 			vren::light_array const& light_array
 		);

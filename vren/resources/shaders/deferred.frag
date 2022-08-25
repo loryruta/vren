@@ -5,20 +5,18 @@
 layout(location = 0) in vec3 i_position;
 layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec2 i_texcoord;
-layout(location = 3) in flat uint i_material_idx;
+layout(location = 3) in flat uint i_material_index;
 
 // gBuffer
-layout(set = 0, binding = 0, rgba32f) uniform image2D gbuffer_positions;
-layout(set = 0, binding = 1, rgba16f) uniform image2D gbuffer_normals;
-layout(set = 0, binding = 2, rg16f)   uniform image2D gbuffer_texcoords;
-layout(set = 0, binding = 3, r16ui)   uniform uimage2D gbuffer_material_indices;
+layout(location = 0) out vec3 o_position;
+layout(location = 1) out vec3 o_normal;
+layout(location = 2) out vec2 o_texcoord;
+layout(location = 3) out uint o_material_index;
 
 void main()
 {
-	ivec2 pos = ivec2(gl_FragCoord.xy);
-
-	imageStore(gbuffer_positions, pos, vec4(i_position, 1.0));
-	imageStore(gbuffer_normals, pos, vec4(i_normal, 0.0));
-	imageStore(gbuffer_texcoords, pos, vec4(i_texcoord, 0, 0));
-	imageStore(gbuffer_material_indices, pos, uvec4(i_material_idx));
+	o_position = i_position;
+	o_normal = i_normal;
+	o_texcoord = i_texcoord;
+	o_material_index = i_material_index;
 }

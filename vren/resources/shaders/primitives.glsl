@@ -41,8 +41,6 @@
 	\
 	VREN_WORKGROUP_DOWNSWEEP(_buffer, _length, _offset, _stride);
 
-#endif
-
 /*
 	VREN_WORKGROUP_INCLUSIVE_SCAN (TODO TEST)
 
@@ -68,7 +66,7 @@
 	}
 
 /*
-	VREN_WORKGROUP_RADIX_SORT
+	VREN_WORKGROUP_RADIX_SORT (TODO TEST)
 	2-bit radix sort
 
 	- _inout_array : The array to sort (cardinality is the size of the workgroup)
@@ -81,7 +79,7 @@
 	\
 	uint _bit_count = 2; \
 	\
-	for (uint _digit_position = 0; _digit_position < uint(ceil(32.0f / float(_bit_count))); _digit_position++) \
+	for (uint _digit_position = 0; _digit_position < uint(ceil(32 / float(_bit_count))); _digit_position++) \
 	{ \
 		uint _digit_mask = uint(exp2(_bit_count) - 1) << (_digit_position * _bit_count); \
 		uint _current_digit = (_digit_position % 2 == 0 ? _inout_array[gl_LocalInvocationIndex] : _inout_scratch_buffer_1[gl_LocalInvocationIndex]) & _digit_mask; \
@@ -133,6 +131,4 @@
 		barrier(); \
 	}
 
-#define VREN_WORKGROUP_COMPACT(_in_array, _out_array, _in_length, _scratch_buffer) \
-\
-
+#endif

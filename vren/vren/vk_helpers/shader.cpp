@@ -8,6 +8,14 @@
 #include "toolbox.hpp"
 #include "misc.hpp"
 
+#include "log.hpp"
+
+#ifdef VREN_LOG_SHADER_DETAILED
+#	define VREN_DEBUG0(m, ...) VREN_DEBUG(m, __VA_ARGS__)
+#else
+#	define VREN_DEBUG0
+#endif
+
 void load_bin_file(char const* file_path, std::vector<char>& buf)
 {
 	std::ifstream f(file_path, std::ios::ate | std::ios::binary);
@@ -110,9 +118,9 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 {
 	spirv_cross::Compiler compiler(code, code_length);
 
-	VREN_INFO("[shader] ----------------------------------------------------------------\n");
-	VREN_INFO("[shader] Shader module: \"{}\"\n", name);
-	VREN_INFO("[shader] ----------------------------------------------------------------\n");
+	VREN_DEBUG0("[shader] ----------------------------------------------------------------\n");
+	VREN_DEBUG0("[shader] Shader module: \"{}\"\n", name);
+	VREN_DEBUG0("[shader] ----------------------------------------------------------------\n");
 
 	// Entry points
 	std::vector<vren::shader_module_entry_point> entry_points{};
@@ -140,7 +148,7 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 		};
 		entry_points.push_back(entry_point);
 
-		VREN_INFO("[shader] Entry point: \"{}\" (shader stage: {:#010x})\n", entry_point.m_name, entry_point.m_shader_stage);
+		VREN_DEBUG0("[shader] Entry point: \"{}\" (shader stage: {:#010x})\n", entry_point.m_name, entry_point.m_shader_stage);
 	}
 
 	assert(entry_points.size() > 0);
@@ -175,7 +183,7 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 			descriptor_set_layouts.emplace(descriptor_set, std::unordered_map<uint32_t, vren::shader_module_binding_info>{});
 			descriptor_set_layouts.at(descriptor_set).emplace(binding, binding_info);
 
-			VREN_INFO("[shader] Descriptor {}.{} - descriptor type: {:#010x} - count: {} - variable count: {}\n",
+			VREN_DEBUG0("[shader] Descriptor {}.{} - descriptor type: {:#010x} - count: {} - variable count: {}\n",
 				descriptor_set,
 				binding,
 				binding_info.m_descriptor_type,
@@ -233,7 +241,7 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 		std::string name = compiler.get_name(resource.id);
 		push_constant_block_size = compiler.get_declared_struct_size(compiler.get_type(resource.type_id));
 
-		VREN_INFO("[shader] Push-constant block \"{}\" - size: {}\n",
+		VREN_DEBUG0("[shader] Push-constant block \"{}\" - size: {}\n",
 			name,
 			push_constant_block_size
 		);
@@ -257,7 +265,7 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 		};
 		specialization_constants.push_back(specialization_constant);
 
-		VREN_INFO("[shader] Specialization constant {} (ID: {}) - size: {}\n",
+		VREN_DEBUG0("[shader] Specialization constant {} (ID: {}) - size: {}\n",
 			specialization_constant.m_name,
 			specialization_constant.m_constant_id,
 			specialization_constant.m_size

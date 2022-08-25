@@ -16,8 +16,10 @@
 #include <vren/model/clusterized_model.hpp>
 #include <vren/model/clusterized_model_draw_buffer.hpp>
 #include <vren/base/operation_fork.hpp>
+#include <vren/pipeline/clustered_shading.hpp>
+#include <vren/camera.hpp>
 
-#include "camera.hpp"
+#include "camera_controller.hpp"
 #include "point_light_bouncer.hpp"
 #include "ui.hpp"
 #include "visualize_bvh.hpp"
@@ -143,6 +145,9 @@ namespace vren_demo
 		vren::debug_renderer m_debug_renderer;
 		vren::imgui_renderer m_imgui_renderer;
 
+		// gBuffer
+		std::shared_ptr<vren::gbuffer> m_gbuffer;
+
 		// Presenter
 		vren::vk_surface_khr m_surface;
 		vren::presenter m_presenter;
@@ -169,6 +174,8 @@ namespace vren_demo
 
 		// Light array BVH
 		vren::vk_utils::buffer m_point_light_bvh_buffer;
+		uint32_t m_point_light_bvh_root_index;
+
 		vren::vk_utils::buffer m_point_light_index_buffer;
 
 		vren::debug_renderer_draw_buffer m_point_light_bvh_draw_buffer;
@@ -181,12 +188,14 @@ namespace vren_demo
 
 		float m_point_light_speed = 0.1f;
 
-		// Output
+		// Clustered shading
+		vren::cluster_and_shade m_cluster_and_shade;
+
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
-		std::unique_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;
+		std::shared_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;
 
 		// Depth-buffer pyramid
-		std::unique_ptr<vren::depth_buffer_pyramid> m_depth_buffer_pyramid;
+		std::shared_ptr<vren::depth_buffer_pyramid> m_depth_buffer_pyramid;
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
 
 		// Render-graph
@@ -209,7 +218,7 @@ namespace vren_demo
 		std::array<vren_demo::profiled_data<32>, ProfileSlot_Count> m_delta_time_by_profile_slot{};
 
 		// Camera
-		vren_demo::camera m_camera;
+		vren::camera m_camera;
 		float m_camera_speed = 0.1f;
 
 		vren_demo::freecam_controller m_freecam_controller;

@@ -12,7 +12,6 @@
 
 #include "base/base.hpp"
 #include "base/resource_container.hpp"
-#include "log.hpp"
 
 namespace vren
 {

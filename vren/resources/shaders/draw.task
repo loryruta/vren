@@ -6,9 +6,6 @@
 
 #define THREADS_NUM 32
 
-#define INF 1e35
-#define UINT32_MAX 4294967295u
-
 #include "common.glsl"
 
 layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;

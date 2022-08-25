@@ -8,6 +8,8 @@
 #include "vertex_pipeline_draw_pass.hpp"
 #include "render_target.hpp"
 #include "model/basic_model_draw_buffer.hpp"
+#include "gbuffer.hpp"
+#include "camera.hpp"
 
 namespace vren
 {
@@ -27,10 +29,12 @@ namespace vren
 
 		vren::render_graph_t render(
 			vren::render_graph_allocator& render_graph_allocator,
-			vren::render_target const& render_target,
-			vren::camera const& camera,
+			glm::uvec2 const& screen,
+			vren::camera_data const& camera_data,
 			vren::light_array const& light_array,
-			vren::basic_model_draw_buffer const& draw_buffer
+			vren::basic_model_draw_buffer const& draw_buffer,
+			vren::gbuffer const& gbuffer,
+			vren::vk_utils::depth_buffer_t const& depth_buffer
 		);
 	};
 }
