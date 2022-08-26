@@ -2,6 +2,8 @@
 
 #extension GL_GOOGLE_include_directive : require
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
@@ -13,15 +15,17 @@ layout(push_constant) uniform PushConstants
 {
 	float camera_near;
 	float camera_half_fov_y;
+	vec2 _pad;
+	mat4 camera_projection;
 };
 
 // gBuffer
-layout(set = 0, binding = 0) uniform sampler2D gbuffer_positions;
-layout(set = 0, binding = 1) uniform sampler2D gbuffer_normals;
-layout(set = 0, binding = 2) uniform sampler2D gbuffer_texcoords;
-layout(set = 0, binding = 3) uniform usampler2D gbuffer_material_indices;
+layout(set = 0, binding = 0) uniform sampler2D gbuffer_normals;
+layout(set = 0, binding = 1) uniform sampler2D gbuffer_texcoords;
+layout(set = 0, binding = 2) uniform usampler2D gbuffer_material_indices;
+layout(set = 0, binding = 3) uniform sampler2D u_depth_buffer;
 
-layout(set = 1, binding = 0) writeonly buffer ClusterKeyBuffer
+layout(set = 1, binding = 0) writeonly buffer UniqueClusterKeyBuffer
 {
 	uint cluster_keys[];
 };
@@ -47,22 +51,26 @@ void main()
 
 	barrier();
 
-	vec2 sample_texcoord = vec2(gl_GlobalInvocationID.xy) / textureSize(gbuffer_positions, 0);
-	vec3 sample_position = texture(gbuffer_positions, sample_texcoord).rgb;
+	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
+	float frag_z = texture(u_depth_buffer, frag_coord).r;
+	vec4 frag_view_pos = inverse(camera_projection) * vec4(frag_coord, frag_z, 1);
 	
 	uint i = gl_WorkGroupID.x;
 	uint j = gl_WorkGroupID.y;
 
 	uint Sy = gl_NumWorkGroups.y;
-	uint k = uint(floor(log(sample_position.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
+	uint k = uint(floor(log(frag_view_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
 
-	s_cluster_key_occurrences[k] = 1;
+	if (k < (1 << VREN_CLUSTER_KEY_BIT_COUNT))
+	{
+		s_cluster_key_occurrences[k] = 1;	
+	}
 
 	barrier();
-	
+
 	uint unique_key_count = s_cluster_key_occurrences[(1 << VREN_CLUSTER_KEY_BIT_COUNT) - 1];
 
-	VREN_WORKGROUP_EXCLUSIVE_SCAN(s_cluster_key_occurrences, 1 << VREN_CLUSTER_KEY_BIT_COUNT, 0, 1);
+	VREN_WORKGROUP_EXCLUSIVE_SCAN(s_cluster_key_occurrences, (1 << VREN_CLUSTER_KEY_BIT_COUNT), 0, 1);
 
 	barrier();
 
@@ -72,16 +80,16 @@ void main()
 	{
 		s_allocation_index = atomicAdd(allocation_index.w, unique_key_count);
 
-		if (uint(s_allocation_index / 1024) != uint((s_allocation_index + unique_key_count) / 1024))
-		{
-			atomicAdd(allocation_index.x, 1);
-		}
+		// The number of workgroups that is required to process the unique cluster key list in parallel
+		uint num_workgroups = uint(ceil(float(s_allocation_index + unique_key_count) / float(1024)));
+		atomicMax(allocation_index.x, num_workgroups);
 	}
 
 	s_unique_cluster_keys[s_cluster_key_occurrences[k]] = k;
 
 	barrier();
 
+	// Add the cluster key to the unique cluster key buffer
 	if (gl_LocalInvocationIndex < unique_key_count)
 	{
 		uint cluster_key = 0;
@@ -94,7 +102,8 @@ void main()
 		{
 			cluster_keys[cluster_key_idx] = cluster_key;
 		}
-
-		imageStore(u_cluster_references, ivec2(gl_GlobalInvocationID.xy), uvec4(cluster_key_idx));
 	}
+	
+	// Set the index of the cluster in the unique list for the current sample
+	imageStore(u_cluster_references, ivec2(gl_GlobalInvocationID.xy), uvec4(s_allocation_index + s_cluster_key_occurrences[k]));
 }

@@ -5,6 +5,7 @@
 #include "context.hpp"
 #include "buffer.hpp"
 #include "image.hpp"
+#include "shader.hpp"
 #include "misc.hpp"
 
 namespace vren::vk_utils
@@ -32,6 +33,11 @@ namespace vren::vk_utils
 	inline void set_name(vren::context const& context, vren::vk_utils::buffer const& buffer, char const* name)
 	{
 		vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(buffer.m_buffer.m_handle), name);
+	}
+
+	inline void set_name(vren::context const& context, vren::shader_module const& shader_module, char const* name)
+	{
+		vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<uint64_t>(shader_module.m_handle.m_handle), name);
 	}
 }
 

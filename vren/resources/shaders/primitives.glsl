@@ -4,9 +4,9 @@
 	for (uint level = 0; level < uint(log2(_length)); level++) \
 	{ \
 		uint level_mask = (1 << (level + 1)) - 1; \
-		if ((gl_LocalInvocationID.x & level_mask) == level_mask) \
+		if ((gl_LocalInvocationIndex & level_mask) == level_mask) \
 		{ \
-			uint b_idx = (gl_LocalInvocationID.x + 1) * _stride - 1 + _offset; \
+			uint b_idx = (gl_LocalInvocationIndex + 1) * _stride - 1 + _offset; \
 			uint a_idx = b_idx - (1 << level) * _stride; \
 			\
 			_buffer[b_idx] = _buffer[b_idx] + _buffer[a_idx]; \
@@ -19,9 +19,9 @@
 	for (int level = int(log2(_length)) - 1; level >= 0; level--) \
 	{ \
 		uint level_mask = (1 << (level + 1)) - 1;  \
-		if ((gl_LocalInvocationID.x & level_mask) == level_mask) \
+		if ((gl_LocalInvocationIndex & level_mask) == level_mask) \
 		{ \
-			uint b_idx = (gl_LocalInvocationID.x + 1) * _stride - 1 + _offset; \
+			uint b_idx = (gl_LocalInvocationIndex + 1) * _stride - 1 + _offset; \
 			uint a_idx = b_idx - (1 << level) * _stride; \
 			\
 			uint tmp = _buffer[b_idx]; \

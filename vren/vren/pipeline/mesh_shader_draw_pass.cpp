@@ -248,18 +248,6 @@ void vren::mesh_shader_draw_pass::render(
 	// Push constants
 	m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_TASK_BIT_NV | VK_SHADER_STAGE_MESH_BIT_NV, &camera_data, sizeof(camera_data));
 
-	// Bind texture manager
-	m_pipeline.bind_descriptor_set(command_buffer, 0, m_context->m_toolbox->m_texture_manager.m_descriptor_set->m_handle.m_descriptor_set);
-	resource_container.add_resource(m_context->m_toolbox->m_texture_manager.m_descriptor_set);
-
-	// Bind light array
-	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 1, [&](VkDescriptorSet descriptor_set)
-	{
-		light_array.write_descriptor_set(descriptor_set);
-
-		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "light_array");
-	});
-
 	// Bind draw buffer
 	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 2, [&](VkDescriptorSet descriptor_set)
 	{
@@ -275,10 +263,6 @@ void vren::mesh_shader_draw_pass::render(
 			draw_buffer.m_instance_buffer.m_buffer.m_handle
 		);
 	});
-
-	// Bind material manager
-	auto material_descriptor_set = m_context->m_toolbox->m_material_manager.get_descriptor_set(frame_idx);
-	m_pipeline.bind_descriptor_set(command_buffer, 3, material_descriptor_set);
 
 	// Bind depth-buffer pyramid
 	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 4, [&](VkDescriptorSet descriptor_set)

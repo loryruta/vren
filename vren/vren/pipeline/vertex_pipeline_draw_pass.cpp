@@ -96,15 +96,9 @@ vren::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 
 	/* Color blend state */
 	VkPipelineColorBlendAttachmentState color_blend_attachments[]{
-		{
-			.blendEnable = VK_FALSE,
-			.srcColorBlendFactor = {},
-			.dstColorBlendFactor = {},
-			.colorBlendOp = {},
-			.srcAlphaBlendFactor = {},
-			.dstAlphaBlendFactor = {},
-			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
-		}
+		{ .blendEnable = VK_FALSE, },
+		{ .blendEnable = VK_FALSE, },
+		{ .blendEnable = VK_FALSE, },
 	};
 	VkPipelineColorBlendStateCreateInfo color_blend_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -131,7 +125,11 @@ vren::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 	};
 
 	// Pipeline rendering
-	VkFormat color_attachment_formats[] { VREN_COLOR_BUFFER_OUTPUT_FORMAT };
+	VkFormat color_attachment_formats[]{
+		VK_FORMAT_R16G16B16A16_SFLOAT,
+		VK_FORMAT_R16G16_SFLOAT,
+		VK_FORMAT_R16_UINT,
+	};
 	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
 		.pNext = nullptr,
@@ -141,12 +139,18 @@ vren::pipeline vren::vertex_pipeline_draw_pass::create_graphics_pipeline()
 		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 	};
-
-	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/basic_draw.vert.spv");
-	vren::shader_module fragment_shader_module = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/deferred.frag.spv");
-
+	
+	char const* vertex_shader_path = ".vren/resources/shaders/basic_draw.vert.spv";
+	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(*m_context, vertex_shader_path);
 	vren::specialized_shader vertex_shader = vren::specialized_shader(vertex_shader_module, "main");
+
+	vren::vk_utils::set_name(*m_context, vertex_shader_module, vertex_shader_path);
+
+	char const* fragment_shader_path = ".vren/resources/shaders/deferred.frag.spv";
+	vren::shader_module fragment_shader_module = vren::load_shader_module_from_file(*m_context, fragment_shader_path);
 	vren::specialized_shader fragment_shader = vren::specialized_shader(fragment_shader_module, "main");
+
+	vren::vk_utils::set_name(*m_context, fragment_shader_module, fragment_shader_path);
 
 	vren::specialized_shader shaders[] = {
 		std::move(vertex_shader),

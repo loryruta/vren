@@ -36,9 +36,30 @@ bool vren::does_support_layers(std::vector<char const*> const& layers)
 	return true;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, VkDebugUtilsMessengerCallbackDataEXT const* data, void* user_data)
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+	VkDebugUtilsMessageTypeFlagsEXT message_type,
+	VkDebugUtilsMessengerCallbackDataEXT const* data,
+	void* user_data
+)
 {
-	VREN_ERROR("{}\n", data->pMessage);
+	fmt::color message_color = fmt::color::dark_cyan;
+	switch (message_severity)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+		message_color = fmt::color::yellow;
+		break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+		message_color = fmt::color::red;
+		break;
+	default:
+		break;
+	}
+
+	VREN_PRINT("[validation_layer] {}\n",
+		fmt::format(fmt::fg(message_color), data->pMessage)
+	);
+
 	return false;
 }
 

@@ -38,17 +38,13 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 
 	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
+		VkRect2D render_area = {
+			.offset = {0, 0},
+			.extent = {screen.x, screen.y}
+		};
+
 		// GBuffer
 		VkRenderingAttachmentInfoKHR color_attachments[]{
-			{ // Position buffer
-				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-				.pNext = nullptr,
-				.imageView = gbuffer.m_position_buffer.get_image_view(),
-				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.resolveMode = VK_RESOLVE_MODE_NONE,
-				.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			},
 			{ // Normal buffer
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
 				.pNext = nullptr,
@@ -94,10 +90,7 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
 			.pNext = nullptr,
 			.flags = NULL,
-			.renderArea = {
-				.offset = {0, 0},
-				.extent = {gbuffer.m_width, gbuffer.m_height}
-			},
+			.renderArea = render_area,
 			.layerCount = 1,
 			.viewMask = 0,
 			.colorAttachmentCount = std::size(color_attachments),
@@ -116,7 +109,7 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 			.maxDepth = 1.0f
 		};
 		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-		//vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area); TODO
+		vkCmdSetScissor(command_buffer, 0, 1, &render_area);
 
 		m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera_data, draw_buffer, light_array, depth_buffer_pyramid);
 

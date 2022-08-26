@@ -3,6 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
@@ -13,14 +15,16 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	vec3 camera_position; float _pad;
+	vec3 camera_position; float camera_far_plane;
+	mat4 camera_view;
+	mat4 camera_projection;
 };
 
 // gBuffer
-layout(set = 0, binding = 0) uniform sampler2D gbuffer_positions;
-layout(set = 0, binding = 1) uniform sampler2D gbuffer_normals;
-layout(set = 0, binding = 2) uniform sampler2D gbuffer_texcoords;
-layout(set = 0, binding = 3) uniform usampler2D gbuffer_material_indices;
+layout(set = 0, binding = 0) uniform sampler2D u_gbuffer_normals;
+layout(set = 0, binding = 1) uniform sampler2D u_gbuffer_texcoords;
+layout(set = 0, binding = 2) uniform usampler2D u_gbuffer_material_indices;
+layout(set = 0, binding = 3) uniform sampler2D u_depth_buffer;
 
 layout(set = 1, binding = 0, r32ui) uniform uimage2D u_cluster_references;
 
@@ -55,67 +59,73 @@ layout(set = 5, binding = 0, rgba32f) uniform image2D u_output;
 
 void main()
 {
-	uvec2 screen_size = textureSize(gbuffer_positions, 0);
+	uvec2 screen_size = textureSize(u_depth_buffer, 0);
 
 	if (gl_GlobalInvocationID.x < screen_size.x && gl_GlobalInvocationID.y < screen_size.y)
 	{
-		vec2 frag_coord = (vec2(gl_GlobalInvocationID.xy) + 0.5) / vec2(screen_size);
+		vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / vec2(screen_size);
 
-		vec3 frag_pos = texture(gbuffer_positions, frag_coord).rgb;
-		vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
-		vec2 frag_texcoord = texture(gbuffer_texcoords, frag_coord).rg;
-		uint frag_material_idx = texture(gbuffer_material_indices, frag_coord).r;
+		float frag_z = texture(u_depth_buffer, frag_coord).r;
+		vec4 frag_view_pos = inverse(camera_projection) * vec4(frag_coord, frag_z, 1);
 
-		Material material = materials[frag_material_idx];
-		vec3 albedo = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb;
-		float metallic = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b;
-		float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g;
-		
-		vec3 Lo = vec3(0);
-
-		// Apply point lights
-		uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
-
-		for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
+		if (frag_view_pos.z < camera_far_plane)
 		{
-			uint light_idx = assigned_lights[cluster_idx * VREN_MAX_LIGHTS_PER_CLUSTER + i];
-		
-			vec3 light_pos = point_light_positions[light_idx].xyz;
-			PointLight light = point_lights[light_idx];
+			vec4 frag_pos = inverse(camera_view) * frag_view_pos; 
+			vec3 frag_normal = texture(u_gbuffer_normals, frag_coord).rgb;
+			vec2 frag_texcoord = texture(u_gbuffer_texcoords, frag_coord).rg;
+			uint frag_material_idx = texture(u_gbuffer_material_indices, frag_coord).r;
 
-			Lo += pbr_apply_point_light(
-				camera_position,
-				frag_pos,
-				frag_normal,
-				light_pos,
-				light.color,
-				albedo,
-				metallic,
-				roughness
-			);
+			Material material = materials[frag_material_idx];
+			vec3 albedo = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb;
+			float metallic = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b;
+			float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g;
+		
+			vec3 Lo = vec3(0);
+
+			// Apply point lights
+			uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
+
+			for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
+			{
+				uint light_idx = assigned_lights[cluster_idx * VREN_MAX_LIGHTS_PER_CLUSTER + i];
+		
+				vec3 light_pos = point_light_positions[light_idx].xyz;
+				PointLight light = point_lights[light_idx];
+
+				Lo += pbr_apply_point_light(
+					camera_position,
+					frag_pos.xyz,
+					frag_normal,
+					light_pos,
+					light.color,
+					albedo,
+					metallic,
+					roughness
+				);
+			}
+
+			// Apply directional lights
+			for (int i = 0; i < directional_lights.length(); i++)
+			{
+				DirectionalLight dir_light = directional_lights[i];
+
+				Lo += pbr_apply_directional_light(
+					camera_position,
+					frag_pos.xyz,
+					frag_normal,
+					dir_light.direction,
+					dir_light.color,
+					albedo,
+					metallic,
+					roughness
+				);
+			}
+		
+			vec3 ambient = vec3(0.03) * albedo;
+			vec3 color = ambient + Lo;
+			color = pbr_gamma_correct(color);
+
+			imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(1.0, 0, 0, 1.0));
 		}
-
-		// Apply directional lights
-		for (int i = 0; i < directional_lights.length(); i++)
-		{
-			DirectionalLight dir_light = directional_lights[i];
-
-			Lo += pbr_apply_directional_light(
-				camera_position,
-				frag_pos,
-				frag_normal,
-				dir_light.direction,
-				dir_light.color,
-				albedo,
-				metallic,
-				roughness
-			);
-		}
-		
-		vec3 ambient = vec3(0.03) * albedo;
-		vec3 color = ambient + Lo;
-		color = pbr_gamma_correct(color);
-		
-		imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 	}
 }

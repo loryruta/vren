@@ -25,6 +25,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
     vren::camera const& camera,
     glm::uvec2 const& screen,
     vren::gbuffer const& gbuffer,
+    vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::buffer const& cluster_key_buffer,
     vren::vk_utils::buffer const& allocation_index_buffer,
     vren::vk_utils::combined_image_view const& cluster_reference_buffer
@@ -35,7 +36,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
 
     m_pipeline.bind(command_buffer);
 
-    glm::uvec4 allocation_index_init{ 0, 1, 1, 0 };
+    glm::uvec4 allocation_index_init{ 1, 1, 1, 0 };
     vkCmdUpdateBuffer(command_buffer, allocation_index_buffer.m_buffer.m_handle, 0, sizeof(allocation_index_init), &allocation_index_init);
 
     VkBufferMemoryBarrier buffer_memory_barrier{
@@ -53,18 +54,21 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
     {
         float m_camera_near;
         float m_camera_half_fov_y;
+        float _pad[2];
+        glm::mat4 m_camera_projection;
     } push_constants;
 
     push_constants = {
         .m_camera_near = camera.m_near_plane,
-        .m_camera_half_fov_y = camera.m_fov_y / 2.0f
+        .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
+        .m_camera_projection = camera.get_projection(),
     };
     m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
     auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
     );
-    gbuffer.write_descriptor_set(descriptor_set_0->m_handle.m_descriptor_set);
+    gbuffer.write_descriptor_set(descriptor_set_0->m_handle.m_descriptor_set, depth_buffer);
 
     m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
@@ -125,16 +129,16 @@ void vren::clustered_shading::assign_lights::operator()(
         float m_camera_near;
         float m_camera_half_fov_y;
         float m_camera_aspect_ratio;
-        glm::mat4 m_camera_trs;
+        glm::mat4 m_camera_view;
         glm::uint m_bvh_root_index;
         glm::uvec2 m_num_tiles;
     } push_constants;
 
     push_constants = {
         .m_camera_near = camera.m_near_plane,
-        .m_camera_half_fov_y = camera.m_fov_y,
+        .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
         .m_camera_aspect_ratio = camera.m_aspect_ratio,
-        .m_camera_trs = glm::inverse(camera.get_view()),
+        .m_camera_view = camera.get_view(),
         .m_bvh_root_index = light_bvh_root_index,
         .m_num_tiles = screen / glm::uvec2(32)
     };
@@ -183,6 +187,7 @@ void vren::clustered_shading::shade::operator()(
     vren::camera const& camera,
     glm::uvec2 const& screen,
     vren::gbuffer const& gbuffer,
+    vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::combined_image_view const& cluster_reference_buffer,
     vren::vk_utils::buffer const& assigned_light_buffer,
     vren::light_array const& light_array,
@@ -197,11 +202,16 @@ void vren::clustered_shading::shade::operator()(
     // Push constants
     struct
     {
-        glm::vec3 m_camera_position; float _pad;
+        glm::vec3 m_camera_position; float m_camera_far_plane;
+        glm::mat4 m_camera_view;
+        glm::mat4 m_camera_projection;
     } push_constants;
 
     push_constants = {
         .m_camera_position = camera.m_position,
+        .m_camera_far_plane = camera.m_far_plane,
+        .m_camera_view = camera.get_view(),
+        .m_camera_projection = camera.get_projection(),
     };
 
     m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
@@ -212,7 +222,7 @@ void vren::clustered_shading::shade::operator()(
         auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
             m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
         );
-        gbuffer.write_descriptor_set(descriptor_set_0->m_handle.m_descriptor_set);
+        gbuffer.write_descriptor_set(descriptor_set_0->m_handle.m_descriptor_set, depth_buffer);
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
@@ -331,6 +341,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
     glm::uvec2 const& screen,
     vren::camera const& camera,
     vren::gbuffer const& gbuffer,
+    vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::buffer const& light_bvh_buffer,
     uint32_t light_bvh_root_index,
     vren::vk_utils::buffer const& light_index_buffer,
@@ -356,6 +367,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
         camera,
         screen,
         &gbuffer,
+        &depth_buffer,
         &light_bvh_buffer,
         &light_bvh_root_index,
         &light_index_buffer,
@@ -366,7 +378,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
         std::array<VkBufferMemoryBarrier, 3> buffer_memory_barriers{};
         std::array<VkImageMemoryBarrier, 3> image_memory_barriers{};
 
-        m_find_unique_cluster_list(frame_idx, command_buffer, resource_container, camera, screen, gbuffer, m_cluster_key_buffer, m_allocation_index_buffer, m_cluster_reference_buffer);
+        m_find_unique_cluster_list(frame_idx, command_buffer, resource_container, camera, screen, gbuffer, depth_buffer, m_cluster_key_buffer, m_allocation_index_buffer, m_cluster_reference_buffer);
 
         buffer_memory_barriers = {
             VkBufferMemoryBarrier{
@@ -421,7 +433,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, buffer_memory_barriers.data(), 0, nullptr);
 
-        m_shade(frame_idx, command_buffer, resource_container, camera, screen, gbuffer, m_cluster_reference_buffer, m_assigned_light_buffer, light_array, output);
+        m_shade(frame_idx, command_buffer, resource_container, camera, screen, gbuffer, depth_buffer, m_cluster_reference_buffer, m_assigned_light_buffer, light_array, output);
     });
 
     return vren::render_graph_gather(node);

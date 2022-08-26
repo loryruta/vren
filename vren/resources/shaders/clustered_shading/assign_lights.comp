@@ -2,15 +2,14 @@
 
 #extension GL_GOOGLE_include_directive : require
 
+#extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #include <common.glsl>
 
-#define INF 1e35
-#define UINT32_MAX 0xFFFFFFFFu
-
 #define VREN_MAX_LIGHTS_PER_CLUSTER 8
-#define VREN_MAX_STACK_DEPTH 8
+#define VREN_MAX_STACK_DEPTH 5
 #define VREN_BVH_LEAF_NODE 0x80000000
 #define VREN_BVH_INVALID_NODE 0xB0000000
 
@@ -19,7 +18,7 @@ layout(push_constant) uniform PushConstants
 	float camera_near;
 	float camera_half_fov_y;
 	float camera_aspect_ratio;
-	mat4 camera_trs;
+	mat4 camera_view;
 	uint bvh_root_index;
 	uvec2 num_tiles;
 };
@@ -101,8 +100,9 @@ void main()
 		cluster_max.z = far_k;
 		cluster_max.w = 1.0;
 
-		cluster_min = camera_trs * cluster_min;
-		cluster_max = camera_trs * cluster_max;
+		mat4 inv_camera_view = inverse(camera_view);
+		cluster_min = inv_camera_view * cluster_min;
+		cluster_max = inv_camera_view * cluster_max;
 
 		vec4 tmp = cluster_min;
 		cluster_min = min(cluster_min, cluster_max);
@@ -114,7 +114,7 @@ void main()
 		{
 			uint stack[VREN_MAX_STACK_DEPTH];
 			uint stack_ptr = 0;
-			uint node_addr = bvh_root_index - 32; // Start from first level under root
+			uint node_addr = bvh_root_index - 32; // Start from first level after root
 
 			bool keep_running = true;
 			while (keep_running)

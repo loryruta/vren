@@ -448,6 +448,7 @@ void vren_demo::app::record_commands(
 			screen,
 			m_camera,
 			*m_gbuffer,
+			*m_depth_buffer,
 			m_point_light_bvh_buffer,
 			m_point_light_bvh_root_index,
 			m_point_light_index_buffer,

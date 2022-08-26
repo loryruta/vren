@@ -39,20 +39,11 @@ vren::render_graph_t vren::basic_renderer::render(
 	{
 		VkRect2D render_area = {
 			.offset = {0, 0},
-			.extent = {gbuffer.m_width, gbuffer.m_height}
+			.extent = {screen.x, screen.y}
 		};
 
 		// GBuffer
 		VkRenderingAttachmentInfoKHR color_attachments[]{
-			{ // Position buffer
-				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-				.pNext = nullptr,
-				.imageView = gbuffer.m_position_buffer.get_image_view(),
-				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.resolveMode = VK_RESOLVE_MODE_NONE,
-				.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			},
 			{ // Normal buffer
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
 				.pNext = nullptr,
