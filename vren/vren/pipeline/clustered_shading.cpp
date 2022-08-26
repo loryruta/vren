@@ -301,6 +301,29 @@ vren::cluster_and_shade::cluster_and_shade(
     }()),
     m_assigned_light_buffer(vren::vk_utils::alloc_device_only_buffer(*m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VREN_MAX_UNIQUE_CLUSTER_KEYS * VREN_MAX_ASSIGNED_LIGHTS_PER_CLUSTER * sizeof(uint32_t)))
 {
+    vren::vk_utils::set_name(*m_context, m_cluster_key_buffer, "cluster_key_buffer");
+    vren::vk_utils::set_name(*m_context, m_allocation_index_buffer, "allocation_index_buffer");
+    vren::vk_utils::set_name(*m_context, m_cluster_reference_buffer, "cluster_reference_buffer");
+    vren::vk_utils::set_name(*m_context, m_assigned_light_buffer, "assigned_light_buffer");
+
+    vren::vk_utils::immediate_graphics_queue_submit(*m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    {
+        VkImageMemoryBarrier image_memory_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = NULL,
+            .dstAccessMask = NULL,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .image = m_cluster_reference_buffer.get_image(),
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .levelCount = 1,
+                .layerCount = 1,
+            },
+        };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, NULL, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+    });
 }
 
 vren::render_graph_t vren::cluster_and_shade::operator()(

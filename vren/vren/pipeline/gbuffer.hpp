@@ -2,6 +2,7 @@
 
 #include "vk_helpers/image.hpp"
 #include "vk_helpers/misc.hpp"
+#include "vk_helpers/debug_utils.hpp"
 #include "render_graph.hpp"
 
 namespace vren
@@ -39,6 +40,12 @@ namespace vren
 
             m_sampler(vren::vk_utils::create_sampler(context, VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT))
         {
+            vren::vk_utils::set_name(context, m_position_buffer, "gbuffer_position");
+            vren::vk_utils::set_name(context, m_normal_buffer, "gbuffer_normal");
+            vren::vk_utils::set_name(context, m_texcoord_buffer, "gbuffer_texcoord");
+            vren::vk_utils::set_name(context, m_material_index_buffer, "gbuffer_material_index");
+
+            vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<uint64_t>(m_sampler.m_handle), "gbuffer_sampler");
         }
 
         void add_render_graph_node_resources(
