@@ -351,6 +351,9 @@ void vren_demo::ui::show_controls_window()
 		{
 			m_app->m_take_next_render_graph_dump = true;
 		}
+
+		// Point light BVH
+		ImGui::Checkbox("Show point light BVH", &m_app->m_show_light_bvh);
 	}
 
 	ImGui::End();

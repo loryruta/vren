@@ -52,7 +52,7 @@ vren::render_graph_t vren::profiler::profile(
 )
 {
 	auto head = allocator.allocate();
-	head->set_name("Profiling start");
+	head->set_name("profiler_start");
 	head->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, slot_idx * 2, 2);
@@ -65,7 +65,7 @@ vren::render_graph_t vren::profiler::profile(
 	}
 
 	auto tail = allocator.allocate();
-	tail->set_name("Profiling end");
+	tail->set_name("profiler_end");
 	tail->set_callback([=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
 		vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1);

@@ -121,7 +121,7 @@ VkInstance vren::context::create_instance()
 		.applicationVersion = m_info.m_app_version,
 		.pEngineName = VREN_NAME,
 		.engineVersion = VREN_VERSION,
-		.apiVersion = VK_API_VERSION_1_2
+		.apiVersion = VK_API_VERSION_1_3
 	};
 
 	/* Extensions */
@@ -300,7 +300,6 @@ VkDevice vren::context::create_logical_device()
 	dev_ext.push_back(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
 	dev_ext.push_back(VK_NV_MESH_SHADER_EXTENSION_NAME);
 	dev_ext.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
-	dev_ext.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
 	int unsupported_ext = does_physical_device_support(m_physical_device, dev_ext);
 	if (unsupported_ext >= 0)
@@ -310,31 +309,9 @@ VkDevice vren::context::create_logical_device()
 	}
 
 	/* Features */
-	VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
-		.pNext = nullptr,
-		.dynamicRendering = true
-	};
-
-	VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
-		.pNext = &dynamic_rendering_features,
-		.descriptorBindingPartiallyBound = true,
-		.descriptorBindingVariableDescriptorCount = true,
-		.runtimeDescriptorArray = true,
-	};
-
-	VkPhysicalDevice8BitStorageFeatures khr_8bit_storage_features{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES,
-		.pNext = &descriptor_indexing_features,
-		.storageBuffer8BitAccess = true,
-		.uniformAndStorageBuffer8BitAccess = true,
-		.storagePushConstant8 = true,
-	};
-
 	VkPhysicalDevice16BitStorageFeatures khr_16bit_storage_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
-		.pNext = &khr_8bit_storage_features,
+		.pNext = nullptr,
 		.storageBuffer16BitAccess = true,
 		.uniformAndStorageBuffer16BitAccess = true,
 		.storagePushConstant16 = true,
@@ -354,15 +331,28 @@ VkDevice vren::context::create_logical_device()
 		.extendedDynamicState = true,
 	};
 
-	VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures separate_depth_stencil_layouts_features{
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES,
+	VkPhysicalDeviceVulkan12Features vulkan_12_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 		.pNext = &extended_dynamic_state_features,
+		.storageBuffer8BitAccess = true,
+		.uniformAndStorageBuffer8BitAccess = true,
+		.storagePushConstant8 = true,
+		.descriptorBindingPartiallyBound = true,
+		.descriptorBindingVariableDescriptorCount = true,
+		.runtimeDescriptorArray = true,
+		.samplerFilterMinmax = true,
 		.separateDepthStencilLayouts = true,
+	};
+
+	VkPhysicalDeviceVulkan13Features vulkan_13_features{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+		.pNext = &vulkan_12_features,
+		.dynamicRendering = true,
 	};
 
 	VkPhysicalDeviceFeatures2 features2{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-		.pNext = &separate_depth_stencil_layouts_features,
+		.pNext = &vulkan_13_features,
 		.features = {
 			.fillModeNonSolid = VK_TRUE,
 		},
@@ -411,7 +401,7 @@ VmaAllocator vren::context::create_vma_allocator()
 		.pHeapSizeLimit = nullptr,
 		.pVulkanFunctions = nullptr,
 		.instance = m_instance,
-		.vulkanApiVersion = VK_API_VERSION_1_2,
+		.vulkanApiVersion = VK_API_VERSION_1_3,
 		.pTypeExternalMemoryHandleTypes = nullptr,
 	};
 

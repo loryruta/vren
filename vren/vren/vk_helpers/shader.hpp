@@ -226,7 +226,7 @@ namespace vren
 
 		~pipeline();
 
-		void bind(VkCommandBuffer cmd_buf) const;
+		void bind(VkCommandBuffer command_buffer) const;
 		void bind_vertex_buffer(VkCommandBuffer command_buffer, uint32_t binding, VkBuffer vertex_buffer, VkDeviceSize offset = 0) const;
 		void bind_index_buffer(VkCommandBuffer command_buffer, VkBuffer index_buffer, VkIndexType index_type, VkDeviceSize offset = 0) const;
 		void bind_descriptor_set(VkCommandBuffer command_buffer, uint32_t descriptor_set_idx, VkDescriptorSet descriptor_set) const;
@@ -260,6 +260,8 @@ namespace vren
 		VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
 		VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
 		VkPipelineDynamicStateCreateInfo* dynamic_state_info,
-		VkPipelineRenderingCreateInfoKHR* pipeline_rendering_info
+		VkPipelineRenderingCreateInfo* pipeline_rendering_info,
+		VkRenderPass render_pass,
+		uint32_t subpass
 	);
 }

@@ -71,15 +71,9 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 
 	/* Color blend state */
 	VkPipelineColorBlendAttachmentState color_blend_attachments[]{
-		{
-			.blendEnable = VK_FALSE,
-			.srcColorBlendFactor = {},
-			.dstColorBlendFactor = {},
-			.colorBlendOp = {},
-			.srcAlphaBlendFactor = {},
-			.dstAlphaBlendFactor = {},
-			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
-		}
+		{.blendEnable = VK_FALSE, },
+		{.blendEnable = VK_FALSE, },
+		{.blendEnable = VK_FALSE, },
 	};
 	VkPipelineColorBlendStateCreateInfo color_blend_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -106,7 +100,11 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 	};
 
 	// Pipeline rendering
-	VkFormat color_attachment_formats[] { VREN_COLOR_BUFFER_OUTPUT_FORMAT };
+	VkFormat color_attachment_formats[]{
+		VK_FORMAT_R16G16B16A16_SFLOAT,
+		VK_FORMAT_R32G32_SFLOAT,
+		VK_FORMAT_R16_UINT,
+	};
 	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
 		.pNext = nullptr,
@@ -145,7 +143,9 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		&pipeline_rendering_info
+		&pipeline_rendering_info,
+		VK_NULL_HANDLE,
+		0
 	);
 }
 

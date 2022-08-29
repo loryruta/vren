@@ -302,9 +302,9 @@ vren::pipeline::~pipeline()
 	}
 }
 
-void vren::pipeline::bind(VkCommandBuffer cmd_buf) const
+void vren::pipeline::bind(VkCommandBuffer command_buffer) const
 {
-	vkCmdBindPipeline(cmd_buf, m_bind_point, m_pipeline.m_handle);
+	vkCmdBindPipeline(command_buffer, m_bind_point, m_pipeline.m_handle);
 }
 
 void vren::pipeline::bind_vertex_buffer(VkCommandBuffer command_buffer, uint32_t binding, VkBuffer vertex_buffer, VkDeviceSize offset) const
@@ -539,7 +539,9 @@ vren::pipeline vren::create_graphics_pipeline(
 	VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
 	VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
 	VkPipelineDynamicStateCreateInfo* dynamic_state_info,
-	VkPipelineRenderingCreateInfoKHR* pipeline_rendering_info
+	VkPipelineRenderingCreateInfo* pipeline_rendering_info,
+	VkRenderPass render_pass,
+	uint32_t subpass
 )
 {
 	// Descriptor set layouts
@@ -614,12 +616,15 @@ vren::pipeline vren::create_graphics_pipeline(
 		.pDepthStencilState = depth_stencil_state_info,
 		.pColorBlendState = color_blend_state_info,
 		.pDynamicState = dynamic_state_info,
-		.layout = pipeline_layout
+		.layout = pipeline_layout,
+		.renderPass = render_pass,
+		.subpass = subpass,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = 0,
 	};
 	VkPipeline pipeline;
 	VREN_CHECK(vkCreateGraphicsPipelines(context.m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), &context);
 
-	//
 	return {
 		.m_context = &context,
 		.m_descriptor_set_layouts = std::move(descriptor_set_layouts),

@@ -98,7 +98,7 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 			.pDepthAttachment = &depth_buffer_attachment,
 			.pStencilAttachment = nullptr
 		};
-		vkCmdBeginRenderingKHR(command_buffer, &rendering_info);
+		vkCmdBeginRendering(command_buffer, &rendering_info);
 
 		VkViewport viewport{
 			.x = 0,
@@ -113,7 +113,7 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 
 		m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera_data, draw_buffer, light_array, depth_buffer_pyramid);
 
-		vkCmdEndRenderingKHR(command_buffer);
+		vkCmdEndRendering(command_buffer);
 	});
 	return vren::render_graph_gather(node);
 }

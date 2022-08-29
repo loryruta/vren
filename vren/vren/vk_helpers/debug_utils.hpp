@@ -39,5 +39,15 @@ namespace vren::vk_utils
 	{
 		vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<uint64_t>(shader_module.m_handle.m_handle), name);
 	}
+
+	inline void set_name(vren::context const& context, vren::pipeline const& pipeline, char const* name)
+	{
+		vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(pipeline.m_pipeline.m_handle), name);
+	}
+
+	inline void set_name(vren::context const& context, VkRenderPass render_pass, char const* name)
+	{
+		vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_RENDER_PASS, reinterpret_cast<uint64_t>(render_pass), name);
+	}
 }
 
