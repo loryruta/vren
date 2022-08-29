@@ -5,7 +5,6 @@
     "builtin-baseline": "7dd2e65c0bb63669f3a7717cf78f0f943b2fd185",
     "dependencies": [
         "glm",
-        "vulkan-memory-allocator",
         {
             "name": "imgui",
             "features": [
@@ -14,7 +13,6 @@
         },
         "implot",
         "stb",
-        "spirv-cross",
         "meshoptimizer",
         "fmt",
 

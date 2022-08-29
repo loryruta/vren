@@ -35,8 +35,6 @@ set(SRC
         vren/pipeline/render_target.hpp
         vren/pipeline/mesh_shader_draw_pass.hpp
         vren/pipeline/mesh_shader_draw_pass.cpp
-        vren/pipeline/vertex_pipeline_draw_pass.cpp
-        vren/pipeline/vertex_pipeline_draw_pass.hpp
         vren/pipeline/profiler.hpp
         vren/pipeline/profiler.cpp
         vren/pipeline/depth_buffer_pyramid.cpp
@@ -71,10 +69,9 @@ set(SRC
         vren/primitives/build_bvh.hpp
 
         vren/third_party/impl.cpp
-
+        
         vren/vk_helpers/shader.hpp
         vren/vk_helpers/shader.cpp
-        vren/vk_helpers/barrier.hpp
         vren/vk_helpers/debug_utils.hpp
         vren/vk_helpers/buffer.hpp
         vren/vk_helpers/buffer.cpp
@@ -151,7 +148,7 @@ target_include_directories(vren PUBLIC vren)
 FetchContent_Declare(
         volk
         GIT_REPOSITORY https://github.com/zeux/volk
-        GIT_TAG        1.2.198
+        GIT_TAG        sdk-1.3.224.1
 )
 FetchContent_MakeAvailable(volk)
 target_link_libraries(vren PUBLIC volk::volk)
@@ -161,8 +158,13 @@ find_package(glm CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC glm::glm)
 
 # VulkanMemoryAllocator
-find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
+FetchContent_Declare(
+        VulkanMemoryAllocator
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+        GIT_TAG        v3.0.1
+)
+FetchContent_MakeAvailable(VulkanMemoryAllocator)
+target_link_libraries(vren PUBLIC VulkanMemoryAllocator)
 
 # ImGui
 find_package(imgui CONFIG REQUIRED)
@@ -177,11 +179,14 @@ target_include_directories(vren PUBLIC ${IMGUI_VULKAN_BACKEND_DIR})
 target_link_libraries(vren PUBLIC vren_imgui_vulkan_backend)
 
 # SPIRV-Cross
-find_package(spirv_cross_core CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC spirv-cross-core)
-
-find_package(spirv_cross_reflect CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC spirv-cross-reflect)
+FetchContent_Declare(
+        spirv-cross
+        GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
+        GIT_TAG        sdk-1.3.224.1
+)
+FetchContent_MakeAvailable(spirv-cross)
+target_link_libraries(vren PRIVATE spirv-cross-core)
+target_link_libraries(vren PRIVATE spirv-cross-reflect)
 
 # meshoptimizer
 find_package(meshoptimizer CONFIG REQUIRED)
