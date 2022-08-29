@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 
 #include "log.hpp"
+#include "vk_helpers/vk_enums.hpp"
 
 #ifdef VREN_LOG_RENDER_GRAPH_DETAILED
 #	define VREN_DEBUG0(m, ...) VREN_DEBUG(m, __VA_ARGS__)
@@ -117,6 +118,12 @@ vren::render_graph_t vren::render_graph_concat(vren::render_graph_allocator& all
 
 void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph)
 {
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+	VREN_DEBUG("[render_graph] {}\n", fmt::format(fmt::fg(fmt::color::indian_red), "--------------------------------------------------------------------------------------------------------------------------------"));
+	VREN_DEBUG("[render_graph] {}\n", fmt::format(fmt::fg(fmt::color::indian_red), "Execution"));
+	VREN_DEBUG("[render_graph] {}\n", fmt::format(fmt::fg(fmt::color::indian_red), "--------------------------------------------------------------------------------------------------------------------------------"));
+#endif
+
 	const size_t k_max_allocable_nodes = vren::render_graph_allocator::k_max_allocable_nodes;
 	const size_t k_max_image_infos = vren::render_graph_allocator::k_max_image_infos;
 
@@ -171,10 +178,6 @@ void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& 
 			}
 
 			// Execute the node and mark it as executed
-			VREN_DEBUG0("[render_graph] Node: {}\n",
-				fmt::format(fmt::fg(fmt::color::yellow), node->get_name())
-			);
-
 			execute_node(*node);
 			executed_nodes[node_idx] = true;
 
@@ -189,16 +192,6 @@ void vren::detail::render_graph_executor::execute(vren::render_graph_allocator& 
 					{
 						if (image_access.m_image_idx == image_access_2.m_image_idx)
 						{
-#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
-							vren::render_graph_image_info const& image_info = allocator.get_image_info_at(image_access.m_image_idx);
-							VREN_DEBUG0("[render_graph] Image barrier for: {}, node 1: {}, node 2: {}, mip: {}, layer: {}\n",
-								fmt::format(fmt::fg(fmt::color::fuchsia), image_info.m_name),
-								fmt::format(fmt::fg(fmt::color::yellow), node->get_name()),
-								fmt::format(fmt::fg(fmt::color::yellow), node_2->get_name()),
-								image_info.m_mip_level,
-								image_info.m_layer
-							);
-#endif
 							place_image_memory_barrier(*node, *node_2, image_access, image_access_2);
 							return false; // If the barrier has been placed we don't descend this node's children
 						}
@@ -266,6 +259,13 @@ void vren::render_graph_executor::make_initial_image_layout_transition(vren::ren
 {
 	vren::render_graph_image_info const& image = node.get_allocator()->get_image_info_at(image_access.m_image_idx);
 
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+	VREN_DEBUG("[render_graph] Initial layout transition for {} to {}\n",
+		fmt::format(fmt::fg(fmt::color::fuchsia), image.m_name),
+		fmt::format(fmt::fg(fmt::color::white), vren::vk_utils::get_name(image_access.m_image_layout))
+	);
+#endif
+
 	VkImageMemoryBarrier image_memory_barrier{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		.pNext = nullptr,
@@ -289,6 +289,10 @@ void vren::render_graph_executor::make_initial_image_layout_transition(vren::ren
 
 void vren::render_graph_executor::execute_node(vren::render_graph_node const& node)
 {
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+	VREN_DEBUG("[render_graph] {}\n", fmt::format(fmt::fg(fmt::color::lime), "Executing node: {}", fmt::format(fmt::fg(fmt::color::yellow), node.get_name())));
+#endif
+
 	node(m_frame_idx, m_command_buffer, *m_resource_container);
 }
 
@@ -300,7 +304,27 @@ void vren::render_graph_executor::place_image_memory_barrier(
 )
 {
 	vren::render_graph_image_info const& image_1 = node_1.get_allocator()->get_image_info_at(image_access_1.m_image_idx);
-	vren::render_graph_image_info const& image_2 = node_2.get_allocator()->get_image_info_at(image_access_2.m_image_idx);
+	//vren::render_graph_image_info const& image_2 = node_2.get_allocator()->get_image_info_at(image_access_2.m_image_idx);
+
+#ifdef VREN_LOG_RENDER_GRAPH_DETAILED
+	VREN_DEBUG("[render_graph] Image barrier for {}, mip: {}, layer: {}\n",
+		fmt::format(fmt::fg(fmt::color::fuchsia), image_1.m_name),
+		image_1.m_mip_level,
+		image_1.m_layer
+	);
+	VREN_DEBUG("[render_graph] - Src node: {}, stage: {} ({}), access: {}\n",
+		fmt::format(fmt::fg(fmt::color::yellow), node_1.get_name()),
+		fmt::format(fmt::fg(fmt::color::white), vren::vk_utils::get_name(node_1.get_src_stage())),
+		fmt::format(fmt::fg(fmt::color::white), "{:x}", node_1.get_src_stage()),
+		fmt::format(fmt::fg(fmt::color::white), "{:x}", image_access_1.m_access_flags)
+	);
+	VREN_DEBUG("[render_graph] - Dst node: {}, stage: {} ({}), access: {}\n",
+		fmt::format(fmt::fg(fmt::color::yellow), node_2.get_name()),
+		fmt::format(fmt::fg(fmt::color::white), vren::vk_utils::get_name(node_2.get_src_stage())),
+		fmt::format(fmt::fg(fmt::color::white), "{:x}", node_2.get_src_stage()),
+		fmt::format(fmt::fg(fmt::color::white), "{:x}", image_access_2.m_access_flags)
+	);
+#endif
 
 	VkImageMemoryBarrier image_memory_barrier{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
