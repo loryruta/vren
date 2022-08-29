@@ -10,17 +10,19 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #define VREN_MAX_LIGHTS_PER_CLUSTER 8
 #define VREN_MAX_STACK_DEPTH 5
-#define VREN_BVH_LEAF_NODE 0x80000000
-#define VREN_BVH_INVALID_NODE 0xB0000000
+
+#define VREN_BVH_LEAF_NODE 0xFFFFFFFFu
+#define VREN_BVH_INVALID_NODE 0xFFFFFFFEu
 
 layout(push_constant) uniform PushConstants
 {
 	float camera_near;
 	float camera_half_fov_y;
 	float camera_aspect_ratio;
-	mat4 camera_view;
 	uint bvh_root_index;
+	mat4 camera_view;
 	uvec2 num_tiles;
+	float _pad[2];
 };
 
 struct BvhNode

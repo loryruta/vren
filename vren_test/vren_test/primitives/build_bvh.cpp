@@ -104,14 +104,14 @@ void run_build_bvh_test(
     vren::build_bvh& build_bvh = VREN_TEST_APP()->m_context.m_toolbox->m_build_bvh;
 
     uint32_t padded_leaf_count = vren::calc_bvh_padded_leaf_count(leaf_count);
-    std::vector<vren::bvh_node> cpu_buffer(leaf_count);
+    std::vector<vren::bvh_node> cpu_buffer(padded_leaf_count);
 
     // Init
     std::random_device rd;
     std::mt19937 e2(rd());
     std::uniform_real_distribution<> dist(0, 100);
 
-    for (uint32_t i = 0; i < cpu_buffer.size(); i++)
+    for (uint32_t i = 0; i < padded_leaf_count; i++)
     {
         vren::bvh_node& node = cpu_buffer.at(i);
         if (i < leaf_count)
@@ -143,7 +143,6 @@ void run_build_bvh_test(
     std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), padded_leaf_count * sizeof(vren::bvh_node));
 
     // Build BVH GPU-side
-    uint32_t root_node_idx;
     vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
         VkBufferMemoryBarrier buffer_memory_barrier{
@@ -161,10 +160,11 @@ void run_build_bvh_test(
             command_buffer,
             resource_container,
             gpu_buffer,
-            padded_leaf_count,
-            &root_node_idx
+            padded_leaf_count
         );
     });
+
+    uint32_t root_node_idx = vren::calc_bvh_root_index(padded_leaf_count);
 
     if (verbose)
     {
@@ -212,9 +212,43 @@ void run_build_bvh_test(
 
 TEST(build_bvh, main)
 {
+    run_build_bvh_test(0, 16, false);
+    run_build_bvh_test(1, 16, false);
     run_build_bvh_test(10, 16, false);
     run_build_bvh_test(100, 8, false);
     run_build_bvh_test(1000, 4, false);
     run_build_bvh_test(10000, 2, false);
-    //run_build_bvh_test(100000, 1, false);
+}
+
+TEST(build_bvh, utils)
+{
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(0), 32u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(1), 32u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(17), 32u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(32), 32u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(129), 1024u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(582), 1024u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(1024), 1024u);
+    ASSERT_EQ(vren::calc_bvh_padded_leaf_count(2193819), 33554432u);
+
+    ASSERT_EQ(vren::calc_bvh_buffer_length(0), 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(1), 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(17), 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(32), 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(129), (32u * 32u) + 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(582), (32u * 32u) + 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(1024), (32u * 32u) + 32u + 1u);
+    ASSERT_EQ(vren::calc_bvh_buffer_length(2193819), (32u * 32u * 32u * 32u * 32u) + (32u * 32u * 32u * 32u) + (32u * 32u * 32u) + (32u * 32u) + 32u + 1u);
+
+    ASSERT_EQ(vren::calc_bvh_root_index(0), 32u);
+    ASSERT_EQ(vren::calc_bvh_root_index(1), 32u);
+    ASSERT_EQ(vren::calc_bvh_root_index(129), (32u * 32u) + 32u);
+    ASSERT_EQ(vren::calc_bvh_root_index(582), (32u * 32u) + 32u);
+    ASSERT_EQ(vren::calc_bvh_root_index(2193819), (32u * 32u * 32u * 32u * 32u) + (32u * 32u * 32u * 32u) + (32u * 32u * 32u) + (32u * 32u) + 32u);
+
+    ASSERT_EQ(vren::calc_bvh_level_count(0), 2u);
+    ASSERT_EQ(vren::calc_bvh_level_count(1), 2u);
+    ASSERT_EQ(vren::calc_bvh_level_count(129), 3u);
+    ASSERT_EQ(vren::calc_bvh_level_count(582), 3u);
+    ASSERT_EQ(vren::calc_bvh_level_count(2193819), 6u);
 }

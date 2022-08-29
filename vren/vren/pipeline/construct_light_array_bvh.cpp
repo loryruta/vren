@@ -61,7 +61,9 @@ vren::render_graph_t vren::construct_light_array_bvh::construct(
     size_t light_index_buffer_offset
 )
 {
-    uint32_t light_count = light_array.m_point_light_count; // TODO: at the moment only point lights, but also spot lights could be supported
+    // TODO: at the moment only point lights, but also spot lights could be supported
+
+    uint32_t light_count = light_array.m_point_light_count;
 
     assert(light_count > 0);
     assert(bvh_buffer.m_allocation_info.size >= get_required_bvh_buffer_size(light_count));
@@ -84,7 +86,7 @@ vren::render_graph_t vren::construct_light_array_bvh::construct(
     )
     {
         uint32_t light_count_power_of_2 = vren::round_to_next_power_of_2(light_count); // For reduction operations
-        uint32_t light_count_power_of_32 = vren::round_to_next_power_of(light_count, 32u); // For BVH construction
+        uint32_t light_count_for_bvh = vren::calc_bvh_padded_leaf_count(light_count); // For BVH construction
 
         size_t bvh_size = vren::calc_bvh_buffer_size(light_count);
 
@@ -262,13 +264,13 @@ vren::render_graph_t vren::construct_light_array_bvh::construct(
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, point_light_buffer.m_buffer.m_handle, light_count * sizeof(vren::point_light), 0);
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 1, light_position_buffer.m_buffer.m_handle, light_count * sizeof(glm::vec4), 0);
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 2, scratch_buffer_2.m_buffer.m_handle, light_count * sizeof(glm::uvec2), 0);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 3, scratch_buffer_1.m_buffer.m_handle, light_count_power_of_32 * sizeof(vren::bvh_node), 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 3, scratch_buffer_1.m_buffer.m_handle, light_count_for_bvh * sizeof(vren::bvh_node), 0);
 
         resource_container.add_resource(descriptor_set);
 
         m_init_light_array_bvh_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
-        num_workgroups = vren::divide_and_ceil(light_count_power_of_32, 1024);
+        num_workgroups = vren::divide_and_ceil(light_count_for_bvh, 1024);
         m_init_light_array_bvh_pipeline.dispatch(command_buffer, num_workgroups, 1, 1);
 
         // Finally build the BVH (using build_bvh primitive)
@@ -286,7 +288,12 @@ vren::render_graph_t vren::construct_light_array_bvh::construct(
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-        m_context->m_toolbox->m_build_bvh(command_buffer, resource_container, scratch_buffer_1, light_count_power_of_32, nullptr);
+        m_context->m_toolbox->m_build_bvh(
+            command_buffer,
+            resource_container,
+            scratch_buffer_1,
+            light_count_for_bvh
+        );
     });
 
     return vren::render_graph_gather(node);

@@ -7,8 +7,8 @@ namespace vren
 {
     struct bvh_node
     {
-        inline static const uint32_t k_leaf_node = 0x80000000;
-        inline static const uint32_t k_invalid_node = 0xB0000000;
+        inline static const uint32_t k_leaf_node = 0xFFFFFFFFu;
+        inline static const uint32_t k_invalid_node = 0xFFFFFFFEu;
 
         glm::vec3 m_min; uint32_t m_next;
         glm::vec3 m_max; uint32_t _pad;
@@ -45,8 +45,7 @@ namespace vren
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,
             vren::vk_utils::buffer const& buffer, // Its size must be at least ::get_buffer_length(leaf_count)
-            uint32_t leaf_count,
-            uint32_t* root_node_idx
+            uint32_t leaf_count
         );
     };
 

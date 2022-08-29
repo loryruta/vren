@@ -39,51 +39,46 @@ void vren::build_bvh::operator()(
     VkCommandBuffer command_buffer,
     vren::resource_container& resource_container,
     vren::vk_utils::buffer const& buffer,
-    uint32_t leaf_count,
-    uint32_t* root_node_idx
+    uint32_t leaf_count // padded_leaf_count
 )
 {
-    assert(vren::is_power_of(leaf_count, 32u));
+    assert(leaf_count >= 32u && vren::is_power_of(leaf_count, 32u));
 
-    uint32_t level_count = leaf_count;
-
-    uint32_t length = calc_bvh_buffer_length(leaf_count);
-
-    if (root_node_idx != nullptr)
-    {
-        *root_node_idx = length - 1;
-    }
+    uint32_t level_node_count = leaf_count;
 
     m_pipeline.bind(command_buffer);
 
-    auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+    auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
     );
-    resource_container.add_resource(descriptor_set);
-    write_descriptor_set(descriptor_set->m_handle.m_descriptor_set, buffer, leaf_count);
+    write_descriptor_set(descriptor_set_0->m_handle.m_descriptor_set, buffer, leaf_count);
 
-    m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
+    m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
-    struct {
+    struct 
+    {
         uint32_t m_src_level_idx;
         uint32_t m_dst_level_idx;
     } push_constants;
 
-    push_constants = {};
+    push_constants = {
+        .m_src_level_idx = 0,
+        .m_dst_level_idx = 0,
+    };
 
-    while (level_count > 1)
+    while (level_node_count > 1)
     {
         push_constants.m_src_level_idx = push_constants.m_dst_level_idx;
-        push_constants.m_dst_level_idx = push_constants.m_src_level_idx + level_count;
+        push_constants.m_dst_level_idx = push_constants.m_src_level_idx + level_node_count;
 
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants));
 
-        uint32_t num_workgroups = vren::divide_and_ceil(level_count, k_workgroup_size);
+        uint32_t num_workgroups = vren::divide_and_ceil(level_node_count, k_workgroup_size);
         m_pipeline.dispatch(command_buffer, num_workgroups, 1, 1);
 
-        level_count >>= 5;
+        level_node_count >>= 5;
 
-        if (level_count > 1)
+        if (level_node_count > 1)
         {
             VkBufferMemoryBarrier buffer_memory_barrier{
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -92,16 +87,20 @@ void vren::build_bvh::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = push_constants.m_dst_level_idx * sizeof(vren::bvh_node),
-                .size = level_count * sizeof(vren::bvh_node)
+                .size = level_node_count * sizeof(vren::bvh_node)
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
         }
     }
+
+    resource_container.add_resource(
+        descriptor_set_0
+    );
 }
 
 uint32_t vren::calc_bvh_padded_leaf_count(uint32_t leaf_count)
 {
-    return vren::round_to_next_power_of(leaf_count, 32u);
+    return leaf_count <= 1 ? 32u : vren::round_to_next_power_of(leaf_count, 32u);
 }
 
 uint32_t vren::calc_bvh_buffer_length(uint32_t leaf_count)

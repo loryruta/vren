@@ -7,10 +7,10 @@
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
-#define UINT32_MAX 0xFFFFFFFFu
+#include <common.glsl>
 
-#define BVH_LEAF_NODE 0x80000000
-#define BVH_INVALID_NODE 0xB0000000
+#define VREN_BVH_LEAF_NODE 0xFFFFFFFFu
+#define VREN_BVH_INVALID_NODE 0xFFFFFFFEu
 
 layout(push_constant) uniform PushConstants
 {
@@ -29,16 +29,6 @@ layout(set = 0, binding = 0) buffer BvhBuffer
 	BvhNode bvh[];
 };
 
-bool is_bvh_leaf_node(BvhNode node)
-{
-	return node.next == BVH_LEAF_NODE;
-}
-
-bool is_bvh_invalid_node(BvhNode node)
-{
-	return node.next == BVH_INVALID_NODE;
-}
-
 void main()
 {
 	if (src_level_idx + gl_GlobalInvocationID.x < dst_level_idx)
@@ -47,7 +37,7 @@ void main()
 	
 		BvhNode parent_node;
 
-		uint subgroup_valid = subgroupBallot(!is_bvh_invalid_node(node)).x;
+		uint subgroup_valid = subgroupBallot(node.next != VREN_BVH_INVALID_NODE).x;
 		if ((subgroup_valid & (1 << gl_SubgroupInvocationID)) != 0)
 		{
 			parent_node._min = subgroupMin(node._min);
@@ -57,7 +47,7 @@ void main()
 		if (gl_LocalInvocationID.x % gl_SubgroupSize == 0)
 		{
 			// If all the children are invalid, then also the parent is invalid. Otherwise make the parent point to the start of the children
-			parent_node.next = subgroup_valid == 0 ? BVH_INVALID_NODE : src_level_idx + gl_GlobalInvocationID.x;
+			parent_node.next = subgroup_valid == 0 ? VREN_BVH_INVALID_NODE : src_level_idx + gl_GlobalInvocationID.x;
 
 			uint subgroup_idx = gl_GlobalInvocationID.x / gl_SubgroupSize;
 			bvh[dst_level_idx + subgroup_idx] = parent_node;
