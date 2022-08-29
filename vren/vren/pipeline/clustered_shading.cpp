@@ -44,6 +44,8 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
         .pNext = nullptr,
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .buffer = allocation_index_buffer.m_buffer.m_handle,
         .offset = 0,
         .size = sizeof(glm::uvec4)
@@ -132,6 +134,8 @@ void vren::clustered_shading::assign_lights::operator()(
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .buffer = assigned_light_buffer.m_buffer.m_handle,
             .offset = 0,
             .size = VK_WHOLE_SIZE
@@ -145,25 +149,29 @@ void vren::clustered_shading::assign_lights::operator()(
             float m_camera_near;
             float m_camera_half_fov_y;
             float m_camera_aspect_ratio;
-            glm::mat4 m_camera_view;
             glm::uint m_bvh_root_index;
+            glm::mat4 m_camera_view;
             glm::uvec2 m_num_tiles;
+            float _pad[2];
         } push_constants;
 
         push_constants = {
             .m_camera_near = camera.m_near_plane,
             .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
             .m_camera_aspect_ratio = camera.m_aspect_ratio,
-            .m_camera_view = camera.get_view(),
             .m_bvh_root_index = light_bvh_root_index,
-            .m_num_tiles = screen / glm::uvec2(32)
+            .m_camera_view = camera.get_view(),
+            .m_num_tiles = glm::uvec2(
+                vren::divide_and_ceil(screen.x, 32u),
+                vren::divide_and_ceil(screen.y, 32u)
+            ),
         };
 
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
         auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
             m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
-            );
+        );
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, allocation_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
         vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, light_bvh_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
@@ -350,6 +358,8 @@ vren::cluster_and_shade::cluster_and_shade(
             .dstAccessMask = NULL,
             .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .image = m_cluster_reference_buffer.get_image(),
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -426,6 +436,8 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .buffer = m_cluster_key_buffer.m_buffer.m_handle,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE
@@ -435,6 +447,8 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .buffer = m_allocation_index_buffer.m_buffer.m_handle,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE
@@ -448,6 +462,8 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                 .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = m_cluster_reference_buffer.get_image(),
                 .subresourceRange = {
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -479,6 +495,8 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .buffer = m_assigned_light_buffer.m_buffer.m_handle,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE

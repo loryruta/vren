@@ -52,15 +52,21 @@ void main()
 	barrier();
 
 	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
+	
 	float frag_z = texture(u_depth_buffer, frag_coord).r;
-	vec4 frag_view_pos = inverse(camera_projection) * vec4(frag_coord, frag_z, 1);
-	frag_view_pos /= frag_view_pos.w;
+
+	vec4 frag_pos = vec4(frag_coord, frag_z, 1);
+	frag_pos.y = 1.0 - frag_pos.y;
+	frag_pos.xy = frag_pos.xy * vec2(2.0) - 1.0;
+
+	frag_pos = inverse(camera_projection) * frag_pos;
+	frag_pos /= frag_pos.w;
+	
+	uint Sy = gl_NumWorkGroups.y;
 
 	uint i = gl_WorkGroupID.x;
 	uint j = gl_WorkGroupID.y;
-
-	uint Sy = gl_NumWorkGroups.y;
-	uint k = uint(floor(log(frag_view_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
+	uint k = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
 
 	if (k < (1 << VREN_CLUSTER_KEY_BIT_COUNT))
 	{

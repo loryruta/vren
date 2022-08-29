@@ -246,7 +246,8 @@ namespace vren_demo
 		uint32_t m_shown_depth_buffer_pyramid_level = 0;
 
 		bool m_show_light_bvh = false;
-		bool m_show_clusters = false;
+		bool m_show_cluster_keys = false;
+		bool m_show_light_assignments = false;
 
 	public:
 		app(GLFWwindow* window);

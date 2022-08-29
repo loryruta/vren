@@ -353,8 +353,11 @@ void vren_demo::ui::show_controls_window()
 		}
 
 		// Clustered shading
+		ImGui::Spacing(); ImGui::Text("Clustered shading"); ImGui::Spacing();
+
 		ImGui::Checkbox("Show point light BVH", &m_app->m_show_light_bvh);
-		ImGui::Checkbox("Show clusters", &m_app->m_show_clusters);
+		ImGui::Checkbox("Show cluster keys", &m_app->m_show_cluster_keys);
+		ImGui::Checkbox("Show light assignments", &m_app->m_show_light_assignments);
 	}
 
 	ImGui::End();

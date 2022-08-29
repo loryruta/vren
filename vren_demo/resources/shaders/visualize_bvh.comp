@@ -21,8 +21,8 @@ struct BvhNode
 	vec3 _max; uint _pad;
 };
 
-#define BVH_LEAF_NODE 0x80000000
-#define BVH_INVALID_NODE 0xB0000000
+#define VREN_BVH_LEAF_NODE 0xFFFFFFFFu
+#define VREN_BVH_INVALID_NODE 0xFFFFFFFEu
 
 layout(set = 0, binding = 0) readonly buffer BvhBuffer
 {
@@ -67,7 +67,7 @@ void main()
         BvhNode node = bvh[node_idx];
   
         uint offset = node_idx * 12 * 2;
-        if (node.next != BVH_INVALID_NODE)
+        if (node.next != VREN_BVH_INVALID_NODE)
         {
             VREN_WRITE_DEBUG_DRAW_BUFFER_AABB(vertices, offset, node._min, node._max, color);
         }

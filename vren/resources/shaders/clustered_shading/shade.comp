@@ -136,7 +136,7 @@ void main()
 			vec3 color = ambient + Lo;
 			color = pbr_gamma_correct(color);
 
-			imageStore(u_output, ivec2(gl_GlobalInvocationID.x, imageSize(u_output).y - gl_GlobalInvocationID.y), vec4(color, 1.0));
+			imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 		}
 	}
 }

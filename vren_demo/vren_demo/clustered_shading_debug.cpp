@@ -18,8 +18,10 @@ vren_demo::visualize_clusters::visualize_clusters(
 vren::render_graph_t vren_demo::visualize_clusters::operator()(
 	vren::render_graph_allocator& render_graph_allocator,
 	glm::uvec2 const& screen,
+	uint32_t mode,
 	vren::vk_utils::combined_image_view const& cluster_reference_buffer,
 	vren::vk_utils::buffer const& cluster_key_buffer,
+	vren::vk_utils::buffer const& assigned_light_buffer,
 	vren::vk_utils::combined_image_view const& output
 )
 {
@@ -34,20 +36,34 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 	node->set_callback([
 		this,
 		screen,
+		mode,
 		&cluster_reference_buffer,
 		&cluster_key_buffer,
+		&assigned_light_buffer,
 		&output
 	](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
-		VkBufferMemoryBarrier buffer_memory_barrier{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.pNext = nullptr,
-			.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-			.buffer = cluster_key_buffer.m_buffer.m_handle,
-			.offset = 0,
-			.size = VK_WHOLE_SIZE
+		VkBufferMemoryBarrier buffer_memory_barriers[]{
+			VkBufferMemoryBarrier{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+				.buffer = cluster_key_buffer.m_buffer.m_handle,
+				.offset = 0,
+				.size = VK_WHOLE_SIZE
+			},
+			VkBufferMemoryBarrier{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+				.buffer = assigned_light_buffer.m_buffer.m_handle,
+				.offset = 0,
+				.size = VK_WHOLE_SIZE
+			},
 		};
+
 		VkImageMemoryBarrier image_memory_barrier{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.pNext = nullptr,
@@ -64,16 +80,33 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 				.layerCount = 1,
 			}
 		};
-		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 1, &image_memory_barrier);
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			NULL,
+			0, nullptr,
+			std::size(buffer_memory_barriers), buffer_memory_barriers,
+			1, &image_memory_barrier
+		);
 
 		m_pipeline.bind(command_buffer);
+
+		struct
+		{
+			uint32_t m_mode;
+		} push_constants;
+		push_constants = {
+			.m_mode = mode,
+		};
+		m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants));
 
 		auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
 			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
 		);
 		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_reference_buffer.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
 		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, output.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, assigned_light_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 3, output.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
 
 		m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 

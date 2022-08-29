@@ -83,19 +83,27 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Light array BVH
 	m_point_light_bvh_buffer([&]()
 	{
-		return vren::vk_utils::alloc_device_only_buffer(
+		vren::vk_utils::buffer buffer = vren::vk_utils::alloc_device_only_buffer(
 			m_context,
 			vren::construct_light_array_bvh::get_required_bvh_buffer_usage_flags(),
 			vren::construct_light_array_bvh::get_required_bvh_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
 		);
+
+		vren::vk_utils::set_name(m_context, buffer, "light_bvh_buffer");
+
+		return buffer;
 	}()),
 	m_point_light_index_buffer([&]()
 	{
-		return vren::vk_utils::alloc_device_only_buffer(
+		vren::vk_utils::buffer buffer = vren::vk_utils::alloc_device_only_buffer(
 			m_context,
 			vren::construct_light_array_bvh::get_required_light_index_buffer_usage_flags(),
 			vren::construct_light_array_bvh::get_required_light_index_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
 		);
+
+		vren::vk_utils::set_name(m_context, buffer, "light_index_buffer");
+
+		return buffer;
 	}()),
 	m_point_light_bvh_draw_buffer([&]()
 	{
@@ -503,6 +511,8 @@ void vren_demo::app::record_commands(
 	}
 
 	// Cluster and shade
+	m_point_light_bvh_root_index = vren::calc_bvh_root_index(light_array.m_point_light_count);
+
 	render_graph.concat(
 		m_cluster_and_shade(
 			m_render_graph_allocator,
@@ -629,15 +639,33 @@ void vren_demo::app::record_commands(
 		);
 	}
 
-	// Show clusters
-	if (m_show_clusters)
+	// Show cluster keys
+	if (m_show_cluster_keys)
 	{
 		render_graph.concat(
 			m_visualize_clusters(
 				m_render_graph_allocator,
 				screen,
+				0,
 				m_cluster_and_shade.m_cluster_reference_buffer,
 				m_cluster_and_shade.m_cluster_key_buffer,
+				m_cluster_and_shade.m_assigned_light_buffer,
+				color_buffer
+			)
+		);
+	}
+
+	// Show light assignment
+	if (m_show_light_assignments)
+	{
+		render_graph.concat(
+			m_visualize_clusters(
+				m_render_graph_allocator,
+				screen,
+				1,
+				m_cluster_and_shade.m_cluster_reference_buffer,
+				m_cluster_and_shade.m_cluster_key_buffer,
+				m_cluster_and_shade.m_assigned_light_buffer,
 				color_buffer
 			)
 		);

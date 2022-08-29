@@ -314,7 +314,6 @@ vren::render_graph_t vren::basic_renderer::render(
 			.offset = {0, 0},
 			.extent = {screen.x, screen.y}
 		};
-
 		VkRenderPassBeginInfo render_pass_begin_info{
 			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 			.renderPass = m_render_pass.m_handle,
@@ -325,9 +324,9 @@ vren::render_graph_t vren::basic_renderer::render(
 
 		VkViewport viewport{
 			.x = 0,
-			.y = 0,
+			.y = (float) screen.y,
 			.width = (float) screen.x,
-			.height = (float) screen.y,
+			.height = -((float) screen.y),
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};

@@ -8,6 +8,16 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
 
+#define VREN_MAX_LIGHTS_PER_CLUSTER 8
+
+#define VREN_DEMO_VISUALIZE_CLUSTER_KEYS 0
+#define VREN_DEMO_VISUALIZE_LIGHT_ASSIGNMENT 1
+
+layout(push_constant) uniform PushConstants
+{
+	uint mode;
+};
+
 layout(set = 0, binding = 0, r32ui) uniform uimage2D u_cluster_references;
 
 layout(set = 0, binding = 1) readonly buffer UniqueClusterKeyBuffer
@@ -15,7 +25,12 @@ layout(set = 0, binding = 1) readonly buffer UniqueClusterKeyBuffer
 	uint cluster_keys[];
 };
 
-layout(set = 0, binding = 2, rgba32f) uniform image2D u_output;
+layout(set = 0, binding = 2) readonly buffer AssignedLightBuffer
+{
+	uint assigned_lights[];
+};
+
+layout(set = 0, binding = 3, rgba32f) uniform image2D u_output;
 
 uint triple32(uint x)
 {
@@ -40,9 +55,31 @@ void main()
 	if (gl_GlobalInvocationID.x < image_size.x && gl_GlobalInvocationID.y < image_size.y)
 	{
 		uint cluster_key_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
-		uint cluster_key = cluster_keys[cluster_key_idx];
 
-		vec3 color = vec3(hash(cluster_key));
-		imageStore(u_output, ivec2(gl_GlobalInvocationID.x, image_size.y - gl_GlobalInvocationID.y), vec4(color, 1.0));
+		vec3 color;
+		if (mode == VREN_DEMO_VISUALIZE_CLUSTER_KEYS)
+		{
+			uint cluster_key = cluster_keys[cluster_key_idx];
+			color = vec3(hash(cluster_key));
+		}
+		else if (mode == VREN_DEMO_VISUALIZE_LIGHT_ASSIGNMENT)
+		{
+			uint assigned_light_count = 0;
+			for (; assigned_light_count < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_count++)
+			{
+				if (assigned_lights[cluster_key_idx * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_count] == UINT32_MAX)
+				{
+					break;
+				}
+			}
+
+			color = vec3(float(assigned_light_count) / float(VREN_MAX_LIGHTS_PER_CLUSTER));
+		}
+		else
+		{
+			color = vec3(1.0, 0, 0);
+		}
+
+		imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 	}
 }

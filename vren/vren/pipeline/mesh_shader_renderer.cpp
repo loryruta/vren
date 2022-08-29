@@ -102,13 +102,14 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 
 		VkViewport viewport{
 			.x = 0,
-			.y = 0,
-			.width = (float) screen.x,
-			.height = (float) gbuffer.m_height,
+			.y = (float) screen.y,
+			.width = (float)screen.x,
+			.height = -((float) screen.y),
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};
 		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
 		vkCmdSetScissor(command_buffer, 0, 1, &render_area);
 
 		m_mesh_shader_draw_pass.render(frame_idx, command_buffer, resource_container, camera_data, draw_buffer, light_array, depth_buffer_pyramid);
