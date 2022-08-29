@@ -101,8 +101,8 @@ void main()
 		cluster_max.w = 1.0;
 
 		mat4 inv_camera_view = inverse(camera_view);
-		cluster_min = inv_camera_view * cluster_min;
-		cluster_max = inv_camera_view * cluster_max;
+		cluster_min = cluster_min * inv_camera_view;
+		cluster_max = cluster_max * inv_camera_view;
 
 		vec4 tmp = cluster_min;
 		cluster_min = min(cluster_min, cluster_max);
@@ -164,9 +164,10 @@ void main()
 			}
 		}
 
+		/*
 		for (; assigned_light_alloc_idx < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_alloc_idx++)
 		{
 			assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = UINT32_MAX;
-		}
+		}*/
 	}
 }
