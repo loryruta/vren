@@ -41,7 +41,6 @@ namespace vren
 		vren::descriptor_pool m_descriptor_pool; // General purpose descriptor pool
 
 		vren::texture_manager m_texture_manager;
-		vren::material_manager m_material_manager;
 
 		// Reduce
 		vren::reduce<glm::uint, vren::ReduceOperationAdd> m_reduce_uint_add;

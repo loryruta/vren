@@ -165,6 +165,10 @@ namespace vren_demo
 		std::unique_ptr<vren::clusterized_model> m_clusterized_model;
 		std::unique_ptr<vren::clusterized_model_draw_buffer> m_clusterized_model_draw_buffer;
 
+		// Material
+		std::array<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_material_buffers;
+		vren::operation_fork<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_material_buffer_fork;
+
 		// Lighting
 		std::array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_arrays;
 		vren::operation_fork<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_light_array_fork;
@@ -234,6 +238,8 @@ namespace vren_demo
 		bool m_show_instanced_meshlets_indices = false;
 		bool m_show_depth_buffer_pyramid = false;
 		uint32_t m_shown_depth_buffer_pyramid_level = 0;
+
+		bool m_show_light_bvh = false;
 
 	public:
 		app(GLFWwindow* window);

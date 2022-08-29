@@ -1,70 +1,65 @@
 #pragma once
 
-#include <functional>
-
-#include <glm/glm.hpp>
-
-#include "base/resource_container.hpp"
+#include "vk_helpers/misc.hpp"
 #include "vk_helpers/buffer.hpp"
-#include "gpu_repr.hpp"
-#include "pipeline/render_graph.hpp"
+#include "vk_helpers/debug_utils.hpp"
+#include "texture_manager.hpp"
 
 namespace vren
 {
 	// Forward decl
 	class context;
 
-	// ------------------------------------------------------------------------------------------------
-	// Material manager
-	// ------------------------------------------------------------------------------------------------
-
-	class material_manager
+	struct material
 	{
-	public:
-		friend vren::toolbox;
+		uint32_t m_base_color_texture_idx;
+		uint32_t m_metallic_roughness_texture_idx;
+	};
 
-	public:
-		static constexpr size_t k_max_material_count = 16384;
-		static constexpr size_t k_max_material_buffer_size = k_max_material_count * sizeof(vren::material); // ~656 KB
+	inline uint32_t k_initial_material_count = 1;
 
+	class material_buffer
+	{
 	private:
 		vren::context const* m_context;
 
-		uint32_t m_buffers_dirty_flags = 0;
-
-		vren::vk_descriptor_set_layout m_descriptor_set_layout;
-		vren::vk_descriptor_pool m_descriptor_pool;
-		vren::vk_utils::buffer m_staging_buffer;
-
 	public:
-		vren::material* m_materials;
-		size_t m_material_count = 0;
+		vren::vk_utils::buffer m_buffer;
+		uint32_t m_material_count = 0;
+
+		inline material_buffer(vren::context const& context) :
+			m_context(&context),
+			m_buffer(vren::vk_utils::alloc_host_visible_buffer(
+				*m_context,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				VREN_MAX_MATERIAL_COUNT * sizeof(vren::material),
+				true
+			))
+		{
+			vren::vk_utils::set_name(context, m_buffer, "material_buffer");
+
+			add_initial_materials();
+		}
 
 	private:
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_buffers;
-		std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_descriptor_sets;
+		inline void add_initial_materials()
+		{
+			vren::material* materials = m_buffer.get_mapped_pointer<vren::material>();
+
+			materials[0] = {
+				// Default material
+				vren::material{
+					.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
+					.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
+				}
+			};
+			m_material_count = k_initial_material_count;
+		}
 
 	public:
-		explicit material_manager(vren::context const& context);
-
-	private:
-		vren::vk_utils::buffer create_staging_buffer();
-		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> create_buffers();
-
-		vren::vk_descriptor_set_layout create_descriptor_set_layout();
-
-		vren::vk_descriptor_pool create_descriptor_pool();
-		std::array<VkDescriptorSet, VREN_MAX_FRAME_IN_FLIGHT_COUNT> allocate_descriptor_sets();
-
-		void write_descriptor_set(uint32_t frame_idx);
-
-		void lazy_initialize();
-
-	public:
-		void request_buffer_sync();
-		vren::render_graph_t sync_buffer(vren::render_graph_allocator& allocator, uint32_t frame_idx);
-
-		VkDescriptorSet get_descriptor_set(uint32_t frame_idx) const;
-		VkBuffer get_buffer(uint32_t frame_idx) const;
+		inline void write_descriptor_set(VkDescriptorSet descriptor_set) const
+		{
+			vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 0, m_buffer.m_buffer.m_handle, m_material_count * sizeof(vren::material), 0);
+		}
 	};
 }

@@ -6,6 +6,7 @@
 #include "gbuffer.hpp"
 #include "camera.hpp"
 #include "light.hpp"
+#include "material.hpp"
 
 namespace vren
 {
@@ -29,8 +30,8 @@ namespace vren
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
-                vren::camera const& camera,
                 glm::uvec2 const& screen,
+                vren::camera const& camera,
                 vren::gbuffer const& gbuffer,
                 vren::vk_utils::depth_buffer_t const& depth_buffer,
                 vren::vk_utils::buffer const& cluster_key_buffer,
@@ -57,12 +58,13 @@ namespace vren
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
-                vren::camera const& camera,
                 glm::uvec2 const& screen,
+                vren::camera const& camera,
                 vren::vk_utils::buffer const& cluster_key_buffer,
                 vren::vk_utils::buffer const& allocation_index_buffer,
                 vren::vk_utils::buffer const& light_bvh_buffer,
                 uint32_t light_bvh_root_index,
+                uint32_t light_count,
                 vren::vk_utils::buffer const& light_index_buffer,
                 vren::vk_utils::buffer const& assigned_light_buffer
             );
@@ -86,13 +88,14 @@ namespace vren
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
-                vren::camera const& camera,
                 glm::uvec2 const& screen,
+                vren::camera const& camera,
                 vren::gbuffer const& gbuffer,
                 vren::vk_utils::depth_buffer_t const& depth_buffer,
                 vren::vk_utils::combined_image_view const& cluster_reference_buffer,
                 vren::vk_utils::buffer const& assigned_light_buffer,
                 vren::light_array const& light_array,
+                vren::material_buffer const& material_buffer,
                 vren::vk_utils::combined_image_view const& output
             );
         };
@@ -127,8 +130,10 @@ namespace vren
             vren::vk_utils::depth_buffer_t const& depth_buffer,
             vren::vk_utils::buffer const& light_bvh_buffer,
             uint32_t light_bvh_root_index,
+            uint32_t light_count,
             vren::vk_utils::buffer const& light_index_buffer,
             vren::light_array const& light_array,
+            vren::material_buffer const& material_buffer,
             vren::vk_utils::combined_image_view const& output
         );
     };

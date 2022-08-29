@@ -61,6 +61,13 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_debug_meshlet_bounds_draw_buffer(m_context),
 	m_debug_projected_meshlet_bounds_draw_buffer(m_context),
 
+	// Material
+	m_material_buffers(
+		vren::create_array<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
+			return vren::material_buffer(m_context);
+		})
+	),
+
 	// Lighting
 	m_light_arrays(
 		vren::create_array<vren::light_array, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
@@ -270,8 +277,19 @@ void vren_demo::app::load_scene(char const* gltf_model_filename)
 
 	vren::tinygltf_parser gltf_parser(m_context);
 
-	vren::model parsed_model; // Intermediate model
-	gltf_parser.load_from_file(gltf_model_filename, parsed_model);
+	vren::model parsed_model{}; // Intermediate model
+
+	std::vector<vren::material> materials{};
+	gltf_parser.load_from_file(gltf_model_filename, parsed_model, vren::k_initial_material_count, materials);
+
+	// Upload materials
+	m_material_buffer_fork.enqueue([materials](vren::material_buffer& material_buffer)
+	{
+		vren::material* material_buffer_ptr = material_buffer.m_buffer.get_mapped_pointer<vren::material>();
+
+		std::memcpy(&material_buffer_ptr[material_buffer.m_material_count], materials.data(), materials.size() * sizeof(vren::material));
+		material_buffer.m_material_count += materials.size();
+	});
 
 	VREN_INFO("[vren_demo] Computing AABB\n");
 
@@ -355,8 +373,8 @@ void vren_demo::app::record_commands(
 	VkMemoryBarrier memory_barrier{
 		.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 		.pNext = nullptr,
-		.srcAccessMask = NULL,
-		.dstAccessMask = NULL
+		.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+		.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
 	};
 	vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 1, &memory_barrier, 0, nullptr, 0, nullptr);
 
@@ -367,6 +385,7 @@ void vren_demo::app::record_commands(
 	);
 
 	vren::light_array& light_array = m_light_arrays.at(frame_idx);
+	vren::material_buffer& material_buffer = m_material_buffers.at(frame_idx);
 
 	// Draw cartesian axes
 	m_debug_draw_buffer.clear();
@@ -377,9 +396,6 @@ void vren_demo::app::record_commands(
 
 	// Draw model AABB
 	//m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
-
-	// Render-graph begin
-	vren::render_graph_builder render_graph(m_render_graph_allocator);
 
 	// Dump profiling data
 	for (uint32_t slot_idx = 0; slot_idx < ProfileSlot_Count; slot_idx++)
@@ -402,11 +418,13 @@ void vren_demo::app::record_commands(
 
 	vren::vk_utils::color_buffer_t& color_buffer = m_color_buffers.at(frame_idx);
 
+	m_light_array_fork.apply(frame_idx, light_array);
+	m_material_buffer_fork.apply(frame_idx, material_buffer);
+
 	auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *m_depth_buffer);
 
-	// Material uploading
-	auto sync_material_buffer = m_context.m_toolbox->m_material_manager.sync_buffer(m_render_graph_allocator, frame_idx);
-	render_graph.concat(sync_material_buffer);
+	// Render-graph begin
+	vren::render_graph_builder render_graph(m_render_graph_allocator);
 
 	// Clear color buffer
 	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
@@ -424,7 +442,7 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_BASIC_RENDERER:
 		if (m_basic_model_draw_buffer)
 		{
-			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, screen, camera_data, light_array, *m_basic_model_draw_buffer, *m_gbuffer, *m_depth_buffer);
+			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, screen, m_camera, light_array, *m_basic_model_draw_buffer, *m_gbuffer, *m_depth_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;
@@ -440,25 +458,6 @@ void vren_demo::app::record_commands(
 	default:
 		break;
 	}
-
-	// Cluster and shade
-	render_graph.concat(
-		m_cluster_and_shade(
-			m_render_graph_allocator,
-			screen,
-			m_camera,
-			*m_gbuffer,
-			*m_depth_buffer,
-			m_point_light_bvh_buffer,
-			m_point_light_bvh_root_index,
-			m_point_light_index_buffer,
-			light_array,
-			color_buffer
-		)
-	);
-
-	// Apply user operations to the light_array
-	m_light_array_fork.apply(frame_idx, light_array);
 
 	if (light_array.m_point_light_count > 0)
 	{
@@ -478,24 +477,45 @@ void vren_demo::app::record_commands(
 			)
 		);
 
-		// Visualize BVH
+		// Cluster and shade
 		render_graph.concat(
-			m_visualize_bvh.write(
+			m_cluster_and_shade(
 				m_render_graph_allocator,
+				screen,
+				m_camera,
+				*m_gbuffer,
+				*m_depth_buffer,
 				m_point_light_bvh_buffer,
-				vren::calc_bvh_level_count(light_array.m_point_light_count),
-				m_point_light_bvh_draw_buffer
+				m_point_light_bvh_root_index,
+				light_array.m_point_light_count,
+				m_point_light_index_buffer,
+				light_array,
+				material_buffer,
+				color_buffer
 			)
 		);
-		m_point_light_bvh_draw_buffer.m_vertex_count = vren::calc_bvh_buffer_length(light_array.m_point_light_count) * 12 * 2;
-		render_graph.concat(
-			m_debug_renderer.render(
-				m_render_graph_allocator,
-				render_target,
-				camera_data,
-				m_point_light_bvh_draw_buffer
-			)
-		);
+
+		// Visualize BVH
+		if (m_show_light_bvh)
+		{
+			render_graph.concat(
+				m_visualize_bvh.write(
+					m_render_graph_allocator,
+					m_point_light_bvh_buffer,
+					vren::calc_bvh_level_count(light_array.m_point_light_count),
+					m_point_light_bvh_draw_buffer
+				)
+			);
+			m_point_light_bvh_draw_buffer.m_vertex_count = vren::calc_bvh_buffer_length(light_array.m_point_light_count) * 12 * 2;
+			render_graph.concat(
+				m_debug_renderer.render(
+					m_render_graph_allocator,
+					render_target,
+					camera_data,
+					m_point_light_bvh_draw_buffer
+				)
+			);
+		}
 	}
 
 	// Build depth buffer pyramid

@@ -61,7 +61,6 @@ struct Material
 {
 	uint base_color_texture_idx;
 	uint metallic_roughness_texture_idx;
-	float _pad[2];
 };
 
 // ------------------------------------------------------------------------------------------------

@@ -161,23 +161,24 @@ void vren::tinygltf_parser::load_textures(std::filesystem::path const& model_fol
 	}
 }
 
-void vren::tinygltf_parser::load_materials(tinygltf::Model const& gltf_model, size_t texture_offset)
+void vren::tinygltf_parser::load_materials(
+	tinygltf::Model const& gltf_model,
+	uint32_t texture_start_index,
+	std::vector<vren::material>& materials
+)
 {
-	auto& material_manager = m_context->m_toolbox->m_material_manager;
-
-	for (auto const& gltf_material : gltf_model.materials)
+	for (tinygltf::Material const& gltf_material : gltf_model.materials)
 	{
 		tinygltf::PbrMetallicRoughness const& gltf_pbr = gltf_material.pbrMetallicRoughness;
 
 		vren::material material{
-			.m_base_color_texture_idx = gltf_pbr.baseColorTexture.index >= 0 ? (uint32_t) (texture_offset + gltf_pbr.baseColorTexture.index) : 0,
-			.m_metallic_roughness_texture_idx = gltf_pbr.metallicRoughnessTexture.index >= 0 ? (uint32_t) (texture_offset + gltf_pbr.metallicRoughnessTexture.index) : 0,
+			.m_base_color_texture_idx = gltf_pbr.baseColorTexture.index >= 0 ? (uint32_t) (texture_start_index + gltf_pbr.baseColorTexture.index) : 0,
+			.m_metallic_roughness_texture_idx = gltf_pbr.metallicRoughnessTexture.index >= 0 ? (uint32_t) (texture_start_index + gltf_pbr.metallicRoughnessTexture.index) : 0,
 			//.m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor),
 			//.m_metallic_factor = (float) gltf_pbr.metallicFactor,
 			//.m_roughness_factor = (float) gltf_pbr.roughnessFactor
 		};
-		material_manager.m_materials[material_manager.m_material_count] = material;
-		material_manager.m_material_count++;
+		materials.push_back(material);
 	}
 }
 
@@ -228,8 +229,8 @@ void vren::tinygltf_parser::linearize_node_hierarchy(
 
 void vren::tinygltf_parser::load_meshes(
 	tinygltf::Model const& gltf_model,
-	size_t material_offset,
-	model& parsed_model
+	uint32_t material_start_index,
+	vren::model& parsed_model
 )
 {
 	// Mesh instances
@@ -325,7 +326,7 @@ void vren::tinygltf_parser::load_meshes(
 			}
 
 			/* Material */
-			mesh.m_material_idx = material_offset + gltf_primitive.material;
+			mesh.m_material_idx = material_start_index + gltf_primitive.material;
 
 			/* Instances */
 			auto instances = instances_by_mesh.at(mesh_idx);
@@ -344,27 +345,29 @@ void vren::tinygltf_parser::load_meshes(
 void vren::tinygltf_parser::load_model(
 	std::filesystem::path const& model_folder,
 	tinygltf::Model const& gltf_model,
-	model& parsed_model
+	vren::model& parsed_model,
+	uint32_t material_start_index,
+	std::vector<vren::material>& materials
 )
 {
-	size_t texture_offset = m_context->m_toolbox->m_texture_manager.m_textures.size();
-	size_t material_offset = m_context->m_toolbox->m_material_manager.m_material_count;
+	uint32_t texture_start_index = (uint32_t) m_context->m_toolbox->m_texture_manager.m_textures.size();
 
 	// Textures
 	load_textures(model_folder, gltf_model);
 	m_context->m_toolbox->m_texture_manager.rewrite_descriptor_set();
 
 	// Materials
-	load_materials(gltf_model, texture_offset);
-	m_context->m_toolbox->m_material_manager.request_buffer_sync();
+	load_materials(gltf_model, texture_start_index, materials);
 
 	// Meshes
-	load_meshes(gltf_model, material_offset, parsed_model);
+	load_meshes(gltf_model, material_start_index, parsed_model);
 }
 
 void vren::tinygltf_parser::load_from_file(
 	std::filesystem::path const& model_filename,
-	model& parsed_model
+	vren::model& parsed_model,
+	uint32_t material_start_index,
+	std::vector<vren::material>& materials
 )
 {
 	tinygltf::TinyGLTF loader;
@@ -400,7 +403,13 @@ void vren::tinygltf_parser::load_from_file(
 		throw std::runtime_error("Scene loading failed");
 	}
 
-	load_model(model_filename.parent_path(), gltf_model, parsed_model);
+	load_model(
+		model_filename.parent_path(),
+		gltf_model,
+		parsed_model,
+		material_start_index,
+		materials
+	);
 
 	VREN_INFO("[tinygltf_parser] Model loaded: {}\n", parsed_model.m_name);
 }

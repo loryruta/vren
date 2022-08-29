@@ -57,7 +57,6 @@ vren::toolbox::toolbox(vren::context const& context) :
 	m_transfer_command_pool(create_transfer_command_pool()),
 	m_descriptor_pool(create_descriptor_pool()),
 	m_texture_manager(context),
-	m_material_manager(context),
 
 	m_reduce_uint_add(context),
 	m_reduce_uint_min(context),
@@ -78,5 +77,4 @@ void vren::toolbox::lazy_initialize()
 	// Initialize here things that needs m_context->m_toolbox to be set and therefore can't be initialized in the `toolbox` constructor
 
 	m_texture_manager.lazy_initialize();
-	m_material_manager.lazy_initialize();
 }

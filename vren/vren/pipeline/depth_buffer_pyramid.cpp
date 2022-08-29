@@ -5,7 +5,6 @@
 #include "toolbox.hpp"
 #include "base/base.hpp"
 #include "vk_helpers/misc.hpp"
-#include "vk_helpers/barrier.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------

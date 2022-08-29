@@ -6,9 +6,10 @@
 #include "tiny_gltf.h"
 
 #include "context.hpp"
+#include "base/operation_fork.hpp"
 #include "vk_helpers/image.hpp"
 #include "texture_manager.hpp"
-#include "gpu_repr.hpp"
+#include "material.hpp"
 
 #include "model.hpp"
 
@@ -23,8 +24,16 @@ namespace vren
 		tinygltf_parser(vren::context const& context);
 
 	private:
-		void load_textures(std::filesystem::path const& model_folder, tinygltf::Model const& gltf_model);
-		void load_materials(tinygltf::Model const& gltf_model, size_t texture_offset);
+		void load_textures(
+			std::filesystem::path const& model_folder,
+			tinygltf::Model const& gltf_model
+		);
+
+		void load_materials(
+			tinygltf::Model const& gltf_model,
+			uint32_t texture_start_index,
+			std::vector<vren::material>& materials
+		);
 
 		void linearize_node_hierarchy(
 			tinygltf::Model const& gltf_model,
@@ -35,20 +44,24 @@ namespace vren
 
 		void load_meshes(
 			tinygltf::Model const& gltf_model,
-			size_t material_offset,
+			uint32_t material_start_index,
 			vren::model& parsed_model
 		);
 
 		void load_model(
 			std::filesystem::path const& model_folder,
 			tinygltf::Model const& gltf_model,
-			vren::model& parsed_model
+			vren::model& parsed_model,
+			uint32_t material_start_index,
+			std::vector<vren::material>& materials
 		);
 
 	public:
 		void load_from_file(
 			std::filesystem::path const& model_filename,
-			vren::model& parsed_model
+			vren::model& parsed_model,
+			uint32_t material_start_index,
+			std::vector<vren::material>& materials
 		);
 	};
 }
