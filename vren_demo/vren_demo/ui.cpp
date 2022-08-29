@@ -352,8 +352,9 @@ void vren_demo::ui::show_controls_window()
 			m_app->m_take_next_render_graph_dump = true;
 		}
 
-		// Point light BVH
+		// Clustered shading
 		ImGui::Checkbox("Show point light BVH", &m_app->m_show_light_bvh);
+		ImGui::Checkbox("Show clusters", &m_app->m_show_clusters);
 	}
 
 	ImGui::End();

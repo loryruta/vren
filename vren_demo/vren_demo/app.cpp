@@ -131,6 +131,8 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Clustered shading
 	m_cluster_and_shade(m_context),
 
+	m_visualize_clusters(m_context),
+
 	// Output
 	m_color_buffers{},
 	m_depth_buffer{},
@@ -477,24 +479,6 @@ void vren_demo::app::record_commands(
 			)
 		);
 
-		// Cluster and shade
-		render_graph.concat(
-			m_cluster_and_shade(
-				m_render_graph_allocator,
-				screen,
-				m_camera,
-				*m_gbuffer,
-				*m_depth_buffer,
-				m_point_light_bvh_buffer,
-				m_point_light_bvh_root_index,
-				light_array.m_point_light_count,
-				m_point_light_index_buffer,
-				light_array,
-				material_buffer,
-				color_buffer
-			)
-		);
-
 		// Visualize BVH
 		if (m_show_light_bvh)
 		{
@@ -517,6 +501,24 @@ void vren_demo::app::record_commands(
 			);
 		}
 	}
+
+	// Cluster and shade
+	render_graph.concat(
+		m_cluster_and_shade(
+			m_render_graph_allocator,
+			screen,
+			m_camera,
+			*m_gbuffer,
+			*m_depth_buffer,
+			m_point_light_bvh_buffer,
+			m_point_light_bvh_root_index,
+			light_array.m_point_light_count,
+			m_point_light_index_buffer,
+			light_array,
+			material_buffer,
+			color_buffer
+		)
+	);
 
 	// Build depth buffer pyramid
 	auto build_depth_buffer_pyramid = m_depth_buffer_reductor.copy_and_reduce(m_render_graph_allocator, *m_depth_buffer, *m_depth_buffer_pyramid);
@@ -545,25 +547,25 @@ void vren_demo::app::record_commands(
 	// Debug meshlets
 	if (m_show_meshlets)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_meshlets_draw_buffer));
+		debug_render_graph.concat(
+			m_debug_renderer.render(
+				m_render_graph_allocator,
+				render_target,
+				camera_data, 
+				m_debug_meshlets_draw_buffer
+			)
+		);
 	}
 
 	// Debug meshlet bounds
 	if (m_show_meshlets_bounds)
 	{
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_meshlet_bounds_draw_buffer));
-	}
-
-	// Debug depth buffer pyramid
-	if (m_show_depth_buffer_pyramid)
-	{
 		debug_render_graph.concat(
-			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+			m_debug_renderer.render(
 				m_render_graph_allocator,
-				*m_depth_buffer_pyramid,
-				m_shown_depth_buffer_pyramid_level,
-				color_buffer,
-				swapchain.m_image_width, swapchain.m_image_height
+				render_target,
+				camera_data,
+				m_debug_meshlet_bounds_draw_buffer
 			)
 		);
 	}
@@ -612,6 +614,34 @@ void vren_demo::app::record_commands(
 	render_graph.concat(
 		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
 	);
+
+	// Debug depth buffer pyramid
+	if (m_show_depth_buffer_pyramid)
+	{
+		debug_render_graph.concat(
+			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+				m_render_graph_allocator,
+				*m_depth_buffer_pyramid,
+				m_shown_depth_buffer_pyramid_level,
+				color_buffer,
+				swapchain.m_image_width, swapchain.m_image_height
+			)
+		);
+	}
+
+	// Show clusters
+	if (m_show_clusters)
+	{
+		render_graph.concat(
+			m_visualize_clusters(
+				m_render_graph_allocator,
+				screen,
+				m_cluster_and_shade.m_cluster_reference_buffer,
+				m_cluster_and_shade.m_cluster_key_buffer,
+				color_buffer
+			)
+		);
+	}
 
 	// Render UI
 	if (m_show_ui)

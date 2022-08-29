@@ -1,0 +1,48 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+#include <common.glsl>
+
+layout(set = 0, binding = 0, r32ui) uniform uimage2D u_cluster_references;
+
+layout(set = 0, binding = 1) readonly buffer UniqueClusterKeyBuffer
+{
+	uint cluster_keys[];
+};
+
+layout(set = 0, binding = 2, rgba32f) uniform image2D u_output;
+
+uint triple32(uint x)
+{
+    x ^= x >> 17;
+    x *= 0xed5ad4bbU;
+    x ^= x >> 11;
+    x *= 0xac4c1b51U;
+    x ^= x >> 15;
+    x *= 0x31848babU;
+    x ^= x >> 14;
+    return x;
+}
+
+float hash(uint x)
+{
+    return float(triple32(x)) / float(0xffffffffU);
+}
+
+void main()
+{
+	ivec2 image_size = imageSize(u_output);
+	if (gl_GlobalInvocationID.x < image_size.x && gl_GlobalInvocationID.y < image_size.y)
+	{
+		uint cluster_key_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
+		uint cluster_key = cluster_keys[cluster_key_idx];
+
+		vec3 color = vec3(hash(cluster_key));
+		imageStore(u_output, ivec2(gl_GlobalInvocationID.x, image_size.y - gl_GlobalInvocationID.y), vec4(color, 1.0));
+	}
+}

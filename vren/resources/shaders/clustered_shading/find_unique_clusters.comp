@@ -15,7 +15,7 @@ layout(push_constant) uniform PushConstants
 {
 	float camera_near;
 	float camera_half_fov_y;
-	vec2 _pad;
+	float _pad[2];
 	mat4 camera_projection;
 };
 
@@ -54,7 +54,8 @@ void main()
 	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
 	float frag_z = texture(u_depth_buffer, frag_coord).r;
 	vec4 frag_view_pos = inverse(camera_projection) * vec4(frag_coord, frag_z, 1);
-	
+	frag_view_pos /= frag_view_pos.w;
+
 	uint i = gl_WorkGroupID.x;
 	uint j = gl_WorkGroupID.y;
 

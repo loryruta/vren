@@ -23,6 +23,7 @@
 #include "point_light_bouncer.hpp"
 #include "ui.hpp"
 #include "visualize_bvh.hpp"
+#include "clustered_shading_debug.hpp"
 
 namespace vren_demo
 {
@@ -195,7 +196,12 @@ namespace vren_demo
 		// Clustered shading
 		vren::cluster_and_shade m_cluster_and_shade;
 
+		vren_demo::visualize_clusters m_visualize_clusters;
+
+		// Color buffer
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
+
+		// Depth buffer
 		std::shared_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;
 
 		// Depth-buffer pyramid
@@ -240,6 +246,7 @@ namespace vren_demo
 		uint32_t m_shown_depth_buffer_pyramid_level = 0;
 
 		bool m_show_light_bvh = false;
+		bool m_show_clusters = false;
 
 	public:
 		app(GLFWwindow* window);
