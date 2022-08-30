@@ -50,6 +50,11 @@ namespace vren_demo
 		}
 	}
 
+	enum clustered_shading_debug_enum_t
+	{
+		ClusteredShadingDebug_NONE =0 ,
+	};
+
 	// ------------------------------------------------------------------------------------------------
 	// Profiling
 	// ------------------------------------------------------------------------------------------------
@@ -196,6 +201,7 @@ namespace vren_demo
 		// Clustered shading
 		vren::cluster_and_shade m_cluster_and_shade;
 
+		vren::debug_renderer_draw_buffer m_demo_camera_clusters_draw_buffer;
 		vren_demo::visualize_clusters m_visualize_clusters;
 
 		// Color buffer
@@ -244,6 +250,8 @@ namespace vren_demo
 		bool m_show_instanced_meshlets_indices = false;
 		bool m_show_depth_buffer_pyramid = false;
 		uint32_t m_shown_depth_buffer_pyramid_level = 0;
+
+		
 
 		bool m_show_light_bvh = false;
 		bool m_show_cluster_keys = false;

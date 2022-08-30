@@ -1,8 +1,10 @@
 #pragma once
 
+#include <vren/camera.hpp>
 #include <vren/vk_helpers/buffer.hpp>
 #include <vren/vk_helpers/image.hpp>
 #include <vren/vk_helpers/shader.hpp>
+#include <vren/pipeline/debug_renderer.hpp>
 #include <vren/pipeline/render_graph.hpp>
 
 namespace vren_demo
@@ -27,4 +29,6 @@ namespace vren_demo
 			vren::vk_utils::combined_image_view const& output
 		);
 	};
+
+	vren::debug_renderer_draw_buffer create_debug_draw_buffer_with_demo_camera_clusters(vren::context const& context);
 }

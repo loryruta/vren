@@ -90,20 +90,22 @@ void main()
 		tile_max.y = 1.0 - tile_max.y;
 		tile_max.xy = tile_max.xy * 2.0 - 1.0;
 
-		float half_fov_tan = tan(camera_half_fov_y);
-		float near_k = camera_near * pow(1 + ((2 * half_fov_tan) / float(num_tiles.y)), float(cluster_ijk.z));
-		float far_k = camera_near * pow(1 + ((2 * half_fov_tan) / float(num_tiles.y)), float(cluster_ijk.z + 1));
+		float tan_half_fov = tan(camera_half_fov_y);
+
+		float near_k = camera_near * pow(1 + ((2 * tan_half_fov) / float(num_tiles.y)), float(cluster_ijk.z));
+		float h_k = (tile_max.y * tan_half_fov * near_k) - (tile_min.y * tan_half_fov * near_k);
+		float far_k = near_k + h_k;
 
 		vec4 cluster_min;
-		cluster_min.x = (tile_min.x * half_fov_tan * camera_aspect_ratio * near_k) / camera_near;
-		cluster_min.y = (tile_min.y * half_fov_tan * near_k) / camera_near;
+		cluster_min.x = tile_min.x * tan_half_fov * camera_aspect_ratio * near_k;
+		cluster_min.y = tile_min.y * tan_half_fov * near_k;
 		cluster_min.z = near_k;
 		cluster_min.w = 1.0;
 
 		vec4 cluster_max;
-		cluster_max.x = (tile_max.x * half_fov_tan * camera_aspect_ratio * far_k) / camera_near;
-		cluster_max.y = (tile_max.y * half_fov_tan * far_k) / camera_near;
-		cluster_max.z = far_k;
+		cluster_max.x = cluster_min.x + h_k;
+		cluster_max.y = cluster_min.y + h_k;
+		cluster_max.z = near_k + h_k;
 		cluster_max.w = 1.0;
 
 		mat4 inv_camera_view = inverse(camera_view);
@@ -114,24 +116,9 @@ void main()
 		cluster_min = min(cluster_min, cluster_max);
 		cluster_max = max(tmp, cluster_max);
 
-		uint assigned_light_alloc_idx = 0;
+		int assigned_light_alloc_idx = 0;
 
 		BvhNode bvh_root_node = bvh[bvh_root_index];
-
-		/*
-		if (gl_GlobalInvocationID.x == 1032)
-		{
-			debugPrintfEXT(
-				"cluster_ijk : %v3u , near_k : %f , far_k : %f , cluster_min : %v4f , cluster_max : %v4f \n",
-				cluster_ijk,
-				near_k,
-				far_k,
-				cluster_min,
-				cluster_max
-			);
-			debugPrintfEXT("root min : %v3f , root max : %v3f \n", bvh_root_node._min, bvh_root_node._max);
-		}*/
-		
 		if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh_root_node._min, bvh_root_node._max)) // BVH root test
 		{
 			uint stack[VREN_MAX_STACK_DEPTH];
@@ -139,18 +126,24 @@ void main()
 			uint node_addr = bvh_root_index - 32; // Start from first level after root
 
 			bool keep_running = true;
+			bool advance;
+
 			while (keep_running)
 			{
 				BvhNode node = bvh[node_addr];
+
+				advance = true;
+
 				if (node.next != VREN_BVH_INVALID_NODE && test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max))
 				{
 					if (node.next == VREN_BVH_LEAF_NODE)
 					{
 						uint point_light_idx = light_indices[node_addr].y;
 
-						uint assigned_light_idx = gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx;
-						assigned_lights[assigned_light_idx] = point_light_idx;
+						assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = point_light_idx;
 						assigned_light_alloc_idx++;
+						
+						advance = true;
 
 						if (assigned_light_alloc_idx >= VREN_MAX_LIGHTS_PER_CLUSTER)
 						{
@@ -163,14 +156,18 @@ void main()
 						// Push
 						stack[stack_ptr] = node_addr;
 						stack_ptr++;
+						node_addr = node.next;
+
+						advance = false;
 					}
 				}
-				else
+
+				// Advance
+				if (advance)
 				{
-					// Advance
 					node_addr++;
 
-					while ((node_addr - 1) % 32 == 0) // After being incremented the module is returned to 0, so the 32 row is finished
+					while (node_addr % 32 == 0)
 					{
 						if (stack_ptr == 0)
 						{
@@ -184,7 +181,7 @@ void main()
 						node_addr++;
 					}
 				}
-			}
+			} // while
 		}
 	}
 }

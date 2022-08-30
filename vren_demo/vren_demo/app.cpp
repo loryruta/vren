@@ -139,6 +139,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Clustered shading
 	m_cluster_and_shade(m_context),
 
+	m_demo_camera_clusters_draw_buffer(vren_demo::create_debug_draw_buffer_with_demo_camera_clusters(m_context)),
 	m_visualize_clusters(m_context),
 
 	// Output
@@ -185,7 +186,6 @@ void vren_demo::app::late_initialize()
 
 		light_array.m_directional_light_count = 1;
 	});
-
 }
 
 void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
@@ -469,9 +469,9 @@ void vren_demo::app::record_commands(
 		break;
 	}
 
+	// Construct light_array BVH
 	if (light_array.m_point_light_count > 0)
 	{
-		// Construct light_array BVH
 		render_graph.concat(
 			m_profiler.profile(
 				m_render_graph_allocator,
@@ -486,28 +486,6 @@ void vren_demo::app::record_commands(
 				vren_demo::ProfileSlot_CONSTRUCT_LIGHT_ARRAY_BVH
 			)
 		);
-
-		// Visualize BVH
-		if (m_show_light_bvh)
-		{
-			render_graph.concat(
-				m_visualize_bvh.write(
-					m_render_graph_allocator,
-					m_point_light_bvh_buffer,
-					vren::calc_bvh_level_count(light_array.m_point_light_count),
-					m_point_light_bvh_draw_buffer
-				)
-			);
-			m_point_light_bvh_draw_buffer.m_vertex_count = vren::calc_bvh_buffer_length(light_array.m_point_light_count) * 12 * 2;
-			render_graph.concat(
-				m_debug_renderer.render(
-					m_render_graph_allocator,
-					render_target,
-					camera_data,
-					m_point_light_bvh_draw_buffer
-				)
-			);
-		}
 	}
 
 	// Cluster and shade
@@ -539,6 +517,38 @@ void vren_demo::app::record_commands(
 
 	// Debug general purpose objects
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
+
+	// Debug camera clusters
+	debug_render_graph.concat(
+		m_debug_renderer.render(
+			m_render_graph_allocator,
+			render_target,
+			camera_data,
+			m_demo_camera_clusters_draw_buffer
+		)
+	);
+
+	// Visualize light BVH
+	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
+	{
+		render_graph.concat(
+			m_visualize_bvh.write(
+				m_render_graph_allocator,
+				m_point_light_bvh_buffer,
+				vren::calc_bvh_level_count(light_array.m_point_light_count),
+				m_point_light_bvh_draw_buffer
+			)
+		);
+		m_point_light_bvh_draw_buffer.m_vertex_count = vren::calc_bvh_buffer_length(light_array.m_point_light_count) * 12 * 2;
+		render_graph.concat(
+			m_debug_renderer.render(
+				m_render_graph_allocator,
+				render_target,
+				camera_data,
+				m_point_light_bvh_draw_buffer
+			)
+		);
+	}
 
 	// Debug point lights
 	if (light_array.m_point_light_count > 0)

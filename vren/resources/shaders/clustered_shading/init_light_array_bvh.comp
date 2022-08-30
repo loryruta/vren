@@ -50,11 +50,11 @@ void main()
 
 		node._min = point_light_positions[point_light_idx].xyz - vec3(point_light.intensity);
 		node._max = point_light_positions[point_light_idx].xyz + vec3(point_light.intensity);
-		node.next = VREN_BVH_LEAF_NODE; // Leaf node
+		node.next = VREN_BVH_LEAF_NODE;
 	}
 	else
 	{
-		node.next = VREN_BVH_INVALID_NODE; // Invalid node
+		node.next = VREN_BVH_INVALID_NODE;
 	}
 
 	if (gl_GlobalInvocationID.x < bvh.length())

@@ -31,6 +31,7 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 	node->set_dst_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 	// cluster_reference_buffer isn't part of the render_graph (it's an internal buffer), we put a generic barrier before using it
+	// Same for assigned_light_buffer
 	node->add_image({ .m_image = output.get_image(), .m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT, .m_mip_level = 0, .m_layer = 0, }, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT);
 
 	node->set_callback([
@@ -120,4 +121,178 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 	});
 
 	return vren::render_graph_gather(node);
+}
+
+
+
+vren::debug_renderer_draw_buffer vren_demo::create_debug_draw_buffer_with_demo_camera_clusters(vren::context const& context)
+{
+	const uint32_t k_camera_frustum_color = 0xffffff;
+	const uint32_t k_camera_plane_color = 0xffffff;
+	const uint32_t k_cluster_color = 0xffffff;
+	const uint32_t k_cluster_count = 1024;
+
+	const glm::uvec2 k_num_tiles(
+		vren::divide_and_ceil(1920, 32),
+		vren::divide_and_ceil(1080, 32)
+	);
+
+	vren::camera camera{
+		.m_near_plane = 0.1f,
+		.m_far_plane = 10.0f,
+	};
+
+	glm::mat4 inv_view = glm::inverse(camera.get_view());
+	glm::mat4 inv_proj = glm::inverse(camera.get_projection());
+
+	auto to_world_space = [&](glm::vec3 const& ndc_position)
+	{
+		glm::vec4 tmp = inv_proj * glm::vec4(ndc_position, 1.0f);
+		tmp /= tmp.w;
+		return inv_view * tmp;
+	};
+
+	float tan_half_fov = glm::tan(camera.m_fov_y / 2.0f);
+	
+	vren::debug_renderer_draw_buffer draw_buffer(context);
+
+	// Frustum border
+	draw_buffer.add_line({ .m_from = camera.m_position, .m_to = to_world_space(glm::vec3(1.0f, 1.0f, 1.0f)), .m_color = k_camera_frustum_color, });
+	draw_buffer.add_line({ .m_from = camera.m_position, .m_to = to_world_space(glm::vec3(-1.0f, 1.0f, 1.0f)), .m_color = k_camera_frustum_color, });
+	draw_buffer.add_line({ .m_from = camera.m_position, .m_to = to_world_space(glm::vec3(1.0f, -1.0f, 1.0f)), .m_color = k_camera_frustum_color, });
+	draw_buffer.add_line({ .m_from = camera.m_position, .m_to = to_world_space(glm::vec3(-1.0f, -1.0f, 1.0f)), .m_color = k_camera_frustum_color, });
+
+	// Near plane
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(1.0f, 1.0f, 0.0f)), .m_to = to_world_space(glm::vec3(1.0f, -1.0f, 0.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(1.0f, -1.0f, 0.0f)), .m_to = to_world_space(glm::vec3(-1.0f, -1.0f, 0.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(-1.0f, -1.0f, 0.0f)), .m_to = to_world_space(glm::vec3(-1.0f, 1.0f, 0.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(-1.0f, 1.0f, 0.0f)), .m_to = to_world_space(glm::vec3(1.0f, 1.0f, 0.0f)), .m_color = k_camera_plane_color, });
+
+	// Far plane
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(1.0f, 1.0f, 1.0f)), .m_to = to_world_space(glm::vec3(1.0f, -1.0f, 1.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(1.0f, -1.0f, 1.0f)), .m_to = to_world_space(glm::vec3(-1.0f, -1.0f, 1.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(-1.0f, -1.0f, 1.0f)), .m_to = to_world_space(glm::vec3(-1.0f, 1.0f, 1.0f)), .m_color = k_camera_plane_color, });
+	draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(-1.0f, 1.0f, 1.0f)), .m_to = to_world_space(glm::vec3(1.0f, 1.0f, 1.0f)), .m_color = k_camera_plane_color, });
+
+	/*
+	for (uint32_t x = 0; x < 5; x++)
+	{
+		for (uint32_t y = 0; y < 5; y++)
+		{
+			glm::vec2
+				tile_min{ 10 + x, 10 + y },
+				tile_max = tile_min + 1.0f;
+
+			tile_min /= num_tiles;
+			tile_min.y = (1.0f - tile_min.y) * 2.0f - 1.0f;
+			tile_min.x = tile_min.x * 2.0f - 1.0f;
+
+			tile_max /= num_tiles;
+			tile_max.y = (1.0f - tile_max.y) * 2.0f - 1.0f;
+			tile_max.x = tile_max.x * 2.0f - 1.0f;
+
+			draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(tile_min.x, tile_min.y, 0.0f)), .m_to = to_world_space(glm::vec3(tile_min.x, tile_max.y, 0.0f)), .m_color = camera_plane_color, });
+			draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(tile_min.x, tile_max.y, 0.0f)), .m_to = to_world_space(glm::vec3(tile_max.x, tile_max.y, 0.0f)), .m_color = camera_plane_color, });
+			draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(tile_max.x, tile_max.y, 0.0f)), .m_to = to_world_space(glm::vec3(tile_max.x, tile_min.y, 0.0f)), .m_color = camera_plane_color, });
+			draw_buffer.add_line({ .m_from = to_world_space(glm::vec3(tile_max.x, tile_min.y, 0.0f)), .m_to = to_world_space(glm::vec3(tile_min.x, tile_min.y, 0.0f)), .m_color = camera_plane_color, });
+		}
+	}
+	*/
+
+	/*
+	float tile_z = 0.2f;
+	while (tile_z < 10.0f)
+	{
+		for (uint32_t x = 0; x < 3; x++)
+		{
+			for (uint32_t y = 0; y < 3; y++)
+			{
+				glm::vec2
+					tile_min{ 10 + x, 10 + y },
+					tile_max = tile_min + 1.0f;
+
+				tile_min /= num_tiles;
+				tile_min.y = (1.0f - tile_min.y) * 2.0f - 1.0f;
+				tile_min.x = tile_min.x * 2.0f - 1.0f;
+
+				glm::vec4 cluster_min{};
+				cluster_min.x = tile_min.x * tan_half_fov * tile_z * camera.m_aspect_ratio;
+				cluster_min.y = tile_min.y * tan_half_fov * tile_z;
+				cluster_min.z = tile_z;
+				cluster_min.w = 1.0f;
+
+				tile_max /= num_tiles;
+				tile_max.y = (1.0f - tile_max.y) * 2.0f - 1.0f;
+				tile_max.x = tile_max.x * 2.0f - 1.0f;
+
+				glm::vec4 cluster_max{};
+				cluster_max.x = tile_max.x * tan_half_fov * tile_z * camera.m_aspect_ratio;
+				cluster_max.y = tile_max.y * tan_half_fov * tile_z;
+				cluster_max.z = tile_z;
+				cluster_max.w = 1.0f;
+
+				draw_buffer.add_line({ .m_from = inv_view * glm::vec4(cluster_min.x, cluster_min.y, tile_z, 0.0f), .m_to = inv_view * glm::vec4(cluster_min.x, cluster_max.y, tile_z, 0.0f), .m_color = camera_plane_color, });
+				draw_buffer.add_line({ .m_from = inv_view * glm::vec4(cluster_min.x, cluster_max.y, tile_z, 0.0f), .m_to = inv_view * glm::vec4(cluster_max.x, cluster_max.y, tile_z, 0.0f), .m_color = camera_plane_color, });
+				draw_buffer.add_line({ .m_from = inv_view * glm::vec4(cluster_max.x, cluster_max.y, tile_z, 0.0f), .m_to = inv_view * glm::vec4(cluster_max.x, cluster_min.y, tile_z, 0.0f), .m_color = camera_plane_color, });
+				draw_buffer.add_line({ .m_from = inv_view * glm::vec4(cluster_max.x, cluster_min.y, tile_z, 0.0f), .m_to = inv_view * glm::vec4(cluster_min.x, cluster_min.y, tile_z, 0.0f), .m_color = camera_plane_color, });
+			}
+		}
+
+		tile_z += 0.05f;
+	}*/
+
+	// Clusters
+	for (uint32_t i = 0; i < k_cluster_count; i++)
+	{
+		float sample_z = (float(std::rand()) / float(RAND_MAX)) * (camera.m_far_plane - camera.m_near_plane) + camera.m_near_plane;
+
+		glm::uvec3 cluster_ijk{};
+		//cluster_ijk.x = 20;
+		//cluster_ijk.y = 6;
+		//cluster_ijk.z = 23;//glm::uint(glm::floor(glm::log(sample_z / camera.m_near_plane) / glm::log(1.0f + (2.0f * tan_half_fov) / float(num_tiles.y))));
+		cluster_ijk.x = std::rand() % k_num_tiles.x;
+		cluster_ijk.y = std::rand() % k_num_tiles.y;
+		cluster_ijk.z = 128;//std::rand() % 1024;
+
+		glm::vec2 tile_min = glm::vec2(cluster_ijk.x, cluster_ijk.y);
+		tile_min /= k_num_tiles;
+		tile_min.y = (1.0 - tile_min.y) * 2.0 - 1.0;
+		tile_min.x = tile_min.x * 2.0 - 1.0;
+
+		glm::vec2 tile_max = glm::vec2(cluster_ijk.x, cluster_ijk.y) + glm::vec2(1.0f);
+		tile_max /= k_num_tiles;
+		tile_max.y = (1.0 - tile_max.y) * 2.0 - 1.0;
+		tile_max.x = tile_max.x * 2.0 - 1.0;
+
+		glm::vec2 tmp = tile_min;
+		tile_min = glm::min(tile_min, tile_max);
+		tile_max = glm::max(tile_max, tmp);
+
+		float near_k = camera.m_near_plane * glm::pow(1.0f + ((2.0f * tan_half_fov) / float(k_num_tiles.y)), float(cluster_ijk.z));
+		float h_k = (tile_max.y * tan_half_fov * near_k) - (tile_min.y * tan_half_fov * near_k);
+		float far_k = near_k + h_k;
+
+		glm::vec4 cluster_min{};
+		cluster_min.x = tile_min.x * tan_half_fov * camera.m_aspect_ratio * near_k;
+		cluster_min.y = tile_min.y * tan_half_fov * near_k;
+		cluster_min.z = near_k;
+		cluster_min.w = 1.0;
+
+		glm::vec4 cluster_max{};
+		cluster_max.x = cluster_min.x + h_k;
+		cluster_max.y = cluster_min.y + h_k;
+		cluster_max.z = near_k + h_k; // far_k
+		cluster_max.w = 1.0;
+
+		cluster_min = inv_view * cluster_min;
+		cluster_max = inv_view * cluster_max;
+
+		glm::vec4 tmp_1 = cluster_min;
+		cluster_min = glm::min(cluster_min, cluster_max);
+		cluster_max = glm::max(tmp_1, cluster_max);
+
+		draw_buffer.add_cube({ .m_min = cluster_min, .m_max = cluster_max, .m_color = k_cluster_color, });
+	}
+
+	return draw_buffer;
 }

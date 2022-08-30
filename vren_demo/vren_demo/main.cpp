@@ -21,6 +21,8 @@ int main(int argc, char* argv[])
 	setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout/stderr buffering
 	setvbuf(stderr, NULL, _IONBF, 0);
 
+	std::srand(std::time(nullptr));
+
 	// Command-line arguments processing
 	if (argc != (1 + 1))
 	{
