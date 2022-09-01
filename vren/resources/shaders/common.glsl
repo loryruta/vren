@@ -1,5 +1,5 @@
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef VREN_COMMON_H_
+#define VREN_COMMON_H_
 
 #define UINT32_MAX 0xFFFFFFFFu
 #define INF 1e35
@@ -92,4 +92,4 @@ struct DebugDrawBufferVertex
 	uint color;
 };
 
-#endif // _COMMON_H
+#endif // VREN_COMMON_H_

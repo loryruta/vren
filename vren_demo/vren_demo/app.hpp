@@ -254,6 +254,7 @@ namespace vren_demo
 		
 
 		bool m_show_light_bvh = false;
+		bool m_show_test_camera_clusters = false;
 		bool m_show_cluster_keys = false;
 		bool m_show_light_assignments = false;
 

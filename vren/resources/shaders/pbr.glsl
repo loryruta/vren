@@ -1,5 +1,5 @@
-#ifndef _VREN_PBR_H
-#define _VREN_PBR_H
+#ifndef VREN_PBR_H_
+#define VREN_PBR_H_
 
 #include <common.glsl>
 
@@ -110,4 +110,4 @@ vec3 pbr_gamma_correct(vec3 color)
     return pow(color, vec3(1.0 / 2.2));
 }
 
-#endif
+#endif // VREN_PBR_H_

@@ -518,16 +518,6 @@ void vren_demo::app::record_commands(
 	// Debug general purpose objects
 	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
 
-	// Debug camera clusters
-	debug_render_graph.concat(
-		m_debug_renderer.render(
-			m_render_graph_allocator,
-			render_target,
-			camera_data,
-			m_demo_camera_clusters_draw_buffer
-		)
-	);
-
 	// Visualize light BVH
 	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
 	{
@@ -634,6 +624,19 @@ void vren_demo::app::record_commands(
 	render_graph.concat(
 		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
 	);
+
+	// Show test camera clusters
+	if (m_show_test_camera_clusters)
+	{
+		debug_render_graph.concat(
+			m_debug_renderer.render(
+				m_render_graph_allocator,
+				render_target,
+				camera_data,
+				m_demo_camera_clusters_draw_buffer
+			)
+		);
+	}
 
 	// Debug depth buffer pyramid
 	if (m_show_depth_buffer_pyramid)
