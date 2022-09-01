@@ -8,87 +8,9 @@
 
 vren::basic_renderer::basic_renderer(vren::context const& context) :
 	m_context(&context),
-	m_render_pass(create_render_pass()),
 	m_pipeline(create_graphics_pipeline())
 {
 	vren::vk_utils::set_name(*m_context, m_pipeline, "vertex_pipeline");
-}
-
-vren::vk_render_pass vren::basic_renderer::create_render_pass()
-{
-	VkAttachmentDescription attachments[]{
-		{ // gBuffer normal
-			.format = VK_FORMAT_R16G16B16A16_SFLOAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		},
-		{ // gBuffer texcoord
-			.format = VK_FORMAT_R32G32_SFLOAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		},
-		{ // gBuffer material index
-			.format = VK_FORMAT_R16_UINT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		},
-		{ // Depth buffer
-			.format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		}
-	};
-
-	VkAttachmentReference color_attachment_references[]{
-		{ .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-		{ .attachment = 1, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-		{ .attachment = 2, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-	};
-	
-	VkAttachmentReference depth_attachment_reference{
-		.attachment = 3, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-
-	VkSubpassDescription subpass{
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.colorAttachmentCount = std::size(color_attachment_references),
-		.pColorAttachments = color_attachment_references,
-		.pDepthStencilAttachment = &depth_attachment_reference,
-	};
-
-	VkRenderPassCreateInfo render_pass_info{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.attachmentCount = std::size(attachments),
-		.pAttachments = attachments,
-		.subpassCount = 1,
-		.pSubpasses = &subpass,
-	};
-	VkRenderPass render_pass;
-	VREN_CHECK(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass), m_context);
-
-	vren::vk_utils::set_name(*m_context, render_pass, "basic_renderer_render_pass");
-
-	return vren::vk_render_pass(*m_context, render_pass);
 }
 
 vren::pipeline vren::basic_renderer::create_graphics_pipeline()
@@ -213,7 +135,6 @@ vren::pipeline vren::basic_renderer::create_graphics_pipeline()
 	};
 
 	// Pipeline rendering
-	/*
 	VkFormat color_attachment_formats[]{
 		VK_FORMAT_R16G16B16A16_SFLOAT,
 		VK_FORMAT_R32G32_SFLOAT,
@@ -227,7 +148,7 @@ vren::pipeline vren::basic_renderer::create_graphics_pipeline()
 		.pColorAttachmentFormats = color_attachment_formats,
 		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
-	};*/
+	};
 
 	char const* vertex_shader_path = ".vren/resources/shaders/basic_draw.vert.spv";
 	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(*m_context, vertex_shader_path);
@@ -257,8 +178,8 @@ vren::pipeline vren::basic_renderer::create_graphics_pipeline()
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		nullptr,
-		m_render_pass.m_handle,
+		&pipeline_rendering_info,
+		VK_NULL_HANDLE,
 		0
 	);
 }
@@ -297,30 +218,69 @@ vren::render_graph_t vren::basic_renderer::render(
 		vren::resource_container& resource_container
 	)
 	{
-		// Create temporary framebuffer
-		VkImageView framebuffer_attachments[]{
-			gbuffer.m_normal_buffer.get_image_view(),
-			gbuffer.m_texcoord_buffer.get_image_view(),
-			gbuffer.m_material_index_buffer.get_image_view(),
-			depth_buffer.get_image_view(),
-		};
-		auto framebuffer = std::make_shared<vren::vk_framebuffer>(
-			vren::vk_utils::create_framebuffer(*m_context, m_render_pass.m_handle, screen.x, screen.y, framebuffer_attachments)
-		);
-		resource_container.add_resource(framebuffer);
-
-		// Begin render pass
 		VkRect2D render_area = {
 			.offset = {0, 0},
 			.extent = {screen.x, screen.y}
 		};
-		VkRenderPassBeginInfo render_pass_begin_info{
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-			.renderPass = m_render_pass.m_handle,
-			.framebuffer = framebuffer->m_handle,
-			.renderArea = render_area,
+
+		// GBuffer
+		VkRenderingAttachmentInfoKHR color_attachments[]{
+			{ // Normal buffer
+				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+				.pNext = nullptr,
+				.imageView = gbuffer.m_normal_buffer.get_image_view(),
+				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.resolveMode = VK_RESOLVE_MODE_NONE,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			},
+			{ // Texcoord buffer
+				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+				.pNext = nullptr,
+				.imageView = gbuffer.m_texcoord_buffer.get_image_view(),
+				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.resolveMode = VK_RESOLVE_MODE_NONE,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			},
+			{ // Material index buffer
+				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+				.pNext = nullptr,
+				.imageView = gbuffer.m_material_index_buffer.get_image_view(),
+				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.resolveMode = VK_RESOLVE_MODE_NONE,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			},
 		};
-		vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+		// Depth buffer
+		VkRenderingAttachmentInfoKHR depth_buffer_attachment{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = depth_buffer.get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE
+		};
+
+		// Begin rendering
+		VkRenderingInfoKHR rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+			.pNext = nullptr,
+			.flags = NULL,
+			.renderArea = render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = std::size(color_attachments),
+			.pColorAttachments = color_attachments,
+			.pDepthAttachment = &depth_buffer_attachment,
+			.pStencilAttachment = nullptr
+		};
+		vkCmdBeginRendering(command_buffer, &rendering_info);
+
+		m_pipeline.bind(command_buffer);
 
 		VkViewport viewport{
 			.x = 0,
@@ -331,10 +291,7 @@ vren::render_graph_t vren::basic_renderer::render(
 			.maxDepth = 1.0f
 		};
 		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
 		vkCmdSetScissor(command_buffer, 0, 1, &render_area);
-
-		m_pipeline.bind(command_buffer);
 
 		struct
 		{
@@ -369,8 +326,8 @@ vren::render_graph_t vren::basic_renderer::render(
 			);
 		}
 
-		// End render pass
-		vkCmdEndRenderPass(command_buffer);
+		// End rendering
+		vkCmdEndRendering(command_buffer);
 	});
 	return vren::render_graph_gather(node);
 }

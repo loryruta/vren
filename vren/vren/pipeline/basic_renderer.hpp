@@ -21,8 +21,7 @@ namespace vren
 	{
 	private:
 		vren::context const* m_context;
-		
-		vren::vk_render_pass m_render_pass;
+
 		vren::pipeline m_pipeline;
 
 	public:

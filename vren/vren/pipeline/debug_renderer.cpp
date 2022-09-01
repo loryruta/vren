@@ -126,8 +126,7 @@ void vren::debug_renderer_draw_buffer::add_cubes(vren::debug_renderer_cube const
 vren::debug_renderer::debug_renderer(vren::context const& ctx) :
 	m_context(&ctx),
 	m_pipeline(create_graphics_pipeline(/* depth_test */ true)),
-	m_no_depth_test_pipeline(create_graphics_pipeline(false)),
-	m_render_pass(create_render_pass())
+	m_no_depth_test_pipeline(create_graphics_pipeline(false))
 {
 	vren::vk_utils::set_name(*m_context, m_pipeline, "debug_renderer_pipeline");
 	vren::vk_utils::set_name(*m_context, m_no_depth_test_pipeline, "debug_renderer_no_depth_test_pipeline");
@@ -246,7 +245,6 @@ vren::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 	};
 
 	// Pipeline rendering
-	/*
 	VkFormat color_attachment_formats[] {
 		VREN_COLOR_BUFFER_OUTPUT_FORMAT,
 	};
@@ -258,7 +256,7 @@ vren::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 		.pColorAttachmentFormats = color_attachment_formats,
 		.depthAttachmentFormat = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
 		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
-	};*/
+	};
 
 	//
 	vren::shader_module vert_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/debug_draw.vert.spv");
@@ -284,61 +282,10 @@ vren::pipeline vren::debug_renderer::create_graphics_pipeline(bool depth_test)
 		&depth_stencil_info,
 		&color_blend_info,
 		&dynamic_state_info,
-		nullptr,
-		m_render_pass.m_handle,
+		&pipeline_rendering_info,
+		VK_NULL_HANDLE,
 		0
 	);
-}
-
-vren::vk_render_pass vren::debug_renderer::create_render_pass()
-{
-	VkAttachmentDescription attachments[]{
-		{ // Color buffer
-			.format = VREN_COLOR_BUFFER_OUTPUT_FORMAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		},
-		{ // Depth buffer
-			.format = VREN_DEPTH_BUFFER_OUTPUT_FORMAT,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		}
-	};
-
-	VkAttachmentReference color_attachment_references[]{
-		{.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-	};
-
-	VkAttachmentReference depth_attachment_reference{
-		.attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-
-	VkSubpassDescription subpass{
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.colorAttachmentCount = std::size(color_attachment_references),
-		.pColorAttachments = color_attachment_references,
-		.pDepthStencilAttachment = &depth_attachment_reference,
-	};
-
-	VkRenderPassCreateInfo render_pass_info{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.attachmentCount = std::size(attachments),
-		.pAttachments = attachments,
-		.subpassCount = 1,
-		.pSubpasses = &subpass,
-	};
-	VkRenderPass render_pass;
-	VREN_CHECK(vkCreateRenderPass(m_context->m_device, &render_pass_info, nullptr, &render_pass), m_context);
-
-	vren::vk_utils::set_name(*m_context, render_pass, "debug_renderer_render_pass");
-
-	return vren::vk_render_pass(*m_context, render_pass);
 }
 
 vren::render_graph_t vren::debug_renderer::render(
@@ -374,39 +321,51 @@ vren::render_graph_t vren::debug_renderer::render(
 		   return;
 		}
 
-		VkExtent2D screen = render_target.m_render_area.extent;
-
-		// Create temporary framebuffer
-		VkImageView framebuffer_attachments[]{
-			render_target.m_color_buffer->get_image_view(),
-			render_target.m_depth_buffer->get_image_view(),
-		};
-		auto framebuffer = std::make_shared<vren::vk_framebuffer>(
-			vren::vk_utils::create_framebuffer(*m_context, m_render_pass.m_handle, screen.width, screen.height, framebuffer_attachments)
-		);
-		resource_container.add_resource(framebuffer);
-
-		// Begin render pass
-		VkRect2D render_area = {
-			.offset = {0, 0},
-			.extent = {screen.width, screen.height}
+		// GBuffer
+		VkRenderingAttachmentInfoKHR color_attachments[]{
+			{ // Normal buffer
+				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+				.pNext = nullptr,
+				.imageView = render_target.m_color_buffer->get_image_view(),
+				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.resolveMode = VK_RESOLVE_MODE_NONE,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			},
 		};
 
-		VkRenderPassBeginInfo render_pass_begin_info{
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-			.renderPass = m_render_pass.m_handle,
-			.framebuffer = framebuffer->m_handle,
-			.renderArea = render_area,
+		// Depth buffer
+		VkRenderingAttachmentInfoKHR depth_buffer_attachment{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = render_target.m_depth_buffer->get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE
 		};
-		vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+		// Begin rendering
+		VkRenderingInfoKHR rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+			.pNext = nullptr,
+			.flags = NULL,
+			.renderArea = render_target.m_render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = std::size(color_attachments),
+			.pColorAttachments = color_attachments,
+			.pDepthAttachment = &depth_buffer_attachment,
+			.pStencilAttachment = nullptr
+		};
+		vkCmdBeginRendering(command_buffer, &rendering_info);
+
+		// Bind pipeline
+		vren::pipeline& pipeline = world_space ? m_pipeline : m_no_depth_test_pipeline;
+		pipeline.bind(command_buffer);
 
 		vkCmdSetViewport(command_buffer, 0, 1, &render_target.m_viewport);
 		vkCmdSetScissor(command_buffer, 0, 1, &render_target.m_render_area);
-
-		vren::pipeline& pipeline = world_space ? m_pipeline : m_no_depth_test_pipeline;
-
-		// Bind pipeline
-		pipeline.bind(command_buffer);
 
 		// Camera
 		if (world_space)
@@ -433,7 +392,8 @@ vren::render_graph_t vren::debug_renderer::render(
 
 		vkCmdDraw(command_buffer, draw_buffer.m_vertex_count, 1, 0, 0);
 
-		vkCmdEndRenderPass(command_buffer);
+		// End rendering
+		vkCmdEndRendering(command_buffer);
 	});
 	return vren::render_graph_gather(node);
 }

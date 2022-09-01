@@ -101,7 +101,7 @@ namespace vren
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// Debug renderer
+	// debug_renderer
 	// ------------------------------------------------------------------------------------------------
 
 	class debug_renderer
@@ -115,8 +115,6 @@ namespace vren
 	private:
 		vren::context const* m_context;
 
-		vren::vk_render_pass m_render_pass;
-
 		vren::pipeline m_pipeline;
 		vren::pipeline m_no_depth_test_pipeline;
 
@@ -126,7 +124,6 @@ namespace vren
 
 	private:
 		vren::pipeline create_graphics_pipeline(bool depth_test);
-		vren::vk_render_pass create_render_pass();
 
 	public:
 		vren::render_graph_t render(
