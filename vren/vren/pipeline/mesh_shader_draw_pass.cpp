@@ -71,9 +71,9 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 
 	/* Color blend state */
 	VkPipelineColorBlendAttachmentState color_blend_attachments[]{
-		{.blendEnable = VK_FALSE, },
-		{.blendEnable = VK_FALSE, },
-		{.blendEnable = VK_FALSE, },
+		{ .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, },
+		{ .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, },
+		{ .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, },
 	};
 	VkPipelineColorBlendStateCreateInfo color_blend_info{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
