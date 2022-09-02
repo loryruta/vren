@@ -1,14 +1,48 @@
-# VREN
+# vren
 
-VREN (whose name stands for my Vulkan RENderer) is a 3D rendering library. At the moment it's where I'm experimenting several rendering techniques
-and put my effort in designing a clean overlay over the Vulkan API.
+vren (whose name stands for "**v**ulkan **ren**derer") is a 3D rendering library.
+At the moment it's where I'm experimenting several rendering techniques and put my effort in designing a clean overlay over the Vulkan API.
 
-## Directory structure
+## Features
 
-- `docs`: github-pages website 
-- `vren`: the library code
-- `vren_demo`: the demonstration executable code meant to show off the features of vren
-- `vren_test`: unit tests
+- Model loading (.gltf and .obj)
+- Lighting (point lights and directional lights)
+- Physically-Based Rendering (PBR)
+- Vertex pipeline renderer (deferred)
+- Mesh clusterization ([meshoptimizer](https://github.com/zeux/meshoptimizer) backend)
+- Mesh shader renderer (deferred)
+- Occlusion culling
+- Clustered shading
+- Debug renderer (lines, cubes, spheres, overlay text ...)
+- UI and plots renderer (ImGui and ImPlot)
+- Render-graph architecture
+- Parallel computing primitives (Reduce, ExclusiveScan, RadixSort, BucketSort, BuildBVH ...)
+- GPU profiler
+
+## Using vren in your project (CMake)
+
+If your project is CMake-based then using vren is trivial.
+
+Write the following in your `CMakeLists.txt`:
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+        vren
+        GIT_REPOSITORY https://github.com/loryruta/vren
+        GIT_TAG        <gh-tag>
+)
+FetchContent_MakeAvailable(vren)
+
+target_link_libraries(<your-project> PRIVATE vren)
+
+include("${vren_SOURCE_DIR}/VRen.cmake")
+setup_resources(<your-project>)
+```
+
+## How to use the API
+
+Unfortunately this is still an early project so there is no official documentation available yet. If you're interested in using it anyway, then I suggest you to have a look at the [demo executable's code](https://github.com/loryruta/vren/tree/master/vren_demo/vren_demo). 
 
 ## How to build
 
@@ -18,28 +52,21 @@ and put my effort in designing a clean overlay over the Vulkan API.
 - git
 - [CMake](https://cmake.org/download/) >= 3.19
 - [vcpkg](https://github.com/microsoft/vcpkg)
-- [Vulkan SDK](https://vulkan.lunarg.com/) 1.2.x _- also make sure `VULKAN_SDK` is set and points to the correct installation folder_
+- [Vulkan SDK](https://vulkan.lunarg.com/) 1.3.x
 
-Clone this repository and navigate into it:
+#### Build it
+
 ```cmd
 git clone https://github.com/loryruta/vren
 cd vren
-```
 
-Generate the project build configuration through CMake:
-```cmd
 mkdir build
 cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE=<vcpkg home directory>/scripts/buildsystems/vcpkg.cmake
-```
-
-Build it:
-```cmd
 cmake --build .
 ```
 
-You may want to run the demo executable at: `./build/vren_demo/vren_demo(.exe)`.
-
-## Gallery 
-
-_Waiting for more features to show..._
+You may want to run the demo executable:
+```cmd
+./build/vren_demo/vren_demo(.exe) <model-file>
+```
