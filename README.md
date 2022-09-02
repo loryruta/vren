@@ -1,6 +1,6 @@
 # vren
 
-vren (whose name stands for "**v**ulkan **ren**derer") is a 3D rendering library.
+vren (whose name stands for "**V**ulkan **ren**derer") is a 3D rendering library.
 At the moment it's where I'm experimenting several rendering techniques and put my effort in designing a clean overlay over the Vulkan API.
 
 ## Features
