@@ -8,13 +8,13 @@
 
 vren::mesh_shader_draw_pass::mesh_shader_draw_pass(
 	vren::context const& context,
-	bool occlusion_culling
+	VkBool32 occlusion_culling
 ) :
 	m_context(&context),
 	m_pipeline(create_graphics_pipeline(occlusion_culling))
 {}
 
-vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlusion_culling)
+vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(VkBool32 occlusion_culling)
 {
 	/* Vertex input state */
 	/* Input assembly state */
@@ -121,7 +121,7 @@ vren::pipeline vren::mesh_shader_draw_pass::create_graphics_pipeline(bool occlus
 	vren::shader_module frag_shader_mod = vren::load_shader_module_from_file(*m_context, ".vren/resources/shaders/deferred.frag.spv");
 
 	vren::specialized_shader task_shader = vren::specialized_shader(task_shader_mod, "main");
-	task_shader.set_specialization_data("OCCLUSION_CULLING", &occlusion_culling, sizeof(occlusion_culling));
+	task_shader.set_specialization_data("k_occlusion_culling", &occlusion_culling, sizeof(occlusion_culling));
 
 	vren::specialized_shader mesh_shader = vren::specialized_shader(mesh_shader_mod, "main");
 	vren::specialized_shader frag_shader = vren::specialized_shader(frag_shader_mod, "main");

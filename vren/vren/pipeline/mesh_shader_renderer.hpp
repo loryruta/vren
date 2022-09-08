@@ -22,12 +22,12 @@ namespace vren
 		vren::context const* m_context;
 		vren::mesh_shader_draw_pass m_mesh_shader_draw_pass;
 
-		bool m_occlusion_culling;
+		VkBool32 m_occlusion_culling;
 
 	public:
 		explicit mesh_shader_renderer(
 			vren::context const& context,
-			bool occlusion_culling
+			VkBool32 occlusion_culling
 		);
 
 		inline bool is_occlusion_culling_enabled() const

@@ -8,7 +8,7 @@
 
 vren::mesh_shader_renderer::mesh_shader_renderer(
 	vren::context const& context,
-	bool occlusion_culling
+	VkBool32 occlusion_culling
 ) :
 	m_context(&context),
 	m_mesh_shader_draw_pass(context, occlusion_culling),

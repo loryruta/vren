@@ -43,13 +43,6 @@ namespace vren
 	using shader_module_descriptor_set_layout_info_t = std::unordered_map<uint32_t, shader_module_binding_info>;
 
 	//void print_descriptor_set_layouts(std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t> const& descriptor_set_layouts);
-	
-	struct shader_module_specialization_constant
-	{
-		std::string m_name;
-		uint32_t m_constant_id;
-		size_t m_size;
-	};
 
 	struct shader_module
 	{
@@ -60,7 +53,9 @@ namespace vren
 		std::vector<shader_module_entry_point> m_entry_points;
 		std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t> m_descriptor_set_layouts;
 		size_t m_push_constant_block_size;
-		std::vector<shader_module_specialization_constant> m_specialization_constants;
+		
+		std::vector<std::string> m_specialization_constant_names;
+		std::vector<VkSpecializationMapEntry> m_specialization_map_entries;
 
 		inline shader_module_entry_point const& get_entry_point(std::string const& name) const
 		{
@@ -75,46 +70,15 @@ namespace vren
 			return m_push_constant_block_size > 0;
 		}
 
-		inline shader_module_specialization_constant const& get_specialization_constant(uint32_t constant_id) const
+		inline uint32_t get_specialization_constant_id(std::string const& constant_name) const
 		{
-			return vren::find_if_or_fail_const(m_specialization_constants.begin(), m_specialization_constants.end(), [&](auto const& element)
+			auto found = std::find(m_specialization_constant_names.begin(), m_specialization_constant_names.end(), constant_name);
+			if (found == m_specialization_constant_names.end())
 			{
-				return element.m_constant_id == constant_id;
-			});
-		}
-
-		inline shader_module_specialization_constant const& get_specialization_constant(std::string const& name) const
-		{
-			auto found = std::find_if(m_specialization_constants.begin(), m_specialization_constants.end(), [&](auto const& element)
-			{
-				return element.m_name == name;
-			});
-
-			if (found == m_specialization_constants.end())
-			{
-				VREN_ERROR("[shader] Specialization constant \"{}\" not found in \"{}\"\n", name, m_name);
 				throw std::runtime_error("Failed to find specialization constant by name");
 			}
 
-			return *found;
-		}
-
-		inline std::vector<VkSpecializationMapEntry> create_specialization_map_entries() const
-		{
-			std::vector<VkSpecializationMapEntry> result{};
-
-			uint32_t offset = 0;
-			for (vren::shader_module_specialization_constant const& specialization_constant : m_specialization_constants)
-			{
-				result.push_back(VkSpecializationMapEntry{
-					.constantID = specialization_constant.m_constant_id,
-					.offset = offset,
-					.size = specialization_constant.m_size
-				});
-				offset += specialization_constant.m_size;
-			}
-
-			return result;
+			return m_specialization_map_entries.at(found - m_specialization_constant_names.begin()).constantID;
 		}
 	};
 
@@ -130,6 +94,7 @@ namespace vren
 	private:
 		vren::shader_module const* m_shader_module;
 		vren::shader_module_entry_point const* m_entry_point;
+
 		std::vector<uint8_t> m_specialization_data;
 
 	public:
@@ -140,12 +105,12 @@ namespace vren
 			m_shader_module(&shader_module),
 			m_entry_point(&shader_module.get_entry_point(entry_point))
 		{
-			size_t specialization_data_length = 0;
-			for (vren::shader_module_specialization_constant const& specialization_constant : shader_module.m_specialization_constants)
+			size_t specialization_data_size = 0;
+			for (VkSpecializationMapEntry const& specialization_map_entry : shader_module.m_specialization_map_entries)
 			{
-				specialization_data_length += specialization_constant.m_size;
+				specialization_data_size += specialization_map_entry.size;
 			}
-			m_specialization_data.resize(specialization_data_length);
+			m_specialization_data.resize(specialization_data_size);
 		}
 
 		specialized_shader(vren::specialized_shader const& other) = delete;
@@ -187,26 +152,28 @@ namespace vren
 			return m_specialization_data.size() > 0;
 		}
 
-		inline void set_specialization_data(uint32_t constant_id, void const* data, size_t length)
+		inline void set_specialization_data(uint32_t constant_id, void const* data, size_t size)
 		{
 			size_t offset = 0;
-			for (shader_module_specialization_constant const& constant : m_shader_module->m_specialization_constants)
+			for (VkSpecializationMapEntry const& specialization_map_entry : m_shader_module->m_specialization_map_entries)
 			{
-				if (constant.m_constant_id == constant_id)
+				if (specialization_map_entry.constantID == constant_id)
 				{
-					assert(length == constant.m_size); // Maybe <= ?
+					assert(size == specialization_map_entry.size);
 
-					memcpy(&m_specialization_data.data()[offset], data, length);
-					break;
+					memcpy(&m_specialization_data.data()[offset], data, specialization_map_entry.size);
+					return;
 				}
 
-				offset += constant.m_size;
+				offset += specialization_map_entry.size;
 			}
+
+			throw std::runtime_error("Failed to find specialization constant for the given ID");
 		}
 
-		inline void set_specialization_data(std::string const& constant_name, void const* data, size_t length)
+		inline void set_specialization_data(std::string const& constant_name, void const* data, size_t size)
 		{
-			set_specialization_data(m_shader_module->get_specialization_constant(constant_name).m_constant_id, data, length);
+			set_specialization_data(m_shader_module->get_specialization_constant_id(constant_name), data, size);
 		}
 	};
 

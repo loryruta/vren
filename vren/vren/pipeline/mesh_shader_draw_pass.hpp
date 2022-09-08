@@ -28,12 +28,12 @@ namespace vren
 	public:
 		mesh_shader_draw_pass(
 			vren::context const& context,
-			bool occlusion_culling
+			VkBool32 occlusion_culling
 		);
 
 	private:
 		vren::pipeline create_graphics_pipeline(
-			bool occlusion_culling
+			VkBool32 occlusion_culling
 		);
 
 	public:

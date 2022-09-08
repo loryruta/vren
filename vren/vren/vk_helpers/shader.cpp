@@ -248,27 +248,44 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 	}
 
 	// Specialization constants
-	std::vector<vren::shader_module_specialization_constant> specialization_constants;
+	std::vector<std::string> specialization_constant_names{};
+	std::vector<VkSpecializationMapEntry> specialization_map_entries{};
+	uint32_t specialization_constant_offset = 0;
 
 	for (spirv_cross::SpecializationConstant const& spirv_specialization_constant : compiler.get_specialization_constants())
 	{
 		spirv_cross::SPIRConstant value = compiler.get_constant(spirv_specialization_constant.id);
 		spirv_cross::SPIRType type = compiler.get_type(value.constant_type);
 
-		std::string name = compiler.get_name(spirv_specialization_constant.id);
-		size_t constant_size = vren::divide_and_ceil(type.width, 8); // type.width seems to hold the size of the type in bits?
+		size_t data_size;
+		switch (type.basetype)
+		{
+		case (spirv_cross::SPIRType::BaseType::Boolean): data_size = sizeof(VkBool32); break;
+		case (spirv_cross::SPIRType::BaseType::Char):    data_size = sizeof(char); break;
+		case (spirv_cross::SPIRType::BaseType::Int):     data_size = sizeof(int32_t); break;
+		case (spirv_cross::SPIRType::BaseType::UInt):    data_size = sizeof(uint32_t); break;
+		case (spirv_cross::SPIRType::BaseType::Float):   data_size = sizeof(float); break;
+		case (spirv_cross::SPIRType::BaseType::Double):  data_size = sizeof(double); break;
+		case (spirv_cross::SPIRType::BaseType::Int64):   data_size = sizeof(int64_t); break;
+		default:
+			throw std::runtime_error("Invalid specialization constant data type");
+		}
 
-		vren::shader_module_specialization_constant specialization_constant{
-			.m_name = name,
-			.m_constant_id = spirv_specialization_constant.constant_id,
-			.m_size = constant_size,
-		};
-		specialization_constants.push_back(specialization_constant);
+		std::string specialization_constant_name = compiler.get_name(spirv_specialization_constant.id);
+
+		uint32_t specialization_constant_id = spirv_specialization_constant.constant_id;
+
+		specialization_constant_names.push_back(specialization_constant_name);
+		specialization_map_entries.push_back(VkSpecializationMapEntry{
+			.constantID = spirv_specialization_constant.constant_id,
+			.offset = specialization_constant_offset,
+			.size = data_size,
+		});
 
 		VREN_DEBUG0("[shader] Specialization constant {} (ID: {}) - size: {}\n",
-			specialization_constant.m_name,
-			specialization_constant.m_constant_id,
-			specialization_constant.m_size
+			specialization_constant_name,
+			specialization_constant_id,
+			data_size
 		);
 	}
 
@@ -279,7 +296,8 @@ vren::shader_module vren::load_shader_module(vren::context const& context, uint3
 		.m_entry_points = std::move(entry_points),
 		.m_descriptor_set_layouts = std::move(descriptor_set_layouts),
 		.m_push_constant_block_size = push_constant_block_size,
-		.m_specialization_constants = std::move(specialization_constants)
+		.m_specialization_constant_names = std::move(specialization_constant_names),
+		.m_specialization_map_entries = std::move(specialization_map_entries),
 	};
 }
 
@@ -485,11 +503,10 @@ vren::pipeline vren::create_compute_pipeline(vren::context const& context, vren:
 	VkPipelineLayout pipeline_layout;
 	VREN_CHECK(vkCreatePipelineLayout(context.m_device, &pipeline_layout_info, nullptr, &pipeline_layout), &context);
 
-	// Pipeline shader stage
-	std::vector<VkSpecializationMapEntry> specialization_map_entries = shader_module.create_specialization_map_entries();
+	// Shader stage
 	VkSpecializationInfo specialization_info{
-		.mapEntryCount = (uint32_t) specialization_map_entries.size(),
-		.pMapEntries = specialization_map_entries.data(),
+		.mapEntryCount = (uint32_t)shader_module.m_specialization_map_entries.size(),
+		.pMapEntries = shader_module.m_specialization_map_entries.data(),
 		.dataSize = shader.get_specialization_data_length(),
 		.pData = shader.get_specialization_data()
 	};
@@ -547,28 +564,34 @@ vren::pipeline vren::create_graphics_pipeline(
 	// Descriptor set layouts
 	std::vector<VkDescriptorSetLayout> descriptor_set_layouts = create_descriptor_set_layouts(context, shaders);
 
-	// Pipeline shader stages
+	// Shader stages
+	std::vector<VkSpecializationInfo> specialization_infos{};
 	std::vector<VkPipelineShaderStageCreateInfo> pipeline_shader_stages{};
+
 	for (vren::specialized_shader const& shader : shaders)
 	{
 		vren::shader_module const& shader_module = shader.get_shader_module();
 
-		std::vector<VkSpecializationMapEntry> specialization_map_entries = shader_module.create_specialization_map_entries();
-		VkSpecializationInfo specialization_info{
-			.mapEntryCount = (uint32_t) specialization_map_entries.size(),
-			.pMapEntries = specialization_map_entries.data(),
-			.dataSize = shader.get_specialization_data_length(),
-			.pData = shader.get_specialization_data()
-		};
+		VkSpecializationInfo* specialization_info = nullptr;
+		
+		if (!shader_module.m_specialization_map_entries.empty())
+		{
+			specialization_info = &specialization_infos.emplace_back(VkSpecializationInfo{
+				.mapEntryCount = (uint32_t) shader_module.m_specialization_map_entries.size(),
+				.pMapEntries = shader_module.m_specialization_map_entries.data(),
+				.dataSize = shader.get_specialization_data_length(),
+				.pData = shader.get_specialization_data()
+			});
+		}
 
-		pipeline_shader_stages.push_back({
+		pipeline_shader_stages.emplace_back(VkPipelineShaderStageCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = NULL,
 			.stage = static_cast<VkShaderStageFlagBits>(shader.get_shader_stage()),
 			.module = shader_module.m_handle.m_handle,
 			.pName = shader.get_entry_point(),
-			.pSpecializationInfo = shader.has_specialization_data() ? &specialization_info : nullptr
+			.pSpecializationInfo = specialization_info
 		});
 	}
 
