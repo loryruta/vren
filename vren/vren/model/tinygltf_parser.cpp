@@ -49,7 +49,7 @@ glm::mat4 parse_gltf_mat4_to_glm_mat4(std::vector<double> v)
 
 glm::quat parse_gltf_quat_to_glm_quat(std::vector<double> v)
 {
-	return glm::quat(v[3], v[2], v[1], v[0]);
+	return glm::quat(v[3], v[0], v[1], v[2]);
 }
 
 uint8_t const* get_accessor_element_at(tinygltf::Model const& model, tinygltf::Accessor const& accessor, size_t idx)
@@ -174,9 +174,9 @@ void vren::tinygltf_parser::load_materials(
 		vren::material material{
 			.m_base_color_texture_idx = gltf_pbr.baseColorTexture.index >= 0 ? (uint32_t) (texture_start_index + gltf_pbr.baseColorTexture.index) : 0,
 			.m_metallic_roughness_texture_idx = gltf_pbr.metallicRoughnessTexture.index >= 0 ? (uint32_t) (texture_start_index + gltf_pbr.metallicRoughnessTexture.index) : 0,
-			//.m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor),
-			//.m_metallic_factor = (float) gltf_pbr.metallicFactor,
-			//.m_roughness_factor = (float) gltf_pbr.roughnessFactor
+			.m_metallic_factor = (float) gltf_pbr.metallicFactor,
+			.m_roughness_factor = (float )gltf_pbr.roughnessFactor,
+			.m_base_color_factor = parse_gltf_vec4_to_glm_vec4(gltf_pbr.baseColorFactor),
 		};
 		materials.push_back(material);
 	}
@@ -194,9 +194,9 @@ void vren::tinygltf_parser::linearize_node_hierarchy(
 		transform *= parse_gltf_mat4_to_glm_mat4(gltf_node.matrix);
 	}
 
-	if (!gltf_node.scale.empty())
+	if (!gltf_node.translation.empty())
 	{
-		transform = glm::scale(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.scale));
+		transform = glm::translate(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.translation));
 	}
 
 	if (!gltf_node.rotation.empty())
@@ -204,9 +204,9 @@ void vren::tinygltf_parser::linearize_node_hierarchy(
 		transform *= glm::mat4_cast(parse_gltf_quat_to_glm_quat(gltf_node.rotation));
 	}
 
-	if (!gltf_node.translation.empty())
+	if (!gltf_node.scale.empty())
 	{
-		transform = glm::translate(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.translation));
+		transform = glm::scale(transform, parse_gltf_vec3_to_glm_vec3(gltf_node.scale));
 	}
 
 	// Registers the node for the mesh

@@ -78,9 +78,9 @@ void main()
 			uint frag_material_idx = texture(u_gbuffer_material_indices, frag_coord).r;
 
 			Material material = materials[frag_material_idx];
-			vec3 albedo = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb;
-			float metallic = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b;
-			float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g;
+			vec3 albedo     = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb * material.base_color_factor.rgb;
+			float metallic  = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b * material.metallic_factor;
+			float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g * material.roughness_factor;
 
 			vec3 Lo = vec3(0);
 

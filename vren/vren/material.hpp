@@ -14,6 +14,9 @@ namespace vren
 	{
 		uint32_t m_base_color_texture_idx;
 		uint32_t m_metallic_roughness_texture_idx;
+		float m_metallic_factor;
+		float m_roughness_factor;
+		glm::vec4 m_base_color_factor;
 	};
 
 	inline uint32_t k_initial_material_count = 1;

@@ -2,7 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : require
 #extension GL_NV_mesh_shader : require
-#extension GL_EXT_debug_printf : require
+#extension GL_EXT_debug_printf : enable
 
 #define THREADS_NUM 32
 
@@ -10,7 +10,7 @@
 
 layout(local_size_x = THREADS_NUM, local_size_y = 1, local_size_z = 1) in;
 
-layout(constant_id = 0) const bool OCCLUSION_CULLING = false;
+layout(constant_id = 0) const bool k_occlusion_culling = false;
 
 layout(push_constant) uniform PushConstants
 {
@@ -132,7 +132,7 @@ void main()
 
         bool visible = true;
 
-        if (OCCLUSION_CULLING)
+        if (k_occlusion_culling)
         {
             vec4 aabb;
 

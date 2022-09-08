@@ -93,7 +93,7 @@ vren::texture_manager_descriptor_pool vren::texture_manager::create_descriptor_p
 
 void vren::texture_manager::lazy_initialize()
 {
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 255, 255, 255, 255)); // White
+	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 255, 255, 255, 255)); // White (INDEX 0!)
 	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 0, 0, 0, 255));       // Black
 	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 255, 0, 0, 255));     // Red
 	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 0, 255, 0, 255));     // Green

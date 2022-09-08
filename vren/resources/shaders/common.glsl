@@ -61,6 +61,9 @@ struct Material
 {
 	uint base_color_texture_idx;
 	uint metallic_roughness_texture_idx;
+	float metallic_factor;
+	float roughness_factor;
+	vec4 base_color_factor;
 };
 
 // ------------------------------------------------------------------------------------------------
