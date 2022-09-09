@@ -244,15 +244,10 @@ vren::debug_renderer_draw_buffer vren_demo::create_debug_draw_buffer_with_demo_c
 	// Clusters
 	for (uint32_t i = 0; i < k_cluster_count; i++)
 	{
-		float sample_z = (float(std::rand()) / float(RAND_MAX)) * (camera.m_far_plane - camera.m_near_plane) + camera.m_near_plane;
-
 		glm::uvec3 cluster_ijk{};
-		//cluster_ijk.x = 20;
-		//cluster_ijk.y = 6;
-		//cluster_ijk.z = 23;//glm::uint(glm::floor(glm::log(sample_z / camera.m_near_plane) / glm::log(1.0f + (2.0f * tan_half_fov) / float(num_tiles.y))));
 		cluster_ijk.x = std::rand() % k_num_tiles.x;
 		cluster_ijk.y = std::rand() % k_num_tiles.y;
-		cluster_ijk.z = 128;//std::rand() % 1024;
+		cluster_ijk.z = std::rand() % 180;
 
 		glm::vec2 tile_min = glm::vec2(cluster_ijk.x, cluster_ijk.y);
 		tile_min /= k_num_tiles;

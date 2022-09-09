@@ -8,7 +8,6 @@
 #include <common.glsl>
 
 #define PI 3.14
-#define EPSILON 0.0001
 #define INFINITE 1e35
 
 //#define SHADE

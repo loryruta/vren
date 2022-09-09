@@ -64,8 +64,14 @@ bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
 
 bool test_aabb_aabb(vec3 _min_1, vec3 _max_1, vec3 _min_2, vec3 _max_2)
 {
-	return test_point_aabb(_min_1, _min_2, _max_2) || test_point_aabb(_max_1, _min_2, _max_2) ||
-		test_point_aabb(_min_2, _min_1, _max_1) || test_point_aabb(_max_2, _min_1, _max_1);
+	return(
+		_max_1.x > _min_2.x &&
+		_min_1.x < _max_2.x &&
+		_max_1.y > _min_2.y &&
+		_min_1.y < _max_2.y &&
+		_max_1.z > _min_2.z &&
+		_min_1.z < _max_2.z
+	);
 }
 
 void main()

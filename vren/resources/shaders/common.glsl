@@ -4,6 +4,7 @@
 #define UINT32_MAX 0xFFFFFFFFu
 #define INF 1e35
 #define PI 3.14
+#define EPSILON 0.001
 
 struct Camera
 {
