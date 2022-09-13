@@ -24,6 +24,7 @@
 #include "ui.hpp"
 #include "visualize_bvh.hpp"
 #include "clustered_shading_debug.hpp"
+#include "blit_depth_buffer_pyramid.hpp"
 
 namespace vren_demo
 {
@@ -213,6 +214,7 @@ namespace vren_demo
 		// Depth-buffer pyramid
 		std::shared_ptr<vren::depth_buffer_pyramid> m_depth_buffer_pyramid;
 		vren::depth_buffer_reductor m_depth_buffer_reductor;
+		vren_demo::blit_depth_buffer_pyramid m_blit_depth_buffer_pyramid;
 
 		// Render-graph
 		vren::render_graph_allocator m_render_graph_allocator;

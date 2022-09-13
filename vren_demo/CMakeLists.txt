@@ -8,6 +8,8 @@ add_executable(vren_demo
         vren_demo/ui.cpp
         vren_demo/clusterized_model_debugger.cpp
         vren_demo/clusterized_model_debugger.hpp
+        vren_demo/blit_depth_buffer_pyramid.hpp
+        vren_demo/blit_depth_buffer_pyramid.cpp
         vren_demo/point_light_bouncer.hpp
         vren_demo/point_light_bouncer.cpp
         vren_demo/visualize_bvh.hpp
@@ -76,6 +78,7 @@ setup_resources(vren_demo)
 #copy_resources(vren_demo "resources/models" "resources/models")
 
 # Shaders
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/blit_depth_buffer_pyramid.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/blit_depth_buffer_pyramid.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/visualize_bvh.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/visualize_bvh.comp.spv")

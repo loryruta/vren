@@ -1,0 +1,24 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+#include <common.glsl>
+
+layout(set = 0, binding = 0) uniform sampler2D u_depth_buffer_pyramid;
+layout(set = 0, binding = 1, rgba32f) uniform image2D u_output;
+
+void main()
+{
+	ivec2 resolution = imageSize(u_output);
+	if (gl_GlobalInvocationID.x < resolution.x && gl_GlobalInvocationID.y < resolution.y)
+	{
+		float z  = texture(u_depth_buffer_pyramid, vec2(gl_GlobalInvocationID.xy) / vec2(resolution)).r;
+
+		vec3 color = vec3(pow(z, 256));
+		imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
+	}
+}

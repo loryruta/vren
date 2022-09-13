@@ -145,9 +145,11 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Output
 	m_color_buffers{},
 	m_depth_buffer{},
-	m_depth_buffer_pyramid{},
 
+	// Depth buffer pyramid
+	m_depth_buffer_pyramid{},
 	m_depth_buffer_reductor(m_context),
+	m_blit_depth_buffer_pyramid(m_context),
 
 	// Profiler
 	m_profiler(m_context),
@@ -642,12 +644,13 @@ void vren_demo::app::record_commands(
 	if (m_show_depth_buffer_pyramid)
 	{
 		debug_render_graph.concat(
-			vren::blit_depth_buffer_pyramid_level_to_color_buffer(
+			m_blit_depth_buffer_pyramid(
 				m_render_graph_allocator,
 				*m_depth_buffer_pyramid,
 				m_shown_depth_buffer_pyramid_level,
 				color_buffer,
-				swapchain.m_image_width, swapchain.m_image_height
+				swapchain.m_image_width,
+				swapchain.m_image_height
 			)
 		);
 	}

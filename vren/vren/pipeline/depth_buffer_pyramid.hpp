@@ -13,7 +13,7 @@ namespace vren
 	class depth_buffer_reductor;
 
 	// ------------------------------------------------------------------------------------------------
-	// Depth buffer pyramid
+	// depth_buffer_pyramid
 	// ------------------------------------------------------------------------------------------------
 
 	class depth_buffer_pyramid
@@ -80,7 +80,7 @@ namespace vren
 	};
 
 	// ------------------------------------------------------------------------------------------------
-	// Depth buffer reductor
+	// depth_buffer_reductor
 	// ------------------------------------------------------------------------------------------------
 
 	class depth_buffer_reductor
@@ -103,26 +103,7 @@ namespace vren
 	private:
 		vren::pipeline create_copy_pipeline();
 		vren::pipeline create_reduce_pipeline();
-
 		vren::vk_sampler create_depth_buffer_sampler();
-
-	private:
-		vren::render_graph_t copy_depth_buffer_to_depth_buffer_pyramid_base(
-			vren::render_graph_allocator& allocator,
-			vren::vk_utils::depth_buffer_t const& depth_buffer,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid
-		) const;
-
-		vren::render_graph_t reduce_step(
-			vren::render_graph_allocator& allocator,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid,
-			uint32_t current_level
-		) const;
-
-		vren::render_graph_t reduce(
-			vren::render_graph_allocator& allocator,
-			vren::depth_buffer_pyramid const& depth_buffer_pyramid
-		) const;
 
 	public:
 		vren::render_graph_t copy_and_reduce(
@@ -131,15 +112,4 @@ namespace vren
 			vren::depth_buffer_pyramid const& depth_buffer_pyramid
 		) const;
 	};
-
-	// ------------------------------------------------------------------------------------------------
-
-	vren::render_graph_t blit_depth_buffer_pyramid_level_to_color_buffer( // Debug
-		vren::render_graph_allocator& allocator,
-		vren::depth_buffer_pyramid const& depth_buffer_pyramid,
-		uint32_t level,
-		vren::vk_utils::color_buffer_t const& color_buffer,
-		uint32_t width,
-		uint32_t height
-	);
 }
