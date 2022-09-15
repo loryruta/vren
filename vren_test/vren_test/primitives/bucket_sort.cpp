@@ -25,21 +25,26 @@
 
 static void BM_gpu_bucket_sort(benchmark::State& state)
 {
+    vren::context const& context = VREN_TEST_APP()->m_context;
+
     vren::bucket_sort& bucket_sort = VREN_TEST_APP()->m_context.m_toolbox->m_bucket_sort;
 
     size_t length = state.range(0);
 
     vren::vk_utils::buffer input_buffer = vren::vk_utils::alloc_device_only_buffer(
-        VREN_TEST_APP()->m_context,
+        context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        length * sizeof(uint16_t)
+        length * sizeof(glm::uvec2)
     );
 
     vren::vk_utils::buffer output_buffer = vren::vk_utils::alloc_device_only_buffer(
-        VREN_TEST_APP()->m_context,
+        context,
         vren::bucket_sort::get_required_output_buffer_usage_flags(),
         vren::bucket_sort::get_required_output_buffer_size(length)
     );
+
+    vren::vk_utils::set_name(context, input_buffer, "input_buffer");
+    vren::vk_utils::set_name(context, output_buffer, "output_buffer");
 
     for (auto _ : state)
     {
@@ -59,7 +64,7 @@ static void BM_gpu_bucket_sort(benchmark::State& state)
 
 BENCHMARK(BM_gpu_bucket_sort)
     ->Unit(benchmark::kMicrosecond)
-    ->Range(1 << 10, 1 << 29 /* < maxStorageBufferRange */)
+    ->Range(1 << 10, 1 << 28)
     ->Iterations(1)
     ->UseManualTime();
 
