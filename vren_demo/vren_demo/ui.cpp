@@ -341,6 +341,10 @@ void vren_demo::ui::show_controls_window()
 		auto& depth_buffer_pyramid = m_app->m_depth_buffer_pyramid;
 		uint32_t& depth_buffer_pyramid_level = m_app->m_shown_depth_buffer_pyramid_level;
 
+		ImGui::SliderFloat("Color exponent", &m_app->m_depth_buffer_pyramid_color_exponent, 1.0f, 256.0f);
+
+		ImGui::Checkbox("Draw grid", &m_app->m_depth_buffer_pyramid_draw_grid);
+
 		ImGui::Text("Resolution: (%d, %d)", depth_buffer_pyramid->get_image_width(depth_buffer_pyramid_level), depth_buffer_pyramid->get_image_height(depth_buffer_pyramid_level));
 		ImGui::SliderInt("Level", (int32_t*) &depth_buffer_pyramid_level, 0, depth_buffer_pyramid->get_level_count() - 1);
 

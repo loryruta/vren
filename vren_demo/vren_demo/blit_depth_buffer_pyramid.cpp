@@ -28,7 +28,9 @@ vren::render_graph_t vren_demo::blit_depth_buffer_pyramid::operator()(
 	uint32_t level,
 	vren::vk_utils::combined_image_view const& color_buffer,
 	uint32_t width,
-	uint32_t height
+	uint32_t height,
+	float color_exponent,
+	bool draw_grid
 )
 {
 	vren::render_graph_node* node = allocator.allocate();
@@ -58,6 +60,17 @@ vren::render_graph_t vren_demo::blit_depth_buffer_pyramid::operator()(
 	)
 	{
 		m_pipeline.bind(command_buffer);
+
+		struct
+		{
+			float m_color_exponent;
+			VkBool32 m_draw_grid;
+		} push_constants;
+
+		push_constants.m_color_exponent = color_exponent;
+		push_constants.m_draw_grid = draw_grid;
+
+		m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
 		auto descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
 			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))

@@ -399,14 +399,14 @@ void vren_demo::app::record_commands(
 	vren::light_array& light_array = m_light_arrays.at(frame_idx);
 	vren::material_buffer& material_buffer = m_material_buffers.at(frame_idx);
 
-	// Draw cartesian axes
 	m_debug_draw_buffer.clear();
 
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
-	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
+	// Cartesian axes
+	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
+	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
+	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
-	// Draw model AABB
+	// Model AABB
 	//m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
 
 	// Dump profiling data
@@ -518,7 +518,7 @@ void vren_demo::app::record_commands(
 	vren::render_graph_builder debug_render_graph(m_render_graph_allocator);
 
 	// Debug general purpose objects
-	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
+	//debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
 
 	// Visualize light BVH
 	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
@@ -582,17 +582,6 @@ void vren_demo::app::record_commands(
 		);
 	}
 
-	// Debug projected meshlet bounds
-	if (m_show_projected_meshlet_bounds)
-	{
-		m_debug_projected_meshlet_bounds_draw_buffer.clear();
-
-		vren_demo::clusterized_model_debugger clusterized_model_debugger{};
-		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera_data, m_debug_projected_meshlet_bounds_draw_buffer);
-
-		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
-	}
-
 	// Debug meshlet instances number
 	if (m_show_instanced_meshlets_indices)
 	{
@@ -650,9 +639,22 @@ void vren_demo::app::record_commands(
 				m_shown_depth_buffer_pyramid_level,
 				color_buffer,
 				swapchain.m_image_width,
-				swapchain.m_image_height
+				swapchain.m_image_height,
+				m_depth_buffer_pyramid_color_exponent,
+				m_depth_buffer_pyramid_draw_grid
 			)
 		);
+	}
+
+	// Debug projected meshlet bounds
+	if (m_show_projected_meshlet_bounds)
+	{
+		m_debug_projected_meshlet_bounds_draw_buffer.clear();
+
+		vren_demo::clusterized_model_debugger clusterized_model_debugger{};
+		clusterized_model_debugger.write_debug_info_for_projected_sphere_bounds(*m_clusterized_model, camera_data, m_debug_projected_meshlet_bounds_draw_buffer);
+
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
 	}
 
 	// Show cluster keys

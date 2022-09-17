@@ -8,17 +8,40 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
 
+#define VREN_BORDER_WIDTH_RATIO 0.01
+#define VREN_BORDER_COLOR vec3(0)
+
+layout(push_constant) uniform PushConstants
+{
+	float color_exponent;
+	bool draw_grid;
+};
+
 layout(set = 0, binding = 0) uniform sampler2D u_depth_buffer_pyramid;
 layout(set = 0, binding = 1, rgba32f) uniform image2D u_output;
 
 void main()
 {
 	ivec2 resolution = imageSize(u_output);
+	
+	ivec2 pixel_size = resolution / textureSize(u_depth_buffer_pyramid, 0); // The size of a pixel of the considered depth buffer pyramid level
+	uint border_width = max(uint(floor(VREN_BORDER_WIDTH_RATIO * pixel_size)), 1);
+
 	if (gl_GlobalInvocationID.x < resolution.x && gl_GlobalInvocationID.y < resolution.y)
 	{
-		float z  = texture(u_depth_buffer_pyramid, vec2(gl_GlobalInvocationID.xy) / vec2(resolution)).r;
-
-		vec3 color = vec3(pow(z, 256));
+		vec3 color;
+		if (draw_grid && (
+			(gl_GlobalInvocationID.x % pixel_size.x) < border_width || (pixel_size.x - (gl_GlobalInvocationID.x % pixel_size.x)) < border_width ||
+			(gl_GlobalInvocationID.y % pixel_size.y) < border_width || (pixel_size.y - (gl_GlobalInvocationID.y % pixel_size.y)) < border_width
+		))
+		{
+			color = VREN_BORDER_COLOR;
+		}
+		else
+		{
+			float z  = texture(u_depth_buffer_pyramid, vec2(gl_GlobalInvocationID.xy) / vec2(resolution)).r;
+			color = vec3(pow(z, color_exponent));
+		}
 		imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 	}
 }

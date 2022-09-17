@@ -26,7 +26,9 @@ namespace vren_demo
 			uint32_t level,
 			vren::vk_utils::combined_image_view const& color_buffer,
 			uint32_t width,
-			uint32_t height
+			uint32_t height,
+			float color_exponent,
+			bool draw_grid
 		);
     };
 }
