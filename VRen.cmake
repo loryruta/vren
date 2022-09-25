@@ -8,18 +8,19 @@ function (compile_shader _SHADERS IN_PATH OUT_PATH)
     endif()
 
     # Definitions
-    set(OPTIONS_ ${ARGV3} ${ARGV4}) # TODO interpret arguments from 3 on as OPTIONS
+    #set(OPTIONS_ ${ARGV3} ${ARGV4}) # TODO interpret arguments from 3 on as OPTIONS
+    #string(REPLACE ";" " " USER_OPTIONS "${ARGN}")
 
-    string(REPLACE ";" " " USER_OPTIONS "${ARGN}")
+    #message(STATUS "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 --target-spv=spv1.4 -I \"${VREN_HOME}/vren/resources/shaders\" ${ARGN} -o ${OUT_PATH} ${IN_PATH}")
 
     add_custom_command(
             OUTPUT
                 ${OUT_PATH}
                 ${OUT_PATH}__enforce_run # *__enforce_run is a fake output file that won't be created and is here to ensure the command is always run
-            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 --target-spv=spv1.4 -I "${VREN_HOME}/vren/resources/shaders" ${ARGN} -g -o ${OUT_PATH} ${IN_PATH}
+            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 --target-spv=spv1.4 -I "${VREN_HOME}/vren/resources/shaders" ${ARGN} -o ${OUT_PATH} ${IN_PATH}
             MAIN_DEPENDENCY ${IN_PATH}
             WORKING_DIRECTORY ${VREN_HOME}
-            COMMENT "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 --target-spv=spv1.4 -I \"${VREN_HOME}/vren/resources/shaders\" ${USER_OPTIONS} -g -o ${OUT_PATH} ${IN_PATH}"
+            COMMENT "${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 --target-spv=spv1.4 -I \"${VREN_HOME}/vren/resources/shaders\" ${ARGN} -o ${OUT_PATH} ${IN_PATH}"
     )
     set(SUPER_VAR ${${_SHADERS}})
     list(APPEND SUPER_VAR ${OUT_PATH})
