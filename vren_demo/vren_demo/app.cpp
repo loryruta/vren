@@ -612,10 +612,6 @@ void vren_demo::app::record_commands(
 		}));
 	}
 
-	render_graph.concat(
-		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
-	);
-
 	// Show test camera clusters
 	if (m_show_test_camera_clusters)
 	{
@@ -656,6 +652,10 @@ void vren_demo::app::record_commands(
 
 		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_projected_meshlet_bounds_draw_buffer, /* world_space */ false));
 	}
+
+	render_graph.concat(
+		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
+	);
 
 	// Show cluster keys
 	if (m_show_cluster_keys)

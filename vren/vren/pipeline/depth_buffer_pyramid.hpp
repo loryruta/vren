@@ -77,6 +77,8 @@ namespace vren
 		{
 			return m_sampler.m_handle;
 		}
+
+		void add_render_graph_node_resources(vren::render_graph_node& node, VkImageLayout image_layout, VkAccessFlags access_flags) const;
 	};
 
 	// ------------------------------------------------------------------------------------------------

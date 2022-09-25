@@ -149,6 +149,24 @@ vren::vk_sampler vren::depth_buffer_pyramid::create_sampler()
 	return vren::vk_sampler(*m_context, sampler);
 }
 
+void vren::depth_buffer_pyramid::add_render_graph_node_resources(vren::render_graph_node& node, VkImageLayout image_layout, VkAccessFlags access_flags) const
+{
+	static const std::array<std::string, 16> k_depth_buffer_pyramid_level_names = vren::create_array<std::string, 16>([](uint32_t index)
+	{
+		return fmt::format("depth_buffer_pyramid[{}]", index);
+	});
+
+	for (uint32_t level = 0; level < m_level_count; level++)
+	{
+		node.add_image({
+			.m_name = k_depth_buffer_pyramid_level_names.at(level).c_str(),
+			.m_image = m_image.m_image.m_handle,
+			.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+			.m_mip_level = level,
+		}, image_layout, access_flags);
+	}
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------
 // depth_buffer_reductor
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -192,11 +210,6 @@ vren::vk_sampler vren::depth_buffer_reductor::create_depth_buffer_sampler()
 	return vren::vk_sampler(*m_context, sampler);
 }
 
-const std::array<std::string, 16> k_depth_buffer_pyramid_level_names = vren::create_array<std::string, 16>([](uint32_t index)
-{
-	return fmt::format("depth_buffer_pyramid[{}]", index);
-});
-
 vren::render_graph_t vren::depth_buffer_reductor::copy_and_reduce(
 	vren::render_graph_allocator& allocator,
 	vren::vk_utils::depth_buffer_t const& depth_buffer,
@@ -204,23 +217,19 @@ vren::render_graph_t vren::depth_buffer_reductor::copy_and_reduce(
 ) const
 {
 	vren::render_graph_node* node = allocator.allocate();
+
 	node->set_name("depth_buffer_pyramid_construction");
+
 	node->set_src_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
 	node->add_image({
 		.m_name = "depth_buffer",
 		.m_image = depth_buffer.get_image(),
 		.m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
 	}, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
-	for (uint32_t level = 0; level < depth_buffer_pyramid.get_level_count(); level++)
-	{
-		node->add_image({
-			.m_name = k_depth_buffer_pyramid_level_names.at(level).c_str(),
-			.m_image = depth_buffer_pyramid.get_image(),
-			.m_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-			.m_mip_level = level,
-		}, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT);
-	}
+	depth_buffer_pyramid.add_render_graph_node_resources(*node, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT);
+
 	node->set_callback([
 		this,
 		&depth_buffer,

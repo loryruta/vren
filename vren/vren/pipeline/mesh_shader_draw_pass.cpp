@@ -208,31 +208,6 @@ void write_meshlet_buffer_descriptor_set(
 	}
 }
 
-void write_depth_buffer_pyramid_descriptor_set(
-	vren::context const& context,
-	VkDescriptorSet descriptor_set,
-	vren::depth_buffer_pyramid const& depth_buffer_pyramid
-)
-{
-	VkDescriptorImageInfo image_info[]{
-		{
-			.sampler = depth_buffer_pyramid.get_sampler(),
-			.imageView = depth_buffer_pyramid.get_image_view(),
-			.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-		}
-	};
-	VkWriteDescriptorSet descriptor_set_write{
-		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		.dstSet = descriptor_set,
-		.dstBinding = 0,
-		.dstArrayElement = 0,
-		.descriptorCount = std::size(image_info),
-		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		.pImageInfo = image_info
-	};
-	vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
-}
-
 void vren::mesh_shader_draw_pass::render(
 	uint32_t frame_idx,
 	VkCommandBuffer command_buffer,
@@ -265,15 +240,15 @@ void vren::mesh_shader_draw_pass::render(
 	});
 
 	// Bind depth-buffer pyramid
-	m_pipeline.acquire_and_bind_descriptor_set(*m_context, command_buffer, resource_container, 4, [&](VkDescriptorSet descriptor_set)
-	{
-		vren::vk_utils::set_object_name(*m_context, VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t) descriptor_set, "depth_buffer_pyramid");
-		write_depth_buffer_pyramid_descriptor_set(
-			*m_context,
-			descriptor_set,
-			depth_buffer_pyramid
-		);
-	});
+	auto descriptor_set_4 = std::make_shared<vren::pooled_vk_descriptor_set>(
+		m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(4))
+	);
+
+	vren::vk_utils::write_combined_image_sampler_descriptor(*m_context, descriptor_set_4->m_handle.m_descriptor_set, 0, depth_buffer_pyramid.get_sampler(), depth_buffer_pyramid.get_image_view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	m_pipeline.bind_descriptor_set(command_buffer, 4, descriptor_set_4->m_handle.m_descriptor_set);
+
+	resource_container.add_resource(descriptor_set_4);
 
 	// Draw
 	uint32_t workgroups_num = (uint32_t) glm::ceil(draw_buffer.m_instanced_meshlet_count / (float) 32);

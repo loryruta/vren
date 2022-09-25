@@ -31,10 +31,11 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
 	node->set_name("mesh_shader_renderer | render");
 
 	node->set_src_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-	node->set_dst_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+	node->set_dst_stage(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
 	gbuffer.add_render_graph_node_resources(*node, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 	node->add_image({ .m_image = depth_buffer.get_image(), .m_image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT, }, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+	depth_buffer_pyramid.add_render_graph_node_resources(*node, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
 
 	node->set_callback([&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
