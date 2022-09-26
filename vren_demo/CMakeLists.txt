@@ -1,5 +1,7 @@
 set(VREN_HOME "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "The path to the vren project repository")
 
+include("${VREN_HOME}/VRen.cmake")
+
 add_executable(vren_demo
         vren_demo/main.cpp
         vren_demo/app.hpp
@@ -24,7 +26,7 @@ add_executable(vren_demo
 # ImGui GLFW backend binary
 # ------------------------------------------------------------------------------------------------
 
-set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/master/backends)
+set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/${imgui_TAG}/backends)
 
 set(IMGUI_GLFW_BACKEND ${CMAKE_CURRENT_BINARY_DIR}/imgui_glfw_backend)
 
@@ -36,8 +38,7 @@ add_library(vren_demo_imgui_glfw_backend
         ${IMGUI_GLFW_BACKEND}/imgui_impl_glfw.h)
 
 # ImGui
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(vren_demo_imgui_glfw_backend PRIVATE imgui::imgui)
+target_link_libraries(vren_demo_imgui_glfw_backend PRIVATE imgui)
 
 # glfw3
 find_package(glfw3 CONFIG REQUIRED)
@@ -71,7 +72,6 @@ target_link_libraries(vren_demo PRIVATE tinyfiledialogs::tinyfiledialogs)
 # Resources
 # ------------------------------------------------------------------------------------------------
 
-include("${VREN_HOME}/VRen.cmake")
 setup_resources(vren_demo)
 
 # Models

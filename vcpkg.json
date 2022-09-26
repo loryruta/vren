@@ -1,26 +1,18 @@
 {
-    "name": "vren",
-    "version": "1.0.0",
-    "description": "my Vulkan RENderer",
-    "builtin-baseline": "7dd2e65c0bb63669f3a7717cf78f0f943b2fd185",
-    "dependencies": [
-        "glm",
-        {
-            "name": "imgui",
-            "features": [
-                "docking-experimental"
-            ]
-        },
-        "implot",
-        "stb",
-        "meshoptimizer",
-        "fmt",
+  "name": "vren",
+  "version": "1.0.0",
+  "description": "Vulkan renderer",
+  "dependencies": [
+    "glm",
+    "stb",
+    "meshoptimizer",
+    "fmt",
 
-        "glfw3",
-        "tinyfiledialogs",
-        "tinygltf",
+    "glfw3",
+    "tinyfiledialogs",
+    "tinygltf",
 
-        "gtest",
-        "benchmark"
-    ]
+    "gtest",
+    "benchmark"
+  ]
 }

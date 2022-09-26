@@ -1,6 +1,8 @@
 include_guard()
 
 find_package(Vulkan)
+include("${VREN_HOME}/cmake/imgui.cmake")  # TODO Use Config or Find CMake module ?
+include("${VREN_HOME}/cmake/implot.cmake") # TODO Like above
 
 function (compile_shader _SHADERS IN_PATH OUT_PATH)
     if (!Vulkan_glslc_FOUND)

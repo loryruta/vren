@@ -3,6 +3,10 @@ include(CheckIncludeFileCXX)
 include(CheckCXXCompilerFlag)
 include(CheckCXXSourceCompiles)
 
+set(VREN_HOME "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "The path to the vren project repository")
+
+include("${VREN_HOME}/VRen.cmake")
+
 set(SRC
         vren/base/base.hpp
         vren/base/bounding_shape.cpp
@@ -115,7 +119,7 @@ target_compile_definitions(vren PRIVATE
 # ImGui Vulkan backend binary
 # ------------------------------------------------------------------------------------------------
 
-set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/master/backends)
+set(IMGUI_BACKENDS_BASE_URL https://raw.githubusercontent.com/ocornut/imgui/${imgui_TAG}/backends)
 
 set(IMGUI_VULKAN_BACKEND_DIR ${CMAKE_CURRENT_BINARY_DIR}/imgui_vulkan_backend)
 
@@ -123,9 +127,9 @@ file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.cpp ${IMGUI_VULKAN_BA
 file(DOWNLOAD ${IMGUI_BACKENDS_BASE_URL}/imgui_impl_vulkan.h ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.h)
 
 add_library(vren_imgui_vulkan_backend
-        ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.cpp
-        ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.h
-        )
+    ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.cpp
+    ${IMGUI_VULKAN_BACKEND_DIR}/imgui_impl_vulkan.h
+)
 
 target_compile_definitions(vren_imgui_vulkan_backend PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
@@ -134,8 +138,7 @@ find_package(Vulkan REQUIRED)
 target_include_directories(vren_imgui_vulkan_backend PRIVATE ${Vulkan_INCLUDE_DIRS})
 
 # ImGui
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(vren_imgui_vulkan_backend PRIVATE imgui::imgui)
+target_link_libraries(vren_imgui_vulkan_backend PRIVATE imgui)
 
 # ------------------------------------------------------------------------------------------------
 # Dependencies
@@ -167,12 +170,10 @@ FetchContent_MakeAvailable(VulkanMemoryAllocator)
 target_link_libraries(vren PUBLIC VulkanMemoryAllocator)
 
 # ImGui
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC imgui::imgui)
+target_link_libraries(vren PUBLIC imgui)
 
 # ImPlot
-find_package(implot CONFIG REQUIRED)
-target_link_libraries(vren PUBLIC implot::implot)
+target_link_libraries(vren PUBLIC implot)
 
 # ImGui Vulkan backend
 target_include_directories(vren PUBLIC ${IMGUI_VULKAN_BACKEND_DIR})
