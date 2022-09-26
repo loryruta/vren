@@ -446,6 +446,10 @@ void vren_demo::app::record_commands(
 	auto clear_depth_buffer = vren::clear_depth_stencil_buffer(m_render_graph_allocator, m_depth_buffer->get_image(), { .depth = 1.0f });
 	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_depth_buffer, vren_demo::ProfileSlot_CLEAR_DEPTH_BUFFER, frame_idx));
 
+	// Clear gbuffer
+	auto clear_gbuffer = vren::clear_gbuffer(m_render_graph_allocator, *m_gbuffer);
+	render_graph.concat(clear_gbuffer);
+
 	// Render scene
 	switch (m_selected_renderer_type)
 	{

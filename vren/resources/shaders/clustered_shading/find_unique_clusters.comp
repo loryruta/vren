@@ -37,20 +37,22 @@ layout(set = 1, binding = 1) buffer AllocationIndexBuffer
 
 layout(set = 1, binding = 2, r32ui) uniform uimage2D u_cluster_references;
 
-// 8k of SMEM
-shared uint s_cluster_key_occurrences[1 << VREN_CLUSTER_KEY_BIT_COUNT /* 1024 */];
-shared uint s_unique_cluster_keys[1024];
+shared uvec2 s_cluster_keys[1024];
+shared uint s_scratch_buffer_1[1024];
 shared uint s_allocation_index;
+
+// Discretize the normal vector to 6 bits
+uint discretize_normal_vector(vec3 normal)
+{
+	uvec3 tmp = uvec3(round((normal + 1.0) / 2.0 * 4.0));
+	return
+		(tmp.x & 0x3) |
+		((tmp.y & 0x3) << 2) |
+		((tmp.z & 0x3) << 4);
+}
 
 void main()
 {
-	if (gl_LocalInvocationIndex < (1 << VREN_CLUSTER_KEY_BIT_COUNT))
-	{
-		s_cluster_key_occurrences[gl_LocalInvocationIndex] = 0;
-	}
-
-	barrier();
-
 	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
 	
 	float frag_z = texture(u_depth_buffer, frag_coord).r;
@@ -64,24 +66,44 @@ void main()
 	
 	uint Sy = gl_NumWorkGroups.y;
 
-	uint i = gl_WorkGroupID.x;
-	uint j = gl_WorkGroupID.y;
-	uint k = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
+	// Calculate cluster coordinates
+	uvec3 cluster_coords;
+	cluster_coords.x = gl_WorkGroupID.x;
+	cluster_coords.y = gl_WorkGroupID.y;
+	cluster_coords.z = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
 
-	if (k < (1 << VREN_CLUSTER_KEY_BIT_COUNT))
-	{
-		s_cluster_key_occurrences[k] = 1;	
-	}
+	// Discretize normal to 6 bits
+	vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
+	uint frag_normal_discretized = discretize_normal_vector(frag_normal);
+
+	// Encode cluster key
+	uint cluster_key =
+		(cluster_coords.x & 0xFF) |
+		(cluster_coords.y & 0xFF) << 8 |
+		(cluster_coords.z & 0x3FF) << 16 |
+		frag_normal_discretized << 26;
+
+	s_cluster_keys[gl_LocalInvocationIndex] = uvec2(cluster_key, gl_LocalInvocationIndex);
 
 	barrier();
 
-	uint unique_key_count = s_cluster_key_occurrences[(1 << VREN_CLUSTER_KEY_BIT_COUNT) - 1];
-
-	VREN_WORKGROUP_EXCLUSIVE_SCAN(s_cluster_key_occurrences, (1 << VREN_CLUSTER_KEY_BIT_COUNT), 0, 1);
+	// Compaction
+	VREN_WORKGROUP_BITONIC_SORT(s_cluster_keys, 1024);
 
 	barrier();
 
-	unique_key_count += s_cluster_key_occurrences[(1 << VREN_CLUSTER_KEY_BIT_COUNT) - 1];
+	bool keep_value = gl_LocalInvocationIndex >= (1024 - 1) || (s_cluster_keys[gl_LocalInvocationIndex].x != s_cluster_keys[gl_LocalInvocationIndex + 1].x);
+	s_scratch_buffer_1[gl_LocalInvocationIndex] = keep_value ? 1 : 0;
+
+	barrier();
+
+	uint unique_key_count = s_scratch_buffer_1[1024 - 1]; // The last element is lost after exclusive scan so we save it here
+
+	VREN_WORKGROUP_EXCLUSIVE_SCAN(s_scratch_buffer_1, 1024, 0, 1);
+
+	barrier();
+
+	unique_key_count += s_scratch_buffer_1[1024 - 1];
 
 	if (gl_LocalInvocationIndex == 0)
 	{
@@ -92,25 +114,23 @@ void main()
 		atomicMax(allocation_index.x, num_workgroups);
 	}
 
-	s_unique_cluster_keys[s_cluster_key_occurrences[k]] = k;
-
 	barrier();
 
-	// Add the cluster key to the unique cluster key buffer
-	if (gl_LocalInvocationIndex < unique_key_count)
+	if (keep_value)
 	{
-		uint cluster_key = 0;
-		cluster_key |= i & 0xFF;
-		cluster_key |= (j & 0xFF) << 8;
-		cluster_key |= (s_unique_cluster_keys[gl_LocalInvocationIndex] & 0x3FF) << 16;
-
-		uint cluster_key_idx = s_allocation_index + gl_LocalInvocationIndex;
+		uint cluster_key_idx = s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex];
 		if (cluster_key_idx < cluster_keys.length())
 		{
-			cluster_keys[cluster_key_idx] = cluster_key;
+			cluster_keys[cluster_key_idx] = s_cluster_keys[gl_LocalInvocationIndex].x;
 		}
 	}
-	
-	// Set the index of the cluster in the unique list for the current sample
-	imageStore(u_cluster_references, ivec2(gl_GlobalInvocationID.xy), uvec4(s_allocation_index + s_cluster_key_occurrences[k]));
+
+	imageStore(
+		u_cluster_references,
+		ivec2(
+			(gl_WorkGroupID.x << 5) + (s_cluster_keys[gl_LocalInvocationIndex].y & 0x1F),
+			(gl_WorkGroupID.y << 5) + ((s_cluster_keys[gl_LocalInvocationIndex].y >> 5) & 0x1F)
+		),
+		uvec4(s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex])
+	);
 }

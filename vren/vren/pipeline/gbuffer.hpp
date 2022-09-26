@@ -27,5 +27,10 @@ namespace vren
         void add_render_graph_node_resources(vren::render_graph_node& node, VkImageLayout image_layout, VkAccessFlags access_flags) const;
         void write_descriptor_set(VkDescriptorSet descriptor_set, vren::vk_utils::combined_image_view const& depth_buffer) const;
     };
+
+    vren::render_graph_t clear_gbuffer(
+        vren::render_graph_allocator& allocator, 
+        vren::gbuffer const& gbuffer
+    );
 }
 

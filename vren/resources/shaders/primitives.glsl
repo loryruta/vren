@@ -65,70 +65,26 @@
 		barrier(); \
 	}
 
-/*
-	VREN_WORKGROUP_RADIX_SORT (TODO TEST)
-	2-bit radix sort
-
-	- _inout_array : The array to sort (cardinality is the size of the workgroup)
-	- _in_length : The length of the input array
-	- _inout_scratch_buffer_1 : Used to store temporary results of sorting. Needs to be at least _in_length
-	- _inout_scratch_buffer_2 : Used to store occurencies of a certain digit and to perform exclusive scan. Needs to be at least max(_in_length, 16)
-	- _inout_scratch_buffer_3 : Used to hold exclusive scan results. Needs to be at least _in_length
-*/
-#define VREN_WORKGROUP_RADIX_SORT(_inout_array, _in_length, _inout_scratch_buffer_1, _inout_scratch_buffer_2, _inout_scratch_buffer_3) \
-	\
-	uint _bit_count = 2; \
-	\
-	for (uint _digit_position = 0; _digit_position < uint(ceil(32 / float(_bit_count))); _digit_position++) \
+// https://en.wikipedia.org/wiki/Bitonic_sorter
+#define VREN_WORKGROUP_BITONIC_SORT(_inout_array, _in_length) \
+	for (uint _k = 2; _k <= _in_length; _k *= 2) \
 	{ \
-		uint _digit_mask = uint(exp2(_bit_count) - 1) << (_digit_position * _bit_count); \
-		uint _current_digit = (_digit_position % 2 == 0 ? _inout_array[gl_LocalInvocationIndex] : _inout_scratch_buffer_1[gl_LocalInvocationIndex]) & _digit_mask; \
-		\
-		for (uint _digit = 0; _digit < exp2(_bit_count); _digit++) \
+		for (uint _j = _k / 2; _j > 0; _j /= 2) \
 		{ \
-			if (gl_LocalInvocationIndex < _in_length) \
+			uint _i = gl_LocalInvocationIndex; \
+			uint _l = _i ^ _j; \
+			if (_l > _i) \
 			{ \
-				_inout_scratch_buffer_2[gl_LocalInvocationIndex] = _current_digit == _digit ? 1 : 0; \
-			} \
-			\
-			barrier(); \
-			\
-			VREN_WORKGROUP_EXCLUSIVE_SCAN(_inout_scratch_buffer_2, _in_length, gl_LocalInvocationIndex, 1); \
-			\
-			barrier(); \
-			\
-			if (_current_digit == _digit) \
-			{ \
-				_inout_scratch_buffer_3[gl_LocalInvocationIndex] = _inout_scratch_buffer_2[gl_LocalInvocationIndex]; \
+				if ((((_i & _k) == 0) && _inout_array[_i].x > _inout_array[_l].x) || (((_i & _k) != 0) && _inout_array[_i].x < _inout_array[_l].x)) \
+				{ \
+					uvec2 _tmp = _inout_array[_i]; \
+					_inout_array[_i] = _inout_array[_l]; \
+					_inout_array[_l] = _tmp; \
+				} \
 			} \
 			\
 			barrier(); \
 		} \
-		\
-		if (gl_LocalInvocationIndex < 16) \
-		{ \
-			_inout_scratch_buffer_2[gl_LocalInvocationIndex] = 0; \
-		} \
-		\
-		barrier(); \
-		\
-		atomicAdd(_inout_scratch_buffer_2[_current_digit], 1); \
-		\
-		barrier(); \
-		\
-		uint _local_offset = _inout_scratch_buffer_3[gl_LocalInvocationIndex]; \
-		uint _global_offset = _inout_scratch_buffer_2[_current_digit]; \
-		\
-		if (_digit_position % 2 == 0) \
-		{ \
-			_inout_scratch_buffer_1[gl_LocalInvocationIndex] = _inout_array[gl_LocalInvocationIndex]; \
-		} \
-		else \
-		{ \
-			_inout_array[_global_offset + _local_offset] = _inout_scratch_buffer_1[gl_LocalInvocationIndex]; \
-		} \
-		\
-		barrier(); \
 	}
 
-#endif
+#endif // PRIMITIVES_H
