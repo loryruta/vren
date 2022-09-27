@@ -18,7 +18,7 @@ vren_demo::visualize_clusters::visualize_clusters(
 vren::render_graph_t vren_demo::visualize_clusters::operator()(
 	vren::render_graph_allocator& render_graph_allocator,
 	glm::uvec2 const& screen,
-	uint32_t mode,
+	int32_t mode,
 	vren::vk_utils::combined_image_view const& cluster_reference_buffer,
 	vren::vk_utils::buffer const& cluster_key_buffer,
 	vren::vk_utils::buffer const& assigned_light_buffer,
@@ -94,7 +94,7 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 
 		struct
 		{
-			uint32_t m_mode;
+			int32_t m_mode;
 		} push_constants;
 		push_constants = {
 			.m_mode = mode,

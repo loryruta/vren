@@ -42,7 +42,7 @@ shared uint s_scratch_buffer_1[1024];
 shared uint s_allocation_index;
 
 // Discretize the normal vector to 6 bits
-uint discretize_normal_vector(vec3 normal)
+uint encode_normal(vec3 normal)
 {
 	uvec3 tmp = uvec3(round((normal + 1.0) / 2.0 * 4.0));
 	return
@@ -74,7 +74,7 @@ void main()
 
 	// Discretize normal to 6 bits
 	vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
-	uint frag_normal_discretized = discretize_normal_vector(frag_normal);
+	uint frag_normal_discretized = encode_normal(frag_normal);
 
 	// Encode cluster key
 	uint cluster_key =

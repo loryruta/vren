@@ -365,8 +365,18 @@ void vren_demo::ui::show_controls_window()
 
 		ImGui::Checkbox("Show point light BVH", &m_app->m_show_light_bvh);
 		ImGui::Checkbox("Show test camera clusters", &m_app->m_show_test_camera_clusters);
-		ImGui::Checkbox("Show cluster keys", &m_app->m_show_cluster_keys);
-		ImGui::Checkbox("Show light assignments", &m_app->m_show_light_assignments);
+
+		// Show clusters
+		int32_t& show_clusters_mode = m_app->m_show_clusters_mode;
+
+		bool toggled = false;
+
+		int32_t value = show_clusters_mode;
+		toggled |= ImGui::RadioButton("Show clusters key", &value, 0) && show_clusters_mode == 0;
+		toggled |= ImGui::RadioButton("Show clusters normal", &value, 1) && show_clusters_mode == 1;
+		toggled |= ImGui::RadioButton("Show clusters lights", &value, 2) && show_clusters_mode == 2;
+
+		show_clusters_mode = toggled ? -1 : value;
 	}
 
 	ImGui::End();

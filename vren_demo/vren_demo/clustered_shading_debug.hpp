@@ -22,7 +22,7 @@ namespace vren_demo
 		vren::render_graph_t operator()(
 			vren::render_graph_allocator& render_graph_allocator,
 			glm::uvec2 const& screen,
-			uint32_t mode,
+			int32_t mode,
 			vren::vk_utils::combined_image_view const& cluster_reference_buffer,
 			vren::vk_utils::buffer const& cluster_key_buffer,
 			vren::vk_utils::buffer const& assigned_light_buffer,

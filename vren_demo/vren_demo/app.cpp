@@ -661,30 +661,14 @@ void vren_demo::app::record_commands(
 		m_profiler.profile(m_render_graph_allocator, debug_render_graph.get_head(), vren_demo::ProfileSlot_DEBUG_RENDERER, frame_idx)
 	);
 
-	// Show cluster keys
-	if (m_show_cluster_keys)
+	// Show clusters
+	if (m_show_clusters_mode >= 0)
 	{
 		render_graph.concat(
 			m_visualize_clusters(
 				m_render_graph_allocator,
 				screen,
-				0,
-				m_cluster_and_shade.m_cluster_reference_buffer,
-				m_cluster_and_shade.m_cluster_key_buffer,
-				m_cluster_and_shade.m_assigned_light_buffer,
-				color_buffer
-			)
-		);
-	}
-
-	// Show light assignment
-	if (m_show_light_assignments)
-	{
-		render_graph.concat(
-			m_visualize_clusters(
-				m_render_graph_allocator,
-				screen,
-				1,
+				m_show_clusters_mode,
 				m_cluster_and_shade.m_cluster_reference_buffer,
 				m_cluster_and_shade.m_cluster_key_buffer,
 				m_cluster_and_shade.m_assigned_light_buffer,

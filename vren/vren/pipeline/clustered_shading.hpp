@@ -66,7 +66,8 @@ namespace vren
                 uint32_t light_bvh_root_index,
                 uint32_t light_count,
                 vren::vk_utils::buffer const& light_index_buffer,
-                vren::vk_utils::buffer const& assigned_light_buffer
+                vren::vk_utils::buffer const& assigned_light_buffer,
+                vren::light_array const& light_array
             );
         };
 

@@ -10,12 +10,13 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #define VREN_MAX_LIGHTS_PER_CLUSTER 8
 
-#define VREN_DEMO_VISUALIZE_CLUSTER_KEYS 0
-#define VREN_DEMO_VISUALIZE_LIGHT_ASSIGNMENTS 1
+#define VREN_DEMO_MODE_SHOW_CLUSTER_KEYS 0
+#define VREN_DEMO_MODE_SHOW_NORMALS 1
+#define VREN_DEMO_MODE_SHOW_LIGHT_ASSIGNMENTS 2
 
 layout(push_constant) uniform PushConstants
 {
-	uint mode;
+	int mode;
 };
 
 layout(set = 0, binding = 0, r32ui) uniform uimage2D u_cluster_references;
@@ -57,12 +58,23 @@ void main()
 		uint cluster_key_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
 
 		vec3 color;
-		if (mode == VREN_DEMO_VISUALIZE_CLUSTER_KEYS)
+		if (mode == VREN_DEMO_MODE_SHOW_CLUSTER_KEYS)
 		{
 			uint cluster_key = cluster_keys[cluster_key_idx];
 			color = vec3(hash(cluster_key));
 		}
-		else if (mode == VREN_DEMO_VISUALIZE_LIGHT_ASSIGNMENTS)
+		else if (mode == VREN_DEMO_MODE_SHOW_NORMALS)
+		{
+			uint cluster_key = cluster_keys[cluster_key_idx];
+			uint cluster_normal = (cluster_key >> 26) & 0x3F;
+
+			color = vec3(
+				(cluster_normal & 0x3) / 4.0,
+				((cluster_normal >> 2) & 0x3) / 4.0,
+				((cluster_normal >> 4) & 0x3) / 4.0
+			);
+		}
+		else if (mode == VREN_DEMO_MODE_SHOW_LIGHT_ASSIGNMENTS)
 		{
 			uint assigned_light_count = 0;
 			for (; assigned_light_count < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_count++)

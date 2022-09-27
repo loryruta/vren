@@ -122,7 +122,8 @@ void vren::clustered_shading::assign_lights::operator()(
     uint32_t light_bvh_root_index,
     uint32_t light_count,
     vren::vk_utils::buffer const& light_index_buffer,
-    vren::vk_utils::buffer const& assigned_light_buffer
+    vren::vk_utils::buffer const& assigned_light_buffer,
+    vren::light_array const& light_array
 )
 {
     vkCmdFillBuffer(command_buffer, assigned_light_buffer.m_buffer.m_handle, 0, VK_WHOLE_SIZE, UINT32_MAX);
@@ -144,6 +145,7 @@ void vren::clustered_shading::assign_lights::operator()(
 
         m_pipeline.bind(command_buffer);
 
+        // Push constants
         struct
         {
             float m_camera_near;
@@ -169,6 +171,7 @@ void vren::clustered_shading::assign_lights::operator()(
 
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 
+        // Bind descriptor set 0
         auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
             m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
         );
@@ -180,10 +183,20 @@ void vren::clustered_shading::assign_lights::operator()(
 
         m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
+        // Bind descriptor set 1
+        auto descriptor_set_1 = std::make_shared<vren::pooled_vk_descriptor_set>(
+            m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(1))
+        );
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 0, light_array.m_point_light_position_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+
+        m_pipeline.bind_descriptor_set(command_buffer, 1, descriptor_set_1->m_handle.m_descriptor_set);
+
+        //
         vkCmdDispatchIndirect(command_buffer, allocation_index_buffer.m_buffer.m_handle, 0);
 
         resource_container.add_resources(
-            descriptor_set_0
+            descriptor_set_0,
+            descriptor_set_1
         );
     }
 }
@@ -486,7 +499,8 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
             light_bvh_root_index,
             light_count,
             light_index_buffer,
-            m_assigned_light_buffer
+            m_assigned_light_buffer,
+            light_array
         );
 
         buffer_memory_barriers = {
