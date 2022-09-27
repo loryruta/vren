@@ -16,14 +16,14 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	float camera_near;
-	float camera_half_fov_y;
-	float camera_aspect_ratio;
-	uint bvh_root_index;
-	mat4 camera_view;
 	uvec2 num_tiles;
-	float _pad[2];
-};
+	float camera_near;
+	float camera_half_fov;
+	mat4 camera_proj;
+	mat4 camera_view;
+	uint bvh_root_index;
+	float _pad[3];
+} push_constants;
 
 struct BvhNode
 {
@@ -56,6 +56,72 @@ layout(set = 0, binding = 4) writeonly buffer AssignedLightBuffer
 	uint assigned_lights[];
 };
 
+layout(set = 1, binding = 0) readonly buffer PointLightPositionBuffer
+{
+    vec4 point_light_positions[];
+};
+
+void decode_cluster_key(uint cluster_key, out uvec3 cluster_ijk, out vec3 cluster_normal)
+{
+	cluster_ijk = uvec3(
+		cluster_key & 0xFF,
+		(cluster_key >> 8) & 0xFF,
+		(cluster_key >> 16) & 0x3FF
+	);
+
+	cluster_key >>= 26;
+
+	cluster_normal = normalize(vec3(
+		(cluster_key & 0x3) / 4.0 * 2.0 - 1.0,
+		((cluster_key >> 2) & 0x3) / 4.0 * 2.0 - 1.0,
+		((cluster_key >> 4) & 0x3) / 4.0 * 2.0 - 1.0
+	));
+}
+
+void calc_cluster_aabb(
+	uvec3 cluster_ijk,
+	uvec2 num_tiles,
+	float camera_near,
+	float camera_half_fov,
+	mat4 camera_proj,
+	mat4 camera_view,
+	out vec4 cluster_min,
+	out vec4 cluster_max
+)
+{
+	// Clip space tile min and tile max
+	cluster_min = vec4(cluster_ijk.xy / vec2(num_tiles), 0.0, 1.0);
+	cluster_min.xy = vec2(cluster_min.x, 1.0 - cluster_min.y) * 2.0 - 1.0;
+
+	cluster_max = vec4((cluster_ijk.xy + uvec2(1.0)) / vec2(num_tiles), 0.0, 1.0);
+	cluster_max.xy = vec2(cluster_max.x, 1.0 - cluster_max.y) * 2.0 - 1.0;
+
+	// Convert to view space
+	mat4 inverse_proj = inverse(camera_proj);
+
+	cluster_min = inverse_proj * cluster_min;
+	cluster_min /= cluster_min.w;
+
+	cluster_max = inverse_proj * cluster_max;
+	cluster_max /= cluster_max.w;
+
+	// Apply cluster's depth in view space
+	float cluster_near = camera_near * pow((1 + 2 * tan(camera_half_fov) / num_tiles.y), cluster_ijk.z); 
+	float cluster_far = camera_near * pow((1 + 2 * tan(camera_half_fov) / num_tiles.y), cluster_ijk.z + 1);
+
+	vec3 d1 = normalize(cluster_min.xyz);
+	vec3 d2 = normalize(cluster_max.xyz);
+
+	cluster_min = vec4(cluster_near / d1.z * d1, 1);
+	cluster_max = vec4(cluster_far / d2.z * d2, 1);
+
+	// Convert to world space
+	mat4 inverse_view = inverse(camera_view);
+
+	cluster_min = inverse_view * cluster_min;
+	cluster_max = inverse_view * cluster_max;
+}
+
 bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
 {
 	return p.x >= _min.x && p.y >= _min.y && p.z >= _min.z &&
@@ -82,54 +148,32 @@ void main()
 	{
 		uint cluster_key = cluster_keys[gl_GlobalInvocationID.x];
 
-		uvec3 cluster_ijk = uvec3(
-			cluster_key & 0xFF,
-			(cluster_key >> 8) & 0xFF,
-			(cluster_key >> 16) & 0x3FF
+		uvec3 cluster_ijk;
+		vec3 cluster_normal;
+		decode_cluster_key(cluster_key, cluster_ijk, cluster_normal);
+
+		vec4 cluster_min, cluster_max;
+		calc_cluster_aabb(
+			cluster_ijk,
+			push_constants.num_tiles,
+			push_constants.camera_near,
+			push_constants.camera_half_fov,
+			push_constants.camera_proj,
+			push_constants.camera_view,
+			cluster_min,
+			cluster_max
 		);
 
-		vec2 tile_min = cluster_ijk.xy / vec2(num_tiles);
-		tile_min.y = 1.0 - tile_min.y;
-		tile_min.xy = tile_min.xy * 2.0 - 1.0;
-
-		vec2 tile_max = (cluster_ijk.xy + vec2(1.0)) / vec2(num_tiles);
-		tile_max.y = 1.0 - tile_max.y;
-		tile_max.xy = tile_max.xy * 2.0 - 1.0;
-
-		float tan_half_fov = tan(camera_half_fov_y);
-
-		float near_k = camera_near * pow(1 + ((2 * tan_half_fov) / float(num_tiles.y)), float(cluster_ijk.z));
-		float h_k = (tile_max.y * tan_half_fov * near_k) - (tile_min.y * tan_half_fov * near_k);
-		float far_k = near_k + h_k;
-
-		vec4 cluster_min;
-		cluster_min.x = tile_min.x * tan_half_fov * camera_aspect_ratio * near_k;
-		cluster_min.y = tile_min.y * tan_half_fov * near_k;
-		cluster_min.z = near_k;
-		cluster_min.w = 1.0;
-
-		vec4 cluster_max;
-		cluster_max.x = cluster_min.x + h_k;
-		cluster_max.y = cluster_min.y + h_k;
-		cluster_max.z = near_k + h_k;
-		cluster_max.w = 1.0;
-
-		mat4 inv_camera_view = inverse(camera_view);
-		cluster_min = inv_camera_view * cluster_min;
-		cluster_max = inv_camera_view * cluster_max;
-
-		vec4 tmp = cluster_min;
-		cluster_min = min(cluster_min, cluster_max);
-		cluster_max = max(tmp, cluster_max);
+		vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
 
 		int assigned_light_alloc_idx = 0;
 
-		BvhNode bvh_root_node = bvh[bvh_root_index];
+		BvhNode bvh_root_node = bvh[push_constants.bvh_root_index];
 		if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh_root_node._min, bvh_root_node._max)) // BVH root test
 		{
 			uint stack[VREN_MAX_STACK_DEPTH];
 			uint stack_ptr = 0;
-			uint node_addr = bvh_root_index - 32; // Start from first level after root
+			uint node_addr = push_constants.bvh_root_index - 32; // Start from first level after root
 
 			bool keep_running = true;
 			bool advance;
@@ -145,16 +189,21 @@ void main()
 					if (node.next == VREN_BVH_LEAF_NODE)
 					{
 						uint point_light_idx = light_indices[node_addr].y;
-
-						assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = point_light_idx;
-						assigned_light_alloc_idx++;
 						
-						advance = true;
-
-						if (assigned_light_alloc_idx >= VREN_MAX_LIGHTS_PER_CLUSTER)
+						vec3 point_light_pos = point_light_positions[point_light_idx].xyz;
+						vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
+						
+						// Assignment
+						if (dot(cluster_normal, point_light_dir) > 0)
 						{
-							keep_running = false;
-							break;
+							assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = point_light_idx;
+							assigned_light_alloc_idx++;
+
+							if (assigned_light_alloc_idx >= VREN_MAX_LIGHTS_PER_CLUSTER)
+							{
+								keep_running = false;
+								break;
+							}
 						}
 					}
 					else

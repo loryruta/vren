@@ -148,25 +148,25 @@ void vren::clustered_shading::assign_lights::operator()(
         // Push constants
         struct
         {
+            glm::uvec2 m_num_tiles;
             float m_camera_near;
             float m_camera_half_fov_y;
-            float m_camera_aspect_ratio;
-            glm::uint m_bvh_root_index;
+            glm::mat4 m_camera_proj;
             glm::mat4 m_camera_view;
-            glm::uvec2 m_num_tiles;
-            float _pad[2];
+            glm::uint m_bvh_root_index;
+            float _pad1[3];
         } push_constants;
 
         push_constants = {
-            .m_camera_near = camera.m_near_plane,
-            .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
-            .m_camera_aspect_ratio = camera.m_aspect_ratio,
-            .m_bvh_root_index = light_bvh_root_index,
-            .m_camera_view = camera.get_view(),
             .m_num_tiles = glm::uvec2(
                 vren::divide_and_ceil(screen.x, 32u),
                 vren::divide_and_ceil(screen.y, 32u)
             ),
+            .m_camera_near = camera.m_near_plane,
+            .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
+            .m_camera_proj = camera.get_projection(),
+            .m_camera_view = camera.get_view(),
+            .m_bvh_root_index = light_bvh_root_index,
         };
 
         m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);

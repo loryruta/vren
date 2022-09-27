@@ -139,7 +139,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Clustered shading
 	m_cluster_and_shade(m_context),
 
-	m_demo_camera_clusters_draw_buffer(vren_demo::create_debug_draw_buffer_with_demo_camera_clusters(m_context)),
+	m_show_clusters_geometry(m_context),
 	m_visualize_clusters(m_context),
 
 	// Output
@@ -616,15 +616,15 @@ void vren_demo::app::record_commands(
 		}));
 	}
 
-	// Show test camera clusters
-	if (m_show_test_camera_clusters)
+	// Show camera clusters
+	if (m_camera_clusters_draw_buffer)
 	{
 		debug_render_graph.concat(
 			m_debug_renderer.render(
 				m_render_graph_allocator,
 				render_target,
 				camera_data,
-				m_demo_camera_clusters_draw_buffer
+				*m_camera_clusters_draw_buffer
 			)
 		);
 	}

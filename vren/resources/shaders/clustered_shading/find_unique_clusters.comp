@@ -70,7 +70,10 @@ void main()
 	uvec3 cluster_coords;
 	cluster_coords.x = gl_WorkGroupID.x;
 	cluster_coords.y = gl_WorkGroupID.y;
-	cluster_coords.z = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
+	cluster_coords.z = uint(floor(
+		log(frag_pos.z / camera_near) /
+		log(1 + (2 * tan(camera_half_fov_y)) / Sy)
+	));
 
 	// Discretize normal to 6 bits
 	vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;

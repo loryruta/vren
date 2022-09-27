@@ -202,8 +202,10 @@ namespace vren_demo
 		// Clustered shading
 		vren::cluster_and_shade m_cluster_and_shade;
 
-		vren::debug_renderer_draw_buffer m_demo_camera_clusters_draw_buffer;
+		vren_demo::show_clusters_geometry m_show_clusters_geometry;
 		vren_demo::visualize_clusters m_visualize_clusters;
+
+		std::unique_ptr<vren::debug_renderer_draw_buffer> m_camera_clusters_draw_buffer;
 
 		// Color buffer
 		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
@@ -258,7 +260,6 @@ namespace vren_demo
 		
 
 		bool m_show_light_bvh = false;
-		bool m_show_test_camera_clusters = false;
 		int32_t m_show_clusters_mode = -1;
 
 	public:
@@ -272,6 +273,14 @@ namespace vren_demo
 		void on_key_press(int key, int scancode, int action, int mods);
 
 	public:
+		inline glm::uvec2 get_screen() const
+		{
+			return glm::uvec2(
+				m_presenter.get_swapchain()->m_image_width,
+				m_presenter.get_swapchain()->m_image_height
+			);
+		}
+
 		void load_scene(char const* gltf_model_filename);
 
 		void on_window_resize(uint32_t width, uint32_t height);

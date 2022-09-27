@@ -82,6 +82,7 @@ compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/blit_depth_b
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/bounce_point_lights.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/bounce_point_lights.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/fill_point_light_debug_draw_buffer.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/visualize_bvh.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/visualize_bvh.comp.spv")
+compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/show_clusters_geometry.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/show_clusters_geometry.comp.spv")
 compile_shader(SHADERS "${CMAKE_CURRENT_LIST_DIR}/resources/shaders/visualize_clusters.comp" "${CMAKE_CURRENT_BINARY_DIR}/resources/shaders/visualize_clusters.comp.spv")
 
 add_custom_target(vren_demo_shaders DEPENDS ${SHADERS})

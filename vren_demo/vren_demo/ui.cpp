@@ -364,7 +364,28 @@ void vren_demo::ui::show_controls_window()
 		ImGui::Spacing();
 
 		ImGui::Checkbox("Show point light BVH", &m_app->m_show_light_bvh);
-		ImGui::Checkbox("Show test camera clusters", &m_app->m_show_test_camera_clusters);
+
+		// Show camera clusters
+		ImGui::Text("Show clusters geometry");
+
+		if (ImGui::Button("Show##show_clusters_geometry"))
+		{
+			m_app->m_camera_clusters_draw_buffer = std::make_unique<vren::debug_renderer_draw_buffer>(
+				m_app->m_show_clusters_geometry(
+					m_app->m_context,
+					m_app->m_cluster_and_shade,
+					m_app->m_camera,
+					m_app->get_screen()
+				)
+			);
+		}
+
+		ImGui::SameLine();
+	
+		if (ImGui::Button("Clear##show_clusters_geometry"))
+		{
+			m_app->m_camera_clusters_draw_buffer.reset();
+		}
 
 		// Show clusters
 		int32_t& show_clusters_mode = m_app->m_show_clusters_mode;
