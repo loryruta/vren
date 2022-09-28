@@ -8,8 +8,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
 #include <primitives.glsl>
-
-#define VREN_CLUSTER_KEY_BIT_COUNT 10
+#include <clustered_shading.glsl>
 
 layout(push_constant) uniform PushConstants
 {
@@ -41,16 +40,6 @@ shared uvec2 s_cluster_keys[1024];
 shared uint s_scratch_buffer_1[1024];
 shared uint s_allocation_index;
 
-// Discretize the normal vector to 6 bits
-uint encode_normal(vec3 normal)
-{
-	uvec3 tmp = uvec3(round((normal + 1.0) / 2.0 * 4.0));
-	return
-		(tmp.x & 0x3) |
-		((tmp.y & 0x3) << 2) |
-		((tmp.z & 0x3) << 4);
-}
-
 void main()
 {
 	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
@@ -67,27 +56,24 @@ void main()
 	uint Sy = gl_NumWorkGroups.y;
 
 	// Calculate cluster coordinates
-	uvec3 cluster_coords;
-	cluster_coords.x = gl_WorkGroupID.x;
-	cluster_coords.y = gl_WorkGroupID.y;
-	cluster_coords.z = uint(floor(
-		log(frag_pos.z / camera_near) /
-		log(1 + (2 * tan(camera_half_fov_y)) / Sy)
-	));
+	uvec3 cluster_ijk;
+	cluster_ijk.x = gl_WorkGroupID.x;
+	cluster_ijk.y = gl_WorkGroupID.y;
+	cluster_ijk.z = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
 
 	// Discretize normal to 6 bits
 	vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
-	uint frag_normal_discretized = encode_normal(frag_normal);
+	uint frag_normal_discretized = clustered_shading_discretize_normal(frag_normal);
 
 	// Encode cluster key
 	uint cluster_key =
-		(cluster_coords.x & 0xFF) |
-		(cluster_coords.y & 0xFF) << 8 |
-		(cluster_coords.z & 0x3FF) << 16 |
-		frag_normal_discretized << 26;
+		(cluster_ijk.x & 0xFF) |
+		((cluster_ijk.y & 0xFF) << 8) |
+		((cluster_ijk.z & 0x3FF) << 16) |
+		(frag_normal_discretized << 26);
 
 	s_cluster_keys[gl_LocalInvocationIndex] = uvec2(cluster_key, gl_LocalInvocationIndex);
-
+	
 	barrier();
 
 	// Compaction

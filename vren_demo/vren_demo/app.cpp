@@ -143,7 +143,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_visualize_clusters(m_context),
 
 	// Output
-	m_color_buffers{},
+	m_color_buffer{},
 	m_depth_buffer{},
 
 	// Depth buffer pyramid
@@ -195,19 +195,15 @@ void vren_demo::app::on_swapchain_change(vren::swapchain const& swapchain)
 	uint32_t width = swapchain.m_image_width;
 	uint32_t height = swapchain.m_image_height;
 
-	m_color_buffers.clear();
-	for (uint32_t i = 0; i < VREN_MAX_FRAME_IN_FLIGHT_COUNT; i++)
-	{
-		m_color_buffers.push_back(
-			vren::vk_utils::create_color_buffer(
-				m_context,
-				width, height,
-				VREN_COLOR_BUFFER_OUTPUT_FORMAT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT
-			)
-		);
-	}
+	m_color_buffer = std::make_shared<vren::vk_utils::color_buffer_t>(
+		vren::vk_utils::create_color_buffer(
+			m_context,
+			width, height,
+			VREN_COLOR_BUFFER_OUTPUT_FORMAT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+		)
+	);
 
 	m_depth_buffer = std::make_shared<vren::vk_utils::depth_buffer_t>(
 		vren::vk_utils::create_depth_buffer(
@@ -283,6 +279,42 @@ void vren_demo::app::on_key_press(int key, int scancode, int action, int mods)
 	}
 }
 
+vren::debug_renderer_draw_buffer create_normals_draw_buffer(vren::context const& context, vren::model const& model)
+{
+	vren::debug_renderer_draw_buffer draw_buffer(context);
+
+	for (vren::model::mesh const& mesh : model.m_meshes)
+	{
+		for (uint32_t i = mesh.m_instance_offset; i < mesh.m_instance_offset + mesh.m_instance_count; i++)
+		{
+			glm::mat4 transform = model.m_instances[i].m_transform;
+
+			for (uint32_t v = mesh.m_index_offset; v < mesh.m_index_offset + mesh.m_index_count; v += 3)
+			{
+				uint32_t i0 = model.m_indices[v];
+				uint32_t i1 = model.m_indices[v + 1];
+				uint32_t i2 = model.m_indices[v + 2];
+
+				glm::vec3 p = transform * glm::vec4(
+					(model.m_vertices[i0].m_position + model.m_vertices[i1].m_position + model.m_vertices[i2].m_position) / 3.0f,
+					1.0f
+				);
+
+				glm::vec3 n = glm::normalize(
+					transform * glm::vec4(
+						(model.m_vertices[i0].m_normal + model.m_vertices[i1].m_normal + model.m_vertices[i2].m_normal) / 3.0f,
+						0.0f
+					)
+				);
+
+				draw_buffer.add_line({ .m_from = p, .m_to = p + n * 0.01f, .m_color = 0x4444ff });
+			}
+		}
+	}
+
+	return draw_buffer;
+}
+
 void vren_demo::app::load_scene(char const* gltf_model_filename)
 {
 	VREN_INFO("[vren_demo] Loading model: {}\n", gltf_model_filename);
@@ -293,6 +325,9 @@ void vren_demo::app::load_scene(char const* gltf_model_filename)
 
 	std::vector<vren::material> materials{};
 	gltf_parser.load_from_file(gltf_model_filename, parsed_model, vren::k_initial_material_count, materials);
+
+	// Fill models' normals draw buffer
+	// m_model_normals_draw_buffer = std::make_unique<vren::debug_renderer_draw_buffer>(create_normals_draw_buffer(m_context, parsed_model));
 
 	// Upload materials
 	m_material_buffer_fork.enqueue([materials](vren::material_buffer& material_buffer)
@@ -391,6 +426,7 @@ void vren_demo::app::record_commands(
 	vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 1, &memory_barrier, 0, nullptr, 0, nullptr);
 
 	resource_container.add_resources(
+		m_color_buffer,
 		m_depth_buffer,
 		m_depth_buffer_pyramid,
 		m_gbuffer
@@ -402,9 +438,9 @@ void vren_demo::app::record_commands(
 	m_debug_draw_buffer.clear();
 
 	// Cartesian axes
-	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
-	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
-	//m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
+	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
 
 	// Model AABB
 	//m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
@@ -428,18 +464,16 @@ void vren_demo::app::record_commands(
 		.m_z_near = m_camera.m_near_plane,
 	};
 
-	vren::vk_utils::color_buffer_t& color_buffer = m_color_buffers.at(frame_idx);
-
 	m_light_array_fork.apply(frame_idx, light_array);
 	m_material_buffer_fork.apply(frame_idx, material_buffer);
 
-	auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, color_buffer, *m_depth_buffer);
+	auto render_target = vren::render_target::cover(swapchain.m_image_width, swapchain.m_image_height, *m_color_buffer, *m_depth_buffer);
 
 	// Render-graph begin
 	vren::render_graph_builder render_graph(m_render_graph_allocator);
 
 	// Clear color buffer
-	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, color_buffer.get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, m_color_buffer->get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
 	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_color_buffer, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER, frame_idx));
 
 	// Clear depth buffer
@@ -510,7 +544,7 @@ void vren_demo::app::record_commands(
 			m_point_light_index_buffer,
 			light_array,
 			material_buffer,
-			color_buffer
+			*m_color_buffer
 		)
 	);
 
@@ -522,7 +556,13 @@ void vren_demo::app::record_commands(
 	vren::render_graph_builder debug_render_graph(m_render_graph_allocator);
 
 	// Debug general purpose objects
-	//debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
+	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
+
+	// Show models' normals
+	if (m_model_normals_draw_buffer)
+	{
+		debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, *m_model_normals_draw_buffer));
+	}
 
 	// Visualize light BVH
 	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
@@ -637,7 +677,7 @@ void vren_demo::app::record_commands(
 				m_render_graph_allocator,
 				*m_depth_buffer_pyramid,
 				m_shown_depth_buffer_pyramid_level,
-				color_buffer,
+				*m_color_buffer,
 				swapchain.m_image_width,
 				swapchain.m_image_height,
 				m_depth_buffer_pyramid_color_exponent,
@@ -672,7 +712,7 @@ void vren_demo::app::record_commands(
 				m_cluster_and_shade.m_cluster_reference_buffer,
 				m_cluster_and_shade.m_cluster_key_buffer,
 				m_cluster_and_shade.m_assigned_light_buffer,
-				color_buffer
+				*m_color_buffer
 			)
 		);
 	}
@@ -694,10 +734,12 @@ void vren_demo::app::record_commands(
 	// Blit to swapchain image
 	auto blit_to_swapchain_node = vren::blit_color_buffer_to_swapchain_image(
 		m_render_graph_allocator,
-		color_buffer,
-		swapchain.m_image_width, swapchain.m_image_height,
+		*m_color_buffer,
+		swapchain.m_image_width,
+		swapchain.m_image_height,
 		swapchain.m_images.at(swapchain_image_idx),
-		swapchain.m_image_width, swapchain.m_image_height
+		swapchain.m_image_width,
+		swapchain.m_image_height
 	);
 	render_graph.concat(
 		m_profiler.profile(m_render_graph_allocator, blit_to_swapchain_node, vren_demo::ProfileSlot_BLIT_COLOR_BUFFER_TO_SWAPCHAIN_IMAGE, frame_idx)

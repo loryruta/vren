@@ -143,6 +143,7 @@ void vren::clustered_shading::assign_lights::operator()(
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
+        // Bind pipeline
         m_pipeline.bind(command_buffer);
 
         // Push constants
@@ -191,9 +192,10 @@ void vren::clustered_shading::assign_lights::operator()(
 
         m_pipeline.bind_descriptor_set(command_buffer, 1, descriptor_set_1->m_handle.m_descriptor_set);
 
-        //
+        // Dispatch
         vkCmdDispatchIndirect(command_buffer, allocation_index_buffer.m_buffer.m_handle, 0);
 
+        // 
         resource_container.add_resources(
             descriptor_set_0,
             descriptor_set_1
@@ -319,7 +321,7 @@ void vren::clustered_shading::shade::operator()(
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------
-// clusterr_and_shade
+// cluster_and_shade
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::cluster_and_shade::cluster_and_shade(
@@ -354,7 +356,7 @@ vren::cluster_and_shade::cluster_and_shade(
     m_assigned_light_buffer(vren::vk_utils::alloc_device_only_buffer(
         *m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VREN_MAX_UNIQUE_CLUSTER_KEYS * VREN_MAX_ASSIGNED_LIGHTS_PER_CLUSTER * sizeof(uint32_t)
+        VREN_MAX_UNIQUE_CLUSTER_KEYS * VREN_MAX_LIGHTS_PER_CLUSTER * sizeof(uint32_t)
     ))
 {
     vren::vk_utils::set_name(*m_context, m_cluster_key_buffer, "cluster_key_buffer");
@@ -459,7 +461,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .buffer = m_allocation_index_buffer.m_buffer.m_handle,
@@ -485,7 +487,14 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 },
             }
         };
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 2, buffer_memory_barriers.data(), 1, image_memory_barriers.data());
+        vkCmdPipelineBarrier(
+            command_buffer,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            NULL,
+            0, nullptr,
+            2, buffer_memory_barriers.data(),
+            1, image_memory_barriers.data()
+        );
 
         m_assign_lights(
             frame_idx,

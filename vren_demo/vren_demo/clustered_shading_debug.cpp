@@ -96,10 +96,18 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 		struct
 		{
 			int32_t m_mode;
+			glm::uvec2 m_num_tiles;
+			float _pad;
 		} push_constants;
+
 		push_constants = {
 			.m_mode = mode,
+			.m_num_tiles = glm::uvec2(
+				vren::divide_and_ceil(screen.x, 32u),
+				vren::divide_and_ceil(screen.y, 32u)
+			),
 		};
+
 		m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants));
 
 		auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
@@ -166,9 +174,10 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 
 	// Allocate the debug draw buffer
 	const uint32_t k_line_vertices = 2;
+	const uint32_t k_arrow_vertices = k_line_vertices + k_line_vertices * 3;
 	const uint32_t k_cube_vertices = 12 * k_line_vertices;
 
-	uint32_t vertex_count = dispatch_params->w * (k_cube_vertices + k_line_vertices);
+	uint32_t vertex_count = dispatch_params->w * (k_cube_vertices + k_arrow_vertices);
 	debug_draw_buffer.m_vertex_buffer.set_data(nullptr, vertex_count);
 	debug_draw_buffer.m_vertex_count = vertex_count;
 

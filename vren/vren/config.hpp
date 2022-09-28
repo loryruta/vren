@@ -2,6 +2,8 @@
 
 #include <volk.h>
 
+#include <vren.glsl>
+
 #define VREN_NAME ("vren")
 #define VREN_VERSION VK_MAKE_VERSION(1, 0, 0)
 
@@ -19,7 +21,6 @@
 #define VREN_MAX_MATERIAL_COUNT (1 << 16)
 
 #define VREN_MAX_UNIQUE_CLUSTER_KEYS (1 << 17)
-#define VREN_MAX_ASSIGNED_LIGHTS_PER_CLUSTER 8
 
 // TODO REMOVE IT
 #define VREN_POINT_LIGHTS_BUFFER_SIZE       (2 * 1024 * 1024) // TODO derive from MAX_*_LIGHTS

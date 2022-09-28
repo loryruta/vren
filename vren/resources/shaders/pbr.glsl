@@ -86,9 +86,8 @@ vec3 pbr_apply_point_light(
     vec3 d = p - light_position;
     vec3 L = normalize(d);
 
-    //float intensity = 1.0 / pow(length(d), 0.81);
-    float intensity = 1.0 - max(length(d) / point_light.intensity, 1.0);
-    vec3 radiance = point_light.color;
+    float intensity = 1.0 - pow(min(length(d) / point_light.intensity, 1.0), 1.5);
+    vec3 radiance = point_light.color * intensity;
 
     return pbr_apply_light(eye, p, N, L, radiance, albedo, metallic, roughness);
 }

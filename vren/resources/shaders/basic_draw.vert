@@ -30,7 +30,7 @@ void main()
     gl_Position = camera_projection * camera_view * pos;
 
     v_position = pos.xyz;
-    v_normal = a_normal;
+    v_normal = normalize(i_transform * vec4(a_normal, 0.0)).xyz;
     v_texcoords = a_texcoords;
     v_material_idx = material_index;
 }

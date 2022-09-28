@@ -7,16 +7,19 @@
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include <common.glsl>
+#include <vren.glsl>
+#include <clustered_shading.glsl>
 
-#define VREN_MAX_LIGHTS_PER_CLUSTER 8
-
-#define VREN_DEMO_MODE_SHOW_CLUSTER_KEYS 0
-#define VREN_DEMO_MODE_SHOW_NORMALS 1
-#define VREN_DEMO_MODE_SHOW_LIGHT_ASSIGNMENTS 2
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_KEY 0
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_IJK 1
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_NORMAL 2
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENTS 3
 
 layout(push_constant) uniform PushConstants
 {
 	int mode;
+	uvec2 num_tiles;
+	float _pad;
 };
 
 layout(set = 0, binding = 0, r32ui) uniform uimage2D u_cluster_references;
@@ -56,25 +59,34 @@ void main()
 	if (gl_GlobalInvocationID.x < image_size.x && gl_GlobalInvocationID.y < image_size.y)
 	{
 		uint cluster_key_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
+		uint cluster_key = cluster_keys[cluster_key_idx];
+		
+		uvec3 cluster_ijk;
+		uint cluster_normal_idx;
+		clustered_shading_decode_cluster_key(cluster_key, cluster_ijk, cluster_normal_idx);
 
 		vec3 color;
-		if (mode == VREN_DEMO_MODE_SHOW_CLUSTER_KEYS)
+		if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_KEY)
 		{
-			uint cluster_key = cluster_keys[cluster_key_idx];
 			color = vec3(hash(cluster_key));
 		}
-		else if (mode == VREN_DEMO_MODE_SHOW_NORMALS)
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_IJK)
 		{
-			uint cluster_key = cluster_keys[cluster_key_idx];
-			uint cluster_normal = (cluster_key >> 26) & 0x3F;
-
 			color = vec3(
-				(cluster_normal & 0x3) / 4.0,
-				((cluster_normal >> 2) & 0x3) / 4.0,
-				((cluster_normal >> 4) & 0x3) / 4.0
+				cluster_ijk.xy / vec2(num_tiles),
+				cluster_ijk.z / float(1024)
 			);
 		}
-		else if (mode == VREN_DEMO_MODE_SHOW_LIGHT_ASSIGNMENTS)
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_NORMAL)
+		{
+			uvec3 decoded_normal_idx = clustered_shading_decode_normal_idx(cluster_normal_idx);
+			color = vec3(
+				decoded_normal_idx.x / 6.0,
+				decoded_normal_idx.y / 3.0,
+				decoded_normal_idx.z / 3.0
+			);
+		}
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENTS)
 		{
 			uint assigned_light_count = 0;
 			for (; assigned_light_count < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_count++)

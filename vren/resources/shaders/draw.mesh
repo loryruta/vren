@@ -94,7 +94,7 @@ void main()
             gl_MeshVerticesNV[i].gl_Position = camera.projection * camera.view * world_position;
 
             o_position[i] = world_position.xyz;
-            o_normal[i] = vertex.normal;
+            o_normal[i] = (mesh_instance.transform * vec4(vertex.normal, 0.0)).xyz;
             o_texcoord[i] = vertex.texcoord;
             o_material_idx[i] = instanced_meshlet.material_idx;
         }

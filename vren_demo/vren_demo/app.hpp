@@ -168,6 +168,8 @@ namespace vren_demo
 		// Model
 		glm::vec3 m_model_min = glm::vec3(std::numeric_limits<float>::infinity());
 		glm::vec3 m_model_max = glm::vec3(-std::numeric_limits<float>::infinity());
+
+		std::unique_ptr<vren::debug_renderer_draw_buffer> m_model_normals_draw_buffer;
 		std::unique_ptr<vren::basic_model_draw_buffer> m_basic_model_draw_buffer;
 		std::unique_ptr<vren::clusterized_model> m_clusterized_model;
 		std::unique_ptr<vren::clusterized_model_draw_buffer> m_clusterized_model_draw_buffer;
@@ -208,7 +210,7 @@ namespace vren_demo
 		std::unique_ptr<vren::debug_renderer_draw_buffer> m_camera_clusters_draw_buffer;
 
 		// Color buffer
-		std::vector<vren::vk_utils::color_buffer_t> m_color_buffers;
+		std::shared_ptr<vren::vk_utils::color_buffer_t> m_color_buffer;
 
 		// Depth buffer
 		std::shared_ptr<vren::vk_utils::depth_buffer_t> m_depth_buffer;

@@ -146,6 +146,7 @@ target_link_libraries(vren_imgui_vulkan_backend PRIVATE imgui)
 
 # Self include
 target_include_directories(vren PUBLIC vren)
+target_include_directories(vren PUBLIC resources/shaders)
 
 # volk
 FetchContent_Declare(
