@@ -115,7 +115,7 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_construct_light_array_bvh(m_context),
 
 	// Point lights
-	m_point_light_direction_buffer([&]()
+	m_point_light_direction_buffers([&]()
 	{
 		std::vector<glm::vec4> point_light_directions(VREN_MAX_POINT_LIGHT_COUNT);
 		for (glm::vec4& direction : point_light_directions)
@@ -123,7 +123,15 @@ vren_demo::app::app(GLFWwindow* window) :
 			direction = glm::vec4(glm::ballRand(1.0f), 0.0f);
 		}
 
-		return vren::vk_utils::create_device_only_buffer(m_context, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, point_light_directions.data(), point_light_directions.size() * sizeof(glm::vec4));
+		return vren::create_array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t idx)
+		{
+			return vren::vk_utils::create_device_only_buffer(
+				m_context,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				point_light_directions.data(),
+				point_light_directions.size() * sizeof(glm::vec4)
+			);
+		});
 	}()),
 	m_point_light_debug_draw_buffers(vren::create_array<vren::debug_renderer_draw_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index)
 	{
@@ -179,7 +187,7 @@ void vren_demo::app::late_initialize()
 	});
 
 	// Init directional light
-	m_light_array_fork.enqueue([](vren::light_array& light_array)
+	m_light_array_fork.enqueue([](uint32_t idx, vren::light_array& light_array)
 	{
 		vren::directional_light* directional_lights = light_array.m_directional_light_buffer.get_mapped_pointer<vren::directional_light>();
 
@@ -330,7 +338,7 @@ void vren_demo::app::load_scene(char const* gltf_model_filename)
 	// m_model_normals_draw_buffer = std::make_unique<vren::debug_renderer_draw_buffer>(create_normals_draw_buffer(m_context, parsed_model));
 
 	// Upload materials
-	m_material_buffer_fork.enqueue([materials](vren::material_buffer& material_buffer)
+	m_material_buffer_fork.enqueue([materials](uint32_t idx, vren::material_buffer& material_buffer)
 	{
 		vren::material* material_buffer_ptr = material_buffer.m_buffer.get_mapped_pointer<vren::material>();
 
@@ -386,7 +394,11 @@ void vren_demo::app::on_update(float dt)
 
 	if (m_point_light_speed > std::numeric_limits<float>::epsilon())
 	{
-		m_light_array_fork.enqueue([this, dt](vren::light_array& light_array)
+		m_light_array_fork.enqueue([
+			this,
+			speed = m_point_light_speed,
+			dt
+		](uint32_t idx, vren::light_array& light_array)
 		{
 			vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 			{
@@ -395,11 +407,11 @@ void vren_demo::app::on_update(float dt)
 					command_buffer,
 					resource_container,
 					light_array.m_point_light_position_buffer,
-					m_point_light_direction_buffer,
+					m_point_light_direction_buffers.at(idx),
 					VREN_MAX_POINT_LIGHT_COUNT,
 					glm::vec3(-1.0f),
 					glm::vec3(1.0f),
-					m_point_light_speed,
+					speed,
 					dt
 				);
 			});

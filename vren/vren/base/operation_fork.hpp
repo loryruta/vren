@@ -11,7 +11,7 @@ namespace vren
     class operation_fork
     {
     public:
-        using operation_t = std::function<void(_t& object)>;
+        using operation_t = std::function<void(uint32_t idx, _t& object)>;
 
     private:
         std::array<vren::static_vector_t<operation_t, _queue_length>, _n> m_operations;
@@ -31,7 +31,7 @@ namespace vren
 
             for (operation_t const& operation : m_operations.at(i))
             {
-                operation(object);
+                operation(i, object);
             }
 
             m_operations[i].clear();

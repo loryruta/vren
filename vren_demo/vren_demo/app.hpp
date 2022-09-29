@@ -196,7 +196,7 @@ namespace vren_demo
 		vren::construct_light_array_bvh m_construct_light_array_bvh;
 
 		// Point light
-		vren::vk_utils::buffer m_point_light_direction_buffer;
+		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_point_light_direction_buffers;
 		std::array<vren::debug_renderer_draw_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_point_light_debug_draw_buffers;
 
 		float m_point_light_speed = 0.1f;
