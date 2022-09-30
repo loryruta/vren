@@ -20,12 +20,7 @@
 
 #define VREN_MAX_MATERIAL_COUNT (1 << 16)
 
-#define VREN_MAX_UNIQUE_CLUSTER_KEYS (1 << 17)
-
-// TODO REMOVE IT
-#define VREN_POINT_LIGHTS_BUFFER_SIZE       (2 * 1024 * 1024) // TODO derive from MAX_*_LIGHTS
-#define VREN_DIRECTIONAL_LIGHTS_BUFFER_SIZE (1 * 1024 * 1024)
-#define VREN_SPOT_LIGHTS_BUFFER_SIZE        (1 * 1024 * 1024)
+#define VREN_MAX_UNIQUE_CLUSTER_KEYS (1 << 17) // ~131K
 
 // ------------------------------------------------------------------------------------------------
 // NON configurable values

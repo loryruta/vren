@@ -68,7 +68,6 @@ void main()
 			push_constants.camera_near,
 			push_constants.camera_half_fov,
 			push_constants.camera_proj,
-			push_constants.camera_view,
 			cluster_min,
 			cluster_max
 		);

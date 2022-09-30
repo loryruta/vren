@@ -52,14 +52,14 @@ layout(set = 0, binding = 3) readonly buffer LightIndexBuffer
 	uvec2 light_indices[];
 };
 
-layout(set = 0, binding = 4) writeonly buffer AssignedLightBuffer
+layout(set = 0, binding = 4) buffer AssignedLightBuffer
 {
 	uint assigned_lights[];
 };
 
-layout(set = 1, binding = 0) readonly buffer PointLightPositionBuffer
+layout(set = 1, binding = 0) readonly buffer ViewSpacePointLightPositionBuffer
 {
-    vec4 point_light_positions[];
+    vec4 view_space_point_light_positions[];
 };
 
 bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
@@ -68,16 +68,25 @@ bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
 		p.x <= _max.x && p.y <= _max.y && p.z <= _max.z;
 }
 
+// https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 bool test_aabb_aabb(vec3 _min_1, vec3 _max_1, vec3 _min_2, vec3 _max_2)
 {
-	return(
-		_max_1.x > _min_2.x &&
-		_min_1.x < _max_2.x &&
-		_max_1.y > _min_2.y &&
-		_min_1.y < _max_2.y &&
-		_max_1.z > _min_2.z &&
-		_min_1.z < _max_2.z
+	return (
+		_max_1.x >= _min_2.x &&
+		_min_1.x <= _max_2.x &&
+		_max_1.y >= _min_2.y &&
+		_min_1.y <= _max_2.y &&
+		_max_1.z >= _min_2.z &&
+		_min_1.z <= _max_2.z
 	);
+}
+
+// https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
+bool test_sphere_aabb(vec3 sphere_o, float sphere_r, vec3 aabb_min, vec3 aabb_max)
+{
+	vec3 p = max(aabb_min, min(sphere_o, aabb_max));
+	float d = length(p - sphere_o);
+	return d < sphere_r;
 }
 
 void main()
@@ -99,24 +108,20 @@ void main()
 			push_constants.camera_near,
 			push_constants.camera_half_fov,
 			push_constants.camera_proj,
-			push_constants.camera_view,
 			cluster_min,
 			cluster_max
 		);
 
 		vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
 
-		int assigned_light_alloc_idx = 0;
+		float assigned_point_light_intensities[VREN_MAX_LIGHTS_PER_CLUSTER];
 
 		BvhNode bvh_root_node = bvh[push_constants.bvh_root_index];
-		if (
-			//cluster_normal_idx < 0x3F && // The cluster has a valid normal
-			test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh_root_node._min, bvh_root_node._max) // Light BVH affects the cluster
-		)
+		if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh_root_node._min, bvh_root_node._max))
 		{
 			uint stack[VREN_MAX_STACK_DEPTH];
 			uint stack_ptr = 0;
-			uint node_addr = push_constants.bvh_root_index - 32; // Start from first level after root
+			uint node_addr = push_constants.bvh_root_index - 32; // Start from first level after below the root node
 
 			bool keep_running = true;
 			bool advance;
@@ -127,31 +132,35 @@ void main()
 
 				advance = true;
 
-				if (node.next != VREN_BVH_INVALID_NODE && test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max))
+				if (node.next == VREN_BVH_LEAF_NODE) // Leaf node
 				{
-					if (node.next == VREN_BVH_LEAF_NODE)
+					uint point_light_idx = light_indices[node_addr].y;
+						
+					vec3 point_light_pos = view_space_point_light_positions[point_light_idx].xyz;
+					vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
+						
+					if (test_sphere_aabb(point_light_pos, (node._max.x - node._min.x) / 2.0 /* radius */, cluster_min.xyz, cluster_max.xyz))
 					{
-						uint point_light_idx = light_indices[node_addr].y;
-						
-						vec3 point_light_pos = point_light_positions[point_light_idx].xyz;
-						vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
-						
-						// Assignment
-						if (cluster_shading_is_cluster_affected(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx))
+						float point_light_intensity = clustered_shading_get_light_intensity(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx);
+						if (point_light_intensity > 0.0)
 						{
-							assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_alloc_idx] = point_light_idx;
-							assigned_light_alloc_idx++;
-
-							if (assigned_light_alloc_idx >= VREN_MAX_LIGHTS_PER_CLUSTER)
+							for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
 							{
-								keep_running = false;
-								break;
+								uint assigned_point_light_idx = assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + i];
+								if (assigned_point_light_idx == UINT32_MAX || assigned_point_light_intensities[i] < point_light_intensity)
+								{ // Assignment
+									assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + i] = point_light_idx;
+									assigned_point_light_intensities[i] = point_light_intensity;
+									break;
+								}
 							}
 						}
 					}
-					else
-					{
-						// Push
+				}
+				else if (node.next != VREN_BVH_INVALID_NODE) // Parent node
+				{
+					if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max))
+					{ // Push
 						stack[stack_ptr] = node_addr;
 						stack_ptr++;
 						node_addr = node.next;

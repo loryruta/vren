@@ -80,40 +80,6 @@ vren_demo::app::app(GLFWwindow* window) :
 
 	m_visualize_bvh(m_context),
 
-	// Light array BVH
-	m_point_light_bvh_buffer([&]()
-	{
-		vren::vk_utils::buffer buffer = vren::vk_utils::alloc_device_only_buffer(
-			m_context,
-			vren::construct_light_array_bvh::get_required_bvh_buffer_usage_flags(),
-			vren::construct_light_array_bvh::get_required_bvh_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
-		);
-
-		vren::vk_utils::set_name(m_context, buffer, "light_bvh_buffer");
-
-		return buffer;
-	}()),
-	m_point_light_index_buffer([&]()
-	{
-		vren::vk_utils::buffer buffer = vren::vk_utils::alloc_device_only_buffer(
-			m_context,
-			vren::construct_light_array_bvh::get_required_light_index_buffer_usage_flags(),
-			vren::construct_light_array_bvh::get_required_light_index_buffer_size(VREN_MAX_POINT_LIGHT_COUNT)
-		);
-
-		vren::vk_utils::set_name(m_context, buffer, "light_index_buffer");
-
-		return buffer;
-	}()),
-	m_point_light_bvh_draw_buffer([&]()
-	{
-		vren::debug_renderer_draw_buffer draw_buffer(m_context);
-		draw_buffer.m_vertex_count = 0;
-		draw_buffer.m_vertex_buffer.set_data(nullptr, vren::calc_bvh_buffer_length(VREN_MAX_POINT_LIGHT_COUNT) * 12 * sizeof(vren::debug_renderer_vertex));
-		return draw_buffer;
-	}()),
-	m_construct_light_array_bvh(m_context),
-
 	// Point lights
 	m_point_light_direction_buffers([&]()
 	{
@@ -521,28 +487,7 @@ void vren_demo::app::record_commands(
 		break;
 	}
 
-	// Construct light_array BVH
-	if (light_array.m_point_light_count > 0)
-	{
-		render_graph.concat(
-			m_profiler.profile(
-				m_render_graph_allocator,
-				m_construct_light_array_bvh.construct(
-					m_render_graph_allocator,
-					light_array,
-					m_point_light_bvh_buffer,
-					0,
-					m_point_light_index_buffer,
-					0
-				),
-				vren_demo::ProfileSlot_CONSTRUCT_LIGHT_ARRAY_BVH
-			)
-		);
-	}
-
 	// Cluster and shade
-	m_point_light_bvh_root_index = vren::calc_bvh_root_index(light_array.m_point_light_count);
-
 	render_graph.concat(
 		m_cluster_and_shade(
 			m_render_graph_allocator,
@@ -550,10 +495,6 @@ void vren_demo::app::record_commands(
 			m_camera,
 			*m_gbuffer,
 			*m_depth_buffer,
-			m_point_light_bvh_buffer,
-			m_point_light_bvh_root_index,
-			light_array.m_point_light_count,
-			m_point_light_index_buffer,
 			light_array,
 			material_buffer,
 			*m_color_buffer
@@ -577,6 +518,7 @@ void vren_demo::app::record_commands(
 	}
 
 	// Visualize light BVH
+	/* TODO LIGHT BVH IS NOW A VIEW-SPACE BVH
 	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
 	{
 		render_graph.concat(
@@ -596,7 +538,7 @@ void vren_demo::app::record_commands(
 				m_point_light_bvh_draw_buffer
 			)
 		);
-	}
+	}*/
 
 	// Debug point lights
 	if (light_array.m_point_light_count > 0)

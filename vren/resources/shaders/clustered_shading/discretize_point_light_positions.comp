@@ -13,9 +13,9 @@ layout(set = 0, binding = 0) readonly buffer LightMinMaxBuffer
 	vec4 _min; vec4 _max;
 };
 
-layout(set = 0, binding = 1) readonly buffer LightPositionBuffer
+layout(set = 0, binding = 1) readonly buffer ViewSpacePointLightPositionBuffer
 {
-	vec4 light_positions[];
+	vec4 view_space_point_light_positions[];
 };
 
 layout(set = 0, binding = 2) writeonly buffer MortonCodeBuffer
@@ -25,9 +25,9 @@ layout(set = 0, binding = 2) writeonly buffer MortonCodeBuffer
 
 void main()
 {
-	if (gl_GlobalInvocationID.x < light_positions.length())
+	if (gl_GlobalInvocationID.x < view_space_point_light_positions.length())
 	{
-		vec3 pos = light_positions[gl_GlobalInvocationID.x].xyz;
+		vec3 pos = view_space_point_light_positions[gl_GlobalInvocationID.x].xyz;
 		uvec3 discretized_pos = uvec3(floor((pos - _min.xyz) / (_max.xyz - _min.xyz) * (1 << 5)));
 
 		uint morton_code = 0;

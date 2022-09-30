@@ -11,7 +11,6 @@
 #include "vren/pipeline/depth_buffer_pyramid.hpp"
 #include <vren/presenter.hpp>
 #include "vren/pipeline/profiler.hpp"
-#include <vren/pipeline/construct_light_array_bvh.hpp>
 #include <vren/model/basic_model_draw_buffer.hpp>
 #include <vren/model/clusterized_model.hpp>
 #include <vren/model/clusterized_model_draw_buffer.hpp>
@@ -184,16 +183,6 @@ namespace vren_demo
 
 		vren_demo::point_light_bouncer m_point_light_bouncer;
 		vren_demo::fill_point_light_debug_draw_buffer m_fill_point_light_debug_draw_buffer;
-
-		// Light array BVH
-		vren::vk_utils::buffer m_point_light_bvh_buffer;
-		uint32_t m_point_light_bvh_root_index;
-
-		vren::vk_utils::buffer m_point_light_index_buffer;
-
-		vren::debug_renderer_draw_buffer m_point_light_bvh_draw_buffer;
-
-		vren::construct_light_array_bvh m_construct_light_array_bvh;
 
 		// Point light
 		std::array<vren::vk_utils::buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_point_light_direction_buffers;

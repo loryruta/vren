@@ -91,7 +91,8 @@ function (setup_resources TARGET)
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/build_bvh.comp" "${VREN_SHADERS_DIR}/build_bvh.comp.spv")
 
     # Clustered shading
-    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/discretize_light_positions.comp" "${VREN_SHADERS_DIR}/clustered_shading/discretize_light_positions.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/point_light_position_to_view_space.comp" "${VREN_SHADERS_DIR}/clustered_shading/point_light_position_to_view_space.comp.spv")
+    compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/discretize_point_light_positions.comp" "${VREN_SHADERS_DIR}/clustered_shading/discretize_point_light_positions.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/init_light_array_bvh.comp" "${VREN_SHADERS_DIR}/clustered_shading/init_light_array_bvh.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/find_unique_clusters.comp" "${VREN_SHADERS_DIR}/clustered_shading/find_unique_clusters.comp.spv")
     compile_shader(SHADERS "${VREN_HOME}/vren/resources/shaders/clustered_shading/assign_lights.comp" "${VREN_SHADERS_DIR}/clustered_shading/assign_lights.comp.spv")

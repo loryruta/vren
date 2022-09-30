@@ -432,8 +432,8 @@ void vren_demo::ui::show_camera_window()
 		ImGui::SliderFloat("FOV", &fov_degrees, 1, 90, "%.2f deg");
 		camera.m_fov_y = glm::radians(fov_degrees);
 
-		ImGui::Text("Near plane: %.2f", camera.m_near_plane);
-		ImGui::Text("Far plane: %.2f", camera.m_far_plane);
+		ImGui::SliderFloat("Near plane", &camera.m_near_plane, 0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+		ImGui::SliderFloat("Far plane", &camera.m_far_plane, 100.0f, 10000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
 		ImGui::Text("Aspect ratio: %.2f", camera.m_aspect_ratio);
 	}
 

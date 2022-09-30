@@ -75,8 +75,7 @@ void clustered_shading_calc_cluster_aabb(
 	float camera_near,
 	float camera_half_fov,
 	mat4 camera_proj,
-	mat4 camera_view,
-	out vec4 cluster_min, // TODO output vec3
+	out vec4 cluster_min,
 	out vec4 cluster_max
 )
 {
@@ -97,8 +96,9 @@ void clustered_shading_calc_cluster_aabb(
 	cluster_max /= cluster_max.w;
 
 	// Apply cluster's depth in view space
-	float cluster_near = camera_near * pow((1 + 2 * tan(camera_half_fov) / num_tiles.y), cluster_ijk.z);
-	float cluster_far = camera_near * pow((1 + 2 * tan(camera_half_fov) / num_tiles.y), cluster_ijk.z + 1);
+	float a = 2 * tan(camera_half_fov) / num_tiles.y + 1.0;
+	float cluster_near = camera_near * pow(a, cluster_ijk.z);
+	float cluster_far = cluster_near * a;
 
 	vec3 d1 = normalize(cluster_min.xyz);
 	vec3 d2 = normalize(cluster_max.xyz);
@@ -106,14 +106,10 @@ void clustered_shading_calc_cluster_aabb(
 	cluster_min = vec4(cluster_near / d1.z * d1, 1);
 	cluster_max = vec4(cluster_far / d2.z * d2, 1);
 
-	// Convert to world space
-	mat4 inverse_view = inverse(camera_view);
-
-	cluster_min = inverse_view * cluster_min;
-	cluster_max = inverse_view * cluster_max;
+	// TODO cluster_min = min( ... ), cluster_max = max( ... )
 }
 
-bool cluster_shading_is_cluster_affected(
+float clustered_shading_get_light_intensity(
 	vec3 point_light_pos,
 	vec3 cluster_min,
 	vec3 cluster_max,
@@ -148,7 +144,7 @@ bool cluster_shading_is_cluster_affected(
 
 		alpha = max(alpha, acos(dot(v, cluster_normal) / length(v)));
 	}
-
+	
 	// Build point light cone
 	vec3 point_light_dir = normalize(cluster_pos - point_light_pos);
 
@@ -167,8 +163,9 @@ bool cluster_shading_is_cluster_affected(
 	}
 
 	// Check angle
-	float omega = acos(dot(cluster_normal, -point_light_dir));
-	return omega < (PI / 2.0 + alpha + delta);
+	float omega = acos(dot(cluster_normal, -point_light_dir)); // [0, pi]
+	float thresold = (PI / 2.0) + alpha + delta;
+	return max(thresold - omega, 0.0) / thresold;
 }
 
 #endif // VREN_CLUSTERED_SHADING_H_

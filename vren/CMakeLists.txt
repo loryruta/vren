@@ -48,8 +48,6 @@ set(SRC
         vren/pipeline/debug_renderer.cpp
         vren/pipeline/render_graph.hpp
         vren/pipeline/render_graph.cpp
-        vren/pipeline/construct_light_array_bvh.hpp
-        vren/pipeline/construct_light_array_bvh.cpp
         vren/pipeline/gbuffer.cpp
         vren/pipeline/gbuffer.hpp
         vren/pipeline/clustered_shading.cpp
