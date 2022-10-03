@@ -3,7 +3,7 @@
 vren (whose name stands for "**V**ulkan **ren**derer") is a 3D rendering library.
 At the moment it's where I'm experimenting several rendering techniques and put my effort in designing a clean overlay over the Vulkan API.
 
-_[[ Screenshots are coming ]]_
+![vren_logo](gallery/20221003.png)
 
 ## Features
 
