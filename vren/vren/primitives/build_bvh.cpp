@@ -132,5 +132,5 @@ uint32_t vren::calc_bvh_root_index(uint32_t leaf_count)
 uint32_t vren::calc_bvh_level_count(uint32_t leaf_count)
 {
     uint32_t padded_leaf_count = calc_bvh_padded_leaf_count(leaf_count);
-    return (glm::log2(padded_leaf_count) / 5) + 1;
+    return (glm::log2(padded_leaf_count) / 5);
 }

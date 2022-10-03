@@ -109,7 +109,7 @@ void vren::clustered_shading::construct_point_light_bvh::operator()(
     // Descriptor set 0
     descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_point_light_position_to_view_space_pipeline.m_descriptor_set_layouts.at(0))
-        );
+    );
 
     vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, light_array.m_point_light_position_buffer.m_buffer.m_handle, point_light_count * sizeof(glm::vec4), 0);
     vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 1, view_space_point_light_position_buffer.m_buffer.m_handle, point_light_count * sizeof(glm::vec4), 0);
@@ -345,7 +345,6 @@ void vren::clustered_shading::construct_point_light_bvh::operator()(
     );
 }
 
-
 // --------------------------------------------------------------------------------------------------------------------------------
 // find_unique_cluster_list
 // --------------------------------------------------------------------------------------------------------------------------------
@@ -370,7 +369,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::buffer const& cluster_key_buffer,
-    vren::vk_utils::buffer const& allocation_index_buffer,
+    vren::vk_utils::buffer const& cluster_key_dispatch_params_buffer,
     vren::vk_utils::combined_image_view const& cluster_reference_buffer
 )
 {
@@ -379,8 +378,20 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
 
     m_pipeline.bind(command_buffer);
 
-    glm::uvec4 allocation_index_init{ 1, 1, 1, 0 };
-    vkCmdUpdateBuffer(command_buffer, allocation_index_buffer.m_buffer.m_handle, 0, sizeof(allocation_index_init), &allocation_index_init);
+    struct {
+        uint32_t m_x;
+        uint32_t m_y;
+        uint32_t m_z;
+        uint32_t _pad;
+    } cluster_key_dispatch_params_data;
+
+    cluster_key_dispatch_params_data = {
+        .m_x = 0,
+        .m_y = 1,
+        .m_z = 1,
+    };
+
+    vkCmdUpdateBuffer(command_buffer, cluster_key_dispatch_params_buffer.m_buffer.m_handle, 0, sizeof(cluster_key_dispatch_params_data), &cluster_key_dispatch_params_data);
 
     VkBufferMemoryBarrier buffer_memory_barrier{
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -389,7 +400,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .buffer = allocation_index_buffer.m_buffer.m_handle,
+        .buffer = cluster_key_dispatch_params_buffer.m_buffer.m_handle,
         .offset = 0,
         .size = sizeof(glm::uvec4)
     };
@@ -421,7 +432,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
         m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(1))
     );
     vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 0, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, allocation_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, cluster_key_dispatch_params_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
     vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 2, cluster_reference_buffer.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
 
     m_pipeline.bind_descriptor_set(command_buffer, 1, descriptor_set_1->m_handle.m_descriptor_set);
@@ -444,9 +455,15 @@ vren::clustered_shading::assign_lights::assign_lights(
     vren::context const& context
 ) :
     m_context(&context),
-    m_pipeline([&]()
+    m_count_pipeline([&]()
     {
-        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clustered_shading/assign_lights.comp.spv");
+        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clustered_shading/assign_lights_count.comp.spv");
+        vren::specialized_shader shader = vren::specialized_shader(shader_module);
+        return vren::create_compute_pipeline(context, shader);
+    }()),
+    m_write_pipeline([&]()
+    {
+        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/clustered_shading/assign_lights_write.comp.spv");
         vren::specialized_shader shader = vren::specialized_shader(shader_module);
         return vren::create_compute_pipeline(context, shader);
     }())
@@ -460,89 +477,215 @@ void vren::clustered_shading::assign_lights::operator()(
     glm::uvec2 const& screen,
     vren::camera const& camera,
     vren::vk_utils::buffer const& cluster_key_buffer,
-    vren::vk_utils::buffer const& allocation_index_buffer,
+    vren::vk_utils::buffer const& cluster_key_dispatch_params_buffer,
     vren::vk_utils::buffer const& light_bvh_buffer,
     uint32_t light_bvh_root_index,
     uint32_t light_count,
     vren::vk_utils::buffer const& light_index_buffer,
-    vren::vk_utils::buffer const& assigned_light_buffer,
+    vren::vk_utils::buffer const& assigned_light_indices_buffer,
+    vren::vk_utils::buffer const& assigned_light_counts_buffer,
+    vren::vk_utils::buffer const& assigned_light_offsets_buffer,
     vren::vk_utils::buffer const& view_space_point_light_position_buffer
 )
 {
-    vkCmdFillBuffer(command_buffer, assigned_light_buffer.m_buffer.m_handle, 0, VK_WHOLE_SIZE, UINT32_MAX);
+    VkBufferMemoryBarrier buffer_memory_barrier{};
+    std::shared_ptr<vren::pooled_vk_descriptor_set> descriptor_set;
+
+    vkCmdFillBuffer(command_buffer, assigned_light_counts_buffer.m_buffer.m_handle, 0, VK_WHOLE_SIZE, 0);
 
     if (light_count > 0)
     {
-        VkBufferMemoryBarrier buffer_memory_barrier{
+        buffer_memory_barrier = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = assigned_light_buffer.m_buffer.m_handle,
+            .buffer = assigned_light_counts_buffer.m_buffer.m_handle,
             .offset = 0,
             .size = VK_WHOLE_SIZE
         };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
+        // ------------------------------------------------------------------------------------------------
+        // 1. Count the number of light assignments per cluster
+        // ------------------------------------------------------------------------------------------------
+
+        vkCmdSetCheckpointNV(command_buffer, "clustered_shading/assign_lights/count");
+
         // Bind pipeline
-        m_pipeline.bind(command_buffer);
+        m_count_pipeline.bind(command_buffer);
 
         // Push constants
-        struct
         {
-            glm::uvec2 m_num_tiles;
-            float m_camera_near;
-            float m_camera_half_fov_y;
-            glm::mat4 m_camera_proj;
-            glm::mat4 m_camera_view;
-            glm::uint m_bvh_root_index;
-            float _pad1[3];
-        } push_constants;
+            struct
+            {
+                glm::uvec2 m_num_tiles;
+                float m_camera_near;
+                float m_camera_half_fov_y;
+                glm::mat4 m_camera_proj;
+                uint32_t m_bvh_root_index;
+                uint32_t m_bvh_level_count;
+                float _pad1[2];
+            } push_constants;
 
-        push_constants = {
-            .m_num_tiles = glm::uvec2(
-                vren::divide_and_ceil(screen.x, 32u),
-                vren::divide_and_ceil(screen.y, 32u)
-            ),
-            .m_camera_near = camera.m_near_plane,
-            .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
-            .m_camera_proj = camera.get_projection(),
-            .m_camera_view = camera.get_view(),
-            .m_bvh_root_index = light_bvh_root_index,
-        };
+            push_constants = {
+                .m_num_tiles = glm::uvec2(
+                    vren::divide_and_ceil(screen.x, 32u),
+                    vren::divide_and_ceil(screen.y, 32u)
+                ),
+                .m_camera_near = camera.m_near_plane,
+                .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
+                .m_camera_proj = camera.get_projection(),
+                .m_bvh_root_index = light_bvh_root_index,
+                .m_bvh_level_count = vren::calc_bvh_level_count(light_count)
+            };
 
-        m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+            m_count_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+        }
 
         // Bind descriptor set 0
-        auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
-            m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
+        descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+            m_context->m_toolbox->m_descriptor_pool.acquire(m_count_pipeline.m_descriptor_set_layouts.at(0))
         );
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, allocation_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, light_bvh_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 3, light_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 4, assigned_light_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 2, light_bvh_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 3, light_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 4, assigned_light_indices_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 5, assigned_light_counts_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 6, assigned_light_offsets_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 7, view_space_point_light_position_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
 
-        m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
-
-        // Bind descriptor set 1
-        auto descriptor_set_1 = std::make_shared<vren::pooled_vk_descriptor_set>(
-            m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(1))
-        );
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 0, view_space_point_light_position_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-
-        m_pipeline.bind_descriptor_set(command_buffer, 1, descriptor_set_1->m_handle.m_descriptor_set);
+        m_count_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
         // Dispatch
-        vkCmdDispatchIndirect(command_buffer, allocation_index_buffer.m_buffer.m_handle, 0);
+        vkCmdDispatchIndirect(command_buffer, cluster_key_dispatch_params_buffer.m_buffer.m_handle, 0);
 
-        // 
-        resource_container.add_resources(
-            descriptor_set_0,
-            descriptor_set_1
+        resource_container.add_resources(descriptor_set);
+
+        // ------------------------------------------------------------------------------------------------
+        // 2. Copy counts buffer to offsets buffer in order to exclusive-scan
+        // ------------------------------------------------------------------------------------------------
+
+        vkCmdSetCheckpointNV(command_buffer, "clustered_shading/assign_lights/copy_count_buffer_to_offset_buffer");
+
+        buffer_memory_barrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = assigned_light_counts_buffer.m_buffer.m_handle,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+        };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+
+        VkBufferCopy buffer_copy{
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT * sizeof(uint32_t)
+        };
+        vkCmdCopyBuffer(command_buffer, assigned_light_counts_buffer.m_buffer.m_handle, assigned_light_offsets_buffer.m_buffer.m_handle, 1, &buffer_copy);
+
+        // ------------------------------------------------------------------------------------------------
+        // 3. Use exclusive-scan to find indices offsets
+        // ------------------------------------------------------------------------------------------------
+
+        vkCmdSetCheckpointNV(command_buffer, "clustered_shading/assign_lights/exclusive_scan");
+
+        buffer_memory_barrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = assigned_light_offsets_buffer.m_buffer.m_handle,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+        };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+
+        m_context->m_toolbox->m_blelloch_scan( // TODO : use indirect dispatch ?
+            command_buffer,
+            resource_container,
+            assigned_light_offsets_buffer,
+            VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT, // The unique clsuter keys actual count is not known by the host
+            0,
+            1
         );
+
+        // ------------------------------------------------------------------------------------------------
+        // 4. Finally write point light indices
+        // ------------------------------------------------------------------------------------------------
+
+        vkCmdSetCheckpointNV(command_buffer, "clustered_shading/assign_lights/write");
+
+        buffer_memory_barrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = assigned_light_offsets_buffer.m_buffer.m_handle,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+        };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+
+        // Bind pipeline
+        m_write_pipeline.bind(command_buffer);
+
+        // Push constants
+        {
+            struct
+            {
+                glm::uvec2 m_num_tiles;
+                float m_camera_near;
+                float m_camera_half_fov_y;
+                glm::mat4 m_camera_proj;
+                uint32_t m_bvh_root_index;
+                uint32_t m_bvh_level_count;
+                float _pad1[2];
+            } push_constants;
+
+            push_constants = {
+                .m_num_tiles = glm::uvec2(
+                    vren::divide_and_ceil(screen.x, 32u),
+                    vren::divide_and_ceil(screen.y, 32u)
+                ),
+                .m_camera_near = camera.m_near_plane,
+                .m_camera_half_fov_y = camera.m_fov_y / 2.0f,
+                .m_camera_proj = camera.get_projection(),
+                .m_bvh_root_index = light_bvh_root_index,
+                .m_bvh_level_count = vren::calc_bvh_level_count(light_count)
+            };
+
+            m_write_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+        }
+
+        // Bind descriptor set 0
+        descriptor_set = std::make_shared<vren::pooled_vk_descriptor_set>(
+            m_context->m_toolbox->m_descriptor_pool.acquire(m_write_pipeline.m_descriptor_set_layouts.at(0))
+        );
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 0, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 2, light_bvh_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 3, light_index_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 4, assigned_light_indices_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 5, assigned_light_counts_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 6, assigned_light_offsets_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set->m_handle.m_descriptor_set, 7, view_space_point_light_position_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+
+        m_write_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
+
+        // Dispatch
+        vkCmdDispatchIndirect(command_buffer, cluster_key_dispatch_params_buffer.m_buffer.m_handle, 0);
+
+        resource_container.add_resources(descriptor_set);
     }
 }
 
@@ -572,7 +715,9 @@ void vren::clustered_shading::shade::operator()(
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::combined_image_view const& cluster_reference_buffer,
-    vren::vk_utils::buffer const& assigned_light_buffer,
+    vren::vk_utils::buffer const& assigned_light_indices_buffer,
+    vren::vk_utils::buffer const& assigned_light_counts_buffer,
+    vren::vk_utils::buffer const& assigned_light_offsets_buffer,
     vren::light_array const& light_array,
     vren::material_buffer const& material_buffer,
     vren::vk_utils::combined_image_view const& output
@@ -616,7 +761,9 @@ void vren::clustered_shading::shade::operator()(
         );
 
         vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 0, cluster_reference_buffer.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
-        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, assigned_light_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 1, assigned_light_indices_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 2, assigned_light_counts_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+        vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_1->m_handle.m_descriptor_set, 3, assigned_light_offsets_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
 
         m_pipeline.bind_descriptor_set(command_buffer, 1, descriptor_set_1->m_handle.m_descriptor_set);
 
@@ -711,9 +858,9 @@ vren::cluster_and_shade::cluster_and_shade(
     m_cluster_key_buffer(vren::vk_utils::alloc_device_only_buffer(
         *m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        VREN_MAX_UNIQUE_CLUSTER_KEYS * sizeof(uint32_t)
+        VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT * sizeof(uint32_t)
     )),
-    m_allocation_index_buffer(vren::vk_utils::alloc_device_only_buffer(
+    m_cluster_key_dispatch_params_buffer(vren::vk_utils::alloc_device_only_buffer(
         *m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
         sizeof(glm::uvec4)
@@ -728,16 +875,29 @@ vren::cluster_and_shade::cluster_and_shade(
             .m_image_view = std::move(image_view)
         };
     }()),
-    m_assigned_light_buffer(vren::vk_utils::alloc_device_only_buffer(
+    m_assigned_light_indices_buffer(vren::vk_utils::alloc_device_only_buffer(
+        *m_context,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VREN_MAX_ASSIGNED_LIGHT_COUNT * sizeof(uint32_t)
+    )),
+    m_assigned_light_counts_buffer(vren::vk_utils::alloc_device_only_buffer(
+        *m_context,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT * sizeof(uint32_t)
+    )),
+    m_assigned_light_offsets_buffer(vren::vk_utils::alloc_device_only_buffer(
         *m_context,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VREN_MAX_UNIQUE_CLUSTER_KEYS * VREN_MAX_LIGHTS_PER_CLUSTER * sizeof(uint32_t)
+        VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT * sizeof(uint32_t)
     ))
 {
     vren::vk_utils::set_name(*m_context, m_cluster_key_buffer, "cluster_key_buffer");
-    vren::vk_utils::set_name(*m_context, m_allocation_index_buffer, "allocation_index_buffer");
+    vren::vk_utils::set_name(*m_context, m_cluster_key_dispatch_params_buffer, "cluster_key_dispatch_params_buffer");
     vren::vk_utils::set_name(*m_context, m_cluster_reference_buffer, "cluster_reference_buffer");
-    vren::vk_utils::set_name(*m_context, m_assigned_light_buffer, "assigned_light_buffer");
+
+    vren::vk_utils::set_name(*m_context, m_assigned_light_indices_buffer, "assigned_light_indices_buffer");
+    vren::vk_utils::set_name(*m_context, m_assigned_light_counts_buffer, "assigned_light_counts_buffer");
+    vren::vk_utils::set_name(*m_context, m_assigned_light_offsets_buffer, "assigned_light_offsets_buffer");
 
     vren::vk_utils::immediate_graphics_queue_submit(*m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
     {
@@ -875,7 +1035,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
             gbuffer,
             depth_buffer,
             m_cluster_key_buffer,
-            m_allocation_index_buffer,
+            m_cluster_key_dispatch_params_buffer,
             m_cluster_reference_buffer
         );
 
@@ -898,7 +1058,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
                 .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .buffer = m_allocation_index_buffer.m_buffer.m_handle,
+                .buffer = m_cluster_key_dispatch_params_buffer.m_buffer.m_handle,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE
             },
@@ -941,12 +1101,14 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
             screen,
             camera,
             m_cluster_key_buffer,
-            m_allocation_index_buffer,
+            m_cluster_key_dispatch_params_buffer,
             m_point_light_bvh_buffer,
             vren::calc_bvh_root_index(light_array.m_point_light_count),
             light_array.m_point_light_count,
             m_point_light_index_buffer,
-            m_assigned_light_buffer,
+            m_assigned_light_indices_buffer,
+            m_assigned_light_counts_buffer,
+            m_assigned_light_offsets_buffer,
             m_view_space_point_light_position_buffer
         );
 
@@ -954,16 +1116,35 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
             VkBufferMemoryBarrier{
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = nullptr,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .buffer = m_assigned_light_buffer.m_buffer.m_handle,
+                .buffer = m_assigned_light_counts_buffer.m_buffer.m_handle,
+                .offset = 0,
+                .size = VK_WHOLE_SIZE
+            },
+            VkBufferMemoryBarrier{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = m_assigned_light_indices_buffer.m_buffer.m_handle,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE
             },
         };
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, buffer_memory_barriers.data(), 0, nullptr);
+        vkCmdPipelineBarrier(
+            command_buffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            NULL,
+            0, nullptr,
+            2, buffer_memory_barriers.data(),
+            0, nullptr
+        );
 
         // ------------------------------------------------------------------------------------------------
         // 4. Shading
@@ -978,7 +1159,9 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
             gbuffer,
             depth_buffer,
             m_cluster_reference_buffer,
-            m_assigned_light_buffer,
+            m_assigned_light_indices_buffer,
+            m_assigned_light_counts_buffer,
+            m_assigned_light_offsets_buffer,
             light_array,
             material_buffer,
             output

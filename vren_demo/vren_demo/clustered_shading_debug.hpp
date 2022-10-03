@@ -11,10 +11,10 @@
 namespace vren_demo
 {
 	// ------------------------------------------------------------------------------------------------
-	// visualize_clusters
+	// show_clusters
 	// ------------------------------------------------------------------------------------------------
 
-	class visualize_clusters // TODO rename to show_clusters
+	class show_clusters
 	{
 	private:
 		vren::context const* m_context;
@@ -22,15 +22,13 @@ namespace vren_demo
 		vren::pipeline m_pipeline;
 
 	public:
-		visualize_clusters(vren::context const& context);
+		show_clusters(vren::context const& context);
 
 		vren::render_graph_t operator()(
 			vren::render_graph_allocator& render_graph_allocator,
 			glm::uvec2 const& screen,
 			int32_t mode,
-			vren::vk_utils::combined_image_view const& cluster_reference_buffer,
-			vren::vk_utils::buffer const& cluster_key_buffer,
-			vren::vk_utils::buffer const& assigned_light_buffer,
+			vren::cluster_and_shade const& cluster_and_shade,
 			vren::vk_utils::combined_image_view const& output
 		);
 	};

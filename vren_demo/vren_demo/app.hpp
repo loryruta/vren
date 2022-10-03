@@ -173,6 +173,9 @@ namespace vren_demo
 		std::unique_ptr<vren::clusterized_model> m_clusterized_model;
 		std::unique_ptr<vren::clusterized_model_draw_buffer> m_clusterized_model_draw_buffer;
 
+		// Light BVH
+		vren::debug_renderer_draw_buffer m_point_light_bvh_draw_buffer;
+
 		// Material
 		std::array<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_material_buffers;
 		vren::operation_fork<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT> m_material_buffer_fork;
@@ -193,8 +196,8 @@ namespace vren_demo
 		// Clustered shading
 		vren::cluster_and_shade m_cluster_and_shade;
 
+		vren_demo::show_clusters m_show_clusters;
 		vren_demo::show_clusters_geometry m_show_clusters_geometry;
-		vren_demo::visualize_clusters m_visualize_clusters;
 
 		std::unique_ptr<vren::debug_renderer_draw_buffer> m_camera_clusters_draw_buffer;
 

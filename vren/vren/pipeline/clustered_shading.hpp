@@ -82,7 +82,8 @@ namespace vren
         private:
             vren::context const* m_context;
 
-            vren::pipeline m_pipeline;
+            vren::pipeline m_count_pipeline;
+            vren::pipeline m_write_pipeline;
 
         public:
             assign_lights(vren::context const& context);
@@ -99,7 +100,9 @@ namespace vren
                 uint32_t light_bvh_root_index,
                 uint32_t light_count,
                 vren::vk_utils::buffer const& light_index_buffer,
-                vren::vk_utils::buffer const& assigned_light_buffer,
+                vren::vk_utils::buffer const& assigned_light_indices_buffer,
+                vren::vk_utils::buffer const& assigned_light_counts_buffer,
+                vren::vk_utils::buffer const& assigned_light_offsets_buffer,
                 vren::vk_utils::buffer const& view_space_point_light_position_buffer
             );
         };
@@ -127,7 +130,9 @@ namespace vren
                 vren::gbuffer const& gbuffer,
                 vren::vk_utils::depth_buffer_t const& depth_buffer,
                 vren::vk_utils::combined_image_view const& cluster_reference_buffer,
-                vren::vk_utils::buffer const& assigned_light_buffer,
+                vren::vk_utils::buffer const& assigned_light_indices_buffer,
+                vren::vk_utils::buffer const& assigned_light_counts_buffer,
+                vren::vk_utils::buffer const& assigned_light_offsets_buffer,
                 vren::light_array const& light_array,
                 vren::material_buffer const& material_buffer,
                 vren::vk_utils::combined_image_view const& output
@@ -155,10 +160,12 @@ namespace vren
         vren::vk_utils::buffer m_point_light_index_buffer;
 
         vren::vk_utils::buffer m_cluster_key_buffer;
-        vren::vk_utils::buffer m_allocation_index_buffer; // TODO : Find a better name for this (like dispatch params buffer or something)
+        vren::vk_utils::buffer m_cluster_key_dispatch_params_buffer; // TODO : Find a better name for this (like dispatch params buffer or something)
         vren::vk_utils::combined_image_view m_cluster_reference_buffer;
 
-        vren::vk_utils::buffer m_assigned_light_buffer;
+        vren::vk_utils::buffer m_assigned_light_indices_buffer;
+        vren::vk_utils::buffer m_assigned_light_counts_buffer;
+        vren::vk_utils::buffer m_assigned_light_offsets_buffer;
 
         cluster_and_shade(vren::context const& context);
 

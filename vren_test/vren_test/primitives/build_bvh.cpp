@@ -246,9 +246,9 @@ TEST(build_bvh, utils)
     ASSERT_EQ(vren::calc_bvh_root_index(582), (32u * 32u) + 32u);
     ASSERT_EQ(vren::calc_bvh_root_index(2193819), (32u * 32u * 32u * 32u * 32u) + (32u * 32u * 32u * 32u) + (32u * 32u * 32u) + (32u * 32u) + 32u);
 
-    ASSERT_EQ(vren::calc_bvh_level_count(0), 2u);
-    ASSERT_EQ(vren::calc_bvh_level_count(1), 2u);
-    ASSERT_EQ(vren::calc_bvh_level_count(129), 3u);
-    ASSERT_EQ(vren::calc_bvh_level_count(582), 3u);
-    ASSERT_EQ(vren::calc_bvh_level_count(2193819), 6u);
+    ASSERT_EQ(vren::calc_bvh_level_count(0), 1u);
+    ASSERT_EQ(vren::calc_bvh_level_count(1), 1u);
+    ASSERT_EQ(vren::calc_bvh_level_count(129), 2u);
+    ASSERT_EQ(vren::calc_bvh_level_count(582), 2u);
+    ASSERT_EQ(vren::calc_bvh_level_count(2193819), 5u);
 }

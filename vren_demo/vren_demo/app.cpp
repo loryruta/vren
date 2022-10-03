@@ -61,6 +61,15 @@ vren_demo::app::app(GLFWwindow* window) :
 	m_debug_meshlet_bounds_draw_buffer(m_context),
 	m_debug_projected_meshlet_bounds_draw_buffer(m_context),
 
+	// Point light BVH
+	m_point_light_bvh_draw_buffer([&]()
+	{
+		vren::debug_renderer_draw_buffer draw_buffer(m_context);
+		draw_buffer.m_vertex_count = 0;
+		draw_buffer.m_vertex_buffer.set_data(nullptr, vren::calc_bvh_buffer_length(VREN_MAX_POINT_LIGHT_COUNT) * 12 * sizeof(vren::debug_renderer_vertex));
+		return draw_buffer;
+	}()),
+
 	// Material
 	m_material_buffers(
 		vren::create_array<vren::material_buffer, VREN_MAX_FRAME_IN_FLIGHT_COUNT>([&](uint32_t index) {
@@ -113,8 +122,8 @@ vren_demo::app::app(GLFWwindow* window) :
 	// Clustered shading
 	m_cluster_and_shade(m_context),
 
+	m_show_clusters(m_context),
 	m_show_clusters_geometry(m_context),
-	m_visualize_clusters(m_context),
 
 	// Output
 	m_color_buffer{},
@@ -375,8 +384,8 @@ void vren_demo::app::on_update(float dt)
 					light_array.m_point_light_position_buffer,
 					m_point_light_direction_buffers.at(idx),
 					VREN_MAX_POINT_LIGHT_COUNT,
-					glm::vec3(-1.0f),
-					glm::vec3(1.0f),
+					m_model_min,
+					m_model_max,
 					speed,
 					dt
 				);
@@ -518,13 +527,12 @@ void vren_demo::app::record_commands(
 	}
 
 	// Visualize light BVH
-	/* TODO LIGHT BVH IS NOW A VIEW-SPACE BVH
 	if (light_array.m_point_light_count > 0 && m_show_light_bvh)
 	{
 		render_graph.concat(
 			m_visualize_bvh.write(
 				m_render_graph_allocator,
-				m_point_light_bvh_buffer,
+				m_cluster_and_shade.m_point_light_bvh_buffer,
 				vren::calc_bvh_level_count(light_array.m_point_light_count),
 				m_point_light_bvh_draw_buffer
 			)
@@ -538,20 +546,19 @@ void vren_demo::app::record_commands(
 				m_point_light_bvh_draw_buffer
 			)
 		);
-	}*/
+	}
 
 	// Debug point lights
 	if (light_array.m_point_light_count > 0)
 	{
-		/* Point lights visualization 
 		vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
 		debug_render_graph.concat(
 			m_fill_point_light_debug_draw_buffer(m_render_graph_allocator, light_array.m_point_light_buffer, light_array.m_point_light_count, point_light_debug_draw_buffer)
 		);
 		point_light_debug_draw_buffer.m_vertex_count = light_array.m_point_light_count * 6;
 		debug_render_graph.concat(
-			m_debug_renderer.render(m_render_graph_allocator, render_target, m_camera.to_vren(), point_light_debug_draw_buffer)
-		);*/
+			m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, point_light_debug_draw_buffer)
+		);
 	}
 
 	// Debug meshlets
@@ -659,13 +666,11 @@ void vren_demo::app::record_commands(
 	if (m_show_clusters_mode >= 0)
 	{
 		render_graph.concat(
-			m_visualize_clusters(
+			m_show_clusters(
 				m_render_graph_allocator,
 				screen,
 				m_show_clusters_mode,
-				m_cluster_and_shade.m_cluster_reference_buffer,
-				m_cluster_and_shade.m_cluster_key_buffer,
-				m_cluster_and_shade.m_assigned_light_buffer,
+				m_cluster_and_shade,
 				*m_color_buffer
 			)
 		);

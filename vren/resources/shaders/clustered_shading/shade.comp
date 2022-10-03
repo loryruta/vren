@@ -27,9 +27,19 @@ layout(set = 0, binding = 3) uniform sampler2D u_depth_buffer;
 
 layout(set = 1, binding = 0, r32ui) uniform uimage2D u_cluster_references;
 
-layout(set = 1, binding = 1) readonly buffer AssignedLightBuffer
+layout(set = 1, binding = 1) readonly buffer AssignedLightIndicesBuffer
 {
-	uint assigned_lights[];
+	uint assigned_light_indices[];
+};
+
+layout(set = 1, binding = 2) readonly buffer AssignedLightCountsBuffer
+{
+	uint assigned_light_counts[];
+};
+
+layout(set = 1, binding = 3) readonly buffer AssignedLightOffsetsBuffer
+{
+	uint assigned_light_offsets[];
 };
 
 layout(set = 2, binding = 0) uniform sampler2D textures[];
@@ -90,24 +100,17 @@ void main()
 			// Apply point lights
 			uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
 
-			for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
+			for (uint i = 0; i < assigned_light_counts[cluster_idx]; i++)
 			{
-				uint assigned_light_idx = cluster_idx * VREN_MAX_LIGHTS_PER_CLUSTER + i;
-
-				if (assigned_lights[assigned_light_idx] == UINT32_MAX)
-				{
-					break;
-				}
-
-				uint light_idx = assigned_lights[assigned_light_idx];
-				vec3 light_pos = point_light_positions[light_idx].xyz;
-				PointLight point_light = point_lights[light_idx];
+				uint point_light_idx = assigned_light_indices[assigned_light_offsets[cluster_idx] + i];
+				vec3 point_light_pos = point_light_positions[point_light_idx].xyz;
+				PointLight point_light = point_lights[point_light_idx];
 
 				Lo += pbr_apply_point_light(
 					camera_position,
 					frag_pos.xyz,
 					frag_normal,
-					light_pos,
+					point_light_pos,
 					point_light,
 					albedo,
 					metallic,

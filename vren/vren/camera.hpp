@@ -16,7 +16,6 @@ namespace vren
 		glm::vec3 m_position = {0.0f, 0.0f, 0.0f};
 		float m_yaw = glm::radians(0.0f);
 		float m_pitch = glm::radians(0.0f);
-		float m_zoom = 1.0f;
 
 		float m_fov_y = glm::radians(45.0f);
 		float m_aspect_ratio = 1.0f;

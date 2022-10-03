@@ -2,9 +2,12 @@
 
 #extension GL_GOOGLE_include_directive : require
 
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+
 #extension GL_EXT_debug_printf : enable
 
-layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 #include <common.glsl>
 #include <vren.glsl>
@@ -15,15 +18,17 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 #define VREN_BVH_LEAF_NODE 0xFFFFFFFFu
 #define VREN_BVH_INVALID_NODE 0xFFFFFFFEu
 
+#define VREN_MAX_POINT_LIGHTS_BVH_DEPTH 4
+
 layout(push_constant) uniform PushConstants
 {
 	uvec2 num_tiles;
 	float camera_near;
 	float camera_half_fov;
 	mat4 camera_proj;
-	mat4 camera_view;
-	uint bvh_root_index;
-	float _pad[3];
+	uint bvh_root_idx;
+	uint bvh_level_count;
+	float _pad[2];
 } push_constants;
 
 struct BvhNode
@@ -37,27 +42,34 @@ layout(set = 0, binding = 0) readonly buffer UniqueClusterKeyBuffer
 	uint cluster_keys[];
 };
 
-layout(set = 0, binding = 1) readonly buffer AllocationIndexBuffer
-{
-	uvec4 allocation_index;
-};
-
 layout(set = 0, binding = 2) readonly buffer BvhBuffer
 {
 	BvhNode bvh[];
 };
 
-layout(set = 0, binding = 3) readonly buffer LightIndexBuffer
+layout(set = 0, binding = 3) readonly buffer LightIndicesBuffer
 {
+	// First component is the morton code
+	// Second component is the point light index
 	uvec2 light_indices[];
 };
 
-layout(set = 0, binding = 4) buffer AssignedLightBuffer
+layout(set = 0, binding = 4) writeonly buffer AssignedLightIndicesBuffer
 {
-	uint assigned_lights[];
+	uint assigned_light_indices[];
 };
 
-layout(set = 1, binding = 0) readonly buffer ViewSpacePointLightPositionBuffer
+layout(set = 0, binding = 5) buffer AssignedLightCountsBuffer
+{
+	uint assigned_light_counts[];
+};
+
+layout(set = 0, binding = 6) readonly buffer AssignedLightOffsetsBuffer
+{
+	uint assigned_light_offsets[];
+};
+
+layout(set = 0, binding = 7) readonly buffer ViewSpacePointLightPositionBuffer
 {
     vec4 view_space_point_light_positions[];
 };
@@ -89,106 +101,141 @@ bool test_sphere_aabb(vec3 sphere_o, float sphere_r, vec3 aabb_min, vec3 aabb_ma
 	return d < sphere_r;
 }
 
+// For every level stores a bitmask representing whether the node at bit position overlapped
+// with the cluster. A bit of a certain level is cleared when the full sub-hierarchy is visited
+uint g_level_overlaps[VREN_MAX_POINT_LIGHTS_BVH_DEPTH];
+
+int get_node_address(uint bvh_root_idx, uint level)
+{
+	int base_addr = int(bvh_root_idx) - ((1 - int(exp2(5 * (level + 2)))) / (1 - 32) - 1);
+
+	int node_addr = base_addr;
+	for (int i = 0; i < level; i--)
+	{
+		int rel_node_offset = findLSB(g_level_overlaps[i]);
+		node_addr += int(exp2(5 * (level - i))) * rel_node_offset;
+	}
+	return node_addr;
+}
+
 void main()
 {
-	uint cluster_key_length = allocation_index.w;
+	uint cluster_key = cluster_keys[gl_WorkGroupID.x];
 
-	if (gl_GlobalInvocationID.x < cluster_key_length)
+	uvec3 cluster_ijk;
+	uint cluster_normal_idx;
+	clustered_shading_decode_cluster_key(cluster_key, cluster_ijk, cluster_normal_idx);
+
+	vec4 cluster_min, cluster_max;
+	clustered_shading_calc_cluster_aabb(
+		cluster_ijk,
+		push_constants.num_tiles,
+		push_constants.camera_near,
+		push_constants.camera_half_fov,
+		push_constants.camera_proj,
+		cluster_min,
+		cluster_max
+	);
+
+	vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
+
+	uint current_level = 0;
+	
+	uint assigned_light_cluster_offset = 0;
+
+	// 0 = ADVANCE
+	// 1 = POP
+	// 2 = ENTERING
+	uint state = 2;
+
+	while (true)
 	{
-		uint cluster_key = cluster_keys[gl_GlobalInvocationID.x];
-
-		uvec3 cluster_ijk;
-		uint cluster_normal_idx;
-		clustered_shading_decode_cluster_key(cluster_key, cluster_ijk, cluster_normal_idx);
-
-		vec4 cluster_min, cluster_max;
-		clustered_shading_calc_cluster_aabb(
-			cluster_ijk,
-			push_constants.num_tiles,
-			push_constants.camera_near,
-			push_constants.camera_half_fov,
-			push_constants.camera_proj,
-			cluster_min,
-			cluster_max
-		);
-
-		vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
-
-		float assigned_point_light_intensities[VREN_MAX_LIGHTS_PER_CLUSTER];
-
-		BvhNode bvh_root_node = bvh[push_constants.bvh_root_index];
-		if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, bvh_root_node._min, bvh_root_node._max))
+		// ADVANCE
+		if (state == 0)
 		{
-			uint stack[VREN_MAX_STACK_DEPTH];
-			uint stack_ptr = 0;
-			uint node_addr = push_constants.bvh_root_index - 32; // Start from first level after below the root node
-
-			bool keep_running = true;
-			bool advance;
-
-			while (keep_running)
+			uint level_overlaps = g_level_overlaps[current_level];
+			uint level_overlap_clear_bitmask = ~(1 << findLSB(g_level_overlaps[current_level]));
+			g_level_overlaps[current_level] &= level_overlap_clear_bitmask;
+			
+			if (g_level_overlaps[current_level] == 0)
 			{
-				BvhNode node = bvh[node_addr];
+				state = 1;
+			}
+			else
+			{
+				// PUSH
+				current_level++;
+				state = 2;
+			}
+		}
+		// POP
+		else if (state == 1)
+		{
+			if (current_level > 0)
+			{
+				current_level--;
+				state = 0;
+			}
+			else
+			{ // END
+				break;
+			}
+		}
+		// ENTERING
+		else if (state == 2)
+		{
+			int node_addr = get_node_address(push_constants.bvh_root_idx, current_level);
+			BvhNode node = bvh[node_addr + gl_SubgroupInvocationID];
 
-				advance = true;
+			if (current_level < push_constants.bvh_level_count - 1) // Parent node
+			{ 
+				// SCAN
+				bool overlaps = test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max);
+				uint overlaps_subgroup_bitmask = subgroupBallot(overlaps).x;
 
-				if (node.next == VREN_BVH_LEAF_NODE) // Leaf node
-				{
-					uint point_light_idx = light_indices[node_addr].y;
+				g_level_overlaps[current_level] = overlaps_subgroup_bitmask;
+
+				if (overlaps_subgroup_bitmask == 0)
+				{ // POP
+					state = 1;
+				}
+				else
+				{ // PUSH
+					current_level++;
+				}
+			}
+			else // Leaf node
+			{
+				uint point_light_idx = light_indices[node_addr + gl_SubgroupInvocationID].y;
 						
-					vec3 point_light_pos = view_space_point_light_positions[point_light_idx].xyz;
-					vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
-						
-					if (test_sphere_aabb(point_light_pos, (node._max.x - node._min.x) / 2.0 /* radius */, cluster_min.xyz, cluster_max.xyz))
-					{
-						float point_light_intensity = clustered_shading_get_light_intensity(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx);
-						if (point_light_intensity > 0.0)
-						{
-							for (uint i = 0; i < VREN_MAX_LIGHTS_PER_CLUSTER; i++)
-							{
-								uint assigned_point_light_idx = assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + i];
-								if (assigned_point_light_idx == UINT32_MAX || assigned_point_light_intensities[i] < point_light_intensity)
-								{ // Assignment
-									assigned_lights[gl_GlobalInvocationID.x * VREN_MAX_LIGHTS_PER_CLUSTER + i] = point_light_idx;
-									assigned_point_light_intensities[i] = point_light_intensity;
-									break;
-								}
-							}
-						}
-					}
-				}
-				else if (node.next != VREN_BVH_INVALID_NODE) // Parent node
+				vec3 point_light_pos = view_space_point_light_positions[point_light_idx].xyz;
+				vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
+
+				bool overlaps = test_sphere_aabb(point_light_pos, (node._max.x - node._min.x) / 2.0, cluster_min.xyz, cluster_max.xyz);
+					//clustered_shading_get_light_intensity(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx) > 0.0;
+
+				uint assigned_light_subgroup_bitmask = subgroupBallot(overlaps).x;
+				uint assigned_light_subgroup_count = bitCount(assigned_light_subgroup_bitmask);
+				
+#ifdef VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_COUNT
+				if (subgroupElect())
 				{
-					if (test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max))
-					{ // Push
-						stack[stack_ptr] = node_addr;
-						stack_ptr++;
-						node_addr = node.next;
-
-						advance = false;
-					}
+					assigned_light_counts[gl_WorkGroupID.x] = assigned_light_counts[gl_WorkGroupID.x] + assigned_light_subgroup_count;
+					subgroupMemoryBarrierBuffer();
 				}
-
-				// Advance
-				if (advance)
+#else//#elif VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_WRITE
+				if (overlaps)
 				{
-					node_addr++;
-
-					while (node_addr % 32 == 0)
-					{
-						if (stack_ptr == 0)
-						{
-							keep_running = false;
-							break;
-						}
-
-						// Pop
-						stack_ptr--;
-						node_addr = stack[stack_ptr];
-						node_addr++;
-					}
+					uint assigned_light_subgroup_offset = bitCount(assigned_light_subgroup_bitmask & ~((1 << gl_SubgroupInvocationID) - 1)) - 1;
+					uint assigned_light_offset = assigned_light_offsets[gl_WorkGroupID.x] + assigned_light_cluster_offset + assigned_light_subgroup_offset;
+					
+					assigned_light_indices[assigned_light_offset] = point_light_idx;
 				}
-			} // while
+#endif
+				assigned_light_cluster_offset += assigned_light_subgroup_count;
+
+				state = 1;
+			}
 		}
 	}
 }

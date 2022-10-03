@@ -13,7 +13,9 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #define VREN_DEMO_MODE_SHOW_CLUSTERS_KEY 0
 #define VREN_DEMO_MODE_SHOW_CLUSTERS_IJK 1
 #define VREN_DEMO_MODE_SHOW_CLUSTERS_NORMAL 2
-#define VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENTS 3
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_COUNTS 3
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_OFFSETS 4
+#define VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_INDICES 5
 
 layout(push_constant) uniform PushConstants
 {
@@ -29,12 +31,22 @@ layout(set = 0, binding = 1) readonly buffer UniqueClusterKeyBuffer
 	uint cluster_keys[];
 };
 
-layout(set = 0, binding = 2) readonly buffer AssignedLightBuffer
+layout(set = 0, binding = 2) readonly buffer AssignedLightCountsBuffer
 {
-	uint assigned_lights[];
+	uint assigned_light_counts[];
 };
 
-layout(set = 0, binding = 3, rgba32f) uniform image2D u_output;
+layout(set = 0, binding = 3) readonly buffer AssignedLightOffsetsBuffer
+{
+	uint assigned_light_offsets[];
+};
+
+layout(set = 0, binding = 4) readonly buffer AssignedLightIndicesBuffer
+{
+	uint assigned_light_indices[];
+};
+
+layout(set = 0, binding = 5, rgba32f) uniform image2D u_output;
 
 uint triple32(uint x)
 {
@@ -86,18 +98,23 @@ void main()
 				decoded_normal_idx.z / 3.0
 			);
 		}
-		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENTS)
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_COUNTS)
 		{
-			uint assigned_light_count = 0;
-			for (; assigned_light_count < VREN_MAX_LIGHTS_PER_CLUSTER; assigned_light_count++)
+			color = vec3(min(assigned_light_counts[cluster_key_idx] / 64.0, 1));
+		}
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_OFFSETS)
+		{
+			color = vec3(hash(assigned_light_offsets[cluster_key_idx]));
+		}
+		else if (mode == VREN_DEMO_MODE_SHOW_CLUSTERS_LIGHT_ASSIGNMENT_INDICES)
+		{
+			uint _hash = 0;
+			for (uint i = 0; i < assigned_light_counts[cluster_key_idx]; i++)
 			{
-				if (assigned_lights[cluster_key_idx * VREN_MAX_LIGHTS_PER_CLUSTER + assigned_light_count] == UINT32_MAX)
-				{
-					break;
-				}
+				uint point_light_idx = assigned_light_indices[assigned_light_offsets[cluster_key_idx] + i];
+				_hash ^= point_light_idx;
 			}
-
-			color = vec3(float(assigned_light_count) / float(VREN_MAX_LIGHTS_PER_CLUSTER));
+			color = vec3(hash(_hash));
 		}
 		else
 		{

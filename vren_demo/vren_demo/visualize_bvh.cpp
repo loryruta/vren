@@ -8,7 +8,7 @@ vren_demo::visualize_bvh::visualize_bvh(vren::context const& context) :
 	m_context(&context),
     m_pipeline([&]()
 	{
-		vren::shader_module shader_module = vren::load_shader_module_from_file(*m_context, "resources/shaders/visualize_bvh.comp.spv");
+		vren::shader_module shader_module = vren::load_shader_module_from_file(*m_context, "resources/shaders/show_bvh.comp.spv");
 		vren::specialized_shader shader = vren::specialized_shader(shader_module, "main");
 		return vren::create_compute_pipeline(*m_context, shader);
 	}())
@@ -18,7 +18,7 @@ vren_demo::visualize_bvh::visualize_bvh(vren::context const& context) :
 vren::render_graph_t vren_demo::visualize_bvh::write(
 	vren::render_graph_allocator& render_graph_allocator,
 	vren::vk_utils::buffer const& bvh,
-	uint32_t level_count,
+	uint32_t level_count, // TODO : Used to be +1 (TEST)
 	vren::debug_renderer_draw_buffer const& draw_buffer
 )
 {
@@ -41,10 +41,23 @@ vren::render_graph_t vren_demo::visualize_bvh::write(
 		vren::resource_container& resource_container
 	)
 	{
+		VkBufferMemoryBarrier buffer_memory_barrier{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.pNext = nullptr,
+			.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = bvh.m_buffer.m_handle,
+			.offset = 0,
+			.size = VK_WHOLE_SIZE,
+		};
+		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+
 		m_pipeline.bind(command_buffer);
 
 		uint32_t offset = 0;
-		for (int32_t level = level_count - 1; level >= 0; level--)
+		for (int32_t level = level_count; level >= 0; level--)
 		{
 			uint32_t node_count = 1 << (5 * level);
 
@@ -60,7 +73,7 @@ vren::render_graph_t vren_demo::visualize_bvh::write(
 			push_constants = {
 				.m_node_offset = offset,
 				.m_node_count = node_count,
-				.m_color = colors[level_count - level + 1],
+				.m_color = colors[level_count - level + 2],
 			};
 			m_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
 

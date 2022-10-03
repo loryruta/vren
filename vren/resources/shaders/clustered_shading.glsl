@@ -165,7 +165,7 @@ float clustered_shading_get_light_intensity(
 	// Check angle
 	float omega = acos(dot(cluster_normal, -point_light_dir)); // [0, pi]
 	float thresold = (PI / 2.0) + alpha + delta;
-	return max(thresold - omega, 0.0) / thresold;
+	return 1.0;
 }
 
 #endif // VREN_CLUSTERED_SHADING_H_

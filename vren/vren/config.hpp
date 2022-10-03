@@ -20,7 +20,8 @@
 
 #define VREN_MAX_MATERIAL_COUNT (1 << 16)
 
-#define VREN_MAX_UNIQUE_CLUSTER_KEYS (1 << 17) // ~131K
+#define VREN_MAX_UNIQUE_CLUSTER_KEY_COUNT (1 << 17) // ~131K
+#define VREN_MAX_ASSIGNED_LIGHT_COUNT (1 << 28) // ~200M
 
 // ------------------------------------------------------------------------------------------------
 // NON configurable values

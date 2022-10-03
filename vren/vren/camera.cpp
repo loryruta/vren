@@ -31,11 +31,10 @@ glm::vec3 vren::camera::get_forward() const
 
 glm::mat4 vren::camera::get_view() const
 {
-	glm::mat4 inv_s(1), inv_r(1), inv_t(1);
-	inv_s = glm::mat3(1.0f / m_zoom);
+	glm::mat4 inv_r(1), inv_t(1);
 	inv_r = glm::inverse(get_orientation());
 	inv_t = glm::translate(-m_position);
-	return inv_s * inv_r * inv_t;
+	return inv_r * inv_t;
 }
 
 glm::mat4 vren::camera::get_projection() const

@@ -396,7 +396,9 @@ void vren_demo::ui::show_controls_window()
 		toggled |= ImGui::RadioButton("Show clusters key", &value, 0) && show_clusters_mode == 0;
 		toggled |= ImGui::RadioButton("Show clusters ijk", &value, 1) && show_clusters_mode == 1;
 		toggled |= ImGui::RadioButton("Show clusters normal", &value, 2) && show_clusters_mode == 2;
-		toggled |= ImGui::RadioButton("Show clusters lights", &value, 3) && show_clusters_mode == 3;
+		toggled |= ImGui::RadioButton("Show assigned light counts", &value, 3) && show_clusters_mode == 3;
+		toggled |= ImGui::RadioButton("Show assigned light offsets", &value, 4) && show_clusters_mode == 4;
+		toggled |= ImGui::RadioButton("Show assigned light indices", &value, 5) && show_clusters_mode == 5;
 
 		show_clusters_mode = toggled ? -1 : value;
 	}

@@ -3,26 +3,24 @@
 #include <vren/toolbox.hpp>
 #include <vren/vk_helpers/misc.hpp>
 
-vren_demo::visualize_clusters::visualize_clusters(
+vren_demo::show_clusters::show_clusters(
     vren::context const& context
 ) :
     m_context(&context),
 	m_pipeline([&]()
 	{
-		vren::shader_module shader_module = vren::load_shader_module_from_file(*m_context, "resources/shaders/visualize_clusters.comp.spv");
+		vren::shader_module shader_module = vren::load_shader_module_from_file(*m_context, "resources/shaders/show_clusters.comp.spv");
 		vren::specialized_shader shader = vren::specialized_shader(shader_module, "main");
 		return vren::create_compute_pipeline(*m_context, shader);
 	}())
 {
 }
 
-vren::render_graph_t vren_demo::visualize_clusters::operator()(
+vren::render_graph_t vren_demo::show_clusters::operator()(
 	vren::render_graph_allocator& render_graph_allocator,
 	glm::uvec2 const& screen,
 	int32_t mode,
-	vren::vk_utils::combined_image_view const& cluster_reference_buffer,
-	vren::vk_utils::buffer const& cluster_key_buffer,
-	vren::vk_utils::buffer const& assigned_light_buffer,
+	vren::cluster_and_shade const& cluster_and_shade,
 	vren::vk_utils::combined_image_view const& output
 )
 {
@@ -39,56 +37,23 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 		this,
 		screen,
 		mode,
-		&cluster_reference_buffer,
-		&cluster_key_buffer,
-		&assigned_light_buffer,
+		&cluster_and_shade,
 		&output
 	](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
 	{
-		VkBufferMemoryBarrier buffer_memory_barriers[]{
-			VkBufferMemoryBarrier{
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-				.buffer = cluster_key_buffer.m_buffer.m_handle,
-				.offset = 0,
-				.size = VK_WHOLE_SIZE
-			},
-			VkBufferMemoryBarrier{
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-				.buffer = assigned_light_buffer.m_buffer.m_handle,
-				.offset = 0,
-				.size = VK_WHOLE_SIZE
-			},
-		};
-
-		VkImageMemoryBarrier image_memory_barrier{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		VkMemoryBarrier memory_barrier{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 			.pNext = nullptr,
-			.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-			.oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-			.newLayout = VK_IMAGE_LAYOUT_GENERAL,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.image = cluster_reference_buffer.get_image(),
-			.subresourceRange = {
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.levelCount = 1,
-				.layerCount = 1,
-			}
 		};
 		vkCmdPipelineBarrier(
 			command_buffer,
 			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			NULL,
+			1, &memory_barrier,
 			0, nullptr,
-			std::size(buffer_memory_barriers), buffer_memory_barriers,
-			1, &image_memory_barrier
+			0, nullptr
 		);
 
 		m_pipeline.bind(command_buffer);
@@ -113,10 +78,12 @@ vren::render_graph_t vren_demo::visualize_clusters::operator()(
 		auto descriptor_set_0 = std::make_shared<vren::pooled_vk_descriptor_set>(
 			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
 		);
-		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_reference_buffer.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
-		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, assigned_light_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 3, output.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
+		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_and_shade.m_cluster_reference_buffer.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, cluster_and_shade.m_cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, cluster_and_shade.m_assigned_light_counts_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 3, cluster_and_shade.m_assigned_light_offsets_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 4, cluster_and_shade.m_assigned_light_indices_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
+		vren::vk_utils::write_storage_image_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 5, output.m_image_view.m_handle, VK_IMAGE_LAYOUT_GENERAL);
 
 		m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
@@ -165,7 +132,7 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 			.dstOffset = 0,
 			.size = sizeof(glm::uvec4),
 		};
-		vkCmdCopyBuffer(command_buffer, cluster_and_shade.m_allocation_index_buffer.m_buffer.m_handle, staging_buffer.m_buffer.m_handle, 1, &region);
+		vkCmdCopyBuffer(command_buffer, cluster_and_shade.m_cluster_key_dispatch_params_buffer.m_buffer.m_handle, staging_buffer.m_buffer.m_handle, 1, &region);
 
 		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr);
 	});
@@ -216,7 +183,7 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 			m_context->m_toolbox->m_descriptor_pool.acquire(m_pipeline.m_descriptor_set_layouts.at(0))
 		);
 		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 0, cluster_and_shade.m_cluster_key_buffer.m_buffer.m_handle, VK_WHOLE_SIZE, 0);
-		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, cluster_and_shade.m_allocation_index_buffer.m_buffer.m_handle, sizeof(glm::uvec4), 0);
+		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 1, cluster_and_shade.m_cluster_key_dispatch_params_buffer.m_buffer.m_handle, sizeof(glm::uvec4), 0);
 		vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set_0->m_handle.m_descriptor_set, 2, debug_draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle, VK_WHOLE_SIZE, 0);
 
 		m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);

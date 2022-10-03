@@ -305,7 +305,11 @@ vren::shader_module vren::load_shader_module_from_file(vren::context const& cont
 {
 	std::vector<char> buffer{};
 	load_bin_file(filename, buffer);
-	return load_shader_module(context, reinterpret_cast<uint32_t const*>(buffer.data()), buffer.size() / sizeof(uint32_t), filename);
+	vren::shader_module shader_module = load_shader_module(context, reinterpret_cast<uint32_t const*>(buffer.data()), buffer.size() / sizeof(uint32_t), filename);
+
+	vren::vk_utils::set_name(context, shader_module, filename);
+
+	return shader_module;
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

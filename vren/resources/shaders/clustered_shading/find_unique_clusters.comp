@@ -29,10 +29,13 @@ layout(set = 1, binding = 0) writeonly buffer UniqueClusterKeyBuffer
 	uint cluster_keys[];
 };
 
-layout(set = 1, binding = 1) buffer AllocationIndexBuffer
+layout(set = 1, binding = 1) buffer ClusterKeyDispatchParamsBuffer
 {
-	uvec4 allocation_index; // w is the allocation index, while xyz the indirect dispatch parameters
-};
+	uint x;
+	uint y;
+	uint z;
+	uint _pad;
+} cluster_key_dispatch_params;
 
 layout(set = 1, binding = 2, r32ui) uniform uimage2D u_cluster_references;
 
@@ -96,11 +99,7 @@ void main()
 
 	if (gl_LocalInvocationIndex == 0)
 	{
-		s_allocation_index = atomicAdd(allocation_index.w, unique_key_count);
-
-		// The number of workgroups that is required to process the unique cluster key list in parallel
-		uint num_workgroups = uint(ceil(float(s_allocation_index + unique_key_count) / float(1024)));
-		atomicMax(allocation_index.x, num_workgroups);
+		s_allocation_index = atomicAdd(cluster_key_dispatch_params.x, unique_key_count);
 	}
 
 	barrier();
@@ -108,10 +107,7 @@ void main()
 	if (keep_value)
 	{
 		uint cluster_key_idx = s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex];
-		if (cluster_key_idx < cluster_keys.length())
-		{
-			cluster_keys[cluster_key_idx] = s_cluster_keys[gl_LocalInvocationIndex].x;
-		}
+		cluster_keys[cluster_key_idx] = s_cluster_keys[gl_LocalInvocationIndex].x;
 	}
 
 	imageStore(
