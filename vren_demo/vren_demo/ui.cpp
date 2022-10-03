@@ -147,6 +147,9 @@ void vren_demo::ui::show_scene_window()
 {
 	if (ImGui::Begin("Scene UI##scene_ui", nullptr, NULL))
 	{
+		// Background color
+		ImGui::ColorEdit3("Background color##scene_ui", reinterpret_cast<float*>(&m_app->m_background_color), ImGuiColorEditFlags_Float);
+
 		// Point lights
 		ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 

@@ -425,9 +425,11 @@ void vren_demo::app::record_commands(
 	m_debug_draw_buffer.clear();
 
 	// Cartesian axes
+	/*
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(1, 0, 0), .m_color = 0xff0000 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 1, 0), .m_color = 0x00ff00 });
 	m_debug_draw_buffer.add_line({ .m_from = glm::vec3(0), .m_to = glm::vec3(0, 0, 1), .m_color = 0x0000ff });
+	*/
 
 	// Model AABB
 	//m_debug_draw_buffer.add_cube({ .m_min = m_model_min, .m_max = m_model_max, .m_color = 0xffffff });
@@ -460,7 +462,7 @@ void vren_demo::app::record_commands(
 	vren::render_graph_builder render_graph(m_render_graph_allocator);
 
 	// Clear color buffer
-	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, m_color_buffer->get_image(), { 0.45f, 0.45f, 0.45f, 0.0f });
+	auto clear_color_buffer = vren::clear_color_buffer(m_render_graph_allocator, m_color_buffer->get_image(), { m_background_color.x, m_background_color.y, m_background_color.z, 0.0f });
 	render_graph.concat(m_profiler.profile(m_render_graph_allocator, clear_color_buffer, vren_demo::ProfileSlot_CLEAR_COLOR_BUFFER, frame_idx));
 
 	// Clear depth buffer
@@ -486,7 +488,16 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_MESH_SHADER_RENDERER:
 		if (m_clusterized_model_draw_buffer)
 		{
-			auto mesh_shader_render = m_mesh_shader_renderer->render(m_render_graph_allocator, screen, camera_data, light_array, *m_clusterized_model_draw_buffer, *m_depth_buffer_pyramid, *m_gbuffer, *m_depth_buffer);
+			auto mesh_shader_render = m_mesh_shader_renderer->render(
+				m_render_graph_allocator,
+				screen,
+				camera_data,
+				light_array,
+				*m_clusterized_model_draw_buffer,
+				*m_depth_buffer_pyramid,
+				*m_gbuffer,
+				*m_depth_buffer
+			);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, mesh_shader_render, vren_demo::ProfileSlot_MESH_SHADER_RENDERER, frame_idx));
 
 			resource_container.add_resource(m_mesh_shader_renderer);
@@ -518,7 +529,7 @@ void vren_demo::app::record_commands(
 	vren::render_graph_builder debug_render_graph(m_render_graph_allocator);
 
 	// Debug general purpose objects
-	debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
+	// debug_render_graph.concat(m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, m_debug_draw_buffer));
 
 	// Show models' normals
 	if (m_model_normals_draw_buffer)
@@ -549,6 +560,7 @@ void vren_demo::app::record_commands(
 	}
 
 	// Debug point lights
+	/*
 	if (light_array.m_point_light_count > 0)
 	{
 		vren::debug_renderer_draw_buffer& point_light_debug_draw_buffer = m_point_light_debug_draw_buffers.at(frame_idx);
@@ -559,7 +571,7 @@ void vren_demo::app::record_commands(
 		debug_render_graph.concat(
 			m_debug_renderer.render(m_render_graph_allocator, render_target, camera_data, point_light_debug_draw_buffer)
 		);
-	}
+	}*/
 
 	// Debug meshlets
 	if (m_show_meshlets)

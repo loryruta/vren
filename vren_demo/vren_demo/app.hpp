@@ -242,6 +242,9 @@ namespace vren_demo
 		// Behavioral variables
 		vren_demo::renderer_type_enum_t m_selected_renderer_type = vren_demo::RendererType_BASIC_RENDERER;
 		bool m_show_ui = true;
+
+		glm::vec3 m_background_color = glm::vec3(0.78);
+
 		bool m_show_meshlets = false;
 		bool m_show_meshlets_bounds = false;
 		bool m_show_projected_meshlet_bounds = false;
