@@ -110,7 +110,7 @@ int get_node_address(uint bvh_root_idx, uint level)
 	int base_addr = int(bvh_root_idx) - ((1 - int(exp2(5 * (level + 2)))) / (1 - 32) - 1);
 
 	int node_addr = base_addr;
-	for (int i = 0; i < level; i--)
+	for (int i = 0; i < level; i++)
 	{
 		int rel_node_offset = findLSB(g_level_overlaps[i]);
 		node_addr += int(exp2(5 * (level - i))) * rel_node_offset;
