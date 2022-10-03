@@ -70,5 +70,6 @@ cmake --build .
 
 You may want to run the demo executable:
 ```cmd
-./build/vren_demo/vren_demo(.exe) <model-file>
+cd build/vren_demo
+vren_demo <gltf-or-glb-model-file>
 ```
