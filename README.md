@@ -68,8 +68,7 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=<vcpkg home directory>/scripts/buildsystems/vcpk
 cmake --build .
 ```
 
-You may want to run the demo executable:
+You may want to run the demo executable (ensure `.vren` and `resources` folders are in the same directory):
 ```cmd
-cd build/vren_demo
 vren_demo <gltf-or-glb-model-file>
 ```
