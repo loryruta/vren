@@ -1,27 +1,20 @@
-project = 'VREN'
+import alabaster
+
+project = 'vren'
 copyright = '2022, Lorenzo Rutayisire'
-#author = 'loryruta'
-
-extensions = [
-]
-
-templates_path = ['_templates']
+author = 'loryruta'
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-html_theme = 'sphinx_rtd_theme'
+html_theme_path = [alabaster.get_path()]
+extensions = ['alabaster']
+html_theme = 'alabaster'
 
 html_show_sourcelink = False # Remove View page source
 
-html_context = {
-    'show_sphinx': False,
-}
+html_static_path = ['_static']
 
 html_theme_options = {
-    'prev_next_buttons_location': False,
-    'collapse_navigation': False,
+    "github_user": "loryruta",
+    'github_repo': "vren",
 }
-
-html_static_path = ['_static']
-html_style = 'css/custom.css'
-

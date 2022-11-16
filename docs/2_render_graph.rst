@@ -1,4 +1,5 @@
-Why do we need it?
+================================
+Render-graph
 ================================
 
 The sequence of commands needed to render a frame can grow as the pipeline's logic becomes more complex.

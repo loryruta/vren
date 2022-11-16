@@ -2,8 +2,6 @@
 GPU radix-sort
 ================================
 
-.. toctree::
-
 VREN implements a useful parallel radix-sort algorithm. This algorithm works very well when sorting large buffers
 but is constrained to sort only 32-bit integer keys. Moreover it's very easy to implement.
 
