@@ -1,0 +1,249 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Render-graph &#8212; vren  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Basic renderer" href="3_basic_renderer.html" />
+    <link rel="prev" title="Architecture overview" href="1_architecture_overview.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="render-graph">
+<h1>Render-graph<a class="headerlink" href="#render-graph" title="Permalink to this heading">¶</a></h1>
+<p>The sequence of commands needed to render a frame can grow as the pipeline’s logic becomes more complex.
+These commands involve objects (e.g. buffers and images) whose access must be correctly synchronized to avoid undefined behaviors
+such as readings happening concurrently with writes.</p>
+<p>The Vulkan way to ensure synchronization for memory accesses is by using pipeline memory barriers.</p>
+<section id="quick-overview-to-pipeline-barriers">
+<h2>Quick overview to pipeline barriers<a class="headerlink" href="#quick-overview-to-pipeline-barriers" title="Permalink to this heading">¶</a></h2>
+<p><em>If you already know what a pipeline memory barrier is you can skip this section.</em></p>
+<p>Assume we have a simple pipeline made of a compute task <code class="docutils literal notranslate"><span class="pre">C1</span></code> that writes to an image <code class="docutils literal notranslate"><span class="pre">I1</span></code> and another compute task <code class="docutils literal notranslate"><span class="pre">C2</span></code> that has to read
+from the same image:</p>
+<a class="reference internal image-reference" href="img/render_graph_1.png"><img alt="img/render_graph_1.png" class="align-center" src="img/render_graph_1.png" style="height: 150px;" /></a>
+<p>And consider the following pseudo-code used to dispatch the compute tasks:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">bind</span><span class="p">(</span><span class="n">C1</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C1</span><span class="p">);</span><span class="w"> </span><span class="c1">// Write to I1</span>
+
+<span class="n">bind</span><span class="p">(</span><span class="n">C2</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C2</span><span class="p">);</span><span class="w"> </span><span class="c1">// Read from I1</span>
+</pre></div>
+</div>
+<p>Dispatching <code class="docutils literal notranslate"><span class="pre">C2</span></code> after <code class="docutils literal notranslate"><span class="pre">C1</span></code> [1] will only ensure that <code class="docutils literal notranslate"><span class="pre">C2</span></code> operations will start after <code class="docutils literal notranslate"><span class="pre">C1</span></code> operations have started.
+Therefore we have no assurance that <code class="docutils literal notranslate"><span class="pre">C2</span></code> reads will happen only after all <code class="docutils literal notranslate"><span class="pre">C1</span></code> writes completed, so this code’s behavior is undefined.</p>
+<p>What Vulkan offers to ensure synchronization are <strong>pipeline memory barriers</strong>: a pipeline memory barrier is placed between the two
+commands of interest, i.e. <code class="docutils literal notranslate"><span class="pre">C1</span></code> and <code class="docutils literal notranslate"><span class="pre">C2</span></code>, for which you define a set of source operations <code class="docutils literal notranslate"><span class="pre">C1_OP</span></code> for <code class="docutils literal notranslate"><span class="pre">C1</span></code>, and a set of destination operations <code class="docutils literal notranslate"><span class="pre">C2_OP</span></code> for <code class="docutils literal notranslate"><span class="pre">C2</span></code>.
+When the commands are dispatched along with the pipeline memory barrier you have the confidence that <code class="docutils literal notranslate"><span class="pre">C1_OP</span></code> are completed before <code class="docutils literal notranslate"><span class="pre">C2_OP</span></code> start.</p>
+<p>Let’s set up the memory barrier to accomplish our problem:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">bind</span><span class="p">(</span><span class="n">C1</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C1</span><span class="p">);</span><span class="w"> </span><span class="c1">// Write to I1</span>
+
+<span class="n">place_pipeline_memory_barrier</span><span class="p">(</span><span class="cm">/* C1_OP */</span><span class="w"> </span><span class="n">READ</span><span class="p">,</span><span class="w"> </span><span class="cm">/* C2_OP */</span><span class="w"> </span><span class="n">WRITE</span><span class="p">);</span><span class="w"></span>
+
+<span class="n">bind</span><span class="p">(</span><span class="n">C2</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C2</span><span class="p">);</span><span class="w"> </span><span class="c1">// Read from I1</span>
+</pre></div>
+</div>
+<p>This code is valid and doesn’t represent an undefined behavior.</p>
+<p>As the complexity of our pipeline grows, we may want to dispatch many commands before <code class="docutils literal notranslate"><span class="pre">C2</span></code> that do not depend on <code class="docutils literal notranslate"><span class="pre">I1</span></code>.
+In such case there would be an obvious “over-synchronization” issue because the pipeline is now waiting for the reads of <code class="docutils literal notranslate"><span class="pre">C1</span></code> to happen before the writes issued by
+any command on any object, while we are only interested in <code class="docutils literal notranslate"><span class="pre">C2</span></code> writes to <code class="docutils literal notranslate"><span class="pre">I1</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">bind</span><span class="p">(</span><span class="n">C1</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C1</span><span class="p">);</span><span class="w"> </span><span class="c1">// Write to I1</span>
+
+<span class="n">place_pipeline_memory_barrier</span><span class="p">(</span><span class="cm">/* C1_OP */</span><span class="w"> </span><span class="n">READ</span><span class="p">,</span><span class="w"> </span><span class="cm">/* C2_OP */</span><span class="w"> </span><span class="n">WRITE</span><span class="p">);</span><span class="w"></span>
+
+<span class="n">dispatch</span><span class="p">(</span><span class="n">D1</span><span class="p">);</span><span class="w"> </span><span class="c1">// If D1 wants to write to a second image I2 it will be blocked by</span>
+<span class="w">              </span><span class="c1">// the barrier and forced to wait for C1 reads</span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">D2</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">D3</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">D4</span><span class="p">);</span><span class="w"></span>
+
+<span class="n">bind</span><span class="p">(</span><span class="n">C2</span><span class="p">,</span><span class="w"> </span><span class="n">I1</span><span class="p">);</span><span class="w"></span>
+<span class="n">dispatch</span><span class="p">(</span><span class="n">C2</span><span class="p">);</span><span class="w"> </span><span class="c1">// Read from I1 (we want the barrier to act here)</span>
+</pre></div>
+</div>
+<p>For this purpose Vulkan offers the possibility to narrow the memory barrier to a specified object, such as an image or a buffer,
+this way wherever we place the barrier (as long as it’s between <code class="docutils literal notranslate"><span class="pre">C1</span></code> and <code class="docutils literal notranslate"><span class="pre">C2</span></code>) we’re sure it will synchronize read/write(s) that involve <code class="docutils literal notranslate"><span class="pre">I1</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">place_pipeline_memory_barrier</span><span class="p">(</span><span class="n">I1</span><span class="p">,</span><span class="w"> </span><span class="cm">/* C1_OP */</span><span class="w"> </span><span class="n">READ</span><span class="p">,</span><span class="w"> </span><span class="cm">/* C2_OP */</span><span class="w"> </span><span class="n">WRITE</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Actually there are lot more settings that can be specified for a pipeline barrier, for example the exact stage of <code class="docutils literal notranslate"><span class="pre">C1</span></code> and <code class="docutils literal notranslate"><span class="pre">C2</span></code> that source/destination operations belong to,
+the exact type of read/write…</p>
+<p>Moreover <strong>pipeline barriers are used for image layout transitions</strong>: an image to be used in some tasks must be/it’s better to have it in a certain
+layout and to handle each of these layout transitions a pipeline barrier has to be placed.</p>
+</section>
+<section id="how-do-they-look-in-vulkan">
+<h2>How do they look in Vulkan<a class="headerlink" href="#how-do-they-look-in-vulkan" title="Permalink to this heading">¶</a></h2>
+<p>The actual Vulkan command used to place memory barriers is the following:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">vkCmdPipelineBarrier</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkCommandBuffer</span><span class="w">                             </span><span class="n">commandBuffer</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkPipelineStageFlags</span><span class="w">                        </span><span class="n">srcStageMask</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkPipelineStageFlags</span><span class="w">                        </span><span class="n">dstStageMask</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkDependencyFlags</span><span class="w">                           </span><span class="n">dependencyFlags</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">                                    </span><span class="n">memoryBarrierCount</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VkMemoryBarrier</span><span class="o">*</span><span class="w">                      </span><span class="n">pMemoryBarriers</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">                                    </span><span class="n">bufferMemoryBarrierCount</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VkBufferMemoryBarrier</span><span class="o">*</span><span class="w">                </span><span class="n">pBufferMemoryBarriers</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">                                    </span><span class="n">imageMemoryBarrierCount</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VkImageMemoryBarrier</span><span class="o">*</span><span class="w">                 </span><span class="n">pImageMemoryBarriers</span><span class="w"></span>
+<span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>For which the following structs have to be instantiated:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">VkImageMemoryBarrier</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkStructureType</span><span class="w">            </span><span class="n">sType</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w">                </span><span class="n">pNext</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkAccessFlags</span><span class="w">              </span><span class="n">srcAccessMask</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkAccessFlags</span><span class="w">              </span><span class="n">dstAccessMask</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkImageLayout</span><span class="w">              </span><span class="n">oldLayout</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkImageLayout</span><span class="w">              </span><span class="n">newLayout</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">                   </span><span class="n">srcQueueFamilyIndex</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">                   </span><span class="n">dstQueueFamilyIndex</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkImage</span><span class="w">                    </span><span class="n">image</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkImageSubresourceRange</span><span class="w">    </span><span class="n">subresourceRange</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">VkImageMemoryBarrier</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">VkBufferMemoryBarrier</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkStructureType</span><span class="w">    </span><span class="n">sType</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w">        </span><span class="n">pNext</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkAccessFlags</span><span class="w">      </span><span class="n">srcAccessMask</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkAccessFlags</span><span class="w">      </span><span class="n">dstAccessMask</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">           </span><span class="n">srcQueueFamilyIndex</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">           </span><span class="n">dstQueueFamilyIndex</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkBuffer</span><span class="w">           </span><span class="n">buffer</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkDeviceSize</span><span class="w">       </span><span class="n">offset</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">VkDeviceSize</span><span class="w">       </span><span class="n">size</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">VkBufferMemoryBarrier</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading">¶</a></h2>
+<p>To keep it simple, we identify two usage approaches:</p>
+<ol class="arabic simple">
+<li><p>Use every field and therefore taking advantage of the low-level provided by the Vulkan API.</p></li>
+<li><p>Use a few number of fields just to avoid undefined behavior but almost certainly over-synchronizing.</p></li>
+</ol>
+<p>It’s obvious that to achieve the best performance we would choose <code class="docutils literal notranslate"><span class="pre">1.</span></code> but it’s really hard to maintain as the structure of our pipeline changes.
+If we insert, move, delete commands we could need to re-define some pipeline barrier and probably deal with tedious validation errors.</p>
+<p>The render-graph architecture comes in aid for this purpose: <strong>it permits to define pipeline memory barriers
+on the fly trying to get rid of over-synchronization and therefore to be as detailed as possible</strong>.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">vren</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=loryruta&repo=vren&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="0_introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="1_architecture_overview.html">Architecture overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Render-graph</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-overview-to-pipeline-barriers">Quick overview to pipeline barriers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-do-they-look-in-vulkan">How do they look in Vulkan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="3_basic_renderer.html">Basic renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="4_debug_renderer.html">Debug renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="5_mesh_shader_renderer.html">Mesh-shader renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="6_reduce.html">Reduce</a></li>
+<li class="toctree-l1"><a class="reference internal" href="7_blelloch_scan.html">Blelloch scan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="8_radix_sort.html">GPU radix-sort</a></li>
+<li class="toctree-l1"><a class="reference internal" href="9_bucket_sort.html">Bucket sort</a></li>
+<li class="toctree-l1"><a class="reference internal" href="10_occlusion_culling.html">Occlusion culling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="11_clustered_shading.html">Clustered shading</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="1_architecture_overview.html" title="previous chapter">Architecture overview</a></li>
+      <li>Next: <a href="3_basic_renderer.html" title="next chapter">Basic renderer</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Lorenzo Rutayisire.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,29 @@
+body, .body {
+    background-color: black !important;
+    color: white !important;
+}
+
+h1.logo a {
+    color: #ed3e3e !important;
+}
+
+a, h1, h2, h3, h4, h5, h6 {
+    color: white !important;
+}
+
+div.sphinxsidebar a {
+    border-bottom: none;
+}
+
+.title {
+    font-size: 32px !important;
+    margin-bottom: 0.3em !important;
+}
+
+.toctree-l1 {
+    margin-bottom: 2px !important;
+}
+
+#searchbox {
+    display: none !important;
+}
