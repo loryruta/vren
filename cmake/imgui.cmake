@@ -3,7 +3,7 @@ include_guard()
 # ImGui is shared between multiple subprojects (vren and vren_demo) with different features (impl_vulkan and impl_glfw).
 # The version has to be known and, for this reason, can't be declared in vcpkg's manifest
 
-set(imgui_TAG "docking")
+set(imgui_TAG "94e850fd6ff9eceb98fda3147e3ffd4781ad2dc7")
 
 FetchContent_Declare(
 	imgui
