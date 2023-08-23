@@ -10,6 +10,12 @@ namespace vren
 	// Forward decl
 	class context;
 
+	inline uint32_t k_initial_material_count = 1;
+
+	// ------------------------------------------------------------------------------------------------
+	// material
+	// ------------------------------------------------------------------------------------------------
+
 	struct material
 	{
 		uint32_t m_base_color_texture_idx;
@@ -19,7 +25,9 @@ namespace vren
 		glm::vec4 m_base_color_factor;
 	};
 
-	inline uint32_t k_initial_material_count = 1;
+	// ------------------------------------------------------------------------------------------------
+	// material_buffer
+	// ------------------------------------------------------------------------------------------------
 
 	class material_buffer
 	{
@@ -40,23 +48,6 @@ namespace vren
 			))
 		{
 			vren::vk_utils::set_name(context, m_buffer, "material_buffer");
-
-			add_initial_materials();
-		}
-
-	private:
-		inline void add_initial_materials()
-		{
-			vren::material* materials = m_buffer.get_mapped_pointer<vren::material>();
-
-			materials[0] = {
-				// Default material
-				vren::material{
-					.m_base_color_texture_idx = vren::texture_manager::k_white_texture,
-					.m_metallic_roughness_texture_idx = vren::texture_manager::k_white_texture,
-				}
-			};
-			m_material_count = k_initial_material_count;
 		}
 
 	public:

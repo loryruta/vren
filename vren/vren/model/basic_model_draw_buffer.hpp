@@ -29,7 +29,7 @@ namespace vren
 		inline void set_object_names(vren::context const& context)
 		{
 			vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) m_vertex_buffer.m_buffer.m_handle, "vertex_buffer");
-			vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) m_index_buffer.m_buffer.m_handle, "meshlet_buffer");
+			vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) m_index_buffer.m_buffer.m_handle, "index_buffer");
 			vren::vk_utils::set_object_name(context, VK_OBJECT_TYPE_BUFFER, (uint64_t) m_instance_buffer.m_buffer.m_handle, "instance_buffer");
 		}
 	};

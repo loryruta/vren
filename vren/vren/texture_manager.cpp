@@ -43,7 +43,6 @@ vren::texture_manager::texture_manager(vren::context const& context) :
 	m_descriptor_set_layout(create_descriptor_set_layout()),
 	m_descriptor_pool(create_descriptor_pool())
 {
-	//rewrite_descriptor_set();
 }
 
 vren::vk_descriptor_set_layout vren::texture_manager::create_descriptor_set_layout()
@@ -89,15 +88,6 @@ vren::texture_manager_descriptor_pool vren::texture_manager::create_descriptor_p
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k_max_texture_count * max_sets },
 	};
 	return vren::texture_manager_descriptor_pool(*m_context, VREN_MAX_FRAME_IN_FLIGHT_COUNT, pool_sizes);
-}
-
-void vren::texture_manager::lazy_initialize()
-{
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 255, 255, 255, 255)); // White (INDEX 0!)
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 0, 0, 0, 255));       // Black
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 255, 0, 0, 255));     // Red
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 0, 255, 0, 255));     // Green
-	m_textures.push_back(vren::vk_utils::create_color_texture(*m_context, 0, 0, 255, 255));     // Blue
 }
 
 void vren::texture_manager::rewrite_descriptor_set()

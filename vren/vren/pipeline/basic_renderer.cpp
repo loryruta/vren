@@ -6,11 +6,15 @@
 #include "vk_helpers/misc.hpp"
 #include "vk_helpers/debug_utils.hpp"
 
-vren::basic_renderer::basic_renderer(vren::context const& context) :
-	m_context(&context),
+vren::basic_renderer::basic_renderer(vren::context& context) :
+	m_context(context),
 	m_pipeline(create_graphics_pipeline())
 {
-	vren::vk_utils::set_name(*m_context, m_pipeline, "vertex_pipeline");
+	vren::vk_utils::set_name(m_context, m_pipeline, "vertex_pipeline");
+}
+
+vren::basic_renderer::~basic_renderer()
+{
 }
 
 vren::pipeline vren::basic_renderer::create_graphics_pipeline()
@@ -151,23 +155,23 @@ vren::pipeline vren::basic_renderer::create_graphics_pipeline()
 	};
 
 	char const* vertex_shader_path = ".vren/resources/shaders/basic_draw.vert.spv";
-	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(*m_context, vertex_shader_path);
+	vren::shader_module vertex_shader_module = vren::load_shader_module_from_file(m_context, vertex_shader_path);
 	vren::specialized_shader vertex_shader = vren::specialized_shader(vertex_shader_module, "main");
 
-	vren::vk_utils::set_name(*m_context, vertex_shader_module, vertex_shader_path);
+	vren::vk_utils::set_name(m_context, vertex_shader_module, vertex_shader_path);
 
 	char const* fragment_shader_path = ".vren/resources/shaders/deferred.frag.spv";
-	vren::shader_module fragment_shader_module = vren::load_shader_module_from_file(*m_context, fragment_shader_path);
+	vren::shader_module fragment_shader_module = vren::load_shader_module_from_file(m_context, fragment_shader_path);
 	vren::specialized_shader fragment_shader = vren::specialized_shader(fragment_shader_module, "main");
 
-	vren::vk_utils::set_name(*m_context, fragment_shader_module, fragment_shader_path);
+	vren::vk_utils::set_name(m_context, fragment_shader_module, fragment_shader_path);
 
 	vren::specialized_shader shaders[] = {
 		std::move(vertex_shader),
 		std::move(fragment_shader)
 	};
 	return vren::create_graphics_pipeline(
-		*m_context,
+		m_context,
 		shaders,
 		&vertex_input_state_info,
 		&input_assembly_state_info,
@@ -184,11 +188,129 @@ vren::pipeline vren::basic_renderer::create_graphics_pipeline()
 	);
 }
 
+void vren::basic_renderer::make_rendering_scope(
+	VkCommandBuffer cmd_buf,
+	glm::uvec2 const& screen,
+	vren::gbuffer const& gbuffer,
+	vren::vk_utils::depth_buffer_t const& depth_buffer,
+	std::function<void()> const& callback
+	)
+{
+	// GBuffer
+	VkRenderingAttachmentInfoKHR color_attachments[]{
+		{ // Normal buffer
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = gbuffer.m_normal_buffer.get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		},
+		{ // Texcoord buffer
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = gbuffer.m_texcoord_buffer.get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		},
+		{ // Material index buffer
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.pNext = nullptr,
+			.imageView = gbuffer.m_material_index_buffer.get_image_view(),
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		},
+	};
+
+	// Depth buffer
+	VkRenderingAttachmentInfoKHR depth_buffer_attachment{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+		.pNext = nullptr,
+		.imageView = depth_buffer.get_image_view(),
+		.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.resolveMode = VK_RESOLVE_MODE_NONE,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE
+	};
+
+	// Begin rendering
+	VkRenderingInfoKHR rendering_info{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+		.pNext = nullptr,
+		.flags = NULL,
+		.renderArea = {
+			.offset = {0, 0},
+			.extent = {screen.x, screen.y}
+		},
+		.layerCount = 1,
+		.viewMask = 0,
+		.colorAttachmentCount = std::size(color_attachments),
+		.pColorAttachments = color_attachments,
+		.pDepthAttachment = &depth_buffer_attachment,
+		.pStencilAttachment = nullptr
+	};
+	vkCmdBeginRendering(cmd_buf, &rendering_info);
+
+	// Begin pipeline
+	m_pipeline.bind(cmd_buf);
+
+	callback();
+
+	// End rendering
+	vkCmdEndRendering(cmd_buf);
+}
+
+void vren::basic_renderer::set_viewport(VkCommandBuffer cmd_buf, float width, float height)
+{
+	VkViewport viewport{};
+	viewport.x = 0;
+	viewport.y = height;
+	viewport.width = width;
+	viewport.height = height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(cmd_buf, 0, 1, &viewport);
+}
+
+void vren::basic_renderer::set_scissor(VkCommandBuffer cmd_buf, uint32_t width, uint32_t height)
+{
+	VkRect2D rect2d{};
+	rect2d.offset.x = 0;
+	rect2d.offset.y = 0;
+	rect2d.extent.width = width;
+	rect2d.extent.height = height;
+	vkCmdSetScissor(cmd_buf, 0, 1, &rect2d);
+}
+
+void vren::basic_renderer::set_push_constants(VkCommandBuffer cmd_buf, vren::basic_renderer::push_constants const& push_constants)
+{
+	m_pipeline.push_constants(cmd_buf, VK_SHADER_STAGE_VERTEX_BIT, &push_constants, sizeof(push_constants), 0);
+}
+
+void vren::basic_renderer::set_vertex_buffer(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& vertex_buffer)
+{
+	m_pipeline.bind_vertex_buffer(cmd_buf, 0, vertex_buffer.m_buffer.m_handle);
+}
+
+void vren::basic_renderer::set_index_buffer(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& index_buffer)
+{
+	m_pipeline.bind_index_buffer(cmd_buf, index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32);
+}
+
+void vren::basic_renderer::set_instance_buffer(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& instance_buffer)
+{
+	m_pipeline.bind_vertex_buffer(cmd_buf, 1, instance_buffer.m_buffer.m_handle);
+}
+
 vren::render_graph_t vren::basic_renderer::render(
 	vren::render_graph_allocator& render_graph_allocator,
 	glm::uvec2 const& screen,
 	vren::camera const& camera,
-	vren::light_array const& light_array,
 	vren::basic_model_draw_buffer const& draw_buffer,
 	vren::gbuffer const& gbuffer,
 	vren::vk_utils::depth_buffer_t const& depth_buffer
@@ -209,7 +331,6 @@ vren::render_graph_t vren::basic_renderer::render(
 		screen,
 		camera,
 		&draw_buffer,
-		&light_array,
 		&gbuffer,
 		&depth_buffer
 	](

@@ -179,3 +179,68 @@ std::vector<VkQueueFamilyProperties> vren::vk_utils::get_queue_families_properti
 
 	return queue_fam_props;
 }
+
+void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf)
+{
+	VkMemoryBarrier memory_barrier{};
+	memory_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+	memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+
+	vkCmdPipelineBarrier(
+		cmd_buf,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		NULL,
+		1, &memory_barrier,
+		0, nullptr,
+		0, nullptr
+		);
+}
+
+void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& buffer)
+{
+	VkBufferMemoryBarrier buffer_memory_barrier{};
+	buffer_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	buffer_memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	buffer_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	buffer_memory_barrier.buffer = buffer.m_buffer.m_handle;
+	buffer_memory_barrier.offset = 0;
+	buffer_memory_barrier.size = VK_WHOLE_SIZE;
+
+	vkCmdPipelineBarrier(
+		cmd_buf,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		NULL,
+		0, nullptr,
+		1, &buffer_memory_barrier,
+		0, nullptr
+		);
+}
+
+void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image)
+{
+	VkImageMemoryBarrier image_memory_barrier{};
+	image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	image_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO non-specified layout without losing image data ?
+	image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	image_memory_barrier.image = image.m_image.m_handle;
+	image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	image_memory_barrier.subresourceRange.baseMipLevel = 0;
+	image_memory_barrier.subresourceRange.levelCount = 1;
+	image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+	image_memory_barrier.subresourceRange.layerCount = 1;
+
+	vkCmdPipelineBarrier(
+		cmd_buf,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		NULL,
+		0, nullptr,
+		0, nullptr,
+		1, &image_memory_barrier
+	);
+}

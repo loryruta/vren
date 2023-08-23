@@ -3,6 +3,8 @@
 #include <memory>
 #include <functional>
 
+#include "buffer.hpp"
+#include "image.hpp"
 #include "vk_raii.hpp"
 #include "base/resource_container.hpp"
 #include "pool/command_pool.hpp"
@@ -154,4 +156,11 @@ namespace vren::vk_utils
 		vkUpdateDescriptorSets(context.m_device, 1, &descriptor_set_write, 0, nullptr);
 	}
 
+	// ------------------------------------------------------------------------------------------------
+	// Pipeline barriers
+	// ------------------------------------------------------------------------------------------------
+
+	void pipeline_barrier(VkCommandBuffer cmd_buf);
+	void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& buffer);
+	void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image);
 }

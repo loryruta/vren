@@ -481,7 +481,7 @@ void vren_demo::app::record_commands(
 	case vren_demo::RendererType_BASIC_RENDERER:
 		if (m_basic_model_draw_buffer)
 		{
-			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, screen, m_camera, light_array, *m_basic_model_draw_buffer, *m_gbuffer, *m_depth_buffer);
+			auto basic_render = m_basic_renderer.render(m_render_graph_allocator, screen, m_camera, *m_basic_model_draw_buffer, *m_gbuffer, *m_depth_buffer);
 			render_graph.concat(m_profiler.profile(m_render_graph_allocator, basic_render, vren_demo::ProfileSlot_BASIC_RENDERER, frame_idx));
 		}
 		break;

@@ -33,8 +33,6 @@ namespace vren
 		vren::command_pool create_transfer_command_pool();
 		vren::descriptor_pool create_descriptor_pool();
 
-		void lazy_initialize();
-
 	public:
 		vren::command_pool m_graphics_command_pool;
 		vren::command_pool m_transfer_command_pool;

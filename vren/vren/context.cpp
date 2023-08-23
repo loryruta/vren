@@ -425,7 +425,6 @@ vren::context::context(context_info const& info) :
 	m_vma_allocator(create_vma_allocator())
 {
 	m_toolbox = std::make_unique<vren::toolbox>(*this);
-	m_toolbox->lazy_initialize();
 }
 
 vren::context::~context()

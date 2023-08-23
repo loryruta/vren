@@ -71,10 +71,3 @@ vren::toolbox::toolbox(vren::context const& context) :
 
 	m_build_bvh(context)
 {}
-
-void vren::toolbox::lazy_initialize()
-{
-	// Initialize here things that needs m_context->m_toolbox to be set and therefore can't be initialized in the `toolbox` constructor
-
-	m_texture_manager.lazy_initialize();
-}
