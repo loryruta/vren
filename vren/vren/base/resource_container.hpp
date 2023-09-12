@@ -24,6 +24,12 @@ namespace vren
 			(add_resource<_t>(resources), ...);
 		}
 
+		void inherit(vren::resource_container const& other)
+		{
+			for (std::shared_ptr<void> const& resource : other.m_resources)
+				add_resource(resource);
+		}
+
 		void clear()
 		{
 			m_resources.clear();

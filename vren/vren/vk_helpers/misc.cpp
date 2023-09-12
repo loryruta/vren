@@ -222,7 +222,7 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::b
 void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image)
 {
 	VkImageMemoryBarrier image_memory_barrier{};
-	image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	image_memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
 	image_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
 	image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO non-specified layout without losing image data ?
@@ -236,6 +236,32 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::i
 
 	vkCmdPipelineBarrier(
 		cmd_buf,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		NULL,
+		0, nullptr,
+		0, nullptr,
+		1, &image_memory_barrier
+	);
+}
+
+void vren::vk_utils::transit_image_layout(VkCommandBuffer command_buffer, vren::vk_utils::image const& image, VkImageLayout src_image_layout, VkImageLayout dst_image_layout)
+{
+	VkImageMemoryBarrier image_memory_barrier{};
+	image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	image_memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	image_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+	image_memory_barrier.oldLayout = src_image_layout;
+	image_memory_barrier.newLayout = dst_image_layout;
+	image_memory_barrier.image = image.m_image.m_handle;
+	image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	image_memory_barrier.subresourceRange.baseMipLevel = 0;
+	image_memory_barrier.subresourceRange.levelCount = 1;
+	image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+	image_memory_barrier.subresourceRange.layerCount = 1;
+
+	vkCmdPipelineBarrier(
+		command_buffer,
 		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		NULL,

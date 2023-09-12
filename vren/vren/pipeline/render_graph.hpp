@@ -33,7 +33,11 @@ namespace vren
 
 		inline bool operator==(vren::render_graph_image_info const& other) const
 		{
-			return m_image == other.m_image && m_image_aspect == other.m_image_aspect && m_mip_level == other.m_mip_level && m_layer == other.m_layer;
+			return
+				m_image == other.m_image &&
+				m_image_aspect == other.m_image_aspect &&
+				m_mip_level == other.m_mip_level &&
+				m_layer == other.m_layer;
 		}
 	};
 
@@ -267,9 +271,7 @@ namespace vren
 			for (uint32_t i = 0; i < m_image_infos.size(); i++)
 			{
 				if (m_image_infos.at(i) == image_info)
-				{
 					return i;
-				}
 			}
 
 			assert(m_image_infos.size() < k_max_image_infos);
@@ -288,9 +290,7 @@ namespace vren
 			for (uint32_t i = 0; i < m_buffer_infos.size(); i++)
 			{
 				if (m_buffer_infos.at(i) == buffer_info)
-				{
 					return i;
-				}
 			}
 
 			assert(m_buffer_infos.size() < k_max_buffer_infos);

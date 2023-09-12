@@ -334,6 +334,7 @@ VkDevice vren::context::create_logical_device()
 	VkPhysicalDeviceVulkan12Features vulkan_12_features{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 		.pNext = &extended_dynamic_state_features,
+		.drawIndirectCount = true,
 		.storageBuffer8BitAccess = true,
 		.uniformAndStorageBuffer8BitAccess = true,
 		.storagePushConstant8 = true,

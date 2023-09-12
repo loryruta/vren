@@ -163,4 +163,6 @@ namespace vren::vk_utils
 	void pipeline_barrier(VkCommandBuffer cmd_buf);
 	void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& buffer);
 	void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image);
+
+	void transit_image_layout(VkCommandBuffer command_buffer, vren::vk_utils::image const& image, VkImageLayout src_image_layout, VkImageLayout dst_image_layout);
 }

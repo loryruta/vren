@@ -417,7 +417,7 @@ void vren::render_graph_dumper::place_buffer_memory_barrier(
 	vren::render_graph_node_buffer_access const& buffer_access_2
 )
 {
-	*m_output << fmt::format("node_{}_image_{} -> node_{}_image_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), buffer_access_1.m_buffer_idx, node_2.get_idx(), buffer_access_2.m_buffer_idx, m_execution_order);
+	*m_output << fmt::format("node_{}_buffer_{} -> node_{}_buffer_{} [color=red, xlabel=\"({})\"]", node_1.get_idx(), buffer_access_1.m_buffer_idx, node_2.get_idx(), buffer_access_2.m_buffer_idx, m_execution_order);
 	m_execution_order++;
 }
 

@@ -11,7 +11,12 @@ vren::command_pool::command_pool(
 ) :
 	m_context(&ctx),
 	m_command_pool(std::move(cmd_pool))
-{}
+{
+}
+
+vren::command_pool::~command_pool()
+{
+}
 
 vren::pooled_vk_command_buffer vren::command_pool::acquire()
 {
