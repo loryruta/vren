@@ -24,7 +24,8 @@ namespace vren
 		{
 			glm::mat4 m_camera_view;
 			glm::mat4 m_camera_projection;
-			float _pad[4]; // TODO useless
+			glm::uint m_material_index;
+			float _pad[3]; // TODO useless
 		};
 
 	private:

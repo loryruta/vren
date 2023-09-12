@@ -118,23 +118,19 @@ void main()
 				);
 			}
 
-			/*
 			// Apply directional lights
 			for (int i = 0; i < directional_lights.length(); i++)
 			{
-				DirectionalLight dir_light = directional_lights[i];
-
 				Lo += pbr_apply_directional_light(
 					camera_position,
 					frag_pos.xyz,
 					frag_normal,
-					dir_light.direction,
-					dir_light.color,
+					directional_lights[i],
 					albedo,
 					metallic,
 					roughness
 				);
-			}*/
+			}
 
 			vec3 ambient = vec3(0.03) * albedo;
 			vec3 color = ambient + Lo;

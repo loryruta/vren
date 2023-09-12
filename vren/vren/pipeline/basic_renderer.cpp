@@ -271,7 +271,7 @@ void vren::basic_renderer::set_viewport(VkCommandBuffer cmd_buf, float width, fl
 	viewport.x = 0;
 	viewport.y = height;
 	viewport.width = width;
-	viewport.height = height;
+	viewport.height = -height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(cmd_buf, 0, 1, &viewport);

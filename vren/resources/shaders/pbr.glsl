@@ -95,15 +95,15 @@ vec3 pbr_apply_point_light(
 vec3 pbr_apply_directional_light(
     vec3 eye,
     vec3 p,
-    vec3 N, 
-    vec3 light_direction,
-    vec3 light_color,
+    vec3 N,
+    DirectionalLight directional_light,
     vec3 albedo,
     float metallic,
     float roughness
 )
 {
-    return pbr_apply_light(eye, p, N, light_direction, light_color, albedo, metallic, roughness);
+    //debugPrintfEXT("kD: %v3f, albedo: %v3f, kS: %v3f, specular: %f, radiance: %v3f, NdotL: %f\n", kD, albedo, kS, specular, radiance, NdotL);
+    return pbr_apply_light(eye, p, N, directional_light.direction, directional_light.color, albedo, metallic, roughness);
 }
 
 vec3 pbr_gamma_correct(vec3 color)
