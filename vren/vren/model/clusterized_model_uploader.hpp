@@ -5,12 +5,13 @@
 
 namespace vren
 {
-	// Forward decl
-	class context;
+    // Forward decl
+    class context;
 
-	class clusterized_model_uploader
-	{
-	public:
-		vren::clusterized_model_draw_buffer upload(vren::context const& context, vren::clusterized_model const& clusterized_model);
-	};
-}
+    class clusterized_model_uploader
+    {
+    public:
+        vren::clusterized_model_draw_buffer
+        upload(vren::context const& context, vren::clusterized_model const& clusterized_model);
+    };
+} // namespace vren

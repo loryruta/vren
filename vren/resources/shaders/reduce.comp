@@ -7,21 +7,21 @@
 #extension GL_EXT_debug_printf : enable
 
 #ifndef VREN_WORKGROUP_SIZE
-#	define VREN_WORKGROUP_SIZE 1024
+#    define VREN_WORKGROUP_SIZE 1024
 #endif
 
 #define VREN_MAX_ITEMS 1
 
 #ifndef VREN_DATA_TYPE
-#	error "Required definition missing `VREN_DATA_TYPE`"
+#    error "Required definition missing `VREN_DATA_TYPE`"
 #endif
 
 #ifndef VREN_OPERATION
-#	error "Required definition missing `VREN_OPERATION`"
+#    error "Required definition missing `VREN_OPERATION`"
 #endif
 
 #ifndef VREN_OUT_OF_BOUND_VALUE
-#	error "Required definition missing `VREN_OUT_OF_BOUND_VALUE`"
+#    error "Required definition missing `VREN_OUT_OF_BOUND_VALUE`"
 #endif
 
 #define UINT32_MAX 0xffffffffu
@@ -30,58 +30,58 @@ layout(local_size_x = VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) i
 
 layout(push_constant) uniform PushConstants
 {
-	uint base_level;
-	uint input_length;
-	uint output_length;
+    uint base_level;
+    uint input_length;
+    uint output_length;
 };
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
 {
-	VREN_DATA_TYPE input_buffer[];
+    VREN_DATA_TYPE input_buffer[];
 };
 
-layout(set = 0, binding = 1) writeonly buffer OutputBuffer // Could be the InputBuffer itself
+layout(set = 0, binding = 1) writeonly buffer OutputBuffer// Could be the InputBuffer itself
 {
-	VREN_DATA_TYPE output_buffer[];
+    VREN_DATA_TYPE output_buffer[];
 };
 
 shared VREN_DATA_TYPE s_data[1024 * VREN_MAX_ITEMS];
 
 void main()
 {
-	uint input_block_offset = gl_WorkGroupID.y * input_length;
-	uint output_block_offset = gl_WorkGroupID.y * output_length;
-	
+    uint input_block_offset = gl_WorkGroupID.y * input_length;
+    uint output_block_offset = gl_WorkGroupID.y * output_length;
+
     uint offset = (1u << base_level) - 1;
     uint stride = 1u << base_level;
-	
-	uint data_idx = offset + gl_GlobalInvocationID.x * stride;
 
-	// Global memory read
-	s_data[gl_LocalInvocationID.x] = data_idx < input_length ? input_buffer[input_block_offset + data_idx] : VREN_OUT_OF_BOUND_VALUE;
+    uint data_idx = offset + gl_GlobalInvocationID.x * stride;
 
-	barrier();
+    // Global memory read
+    s_data[gl_LocalInvocationID.x] = data_idx < input_length ? input_buffer[input_block_offset + data_idx] : VREN_OUT_OF_BOUND_VALUE;
 
-	// Workgroup-wide reduction
-	uint thread_value_idx = gl_LocalInvocationID.x;
+    barrier();
 
-	for (uint level = 0; level < uint(log2(VREN_WORKGROUP_SIZE)); level++)
-	{
-		uint level_mask = (1 << (level + 1)) - 1; 
-		if ((gl_LocalInvocationID.x & level_mask) == level_mask)
-		{
-			uint b_idx = thread_value_idx;
-			uint a_idx = b_idx - (1 << level);
+    // Workgroup-wide reduction
+    uint thread_value_idx = gl_LocalInvocationID.x;
 
-			s_data[b_idx] = VREN_OPERATION(s_data[b_idx], s_data[a_idx]);
-		}
-		
-		barrier();
-	}
+    for (uint level = 0; level < uint(log2(VREN_WORKGROUP_SIZE)); level++)
+    {
+        uint level_mask = (1 << (level + 1)) - 1;
+        if ((gl_LocalInvocationID.x & level_mask) == level_mask)
+        {
+            uint b_idx = thread_value_idx;
+            uint a_idx = b_idx - (1 << level);
 
-	// Global memory write
-	if (data_idx < output_length)
-	{
-		output_buffer[output_block_offset + data_idx] = s_data[gl_LocalInvocationID.x];
-	}
+            s_data[b_idx] = VREN_OPERATION(s_data[b_idx], s_data[a_idx]);
+        }
+
+        barrier();
+    }
+
+    // Global memory write
+    if (data_idx < output_length)
+    {
+        output_buffer[output_block_offset + data_idx] = s_data[gl_LocalInvocationID.x];
+    }
 }

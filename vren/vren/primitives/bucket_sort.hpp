@@ -1,7 +1,7 @@
 #pragma once
 
-#include "vk_helpers/shader.hpp"
 #include "vk_helpers/buffer.hpp"
+#include "vk_helpers/shader.hpp"
 #include "vk_helpers/vk_raii.hpp"
 
 namespace vren
@@ -32,7 +32,7 @@ namespace vren
     public:
         static VkBufferUsageFlags get_required_output_buffer_usage_flags();
         static size_t get_required_output_buffer_size(uint32_t length);
-        
+
         void operator()(
             VkCommandBuffer command_buffer,
             vren::resource_container& resource_container,
@@ -43,5 +43,4 @@ namespace vren
             size_t output_buffer_offset
         );
     };
-}
-
+} // namespace vren

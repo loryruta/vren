@@ -14,9 +14,9 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	vec3 camera_position; float camera_far_plane;
-	mat4 camera_view;
-	mat4 camera_projection;
+    vec3 camera_position; float camera_far_plane;
+    mat4 camera_view;
+    mat4 camera_projection;
 };
 
 // gBuffer
@@ -29,17 +29,17 @@ layout(set = 1, binding = 0, r32ui) uniform uimage2D u_cluster_references;
 
 layout(set = 1, binding = 1) readonly buffer AssignedLightIndicesBuffer
 {
-	uint assigned_light_indices[];
+    uint assigned_light_indices[];
 };
 
 layout(set = 1, binding = 2) readonly buffer AssignedLightCountsBuffer
 {
-	uint assigned_light_counts[];
+    uint assigned_light_counts[];
 };
 
 layout(set = 1, binding = 3) readonly buffer AssignedLightOffsetsBuffer
 {
-	uint assigned_light_offsets[];
+    uint assigned_light_offsets[];
 };
 
 layout(set = 2, binding = 0) uniform sampler2D textures[];
@@ -64,79 +64,79 @@ layout(set = 4, binding = 0) readonly buffer MaterialBuffer
     Material materials[];
 };
 
-layout(set = 5, binding = 0, rgba32f) uniform image2D u_output; 
+layout(set = 5, binding = 0, rgba32f) uniform image2D u_output;
 
 void main()
 {
-	uvec2 screen_size = textureSize(u_depth_buffer, 0);
+    uvec2 screen_size = textureSize(u_depth_buffer, 0);
 
-	if (gl_GlobalInvocationID.x < screen_size.x && gl_GlobalInvocationID.y < screen_size.y)
-	{
-		vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / vec2(screen_size);
+    if (gl_GlobalInvocationID.x < screen_size.x && gl_GlobalInvocationID.y < screen_size.y)
+    {
+        vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / vec2(screen_size);
 
-		float frag_z = texture(u_depth_buffer, frag_coord).r;
+        float frag_z = texture(u_depth_buffer, frag_coord).r;
 
-		vec4 frag_pos = vec4(frag_coord, frag_z, 1);
-		frag_pos.y = 1.0 - frag_pos.y;
-		frag_pos.xy = frag_pos.xy * vec2(2.0) - 1.0;
-		
-		frag_pos = inverse(camera_projection) * frag_pos;
-		frag_pos /= frag_pos.w;
+        vec4 frag_pos = vec4(frag_coord, frag_z, 1);
+        frag_pos.y = 1.0 - frag_pos.y;
+        frag_pos.xy = frag_pos.xy * vec2(2.0) - 1.0;
 
-		if (frag_pos.z < (camera_far_plane - EPSILON))
-		{
-			frag_pos = inverse(camera_view) * frag_pos;
-			vec3 frag_normal       = texture(u_gbuffer_normals, frag_coord).rgb;
-			vec2 frag_texcoord     = texture(u_gbuffer_texcoords, frag_coord).rg;
-			uint frag_material_idx = texture(u_gbuffer_material_indices, frag_coord).r;
+        frag_pos = inverse(camera_projection) * frag_pos;
+        frag_pos /= frag_pos.w;
 
-			Material material = materials[frag_material_idx];
-			vec3 albedo     = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb * material.base_color_factor.rgb;
-			float metallic  = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b * material.metallic_factor;
-			float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g * material.roughness_factor;
+        if (frag_pos.z < (camera_far_plane - EPSILON))
+        {
+            frag_pos = inverse(camera_view) * frag_pos;
+            vec3 frag_normal       = texture(u_gbuffer_normals, frag_coord).rgb;
+            vec2 frag_texcoord     = texture(u_gbuffer_texcoords, frag_coord).rg;
+            uint frag_material_idx = texture(u_gbuffer_material_indices, frag_coord).r;
 
-			vec3 Lo = vec3(0);
+            Material material = materials[frag_material_idx];
+            vec3 albedo     = texture(textures[material.base_color_texture_idx], frag_texcoord).rgb * material.base_color_factor.rgb;
+            float metallic  = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).b * material.metallic_factor;
+            float roughness = texture(textures[material.metallic_roughness_texture_idx], frag_texcoord).g * material.roughness_factor;
 
-			// Apply point lights
-			uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
+            vec3 Lo = vec3(0);
 
-			for (uint i = 0; i < assigned_light_counts[cluster_idx]; i++)
-			{
-				uint point_light_idx = assigned_light_indices[assigned_light_offsets[cluster_idx] + i];
-				vec3 point_light_pos = point_light_positions[point_light_idx].xyz;
-				PointLight point_light = point_lights[point_light_idx];
+            // Apply point lights
+            uint cluster_idx = imageLoad(u_cluster_references, ivec2(gl_GlobalInvocationID.xy)).r;
 
-				Lo += pbr_apply_point_light(
-					camera_position,
-					frag_pos.xyz,
-					frag_normal,
-					point_light_pos,
-					point_light,
-					albedo,
-					metallic,
-					roughness
-				);
-			}
+            for (uint i = 0; i < assigned_light_counts[cluster_idx]; i++)
+            {
+                uint point_light_idx = assigned_light_indices[assigned_light_offsets[cluster_idx] + i];
+                vec3 point_light_pos = point_light_positions[point_light_idx].xyz;
+                PointLight point_light = point_lights[point_light_idx];
 
-			// Apply directional lights
-			for (int i = 0; i < directional_lights.length(); i++)
-			{
-				Lo += pbr_apply_directional_light(
-					camera_position,
-					frag_pos.xyz,
-					frag_normal,
-					directional_lights[i],
-					albedo,
-					metallic,
-					roughness
-				);
-			}
+                Lo += pbr_apply_point_light(
+                camera_position,
+                frag_pos.xyz,
+                frag_normal,
+                point_light_pos,
+                point_light,
+                albedo,
+                metallic,
+                roughness
+                );
+            }
 
-			vec3 ambient = vec3(0.03) * albedo;
-			vec3 color = ambient + Lo;
-			color = pbr_gamma_correct(color);
+            // Apply directional lights
+            for (int i = 0; i < directional_lights.length(); i++)
+            {
+                Lo += pbr_apply_directional_light(
+                camera_position,
+                frag_pos.xyz,
+                frag_normal,
+                directional_lights[i],
+                albedo,
+                metallic,
+                roughness
+                );
+            }
 
-			imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
-		}
-	}
+            vec3 ambient = vec3(0.03) * albedo;
+            vec3 color = ambient + Lo;
+            color = pbr_gamma_correct(color);
+
+            imageStore(u_output, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
+        }
+    }
 }

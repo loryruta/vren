@@ -7,13 +7,13 @@
 #extension GL_EXT_debug_printf : enable
 
 #ifndef _VREN_WORKGROUP_SIZE
-#	define _VREN_WORKGROUP_SIZE 1024
+#    define _VREN_WORKGROUP_SIZE 1024
 #endif
 
 layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 #ifndef _VREN_SUBGROUP_SIZE
-#	define _VREN_SUBGROUP_SIZE 32
+#    define _VREN_SUBGROUP_SIZE 32
 #endif
 
 #define _VREN_MAX_SUBGROUPS 32
@@ -26,89 +26,89 @@ layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) 
 layout(push_constant) uniform PushConstants
 {
     uint symbol_position;
-	uint local_offset_block_length;
-	uint num_items;
+    uint local_offset_block_length;
+    uint num_items;
 };
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
 {
-	uint data[];
+    uint data[];
 };
 
 layout(set = 0, binding = 1) writeonly buffer OutputBuffer
 {
-	uint output_data[];
+    uint output_data[];
 };
 
 layout(set = 0, binding = 2) readonly buffer LocalOffsetBuffer
 {
-	uint local_offsets[];
+    uint local_offsets[];
 };
 
 layout(set = 0, binding = 3) readonly buffer GlobalOffsetBuffer
 {
-	uint global_offsets[RADIX];
+    uint global_offsets[RADIX];
 };
 
 shared uint s_subgroup_offsets[_VREN_MAX_SUBGROUPS * RADIX];
 
 void main()
 {
-	uint local_idx  = gl_SubgroupID * gl_SubgroupSize + gl_SubgroupInvocationID;
-	uint global_idx = gl_WorkGroupID.x * gl_WorkGroupSize.x + local_idx;
+    uint local_idx  = gl_SubgroupID * gl_SubgroupSize + gl_SubgroupInvocationID;
+    uint global_idx = gl_WorkGroupID.x * gl_WorkGroupSize.x + local_idx;
 
-	// TODO not supporting subgroup size > 32
+    // TODO not supporting subgroup size > 32
 
-	uint thread_flags[RADIX]; // The bitset of subgroup invocations that have the radix
+    uint thread_flags[RADIX];// The bitset of subgroup invocations that have the radix
 
-	for (uint j = 0; j < RADIX; j++)
-	{
-		thread_flags[j] = 0;
-	}
-
-	for (uint i = 0; i < num_items; i++)
+    for (uint j = 0; j < RADIX; j++)
     {
-		uint data_idx = global_idx * num_items + i;
-		uint symbol = (data[data_idx] >> (symbol_position * RADIX_BITS)) & RADIX_MASK;
-
-		for (uint j = 0; j < RADIX; j++)
-		{
-			thread_flags[j] |= subgroupBallot(symbol == j).x;
-		}
+        thread_flags[j] = 0;
     }
 
-	for (uint j = 0; j < RADIX; j++)
-	{
-		s_subgroup_offsets[gl_SubgroupID * RADIX + j] = bitCount(thread_flags[j]);
-	}
-
-	barrier();
-
-	if (gl_SubgroupID == 0 && gl_SubgroupInvocationID < RADIX)
-	{
-		uint sum = 0;
-		for (uint i = 0; i < gl_NumSubgroups; i++) // < 32 iterations, better than subgroupExclusiveAdd(...)
-		{
-			uint val = s_subgroup_offsets[i * RADIX + gl_SubgroupInvocationID];
-			s_subgroup_offsets[i * RADIX + gl_SubgroupInvocationID] = sum;
-			sum += val;
-		}
-	}
-
-	barrier();
-
-	// Reordering
-	for (uint i = 0; i < num_items; i++)
-	{
-		uint data_idx = global_idx * num_items + i;
+    for (uint i = 0; i < num_items; i++)
+    {
+        uint data_idx = global_idx * num_items + i;
         uint symbol = (data[data_idx] >> (symbol_position * RADIX_BITS)) & RADIX_MASK;
 
-		uint global_offset   = global_offsets[symbol];
-		uint local_offset    = local_offsets[symbol * local_offset_block_length + gl_WorkGroupID.x];
-		uint subgroup_offset = s_subgroup_offsets[gl_SubgroupID * RADIX + symbol];
-		uint thread_offset   = bitCount(thread_flags[symbol] & ((1u << gl_SubgroupInvocationID) - 1u));
+        for (uint j = 0; j < RADIX; j++)
+        {
+            thread_flags[j] |= subgroupBallot(symbol == j).x;
+        }
+    }
 
-		uint output_idx = global_offset + local_offset + subgroup_offset + thread_offset;
-		output_data[output_idx] = data[data_idx];
-	}
+    for (uint j = 0; j < RADIX; j++)
+    {
+        s_subgroup_offsets[gl_SubgroupID * RADIX + j] = bitCount(thread_flags[j]);
+    }
+
+    barrier();
+
+    if (gl_SubgroupID == 0 && gl_SubgroupInvocationID < RADIX)
+    {
+        uint sum = 0;
+        for (uint i = 0; i < gl_NumSubgroups; i++)// < 32 iterations, better than subgroupExclusiveAdd(...)
+        {
+            uint val = s_subgroup_offsets[i * RADIX + gl_SubgroupInvocationID];
+            s_subgroup_offsets[i * RADIX + gl_SubgroupInvocationID] = sum;
+            sum += val;
+        }
+    }
+
+    barrier();
+
+    // Reordering
+    for (uint i = 0; i < num_items; i++)
+    {
+        uint data_idx = global_idx * num_items + i;
+        uint symbol = (data[data_idx] >> (symbol_position * RADIX_BITS)) & RADIX_MASK;
+
+        uint global_offset   = global_offsets[symbol];
+        uint local_offset    = local_offsets[symbol * local_offset_block_length + gl_WorkGroupID.x];
+        uint subgroup_offset = s_subgroup_offsets[gl_SubgroupID * RADIX + symbol];
+        uint thread_offset   = bitCount(thread_flags[symbol] & ((1u << gl_SubgroupInvocationID) - 1u));
+
+        uint output_idx = global_offset + local_offset + subgroup_offset + thread_offset;
+        output_data[output_idx] = data[data_idx];
+    }
 }

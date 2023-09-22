@@ -12,10 +12,10 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	float camera_near;
-	float camera_half_fov_y;
-	float _pad[2];
-	mat4 camera_projection;
+    float camera_near;
+    float camera_half_fov_y;
+    float _pad[2];
+    mat4 camera_projection;
 };
 
 // gBuffer
@@ -26,15 +26,15 @@ layout(set = 0, binding = 3) uniform sampler2D u_depth_buffer;
 
 layout(set = 1, binding = 0) writeonly buffer UniqueClusterKeyBuffer
 {
-	uint cluster_keys[];
+    uint cluster_keys[];
 };
 
 layout(set = 1, binding = 1) buffer ClusterKeyDispatchParamsBuffer
 {
-	uint x;
-	uint y;
-	uint z;
-	uint _pad;
+    uint x;
+    uint y;
+    uint z;
+    uint _pad;
 } cluster_key_dispatch_params;
 
 layout(set = 1, binding = 2, r32ui) uniform uimage2D u_cluster_references;
@@ -45,77 +45,77 @@ shared uint s_allocation_index;
 
 void main()
 {
-	vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
-	
-	float frag_z = texture(u_depth_buffer, frag_coord).r;
+    vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) / textureSize(u_depth_buffer, 0);
 
-	vec4 frag_pos = vec4(frag_coord, frag_z, 1);
-	frag_pos.y = 1.0 - frag_pos.y;
-	frag_pos.xy = frag_pos.xy * vec2(2.0) - 1.0;
+    float frag_z = texture(u_depth_buffer, frag_coord).r;
 
-	frag_pos = inverse(camera_projection) * frag_pos;
-	frag_pos /= frag_pos.w;
-	
-	uint Sy = gl_NumWorkGroups.y;
+    vec4 frag_pos = vec4(frag_coord, frag_z, 1);
+    frag_pos.y = 1.0 - frag_pos.y;
+    frag_pos.xy = frag_pos.xy * vec2(2.0) - 1.0;
 
-	// Calculate cluster coordinates
-	uvec3 cluster_ijk;
-	cluster_ijk.x = gl_WorkGroupID.x;
-	cluster_ijk.y = gl_WorkGroupID.y;
-	cluster_ijk.z = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
+    frag_pos = inverse(camera_projection) * frag_pos;
+    frag_pos /= frag_pos.w;
 
-	// Discretize normal to 6 bits
-	vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
-	uint frag_normal_discretized = clustered_shading_discretize_normal(frag_normal);
+    uint Sy = gl_NumWorkGroups.y;
 
-	// Encode cluster key
-	uint cluster_key =
-		(cluster_ijk.x & 0xFF) |
-		((cluster_ijk.y & 0xFF) << 8) |
-		((cluster_ijk.z & 0x3FF) << 16) |
-		(frag_normal_discretized << 26);
+    // Calculate cluster coordinates
+    uvec3 cluster_ijk;
+    cluster_ijk.x = gl_WorkGroupID.x;
+    cluster_ijk.y = gl_WorkGroupID.y;
+    cluster_ijk.z = uint(floor(log(frag_pos.z / camera_near) / log(1 + (2 * tan(camera_half_fov_y)) / Sy)));
 
-	s_cluster_keys[gl_LocalInvocationIndex] = uvec2(cluster_key, gl_LocalInvocationIndex);
-	
-	barrier();
+    // Discretize normal to 6 bits
+    vec3 frag_normal = texture(gbuffer_normals, frag_coord).rgb;
+    uint frag_normal_discretized = clustered_shading_discretize_normal(frag_normal);
 
-	// Compaction
-	VREN_WORKGROUP_BITONIC_SORT(s_cluster_keys, 1024);
+    // Encode cluster key
+    uint cluster_key =
+    (cluster_ijk.x & 0xFF) |
+    ((cluster_ijk.y & 0xFF) << 8) |
+    ((cluster_ijk.z & 0x3FF) << 16) |
+    (frag_normal_discretized << 26);
 
-	barrier();
+    s_cluster_keys[gl_LocalInvocationIndex] = uvec2(cluster_key, gl_LocalInvocationIndex);
 
-	bool keep_value = gl_LocalInvocationIndex >= (1024 - 1) || (s_cluster_keys[gl_LocalInvocationIndex].x != s_cluster_keys[gl_LocalInvocationIndex + 1].x);
-	s_scratch_buffer_1[gl_LocalInvocationIndex] = keep_value ? 1 : 0;
+    barrier();
 
-	barrier();
+    // Compaction
+    VREN_WORKGROUP_BITONIC_SORT(s_cluster_keys, 1024);
 
-	uint unique_key_count = s_scratch_buffer_1[1024 - 1]; // The last element is lost after exclusive scan so we save it here
+    barrier();
 
-	VREN_WORKGROUP_EXCLUSIVE_SCAN(s_scratch_buffer_1, 1024, 0, 1);
+    bool keep_value = gl_LocalInvocationIndex >= (1024 - 1) || (s_cluster_keys[gl_LocalInvocationIndex].x != s_cluster_keys[gl_LocalInvocationIndex + 1].x);
+    s_scratch_buffer_1[gl_LocalInvocationIndex] = keep_value ? 1 : 0;
 
-	barrier();
+    barrier();
 
-	unique_key_count += s_scratch_buffer_1[1024 - 1];
+    uint unique_key_count = s_scratch_buffer_1[1024 - 1];// The last element is lost after exclusive scan so we save it here
 
-	if (gl_LocalInvocationIndex == 0)
-	{
-		s_allocation_index = atomicAdd(cluster_key_dispatch_params.x, unique_key_count);
-	}
+    VREN_WORKGROUP_EXCLUSIVE_SCAN(s_scratch_buffer_1, 1024, 0, 1);
 
-	barrier();
+    barrier();
 
-	if (keep_value)
-	{
-		uint cluster_key_idx = s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex];
-		cluster_keys[cluster_key_idx] = s_cluster_keys[gl_LocalInvocationIndex].x;
-	}
+    unique_key_count += s_scratch_buffer_1[1024 - 1];
 
-	imageStore(
-		u_cluster_references,
-		ivec2(
-			(gl_WorkGroupID.x << 5) + (s_cluster_keys[gl_LocalInvocationIndex].y & 0x1F),
-			(gl_WorkGroupID.y << 5) + ((s_cluster_keys[gl_LocalInvocationIndex].y >> 5) & 0x1F)
-		),
-		uvec4(s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex])
-	);
+    if (gl_LocalInvocationIndex == 0)
+    {
+        s_allocation_index = atomicAdd(cluster_key_dispatch_params.x, unique_key_count);
+    }
+
+    barrier();
+
+    if (keep_value)
+    {
+        uint cluster_key_idx = s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex];
+        cluster_keys[cluster_key_idx] = s_cluster_keys[gl_LocalInvocationIndex].x;
+    }
+
+    imageStore(
+    u_cluster_references,
+    ivec2(
+    (gl_WorkGroupID.x << 5) + (s_cluster_keys[gl_LocalInvocationIndex].y & 0x1F),
+    (gl_WorkGroupID.y << 5) + ((s_cluster_keys[gl_LocalInvocationIndex].y >> 5) & 0x1F)
+    ),
+    uvec4(s_allocation_index + s_scratch_buffer_1[gl_LocalInvocationIndex])
+    );
 }

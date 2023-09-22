@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vk_helpers/shader.hpp"
-#include "vk_helpers/buffer.hpp"
 #include "primitives/blelloch_scan.hpp"
+#include "vk_helpers/buffer.hpp"
+#include "vk_helpers/shader.hpp"
 
 namespace vren
 {
@@ -49,6 +49,6 @@ namespace vren
             uint32_t length,
             vren::vk_utils::buffer const& scratch_buffer_1,
             vren::vk_utils::buffer const& scratch_buffer_2
-         );
+        );
     };
-}
+} // namespace vren

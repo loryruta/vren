@@ -1,8 +1,8 @@
 #pragma once
 
+#include "primitives/reduce.hpp"
 #include "vk_helpers/buffer.hpp"
 #include "vk_helpers/shader.hpp"
-#include "primitives/reduce.hpp"
 
 namespace vren
 {
@@ -21,10 +21,7 @@ namespace vren
 
     private:
         void write_descriptor_set(
-            VkDescriptorSet descriptor_set,
-            vren::vk_utils::buffer const& buffer,
-            uint32_t length,
-            uint32_t offset
+            VkDescriptorSet descriptor_set, vren::vk_utils::buffer const& buffer, uint32_t length, uint32_t offset
         );
 
     public:
@@ -47,4 +44,4 @@ namespace vren
             uint32_t blocks_num
         );
     };
-}
+} // namespace vren

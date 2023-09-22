@@ -21,7 +21,7 @@ float pbr_GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
     return ggx1 * ggx2;
 }
 
-float pbr_DistributionGGX(vec3 N, vec3 H, float a) // Trowbridge-Reitz GGX
+float pbr_DistributionGGX(vec3 N, vec3 H, float a)// Trowbridge-Reitz GGX
 {
     float a2 = a * a;
     float NdotH = max(dot(N, H), 0.0);
@@ -40,20 +40,20 @@ vec3 pbr_fresnelSchlick(float cosTheta, vec3 F0)
 }
 
 vec3 pbr_apply_light(
-    vec3 eye,
-    vec3 p,
-    vec3 N,
-    vec3 L,
-    vec3 radiance,
-    vec3 albedo,
-    float metallic,
-    float roughness
+vec3 eye,
+vec3 p,
+vec3 N,
+vec3 L,
+vec3 radiance,
+vec3 albedo,
+float metallic,
+float roughness
 )
 {
     vec3 V = normalize(eye - p);
     vec3 H = normalize(V + -L);
 
-    vec3 F0 = vec3(0.04); // Base reflectivity
+    vec3 F0 = vec3(0.04);// Base reflectivity
     F0 = mix(F0, albedo, metallic);
 
     float NDF = pbr_DistributionGGX(N, H, roughness);
@@ -73,14 +73,14 @@ vec3 pbr_apply_light(
 }
 
 vec3 pbr_apply_point_light(
-    vec3 eye,
-    vec3 p,
-    vec3 N,
-    vec3 light_position,
-    PointLight point_light,
-    vec3 albedo,
-    float metallic,
-    float roughness
+vec3 eye,
+vec3 p,
+vec3 N,
+vec3 light_position,
+PointLight point_light,
+vec3 albedo,
+float metallic,
+float roughness
 )
 {
     vec3 d = p - light_position;
@@ -93,13 +93,13 @@ vec3 pbr_apply_point_light(
 }
 
 vec3 pbr_apply_directional_light(
-    vec3 eye,
-    vec3 p,
-    vec3 N,
-    DirectionalLight directional_light,
-    vec3 albedo,
-    float metallic,
-    float roughness
+vec3 eye,
+vec3 p,
+vec3 N,
+DirectionalLight directional_light,
+vec3 albedo,
+float metallic,
+float roughness
 )
 {
     //debugPrintfEXT("kD: %v3f, albedo: %v3f, kS: %v3f, specular: %f, radiance: %v3f, NdotL: %f\n", kD, albedo, kS, specular, radiance, NdotL);
@@ -111,4 +111,4 @@ vec3 pbr_gamma_correct(vec3 color)
     return pow(color, vec3(1.0 / 2.2));
 }
 
-#endif // VREN_PBR_H_
+#endif// VREN_PBR_H_

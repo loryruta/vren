@@ -5,6 +5,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-//#include <stb_image.h> Already included by tinygltf
+// #include <stb_image.h> Already included by tinygltf
 
 #include <tiny_gltf.h>

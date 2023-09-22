@@ -43,4 +43,4 @@
     VREN_DEBUG_WRITE_LINE(_buffer, _offset, vec3(_M.x, _m.y, _M.z), vec3(_M.x, _M.y, _M.z), _color); \
     VREN_DEBUG_WRITE_LINE(_buffer, _offset, vec3(_m.x, _m.y, _M.z), vec3(_m.x, _M.y, _M.z), _color);
 
-#endif // VREN_DEBUG_H_
+#endif// VREN_DEBUG_H_

@@ -15,51 +15,51 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 struct BvhNode
 {
-	vec3 _min; uint next;
-	vec3 _max; uint _pad;
+    vec3 _min; uint next;
+    vec3 _max; uint _pad;
 };
 
 layout(set = 0, binding = 0) readonly buffer PointLightBuffer
 {
-	PointLight point_lights[];
+    PointLight point_lights[];
 };
 
 layout(set = 0, binding = 1) readonly buffer ViewSpacePointLightPositionBuffer
 {
-	vec4 view_space_point_light_positions[];
+    vec4 view_space_point_light_positions[];
 };
 
 layout(set = 0, binding = 2) readonly buffer SortedMortonCodeBuffer
 {
-	uvec2 morton_codes[];
+    uvec2 morton_codes[];
 };
 
 layout(set = 0, binding = 3) writeonly buffer BvhBuffer
 {
-	BvhNode bvh[];
+    BvhNode bvh[];
 };
 
 void main()
 {
-	BvhNode node;
+    BvhNode node;
 
-	if (gl_GlobalInvocationID.x < morton_codes.length())
-	{
-		uint point_light_idx = morton_codes[gl_GlobalInvocationID.x].y;
-		PointLight point_light = point_lights[point_light_idx];
+    if (gl_GlobalInvocationID.x < morton_codes.length())
+    {
+        uint point_light_idx = morton_codes[gl_GlobalInvocationID.x].y;
+        PointLight point_light = point_lights[point_light_idx];
 
-		// IMPORTANT: The point light intensity is still valid in view-space as long as the camera doesn't scale (i.e. zoom)
-		node._min = view_space_point_light_positions[point_light_idx].xyz - vec3(point_light.intensity);
-		node._max = view_space_point_light_positions[point_light_idx].xyz + vec3(point_light.intensity);
-		node.next = VREN_BVH_LEAF_NODE;
-	}
-	else
-	{
-		node.next = VREN_BVH_INVALID_NODE;
-	}
+        // IMPORTANT: The point light intensity is still valid in view-space as long as the camera doesn't scale (i.e. zoom)
+        node._min = view_space_point_light_positions[point_light_idx].xyz - vec3(point_light.intensity);
+        node._max = view_space_point_light_positions[point_light_idx].xyz + vec3(point_light.intensity);
+        node.next = VREN_BVH_LEAF_NODE;
+    }
+    else
+    {
+        node.next = VREN_BVH_INVALID_NODE;
+    }
 
-	if (gl_GlobalInvocationID.x < bvh.length())
-	{
-		bvh[gl_GlobalInvocationID.x] = node;
-	}
+    if (gl_GlobalInvocationID.x < bvh.length())
+    {
+        bvh[gl_GlobalInvocationID.x] = node;
+    }
 }

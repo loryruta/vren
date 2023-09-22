@@ -22,51 +22,51 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	uvec2 num_tiles;
-	float camera_near;
-	float camera_half_fov;
-	mat4 camera_proj;
-	uint bvh_root_idx;
-	uint bvh_level_count;
-	float _pad[2];
+    uvec2 num_tiles;
+    float camera_near;
+    float camera_half_fov;
+    mat4 camera_proj;
+    uint bvh_root_idx;
+    uint bvh_level_count;
+    float _pad[2];
 } push_constants;
 
 struct BvhNode
 {
-	vec3 _min; uint next;
-	vec3 _max; uint _pad;
+    vec3 _min; uint next;
+    vec3 _max; uint _pad;
 };
 
 layout(set = 0, binding = 0) readonly buffer UniqueClusterKeyBuffer
 {
-	uint cluster_keys[];
+    uint cluster_keys[];
 };
 
 layout(set = 0, binding = 2) readonly buffer BvhBuffer
 {
-	BvhNode bvh[];
+    BvhNode bvh[];
 };
 
 layout(set = 0, binding = 3) readonly buffer LightIndicesBuffer
 {
-	// First component is the morton code
-	// Second component is the point light index
-	uvec2 light_indices[];
+// First component is the morton code
+// Second component is the point light index
+    uvec2 light_indices[];
 };
 
 layout(set = 0, binding = 4) writeonly buffer AssignedLightIndicesBuffer
 {
-	uint assigned_light_indices[];
+    uint assigned_light_indices[];
 };
 
 layout(set = 0, binding = 5) buffer AssignedLightCountsBuffer
 {
-	uint assigned_light_counts[];
+    uint assigned_light_counts[];
 };
 
 layout(set = 0, binding = 6) readonly buffer AssignedLightOffsetsBuffer
 {
-	uint assigned_light_offsets[];
+    uint assigned_light_offsets[];
 };
 
 layout(set = 0, binding = 7) readonly buffer ViewSpacePointLightPositionBuffer
@@ -76,29 +76,29 @@ layout(set = 0, binding = 7) readonly buffer ViewSpacePointLightPositionBuffer
 
 bool test_point_aabb(vec3 p, vec3 _min, vec3 _max)
 {
-	return p.x >= _min.x && p.y >= _min.y && p.z >= _min.z &&
-		p.x <= _max.x && p.y <= _max.y && p.z <= _max.z;
+    return p.x >= _min.x && p.y >= _min.y && p.z >= _min.z &&
+    p.x <= _max.x && p.y <= _max.y && p.z <= _max.z;
 }
 
 // https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 bool test_aabb_aabb(vec3 _min_1, vec3 _max_1, vec3 _min_2, vec3 _max_2)
 {
-	return (
-		_max_1.x >= _min_2.x &&
-		_min_1.x <= _max_2.x &&
-		_max_1.y >= _min_2.y &&
-		_min_1.y <= _max_2.y &&
-		_max_1.z >= _min_2.z &&
-		_min_1.z <= _max_2.z
-	);
+    return (
+    _max_1.x >= _min_2.x &&
+    _min_1.x <= _max_2.x &&
+    _max_1.y >= _min_2.y &&
+    _min_1.y <= _max_2.y &&
+    _max_1.z >= _min_2.z &&
+    _min_1.z <= _max_2.z
+    );
 }
 
 // https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 bool test_sphere_aabb(vec3 sphere_o, float sphere_r, vec3 aabb_min, vec3 aabb_max)
 {
-	vec3 p = max(aabb_min, min(sphere_o, aabb_max));
-	float d = length(p - sphere_o);
-	return d < sphere_r;
+    vec3 p = max(aabb_min, min(sphere_o, aabb_max));
+    float d = length(p - sphere_o);
+    return d < sphere_r;
 }
 
 // For every level stores a bitmask representing whether the node at bit position overlapped
@@ -107,135 +107,135 @@ uint g_level_overlaps[VREN_MAX_POINT_LIGHTS_BVH_DEPTH];
 
 int get_node_address(uint bvh_root_idx, uint level)
 {
-	int base_addr = int(bvh_root_idx) - ((1 - int(exp2(5 * (level + 2)))) / (1 - 32) - 1);
+    int base_addr = int(bvh_root_idx) - ((1 - int(exp2(5 * (level + 2)))) / (1 - 32) - 1);
 
-	int node_addr = base_addr;
-	for (int i = 0; i < level; i++)
-	{
-		int rel_node_offset = findLSB(g_level_overlaps[i]);
-		node_addr += int(exp2(5 * (level - i))) * rel_node_offset;
-	}
-	return node_addr;
+    int node_addr = base_addr;
+    for (int i = 0; i < level; i++)
+    {
+        int rel_node_offset = findLSB(g_level_overlaps[i]);
+        node_addr += int(exp2(5 * (level - i))) * rel_node_offset;
+    }
+    return node_addr;
 }
 
 void main()
 {
-	uint cluster_key = cluster_keys[gl_WorkGroupID.x];
+    uint cluster_key = cluster_keys[gl_WorkGroupID.x];
 
-	uvec3 cluster_ijk;
-	uint cluster_normal_idx;
-	clustered_shading_decode_cluster_key(cluster_key, cluster_ijk, cluster_normal_idx);
+    uvec3 cluster_ijk;
+    uint cluster_normal_idx;
+    clustered_shading_decode_cluster_key(cluster_key, cluster_ijk, cluster_normal_idx);
 
-	vec4 cluster_min, cluster_max;
-	clustered_shading_calc_cluster_aabb(
-		cluster_ijk,
-		push_constants.num_tiles,
-		push_constants.camera_near,
-		push_constants.camera_half_fov,
-		push_constants.camera_proj,
-		cluster_min,
-		cluster_max
-	);
+    vec4 cluster_min, cluster_max;
+    clustered_shading_calc_cluster_aabb(
+    cluster_ijk,
+    push_constants.num_tiles,
+    push_constants.camera_near,
+    push_constants.camera_half_fov,
+    push_constants.camera_proj,
+    cluster_min,
+    cluster_max
+    );
 
-	vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
+    vec4 cluster_pos = (cluster_min + cluster_max) / 2.0;
 
-	uint current_level = 0;
-	
-	uint assigned_light_cluster_offset = 0;
+    uint current_level = 0;
 
-	// 0 = ADVANCE
-	// 1 = POP
-	// 2 = ENTERING
-	uint state = 2;
+    uint assigned_light_cluster_offset = 0;
 
-	while (true)
-	{
-		// ADVANCE
-		if (state == 0)
-		{
-			uint level_overlaps = g_level_overlaps[current_level];
-			uint level_overlap_clear_bitmask = ~(1 << findLSB(g_level_overlaps[current_level]));
-			g_level_overlaps[current_level] &= level_overlap_clear_bitmask;
-			
-			if (g_level_overlaps[current_level] == 0)
-			{
-				state = 1;
-			}
-			else
-			{
-				// PUSH
-				current_level++;
-				state = 2;
-			}
-		}
-		// POP
-		else if (state == 1)
-		{
-			if (current_level > 0)
-			{
-				current_level--;
-				state = 0;
-			}
-			else
-			{ // END
-				break;
-			}
-		}
-		// ENTERING
-		else if (state == 2)
-		{
-			int node_addr = get_node_address(push_constants.bvh_root_idx, current_level);
-			BvhNode node = bvh[node_addr + gl_SubgroupInvocationID];
+    // 0 = ADVANCE
+    // 1 = POP
+    // 2 = ENTERING
+    uint state = 2;
 
-			if (current_level < push_constants.bvh_level_count - 1) // Parent node
-			{ 
-				// SCAN
-				bool overlaps = test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max);
-				uint overlaps_subgroup_bitmask = subgroupBallot(overlaps).x;
+    while (true)
+    {
+        // ADVANCE
+        if (state == 0)
+        {
+            uint level_overlaps = g_level_overlaps[current_level];
+            uint level_overlap_clear_bitmask = ~(1 << findLSB(g_level_overlaps[current_level]));
+            g_level_overlaps[current_level] &= level_overlap_clear_bitmask;
 
-				g_level_overlaps[current_level] = overlaps_subgroup_bitmask;
+            if (g_level_overlaps[current_level] == 0)
+            {
+                state = 1;
+            }
+            else
+            {
+                // PUSH
+                current_level++;
+                state = 2;
+            }
+        }
+        // POP
+        else if (state == 1)
+        {
+            if (current_level > 0)
+            {
+                current_level--;
+                state = 0;
+            }
+            else
+            { // END
+                break;
+            }
+        }
+        // ENTERING
+        else if (state == 2)
+        {
+            int node_addr = get_node_address(push_constants.bvh_root_idx, current_level);
+            BvhNode node = bvh[node_addr + gl_SubgroupInvocationID];
 
-				if (overlaps_subgroup_bitmask == 0)
-				{ // POP
-					state = 1;
-				}
-				else
-				{ // PUSH
-					current_level++;
-				}
-			}
-			else // Leaf node
-			{
-				uint point_light_idx = light_indices[node_addr + gl_SubgroupInvocationID].y;
-						
-				vec3 point_light_pos = view_space_point_light_positions[point_light_idx].xyz;
-				vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
+            if (current_level < push_constants.bvh_level_count - 1)// Parent node
+            {
+                // SCAN
+                bool overlaps = test_aabb_aabb(cluster_min.xyz, cluster_max.xyz, node._min, node._max);
+                uint overlaps_subgroup_bitmask = subgroupBallot(overlaps).x;
 
-				bool overlaps = test_sphere_aabb(point_light_pos, (node._max.x - node._min.x) / 2.0, cluster_min.xyz, cluster_max.xyz);
-					//clustered_shading_get_light_intensity(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx) > 0.0;
+                g_level_overlaps[current_level] = overlaps_subgroup_bitmask;
 
-				uint assigned_light_subgroup_bitmask = subgroupBallot(overlaps).x;
-				uint assigned_light_subgroup_count = bitCount(assigned_light_subgroup_bitmask);
-				
-#ifdef VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_COUNT
-				if (subgroupElect())
-				{
-					assigned_light_counts[gl_WorkGroupID.x] = assigned_light_counts[gl_WorkGroupID.x] + assigned_light_subgroup_count;
-					subgroupMemoryBarrierBuffer();
-				}
-#else//#elif VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_WRITE
-				if (overlaps)
-				{
-					uint assigned_light_subgroup_offset = bitCount(assigned_light_subgroup_bitmask & ~((1 << gl_SubgroupInvocationID) - 1)) - 1;
-					uint assigned_light_offset = assigned_light_offsets[gl_WorkGroupID.x] + assigned_light_cluster_offset + assigned_light_subgroup_offset;
-					
-					assigned_light_indices[assigned_light_offset] = point_light_idx;
-				}
-#endif
-				assigned_light_cluster_offset += assigned_light_subgroup_count;
+                if (overlaps_subgroup_bitmask == 0)
+                { // POP
+                    state = 1;
+                }
+                else
+                { // PUSH
+                    current_level++;
+                }
+            }
+            else // Leaf node
+            {
+                uint point_light_idx = light_indices[node_addr + gl_SubgroupInvocationID].y;
 
-				state = 1;
-			}
-		}
-	}
+                vec3 point_light_pos = view_space_point_light_positions[point_light_idx].xyz;
+                vec3 point_light_dir = normalize(point_light_pos.xyz - cluster_pos.xyz);
+
+                bool overlaps = test_sphere_aabb(point_light_pos, (node._max.x - node._min.x) / 2.0, cluster_min.xyz, cluster_max.xyz);
+                //clustered_shading_get_light_intensity(point_light_pos, cluster_min.xyz, cluster_max.xyz, cluster_normal_idx) > 0.0;
+
+                uint assigned_light_subgroup_bitmask = subgroupBallot(overlaps).x;
+                uint assigned_light_subgroup_count = bitCount(assigned_light_subgroup_bitmask);
+
+                #ifdef VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_COUNT
+                if (subgroupElect())
+                {
+                    assigned_light_counts[gl_WorkGroupID.x] = assigned_light_counts[gl_WorkGroupID.x] + assigned_light_subgroup_count;
+                    subgroupMemoryBarrierBuffer();
+                }
+                #else//#elif VREN_CLUSTERED_SHADING_LIGHT_ASSIGNMENT_WRITE
+                if (overlaps)
+                {
+                    uint assigned_light_subgroup_offset = bitCount(assigned_light_subgroup_bitmask & ~((1 << gl_SubgroupInvocationID) - 1)) - 1;
+                    uint assigned_light_offset = assigned_light_offsets[gl_WorkGroupID.x] + assigned_light_cluster_offset + assigned_light_subgroup_offset;
+
+                    assigned_light_indices[assigned_light_offset] = point_light_idx;
+                }
+                #endif
+                assigned_light_cluster_offset += assigned_light_subgroup_count;
+
+                state = 1;
+            }
+        }
+    }
 }

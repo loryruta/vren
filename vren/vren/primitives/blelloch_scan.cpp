@@ -2,43 +2,43 @@
 
 #include <iostream>
 
-#include <glm/gtc/integer.hpp>
 #include <fmt/format.h>
+#include <glm/gtc/integer.hpp>
 
 #include "toolbox.hpp"
 
 vren::blelloch_scan::blelloch_scan(vren::context const& context) :
     m_context(&context),
-    m_downsweep_pipeline([&]()
-    {
-        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_downsweep.comp.spv");
-        vren::specialized_shader shader = vren::specialized_shader(shader_mod);
-        return vren::create_compute_pipeline(context, shader);
-    }()),
-    m_workgroup_downsweep_pipeline([&]()
-    {
-        vren::shader_module shader_mod = vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_workgroup_downsweep.comp.spv");
-        vren::specialized_shader shader = vren::specialized_shader(shader_mod);
-        return vren::create_compute_pipeline(context, shader);
-    }())
+    m_downsweep_pipeline(
+        [&]()
+        {
+            vren::shader_module shader_mod =
+                vren::load_shader_module_from_file(context, ".vren/resources/shaders/blelloch_scan_downsweep.comp.spv");
+            vren::specialized_shader shader = vren::specialized_shader(shader_mod);
+            return vren::create_compute_pipeline(context, shader);
+        }()
+    ),
+    m_workgroup_downsweep_pipeline(
+        [&]()
+        {
+            vren::shader_module shader_mod = vren::load_shader_module_from_file(
+                context, ".vren/resources/shaders/blelloch_scan_workgroup_downsweep.comp.spv"
+            );
+            vren::specialized_shader shader = vren::specialized_shader(shader_mod);
+            return vren::create_compute_pipeline(context, shader);
+        }()
+    )
 {
 }
 
 void vren::blelloch_scan::write_descriptor_set(
-    VkDescriptorSet descriptor_set,
-    vren::vk_utils::buffer const& buffer,
-    uint32_t length,
-    uint32_t offset
+    VkDescriptorSet descriptor_set, vren::vk_utils::buffer const& buffer, uint32_t length, uint32_t offset
 )
 {
     VkWriteDescriptorSet descriptor_set_write{};
     VkDescriptorBufferInfo buffer_info{};
 
-    buffer_info = {
-        .buffer = buffer.m_buffer.m_handle,
-        .offset = offset,
-        .range = VK_WHOLE_SIZE
-    };
+    buffer_info = {.buffer = buffer.m_buffer.m_handle, .offset = offset, .range = VK_WHOLE_SIZE};
     descriptor_set_write = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
@@ -49,8 +49,7 @@ void vren::blelloch_scan::write_descriptor_set(
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .pImageInfo = nullptr,
         .pBufferInfo = &buffer_info,
-        .pTexelBufferView = nullptr
-    };
+        .pTexelBufferView = nullptr};
     vkUpdateDescriptorSets(m_context->m_device, 1, &descriptor_set_write, 0, nullptr);
 }
 
@@ -97,7 +96,9 @@ void vren::blelloch_scan::downsweep(
             .m_block_length = length,
             .m_num_items = num_items,
         };
-        m_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+        m_downsweep_pipeline.push_constants(
+            command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0
+        );
 
         m_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
@@ -111,16 +112,26 @@ void vren::blelloch_scan::downsweep(
             .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
             .buffer = buffer.m_buffer.m_handle,
             .offset = offset,
-            .size = VK_WHOLE_SIZE
-        };
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+            .size = VK_WHOLE_SIZE};
+        vkCmdPipelineBarrier(
+            command_buffer,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            NULL,
+            0,
+            nullptr,
+            1,
+            &buffer_memory_barrier,
+            0,
+            nullptr
+        );
 
         if (clear_last)
         {
             clear_last = false;
         }
     }
-    
+
     // Workgroup downsweep
     m_workgroup_downsweep_pipeline.bind(command_buffer);
 
@@ -130,7 +141,9 @@ void vren::blelloch_scan::downsweep(
         .m_block_length = length,
         .m_num_items = num_items,
     };
-    m_workgroup_downsweep_pipeline.push_constants(command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0);
+    m_workgroup_downsweep_pipeline.push_constants(
+        command_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &push_constants, sizeof(push_constants), 0
+    );
 
     m_workgroup_downsweep_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set->m_handle.m_descriptor_set);
 
@@ -157,9 +170,19 @@ void vren::blelloch_scan::operator()(
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .buffer = buffer.m_buffer.m_handle,
         .offset = offset,
-        .size = VK_WHOLE_SIZE
-    };
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+        .size = VK_WHOLE_SIZE};
+    vkCmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        NULL,
+        0,
+        nullptr,
+        1,
+        &buffer_memory_barrier,
+        0,
+        nullptr
+    );
 
     // Clear last + downsweep
     downsweep(command_buffer, resource_container, buffer, length, offset, blocks_num, /* Clear last */ true);

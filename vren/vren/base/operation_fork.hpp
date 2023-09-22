@@ -7,8 +7,7 @@
 
 namespace vren
 {
-    template<typename _t, size_t _n, size_t _queue_length = 16>
-    class operation_fork
+    template <typename _t, size_t _n, size_t _queue_length = 16> class operation_fork
     {
     public:
         using operation_t = std::function<void(uint32_t idx, _t& object)>;
@@ -37,4 +36,4 @@ namespace vren
             m_operations[i].clear();
         }
     };
-}
+} // namespace vren

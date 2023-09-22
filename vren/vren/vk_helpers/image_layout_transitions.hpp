@@ -27,4 +27,4 @@ namespace vren::vk_utils
     void transition_color_attachment_to_shader_readonly(VkCommandBuffer cmd_buf, VkImage image);
 
     void transition_image_layout_undefined_to_shader_readonly(VkCommandBuffer cmd_buf, VkImage image);
-}
+} // namespace vren::vk_utils

@@ -17,7 +17,18 @@ void vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(VkCommand
     mem_barrier.subresourceRange.baseArrayLayer = 0;
     mem_barrier.subresourceRange.layerCount = 1;
 
-    vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
+    vkCmdPipelineBarrier(
+        cmd_buf,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        NULL,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &mem_barrier
+    );
 }
 
 void vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(VkCommandBuffer cmd_buf, VkImage img)
@@ -37,7 +48,18 @@ void vren::vk_utils::transition_image_layout_transfer_dst_to_shader_readonly(VkC
     mem_barrier.subresourceRange.baseArrayLayer = 0;
     mem_barrier.subresourceRange.layerCount = 1;
 
-    vkCmdPipelineBarrier(cmd_buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
+    vkCmdPipelineBarrier(
+        cmd_buf,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        NULL,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &mem_barrier
+    );
 }
 
 void vren::vk_utils::transition_image_layout_undefined_to_color_attachment(VkCommandBuffer cmd_buf, VkImage img)
@@ -70,7 +92,8 @@ void vren::vk_utils::transition_image_layout_undefined_to_depth_stencil_attachme
     mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     mem_barrier.pNext = nullptr;
     mem_barrier.srcAccessMask = NULL;
-    mem_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    mem_barrier.dstAccessMask =
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     mem_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     mem_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     mem_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -135,4 +158,3 @@ void vren::vk_utils::transition_image_layout_color_attachment_to_present(VkComma
 
     vkCmdPipelineBarrier(cmd_buf, src_stage, dst_stage, NULL, 0, nullptr, 0, nullptr, 1, &mem_barrier);
 }
-

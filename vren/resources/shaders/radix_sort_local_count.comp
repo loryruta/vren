@@ -6,7 +6,7 @@
 #extension GL_EXT_debug_printf : enable
 
 #ifndef _VREN_WORKGROUP_SIZE
-#	define _VREN_WORKGROUP_SIZE 1024
+#    define _VREN_WORKGROUP_SIZE 1024
 #endif
 
 layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
@@ -20,52 +20,52 @@ layout(local_size_x = _VREN_WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) 
 layout(push_constant) uniform PushConstants
 {
     uint symbol_position;
-	uint block_length;
-	uint num_items;
+    uint block_length;
+    uint num_items;
 };
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
 {
-	uint data[];
+    uint data[];
 };
 
 layout(set = 0, binding = 1) buffer OutputBuffer
 {
-	uint output_data[];
+    uint output_data[];
 };
 
 layout(set = 0, binding = 2) writeonly buffer LocalCountBuffer
 {
-	uint local_counts[];
+    uint local_counts[];
 };
 
 layout(set = 0, binding = 3) buffer GlobalOffsetBuffer
 {
-	uint global_offsets[RADIX];
+    uint global_offsets[RADIX];
 };
 
 shared uint s_local_counts[RADIX];
 
 void main()
 {
-	if (gl_LocalInvocationID.x < RADIX)
-	{
-		s_local_counts[gl_LocalInvocationID.x] = 0;
-	}
+    if (gl_LocalInvocationID.x < RADIX)
+    {
+        s_local_counts[gl_LocalInvocationID.x] = 0;
+    }
 
-	barrier();
+    barrier();
 
-	for (uint i = 0; i < num_items; i++)
-	{
-		uint data_idx = gl_GlobalInvocationID.x * num_items + i;
+    for (uint i = 0; i < num_items; i++)
+    {
+        uint data_idx = gl_GlobalInvocationID.x * num_items + i;
         uint symbol = data[data_idx] >> (symbol_position * RADIX_BITS) & RADIX_MASK;
-		atomicAdd(s_local_counts[symbol], 1);
-	}
-	
-	barrier();
+        atomicAdd(s_local_counts[symbol], 1);
+    }
 
-	if (gl_LocalInvocationID.x < RADIX)
-	{
-		local_counts[gl_LocalInvocationID.x * block_length + gl_WorkGroupID.x] = s_local_counts[gl_LocalInvocationID.x];
-	}
+    barrier();
+
+    if (gl_LocalInvocationID.x < RADIX)
+    {
+        local_counts[gl_LocalInvocationID.x * block_length + gl_WorkGroupID.x] = s_local_counts[gl_LocalInvocationID.x];
+    }
 }

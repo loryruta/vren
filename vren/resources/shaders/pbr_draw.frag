@@ -65,7 +65,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
     return ggx1 * ggx2;
 }
 
-float DistributionGGX(vec3 N, vec3 H, float a) // Trowbridge-Reitz GGX
+float DistributionGGX(vec3 N, vec3 H, float a)// Trowbridge-Reitz GGX
 {
     float a2     = a * a;
     float NdotH  = max(dot(N, H), 0.0);
@@ -89,7 +89,7 @@ vec3 apply_light(vec3 eye, vec3 p, vec3 N, vec3 L, vec3 radiance, vec3 albedo, f
 
     vec3 H = normalize(V + -L);
 
-    vec3 F0 = vec3(0.04); // Base reflectivity
+    vec3 F0 = vec3(0.04);// Base reflectivity
     F0 = mix(F0, albedo, metallic);
 
     float NDF = DistributionGGX(N, H, roughness);

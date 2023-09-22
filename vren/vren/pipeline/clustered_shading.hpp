@@ -1,12 +1,12 @@
 #pragma once
 
-#include "vk_helpers/shader.hpp"
-#include "vk_helpers/buffer.hpp"
-#include "vk_helpers/image.hpp"
-#include "gbuffer.hpp"
 #include "camera.hpp"
+#include "gbuffer.hpp"
 #include "light.hpp"
 #include "material.hpp"
+#include "vk_helpers/buffer.hpp"
+#include "vk_helpers/image.hpp"
+#include "vk_helpers/shader.hpp"
 
 namespace vren
 {
@@ -138,7 +138,7 @@ namespace vren
                 vren::vk_utils::combined_image_view const& output
             );
         };
-    }
+    } // namespace clustered_shading
 
     // ------------------------------------------------------------------------------------------------
     // cluster_and_shade
@@ -160,7 +160,8 @@ namespace vren
         vren::vk_utils::buffer m_point_light_index_buffer;
 
         vren::vk_utils::buffer m_cluster_key_buffer;
-        vren::vk_utils::buffer m_cluster_key_dispatch_params_buffer; // TODO : Find a better name for this (like dispatch params buffer or something)
+        vren::vk_utils::buffer m_cluster_key_dispatch_params_buffer; // TODO : Find a better name for this (like
+                                                                     // dispatch params buffer or something)
         vren::vk_utils::combined_image_view m_cluster_reference_buffer;
 
         vren::vk_utils::buffer m_assigned_light_indices_buffer;
@@ -180,4 +181,4 @@ namespace vren
             vren::vk_utils::combined_image_view const& output
         );
     };
-}
+} // namespace vren

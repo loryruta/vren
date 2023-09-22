@@ -1,0 +1,21 @@
+Language: Cpp
+IndentWidth: 4
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+PackConstructorInitializers: Never
+SpaceBeforeCtorInitializerColon: true
+BreakConstructorInitializers: AfterColon
+AllowShortFunctionsOnASingleLine: Inline
+BreakBeforeBinaryOperators: None
+AlignAfterOpenBracket: BlockIndent
+AllowShortLambdasOnASingleLine: Empty
+BinPackArguments: false
+BinPackParameters: false
+NamespaceIndentation: All
+ReferenceAlignment: Left
+PointerAlignment: Left
+AllowAllParametersOfDeclarationOnNextLine: true
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+SpaceAfterCStyleCast: true
+---

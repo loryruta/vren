@@ -14,43 +14,43 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	uint src_level_idx; // Index at the start of the current level that has to be reduced
-	uint dst_level_idx; // Index at the start of the next level
+    uint src_level_idx;// Index at the start of the current level that has to be reduced
+    uint dst_level_idx;// Index at the start of the next level
 };
 
 struct BvhNode
 {
-	vec3 _min; uint next; // 0 if this is a leaf node, UINT32_MAX if this is an invalid node (therefore invalid AABB) otherwise a valid pointer to child level
-	vec3 _max; uint _pad;
+    vec3 _min; uint next;// 0 if this is a leaf node, UINT32_MAX if this is an invalid node (therefore invalid AABB) otherwise a valid pointer to child level
+    vec3 _max; uint _pad;
 };
 
 layout(set = 0, binding = 0) buffer BvhBuffer
 {
-	BvhNode bvh[];
+    BvhNode bvh[];
 };
 
 void main()
 {
-	if (src_level_idx + gl_GlobalInvocationID.x < dst_level_idx)
-	{
-		BvhNode node = bvh[src_level_idx + gl_GlobalInvocationID.x];
-	
-		BvhNode parent_node;
+    if (src_level_idx + gl_GlobalInvocationID.x < dst_level_idx)
+    {
+        BvhNode node = bvh[src_level_idx + gl_GlobalInvocationID.x];
 
-		uint subgroup_valid = subgroupBallot(node.next != VREN_BVH_INVALID_NODE).x;
-		if ((subgroup_valid & (1 << gl_SubgroupInvocationID)) != 0)
-		{
-			parent_node._min = subgroupMin(node._min);
-			parent_node._max = subgroupMax(node._max);
-		}
+        BvhNode parent_node;
 
-		if (gl_LocalInvocationID.x % gl_SubgroupSize == 0)
-		{
-			// If all the children are invalid, then also the parent is invalid. Otherwise make the parent point to the start of the children
-			parent_node.next = subgroup_valid == 0 ? VREN_BVH_INVALID_NODE : src_level_idx + gl_GlobalInvocationID.x;
+        uint subgroup_valid = subgroupBallot(node.next != VREN_BVH_INVALID_NODE).x;
+        if ((subgroup_valid & (1 << gl_SubgroupInvocationID)) != 0)
+        {
+            parent_node._min = subgroupMin(node._min);
+            parent_node._max = subgroupMax(node._max);
+        }
 
-			uint subgroup_idx = gl_GlobalInvocationID.x / gl_SubgroupSize;
-			bvh[dst_level_idx + subgroup_idx] = parent_node;
-		}
-	}
+        if (gl_LocalInvocationID.x % gl_SubgroupSize == 0)
+        {
+            // If all the children are invalid, then also the parent is invalid. Otherwise make the parent point to the start of the children
+            parent_node.next = subgroup_valid == 0 ? VREN_BVH_INVALID_NODE : src_level_idx + gl_GlobalInvocationID.x;
+
+            uint subgroup_idx = gl_GlobalInvocationID.x / gl_SubgroupSize;
+            bvh[dst_level_idx + subgroup_idx] = parent_node;
+        }
+    }
 }

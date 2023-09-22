@@ -11,47 +11,47 @@ layout(local_size_x = 16, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants
 {
-	uint offset;
+    uint offset;
     uint stride;
 };
 
 layout(set = 0, binding = 0) buffer InputBuffer
 {
-	uint data[];
+    uint data[];
 };
 
 layout(set = 0, binding = 1) buffer OutputBuffer
 {
-	uint output_data[];
+    uint output_data[];
 };
 
 layout(set = 0, binding = 2) readonly buffer ReducedLocalCountBuffer
 {
-	uint reduced_local_counts[];
+    uint reduced_local_counts[];
 };
 
 layout(set = 0, binding = 3) writeonly buffer GlobalOffsetBuffer
 {
-	uint global_offsets[RADIX];
+    uint global_offsets[RADIX];
 };
 
 void main()
 {
-	// I know, this is bad for cache but will only read 16 scattered entries
-	uint global_count = reduced_local_counts[offset + gl_SubgroupInvocationID.x * stride];
-	
-	// Subgroup-wide exclusive scan
-	uint value = 0;
-	for (uint i = 0; i < RADIX; i++)
-	{
-		uint sum = subgroupAdd(i == gl_SubgroupInvocationID ? global_count : 0);
-		if (i == gl_SubgroupInvocationID)
-		{
-			break;
-		}
+    // I know, this is bad for cache but will only read 16 scattered entries
+    uint global_count = reduced_local_counts[offset + gl_SubgroupInvocationID.x * stride];
 
-		value += sum;
-	}
+    // Subgroup-wide exclusive scan
+    uint value = 0;
+    for (uint i = 0; i < RADIX; i++)
+    {
+        uint sum = subgroupAdd(i == gl_SubgroupInvocationID ? global_count : 0);
+        if (i == gl_SubgroupInvocationID)
+        {
+            break;
+        }
 
-	global_offsets[gl_SubgroupInvocationID] = value;
+        value += sum;
+    }
+
+    global_offsets[gl_SubgroupInvocationID] = value;
 }

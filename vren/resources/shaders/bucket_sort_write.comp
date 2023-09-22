@@ -11,25 +11,25 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) readonly buffer InputBuffer
 {
-	uvec2 input_buffer[];
+    uvec2 input_buffer[];
 };
 
 layout(set = 0, binding = 1) writeonly buffer OutputBuffer
 {
-	uvec2 output_buffer[];
+    uvec2 output_buffer[];
 };
 
 layout(set = 0, binding = 2) buffer BucketOffsetBuffer
 {
-	uint bucket_offsets[VREN_KEY_SIZE];
+    uint bucket_offsets[VREN_KEY_SIZE];
 };
 
 void main()
 {
-	if (gl_GlobalInvocationID.x < input_buffer.length())
-	{
-		uvec2 v = input_buffer[gl_GlobalInvocationID.x];
-		uint offset = atomicAdd(bucket_offsets[v.x & VREN_KEY_MASK], 1);
-		output_buffer[offset] = v;
-	}
+    if (gl_GlobalInvocationID.x < input_buffer.length())
+    {
+        uvec2 v = input_buffer[gl_GlobalInvocationID.x];
+        uint offset = atomicAdd(bucket_offsets[v.x & VREN_KEY_MASK], 1);
+        output_buffer[offset] = v;
+    }
 }

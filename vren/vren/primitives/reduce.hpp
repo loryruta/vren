@@ -12,8 +12,7 @@ namespace vren
         ReduceOperationMax
     };
 
-    template<typename _data_type_t, vren::reduce_operation _operation_t>
-    class reduce
+    template <typename _data_type_t, vren::reduce_operation _operation_t> class reduce
     {
     public:
         inline static const uint32_t k_workgroup_size = 1024;
@@ -47,4 +46,4 @@ namespace vren
     };
 
     uint32_t calc_reduce_output_buffer_length(uint32_t count);
-}
+} // namespace vren

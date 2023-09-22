@@ -7,22 +7,25 @@
 
 vren::build_bvh::build_bvh(vren::context const& context) :
     m_context(&context),
-    m_pipeline([&]()
-    {
-        vren::shader_module shader_module = vren::load_shader_module_from_file(context, ".vren/resources/shaders/build_bvh.comp.spv");
-        vren::specialized_shader shader = vren::specialized_shader(shader_module);
-        return vren::create_compute_pipeline(context, shader);
-    }())
+    m_pipeline(
+        [&]()
+        {
+            vren::shader_module shader_module =
+                vren::load_shader_module_from_file(context, ".vren/resources/shaders/build_bvh.comp.spv");
+            vren::specialized_shader shader = vren::specialized_shader(shader_module);
+            return vren::create_compute_pipeline(context, shader);
+        }()
+    )
 {
 }
 
 void vren::build_bvh::write_descriptor_set(
-    VkDescriptorSet descriptor_set,
-    vren::vk_utils::buffer const& buffer,
-    uint32_t leaf_count
+    VkDescriptorSet descriptor_set, vren::vk_utils::buffer const& buffer, uint32_t leaf_count
 )
 {
-    vren::vk_utils::write_buffer_descriptor(*m_context, descriptor_set, 0, buffer.m_buffer.m_handle, get_required_buffer_size(leaf_count), 0);
+    vren::vk_utils::write_buffer_descriptor(
+        *m_context, descriptor_set, 0, buffer.m_buffer.m_handle, get_required_buffer_size(leaf_count), 0
+    );
 }
 
 VkBufferUsageFlags vren::build_bvh::get_required_buffer_usage_flags()
@@ -55,7 +58,7 @@ void vren::build_bvh::operator()(
 
     m_pipeline.bind_descriptor_set(command_buffer, 0, descriptor_set_0->m_handle.m_descriptor_set);
 
-    struct 
+    struct
     {
         uint32_t m_src_level_idx;
         uint32_t m_dst_level_idx;
@@ -87,15 +90,23 @@ void vren::build_bvh::operator()(
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
                 .buffer = buffer.m_buffer.m_handle,
                 .offset = push_constants.m_dst_level_idx * sizeof(vren::bvh_node),
-                .size = level_node_count * sizeof(vren::bvh_node)
-            };
-            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
+                .size = level_node_count * sizeof(vren::bvh_node)};
+            vkCmdPipelineBarrier(
+                command_buffer,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                NULL,
+                0,
+                nullptr,
+                1,
+                &buffer_memory_barrier,
+                0,
+                nullptr
+            );
         }
     }
 
-    resource_container.add_resource(
-        descriptor_set_0
-    );
+    resource_container.add_resource(descriptor_set_0);
 }
 
 uint32_t vren::calc_bvh_padded_leaf_count(uint32_t leaf_count)
