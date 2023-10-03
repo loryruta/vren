@@ -208,3 +208,8 @@ include(${VREN_HOME}/cmake/shaderc.cmake)
 #target_link_libraries(vren PRIVATE SPIRV-Headers)
 #target_link_libraries(vren PRIVATE SPIRV-Tools)
 target_link_libraries(vren PRIVATE shaderc)
+
+# spirv-reflect
+include(${VREN_HOME}/cmake/spirv-reflect.cmake)
+target_link_libraries(vren PRIVATE spirv-reflect-static)
+

@@ -7,7 +7,6 @@ namespace vren
     private:
         vren::shader_module const* m_shader_module;
         vren::shader_module_entry_point const* m_entry_point;
-
         std::vector<uint8_t> m_specialization_data;
 
     public:

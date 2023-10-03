@@ -36,15 +36,7 @@ void load_bin_file(char const* file_path, std::vector<char>& buf)
 
 vren::vk_shader_module create_vk_shader_module(vren::context const& context, uint32_t const* code, size_t code_size)
 {
-    VkShaderModuleCreateInfo shader_info{
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = NULL,
-        .codeSize = code_size,
-        .pCode = code};
-    VkShaderModule shader_module;
-    VREN_CHECK(vkCreateShaderModule(context.m_device, &shader_info, nullptr, &shader_module), &context);
-    return vren::vk_shader_module(context, shader_module);
+
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------

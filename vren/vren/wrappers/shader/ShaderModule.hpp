@@ -10,6 +10,19 @@
 
 namespace vren
 {
+    enum class ShaderType
+    {
+        Vertex,
+        Fragment,
+        Compute
+    };
+
+    class ShaderCompilationException : public std::exception
+    {
+    public:
+        ShaderCompilationException() : std::exception() {}
+    };
+
     class ShaderModule
     {
     private:
@@ -18,6 +31,8 @@ namespace vren
             std::string m_name;
             VkShaderStageFlags m_shader_stage;
         };
+
+        std::string m_glsl_code;
 
         std::string m_filename;
         std::shared_ptr<HandleDeleter<VkShaderModule>> m_handle;
@@ -43,10 +58,9 @@ namespace vren
         VkSpecializationMapEntry const& specialization_constant(std::string const& name) const;
         uint32_t specialization_constant_id(std::string const& name) const { return specialization_constant(name).constantID; }
 
-        void reload();
+        void recompile();
 
         static void load_from_file(std::string const& filename);
 
-    private:
     };
 } // namespace vren
