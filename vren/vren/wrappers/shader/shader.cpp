@@ -4,9 +4,8 @@
 
 #include <spirv_cross.hpp>
 
-#include "context.hpp"
-#include "misc.hpp"
-#include "toolbox.hpp"
+#include "Context.hpp"
+#include "Toolbox.hpp"
 
 #include "log.hpp"
 
@@ -393,71 +392,6 @@ vren::shader_module vren::load_shader_module_from_file(vren::context const& cont
 // Pipeline
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::pipeline::~pipeline()
-{
-    for (VkDescriptorSetLayout desc_set_layout : m_descriptor_set_layouts)
-    {
-        vkDestroyDescriptorSetLayout(m_context->m_device, desc_set_layout, nullptr);
-    }
-}
-
-void vren::pipeline::bind(VkCommandBuffer command_buffer) const
-{
-    vkCmdBindPipeline(command_buffer, m_bind_point, m_pipeline.m_handle);
-}
-
-void vren::pipeline::bind_vertex_buffer(
-    VkCommandBuffer command_buffer, uint32_t binding, VkBuffer vertex_buffer, VkDeviceSize offset
-) const
-{
-    vkCmdBindVertexBuffers(command_buffer, binding, 1, &vertex_buffer, &offset);
-}
-
-void vren::pipeline::bind_index_buffer(
-    VkCommandBuffer command_buffer, VkBuffer index_buffer, VkIndexType index_type, VkDeviceSize offset
-) const
-{
-    vkCmdBindIndexBuffer(command_buffer, index_buffer, offset, index_type);
-}
-
-void vren::pipeline::bind_descriptor_set(
-    VkCommandBuffer command_buffer, uint32_t descriptor_set_idx, VkDescriptorSet descriptor_set
-) const
-{
-    vkCmdBindDescriptorSets(
-        command_buffer, m_bind_point, m_pipeline_layout.m_handle, descriptor_set_idx, 1, &descriptor_set, 0, nullptr
-    );
-}
-
-void vren::pipeline::push_constants(
-    VkCommandBuffer command_buffer, VkShaderStageFlags shader_stage, void const* data, uint32_t length, uint32_t offset
-) const
-{
-    vkCmdPushConstants(command_buffer, m_pipeline_layout.m_handle, shader_stage, offset, length, data);
-}
-
-void vren::pipeline::acquire_and_bind_descriptor_set(
-    vren::context const& context,
-    VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
-    uint32_t descriptor_set_idx,
-    std::function<void(VkDescriptorSet)> const& update_func
-)
-{
-    auto desc_set = std::make_shared<vren::pooled_vk_descriptor_set>(
-        context.m_toolbox->m_descriptor_pool.acquire(m_descriptor_set_layouts.at(descriptor_set_idx))
-    );
-    update_func(desc_set->m_handle.m_descriptor_set);
-    bind_descriptor_set(command_buffer, descriptor_set_idx, desc_set->m_handle.m_descriptor_set);
-    resource_container.add_resources(desc_set);
-}
-
-void vren::pipeline::dispatch(
-    VkCommandBuffer command_buffer, uint32_t workgroup_count_x, uint32_t workgroup_count_y, uint32_t workgroup_count_z
-) const
-{
-    vkCmdDispatch(command_buffer, workgroup_count_x, workgroup_count_y, workgroup_count_z);
-}
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
@@ -582,7 +516,7 @@ create_descriptor_set_layouts(vren::context const& context, std::span<vren::spec
     return descriptor_set_layouts;
 }
 
-vren::pipeline vren::create_compute_pipeline(vren::context const& context, vren::specialized_shader const& shader)
+Pipeline vren::create_compute_pipeline(vren::context const& context, vren::specialized_shader const& shader)
 {
     vren::shader_module const& shader_module = shader.get_shader_module();
 

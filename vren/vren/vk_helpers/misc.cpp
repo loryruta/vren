@@ -1,9 +1,9 @@
 #include "misc.hpp"
 
-#include "context.hpp"
+#include "Context.hpp"
+#include "Toolbox.hpp"
 #include "log.hpp"
-#include "pool/command_pool.hpp"
-#include "toolbox.hpp"
+#include "pool/CommandPool.hpp"
 
 void what_the_fuck_i_did_wrong(VkQueue queue)
 {
@@ -69,7 +69,7 @@ vren::vk_fence vren::vk_utils::create_fence(vren::context const& ctx, bool signa
 }
 
 void vren::vk_utils::immediate_submit(
-    vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func
+    vren::context const& ctx, vren::CommandPool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func
 )
 {
     auto cmd_buf = cmd_pool.acquire();
@@ -151,17 +151,6 @@ vren::vk_utils::get_surface_details(VkPhysicalDevice physical_device, VkSurfaceK
     }
 
     return surf_det;
-}
-
-std::vector<VkQueueFamilyProperties> vren::vk_utils::get_queue_families_properties(VkPhysicalDevice phy_dev)
-{
-    uint32_t queue_fam_props_cnt;
-    vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_fam_props_cnt, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queue_fam_props(queue_fam_props_cnt);
-    vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_fam_props_cnt, queue_fam_props.data());
-
-    return queue_fam_props;
 }
 
 void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf)

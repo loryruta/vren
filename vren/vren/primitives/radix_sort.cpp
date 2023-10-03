@@ -1,7 +1,7 @@
 #include "radix_sort.hpp"
 
-#include "context.hpp"
-#include "toolbox.hpp"
+#include "Context.hpp"
+#include "Toolbox.hpp"
 #include "vk_helpers/misc.hpp"
 
 vren::radix_sort::radix_sort(vren::context const& context) :

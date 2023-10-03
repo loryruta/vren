@@ -1,7 +1,7 @@
 #include "point_light_bouncer.hpp"
 
+#include <vren/Toolbox.hpp>
 #include <vren/base/base.hpp>
-#include <vren/toolbox.hpp>
 #include <vren/vk_helpers/misc.hpp>
 
 vren_demo::point_light_bouncer::point_light_bouncer(vren::context const& context) :

@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "context.hpp"
+#include "Context.hpp"
 #include "vk_helpers/debug_utils.hpp"
 #include "vk_helpers/misc.hpp"
 
@@ -325,7 +325,7 @@ void vren::basic_renderer::set_instance_buffer(VkCommandBuffer cmd_buf, vren::vk
 vren::render_graph_t vren::basic_renderer::render(
     vren::render_graph_allocator& render_graph_allocator,
     glm::uvec2 const& screen,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::basic_model_draw_buffer const& draw_buffer,
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer

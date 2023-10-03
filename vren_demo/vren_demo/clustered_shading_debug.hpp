@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vren/camera.hpp>
+#include <vren/Camera.hpp>
+#include <vren/pipeline/clustered_shading.hpp>
+#include <vren/pipeline/debug_renderer.hpp>
+#include <vren/pipeline/render_graph.hpp>
 #include <vren/vk_helpers/buffer.hpp>
 #include <vren/vk_helpers/image.hpp>
 #include <vren/vk_helpers/shader.hpp>
-#include <vren/pipeline/debug_renderer.hpp>
-#include <vren/pipeline/render_graph.hpp>
-#include <vren/pipeline/clustered_shading.hpp>
 
 namespace vren_demo
 {
@@ -50,7 +50,7 @@ namespace vren_demo
 		vren::debug_renderer_draw_buffer operator()(
 			vren::context const& context,
 			vren::cluster_and_shade const& cluster_and_shade,
-			vren::camera const& camera,
+			vren::Camera const& camera,
 			glm::vec2 const& screen
 		);
 	};
@@ -59,7 +59,7 @@ namespace vren_demo
 
 	vren::debug_renderer_draw_buffer debug_camera_clusters_geometry(
 		vren::context const& context,
-		vren::camera const& camera,
+		vren::Camera const& camera,
 		glm::vec2 const& screen,
 		vren::cluster_and_shade const& cluster_and_shade
 	);

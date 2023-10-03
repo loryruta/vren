@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include <vren/camera.hpp>
+#include <vren/Camera.hpp>
 
 namespace vren_demo
 {
@@ -21,6 +21,6 @@ namespace vren_demo
 	public:
 		freecam_controller(GLFWwindow* window);
 
-		void update(vren::camera& camera, float dt, float movement_speed = 1.0f, float rotation_speed = glm::radians(90.0f));
+		void update(vren::Camera& camera, float dt, float movement_speed = 1.0f, float rotation_speed = glm::radians(90.0f));
 	};
 }

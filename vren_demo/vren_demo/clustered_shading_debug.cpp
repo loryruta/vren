@@ -1,6 +1,6 @@
 #include "clustered_shading_debug.hpp"
 
-#include <vren/toolbox.hpp>
+#include <vren/Toolbox.hpp>
 #include <vren/vk_helpers/misc.hpp>
 
 vren_demo::show_clusters::show_clusters(
@@ -115,7 +115,7 @@ vren_demo::show_clusters_geometry::show_clusters_geometry(
 vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 	vren::context const& context,
 	vren::cluster_and_shade const& cluster_and_shade,
-	vren::camera const& camera,
+	vren::Camera const& camera,
 	glm::vec2 const& screen
 )
 {
@@ -204,7 +204,7 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 
 vren::debug_renderer_draw_buffer vren_demo::debug_camera_clusters_geometry(
 	vren::context const& context,
-	vren::camera const& camera,
+	vren::Camera const& camera,
 	glm::vec2 const& screen,
 	vren::cluster_and_shade const& cluster_and_shade
 )
@@ -310,7 +310,7 @@ vren::debug_renderer_draw_buffer vren_demo::create_debug_draw_buffer_with_demo_c
 		vren::divide_and_ceil(1080, 32)
 	);
 
-	vren::camera camera{
+	vren::Camera camera{
 		.m_near_plane = 0.1f,
 		.m_far_plane = 10.0f,
 	};

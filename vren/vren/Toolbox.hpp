@@ -2,41 +2,24 @@
 
 #include <memory>
 
-#include "material.hpp"
-#include "pool/command_pool.hpp"
-#include "pool/descriptor_pool.hpp"
 #include "primitives/blelloch_scan.hpp"
 #include "primitives/bucket_sort.hpp"
 #include "primitives/build_bvh.hpp"
 #include "primitives/radix_sort.hpp"
 #include "primitives/reduce.hpp"
-#include "texture_manager.hpp"
+#include "scene/texture_manager.hpp"
+#include "scene/material.hpp"
 #include "vk_helpers/image.hpp"
+#include "wrappers/CommandPool.hpp"
+#include "wrappers/DescriptorPool.hpp"
 
 namespace vren
 {
-    // Forward decl
-    class context;
-
-    // ------------------------------------------------------------------------------------------------
-    // Toolbox
-    // ------------------------------------------------------------------------------------------------
-
-    class toolbox
+    class Toolbox
     {
-        friend vren::context;
-
     private:
-        vren::context const* m_context;
-
-        vren::command_pool create_graphics_command_pool();
-        vren::command_pool create_transfer_command_pool();
-        vren::descriptor_pool create_descriptor_pool();
-
-    public:
-        vren::command_pool m_graphics_command_pool;
-        vren::command_pool m_transfer_command_pool;
-        vren::descriptor_pool m_descriptor_pool; // General purpose descriptor pool
+        std::unique_ptr<CommandPool> m_command_pool;
+        std::unique_ptr<DescriptorPool> m_descriptor_pool;
 
         vren::texture_manager m_texture_manager;
 
@@ -54,6 +37,13 @@ namespace vren
 
         vren::build_bvh m_build_bvh;
 
-        explicit toolbox(vren::context const& ctx);
+    public:
+        explicit Toolbox();
+        Toolbox(Toolbox const& other) = delete;
+        ~Toolbox();
+
+    private:
+        void init_descriptor_pool();
+        vren::CommandPool create_graphics_command_pool();
     };
 } // namespace vren

@@ -9,8 +9,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "Toolbox.hpp"
 #include "pipeline/profiler.hpp"
-#include "toolbox.hpp"
 
 glm::vec3 parse_gltf_vec3_to_glm_vec3(std::vector<double> v)
 {

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "pool/descriptor_pool.hpp"
+#include "pool/DescriptorPool.hpp"
 #include "vk_helpers/image.hpp"
 
 namespace vren
@@ -15,7 +15,7 @@ namespace vren
     // texture_manager_descriptor_pool
     // ------------------------------------------------------------------------------------------------
 
-    class texture_manager_descriptor_pool : public vren::descriptor_pool
+    class texture_manager_descriptor_pool : public vren::DescriptorPool
     {
     protected:
         VkDescriptorSet

@@ -1,6 +1,6 @@
 #include "visualize_bvh.hpp"
 
-#include <vren/toolbox.hpp>
+#include <vren/Toolbox.hpp>
 #include <vren/primitives/build_bvh.hpp>
 #include <vren/vk_helpers/misc.hpp>
 

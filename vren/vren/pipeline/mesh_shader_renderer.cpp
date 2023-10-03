@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "context.hpp"
+#include "Context.hpp"
 #include "vk_helpers/debug_utils.hpp"
 #include "vk_helpers/misc.hpp"
 

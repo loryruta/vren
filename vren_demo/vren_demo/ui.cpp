@@ -54,7 +54,7 @@ void vren_demo::ui::set_ui_style()
 {
 	ImGuiStyle& style = ImGui::GetStyle();
 
-	// light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
+	// light style from Pacï¿½me Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
 	style.Alpha = 1.0f;
 	style.FrameRounding = 3.0f;
 	style.Colors[ImGuiCol_Text] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
@@ -411,7 +411,7 @@ void vren_demo::ui::show_controls_window()
 
 void vren_demo::ui::show_camera_window()
 {
-	vren::camera& camera = m_app->m_camera;
+	vren::Camera& camera = m_app->m_camera;
 
 	glm::vec4 a(0, 0, 0, 1);
 	glm::vec4 b(0, 0, 1, 1);

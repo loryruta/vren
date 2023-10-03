@@ -53,11 +53,10 @@ set(SRC
     vren/pipeline/clustered_shading.cpp
     vren/pipeline/clustered_shading.hpp
 
-    vren/pool/command_pool.hpp
-    vren/pool/command_pool.cpp
-    vren/pool/descriptor_pool.hpp
-    vren/pool/descriptor_pool.cpp
-    vren/pool/object_pool.hpp
+    vren/wrappers/CommandPool.hpp
+    vren/wrappers/CommandPool.cpp
+    vren/wrappers/DescriptorPool.hpp
+    vren/wrappers/DescriptorPool.cpp
 
     vren/primitives/blelloch_scan.cpp
     vren/primitives/blelloch_scan.hpp
@@ -72,8 +71,6 @@ set(SRC
 
     vren/third_party/impl.cpp
 
-    vren/vk_helpers/shader.hpp
-    vren/vk_helpers/shader.cpp
     vren/vk_helpers/debug_utils.hpp
     vren/vk_helpers/buffer.hpp
     vren/vk_helpers/buffer.cpp
@@ -81,28 +78,43 @@ set(SRC
     vren/vk_helpers/image.cpp
     vren/vk_helpers/misc.hpp
     vren/vk_helpers/misc.cpp
-    vren/vk_helpers/vk_raii.hpp
     vren/vk_helpers/image_layout_transitions.hpp
     vren/vk_helpers/image_layout_transitions.cpp
 
-    vren/gpu_repr.hpp
-    vren/material.cpp
-    vren/material.hpp
-    vren/texture_manager.cpp
-    vren/texture_manager.hpp
-    vren/toolbox.hpp
-    vren/toolbox.cpp
-    vren/context.hpp
-    vren/context.cpp
+    vren/scene/gpu_repr.hpp
+    vren/scene/material.cpp
+    vren/scene/material.hpp
+    vren/scene/texture_manager.cpp
+    vren/scene/texture_manager.hpp
+    vren/scene/light.cpp
+    vren/scene/light.hpp
+    vren/scene/Camera.hpp
+    vren/scene/Camera.cpp
+
+    vren/Toolbox.hpp
+    vren/Toolbox.cpp
+    vren/Context.hpp
+    vren/Context.cpp
     vren/config.hpp
     vren/presenter.cpp
     vren/presenter.hpp
-    vren/light.cpp
-    vren/light.hpp
     vren/log.hpp
-    vren/camera.hpp
-    vren/camera.cpp
-    )
+    vren/base/misc_utils.hpp
+    vren/base/misc_utils.cpp
+    vren/wrappers/PhysicalDevice.hpp
+    vren/wrappers/PhysicalDevice.cpp
+    vren/wrappers/Instance.hpp
+    vren/wrappers/Instance.cpp
+    vren/wrappers/Device.hpp
+    vren/wrappers/Device.cpp
+    vren/wrappers/HandleDeleter.hpp
+    vren/wrappers/vk_handle_deleters.cpp
+    vren/wrappers/shader/Pipeline.hpp
+    vren/wrappers/shader/Pipeline.cpp
+    vren/wrappers/shader/SpecializedShaderModule.hpp
+    vren/wrappers/shader/SpecializedShaderModule.cpp
+    vren/wrappers/shader/ShaderModule.hpp
+    vren/wrappers/shader/ShaderModule.cpp vren/wrappers/DescriptorSetLayoutInfo.hpp vren/wrappers/shader/ShaderModule.cpp)
 
 add_library(vren ${SRC})
 
@@ -178,16 +190,6 @@ target_link_libraries(vren PUBLIC implot)
 target_include_directories(vren PUBLIC ${IMGUI_VULKAN_BACKEND_DIR})
 target_link_libraries(vren PUBLIC vren_imgui_vulkan_backend)
 
-# SPIRV-Cross
-FetchContent_Declare(
-    spirv-cross
-    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
-    GIT_TAG sdk-1.3.224.1
-)
-FetchContent_MakeAvailable(spirv-cross)
-target_link_libraries(vren PRIVATE spirv-cross-core)
-target_link_libraries(vren PRIVATE spirv-cross-reflect)
-
 # meshoptimizer
 find_package(meshoptimizer CONFIG REQUIRED)
 target_link_libraries(vren PUBLIC meshoptimizer::meshoptimizer)
@@ -199,3 +201,10 @@ target_link_libraries(vren PUBLIC fmt::fmt)
 # tinygltf
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 target_include_directories(vren PRIVATE ${TINYGLTF_INCLUDE_DIRS})
+
+# shaderc
+include(${VREN_HOME}/cmake/shaderc.cmake)
+#target_link_libraries(vren PRIVATE glslang)
+#target_link_libraries(vren PRIVATE SPIRV-Headers)
+#target_link_libraries(vren PRIVATE SPIRV-Tools)
+target_link_libraries(vren PRIVATE shaderc)

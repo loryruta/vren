@@ -3,20 +3,20 @@
 #include <volk.h>
 #include <GLFW/glfw3.h>
 
-#include <vren/context.hpp>
 #include "vren/pipeline/basic_renderer.hpp"
-#include "vren/pipeline/mesh_shader_renderer.hpp"
 #include "vren/pipeline/debug_renderer.hpp"
-#include "vren/pipeline/imgui_renderer.hpp"
 #include "vren/pipeline/depth_buffer_pyramid.hpp"
-#include <vren/presenter.hpp>
+#include "vren/pipeline/imgui_renderer.hpp"
+#include "vren/pipeline/mesh_shader_renderer.hpp"
 #include "vren/pipeline/profiler.hpp"
+#include <vren/Camera.hpp>
+#include <vren/Context.hpp>
+#include <vren/base/operation_fork.hpp>
 #include <vren/model/basic_model_draw_buffer.hpp>
 #include <vren/model/clusterized_model.hpp>
 #include <vren/model/clusterized_model_draw_buffer.hpp>
-#include <vren/base/operation_fork.hpp>
 #include <vren/pipeline/clustered_shading.hpp>
-#include <vren/camera.hpp>
+#include <vren/presenter.hpp>
 
 #include "camera_controller.hpp"
 #include "point_light_bouncer.hpp"
@@ -232,7 +232,7 @@ namespace vren_demo
 		std::array<vren_demo::profiled_data<32>, ProfileSlot_Count> m_delta_time_by_profile_slot{};
 
 		// Camera
-		vren::camera m_camera;
+		vren::Camera m_camera;
 		float m_camera_speed = 0.1f;
 
 		vren_demo::freecam_controller m_freecam_controller;

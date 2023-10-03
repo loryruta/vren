@@ -1,6 +1,6 @@
 #include "clustered_shading.hpp"
 
-#include "toolbox.hpp"
+#include "Toolbox.hpp"
 #include "vk_helpers/misc.hpp"
 
 vren::clustered_shading::construct_point_light_bvh::construct_point_light_bvh(vren::context const& context) :
@@ -79,7 +79,7 @@ void vren::clustered_shading::construct_point_light_bvh::operator()(
     vren::resource_container& resource_container,
     vren::light_array const& light_array,
     vren::vk_utils::buffer const& view_space_point_light_position_buffer,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::vk_utils::buffer const& bvh_buffer,
     vren::vk_utils::buffer const& point_light_index_buffer
 )
@@ -534,7 +534,7 @@ void vren::clustered_shading::find_unique_cluster_list::operator()(
     VkCommandBuffer command_buffer,
     vren::resource_container& resource_container,
     glm::uvec2 const& screen,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::buffer const& cluster_key_buffer,
@@ -684,7 +684,7 @@ void vren::clustered_shading::assign_lights::operator()(
     VkCommandBuffer command_buffer,
     vren::resource_container& resource_container,
     glm::uvec2 const& screen,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::vk_utils::buffer const& cluster_key_buffer,
     vren::vk_utils::buffer const& cluster_key_dispatch_params_buffer,
     vren::vk_utils::buffer const& light_bvh_buffer,
@@ -1058,7 +1058,7 @@ void vren::clustered_shading::shade::operator()(
     VkCommandBuffer command_buffer,
     vren::resource_container& resource_container,
     glm::uvec2 const& screen,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::vk_utils::combined_image_view const& cluster_reference_buffer,
@@ -1322,7 +1322,7 @@ vren::cluster_and_shade::cluster_and_shade(vren::context const& context) :
 vren::render_graph_t vren::cluster_and_shade::operator()(
     vren::render_graph_allocator& allocator,
     glm::uvec2 const& screen,
-    vren::camera const& camera,
+    vren::Camera const& camera,
     vren::gbuffer const& gbuffer,
     vren::vk_utils::depth_buffer_t const& depth_buffer,
     vren::light_array const& light_array,

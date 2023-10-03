@@ -8,7 +8,7 @@ vren_demo::freecam_controller::freecam_controller(GLFWwindow* window) :
 	m_window(window)
 {}
 
-void vren_demo::freecam_controller::update(vren::camera& camera, float dt, float movement_speed, float rotation_speed)
+void vren_demo::freecam_controller::update(vren::Camera& camera, float dt, float movement_speed, float rotation_speed)
 {
 	if (glfwGetInputMode(m_window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
 	{

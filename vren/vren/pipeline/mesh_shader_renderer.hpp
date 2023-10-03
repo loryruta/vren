@@ -1,6 +1,6 @@
 #pragma once
 
-#include "camera.hpp"
+#include "Camera.hpp"
 #include "gbuffer.hpp"
 #include "mesh_shader_draw_pass.hpp"
 #include "model/clusterized_model_draw_buffer.hpp"

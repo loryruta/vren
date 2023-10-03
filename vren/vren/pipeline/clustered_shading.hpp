@@ -1,6 +1,6 @@
 #pragma once
 
-#include "camera.hpp"
+#include "Camera.hpp"
 #include "gbuffer.hpp"
 #include "light.hpp"
 #include "material.hpp"
@@ -39,7 +39,7 @@ namespace vren
                 vren::resource_container& resource_container,
                 vren::light_array const& light_array,
                 vren::vk_utils::buffer const& view_space_point_light_position_buffer,
-                vren::camera const& camera,
+                vren::Camera const& camera,
                 vren::vk_utils::buffer const& bvh_buffer,
                 vren::vk_utils::buffer const& point_light_index_buffer
             );
@@ -64,7 +64,7 @@ namespace vren
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
                 glm::uvec2 const& screen,
-                vren::camera const& camera,
+                vren::Camera const& camera,
                 vren::gbuffer const& gbuffer,
                 vren::vk_utils::depth_buffer_t const& depth_buffer,
                 vren::vk_utils::buffer const& cluster_key_buffer,
@@ -93,7 +93,7 @@ namespace vren
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
                 glm::uvec2 const& screen,
-                vren::camera const& camera,
+                vren::Camera const& camera,
                 vren::vk_utils::buffer const& cluster_key_buffer,
                 vren::vk_utils::buffer const& allocation_index_buffer,
                 vren::vk_utils::buffer const& light_bvh_buffer,
@@ -126,7 +126,7 @@ namespace vren
                 VkCommandBuffer command_buffer,
                 vren::resource_container& resource_container,
                 glm::uvec2 const& screen,
-                vren::camera const& camera,
+                vren::Camera const& camera,
                 vren::gbuffer const& gbuffer,
                 vren::vk_utils::depth_buffer_t const& depth_buffer,
                 vren::vk_utils::combined_image_view const& cluster_reference_buffer,
@@ -173,7 +173,7 @@ namespace vren
         vren::render_graph_t operator()(
             vren::render_graph_allocator& allocator,
             glm::uvec2 const& screen,
-            vren::camera const& camera,
+            vren::Camera const& camera,
             vren::gbuffer const& gbuffer,
             vren::vk_utils::depth_buffer_t const& depth_buffer,
             vren::light_array const& light_array,

@@ -1,7 +1,7 @@
 #include "texture_manager.hpp"
 
-#include "context.hpp"
-#include "toolbox.hpp"
+#include "Context.hpp"
+#include "Toolbox.hpp"
 #include "vk_helpers/debug_utils.hpp"
 #include "vk_helpers/misc.hpp"
 
@@ -33,7 +33,7 @@ VkDescriptorSet vren::texture_manager_descriptor_pool::allocate_descriptor_set(
 vren::texture_manager_descriptor_pool::texture_manager_descriptor_pool(
     vren::context const& context, uint32_t max_sets, std::span<VkDescriptorPoolSize> const& pool_sizes
 ) :
-    vren::descriptor_pool(context, max_sets, pool_sizes)
+    vren::DescriptorPool(context, max_sets, pool_sizes)
 {
 }
 

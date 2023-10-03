@@ -7,7 +7,7 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#include "context.hpp"
+#include "Context.hpp"
 #include "vk_helpers/misc.hpp"
 
 #include "log.hpp"

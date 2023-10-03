@@ -9,7 +9,7 @@
 #include <volk.h>
 
 #include "base/resource_container.hpp"
-#include "pool/command_pool.hpp"
+#include "pool/CommandPool.hpp"
 #include "vk_raii.hpp"
 
 namespace vren

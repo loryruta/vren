@@ -1,6 +1,6 @@
 #include "blit_depth_buffer_pyramid.hpp"
 
-#include <vren/toolbox.hpp>
+#include <vren/Toolbox.hpp>
 
 vren_demo::blit_depth_buffer_pyramid::blit_depth_buffer_pyramid(vren::context const& context) :
     m_context(&context),

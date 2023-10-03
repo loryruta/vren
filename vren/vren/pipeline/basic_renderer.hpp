@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "camera.hpp"
+#include "Camera.hpp"
 #include "gbuffer.hpp"
 #include "gpu_repr.hpp"
 #include "light.hpp"
@@ -60,7 +60,7 @@ namespace vren
         vren::render_graph_t render(
             vren::render_graph_allocator& render_graph_allocator,
             glm::uvec2 const& screen,
-            vren::camera const& camera,
+            vren::Camera const& camera,
             vren::basic_model_draw_buffer const& draw_buffer,
             vren::gbuffer const& gbuffer,
             vren::vk_utils::depth_buffer_t const& depth_buffer

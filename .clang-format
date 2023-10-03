@@ -1,6 +1,6 @@
 Language: Cpp
 IndentWidth: 4
-ColumnLimit: 120
+ColumnLimit: 160
 BreakBeforeBraces: Allman
 PackConstructorInitializers: Never
 SpaceBeforeCtorInitializerColon: true
@@ -8,8 +8,8 @@ BreakConstructorInitializers: AfterColon
 AllowShortFunctionsOnASingleLine: Inline
 BreakBeforeBinaryOperators: None
 AlignAfterOpenBracket: BlockIndent
-AllowShortLambdasOnASingleLine: Empty
-BinPackArguments: false
+AllowShortLambdasOnASingleLine: All
+BinPackArguments: true
 BinPackParameters: false
 NamespaceIndentation: All
 ReferenceAlignment: Left

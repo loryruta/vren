@@ -6,7 +6,7 @@
 #include "base/resource_container.hpp"
 #include "buffer.hpp"
 #include "image.hpp"
-#include "pool/command_pool.hpp"
+#include "pool/CommandPool.hpp"
 #include "vk_raii.hpp"
 
 #define VREN_CHECK(...) vren::vk_utils::check(__VA_ARGS__)
@@ -34,7 +34,7 @@ namespace vren::vk_utils
         std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
 
     void immediate_submit(
-        vren::context const& ctx, vren::command_pool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func
+        vren::context const& ctx, vren::CommandPool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func
     );
 
     void immediate_graphics_queue_submit(vren::context const& ctx, record_commands_func_t const& record_func);
@@ -54,8 +54,6 @@ namespace vren::vk_utils
     vren::vk_utils::surface_details get_surface_details(VkPhysicalDevice physical_device, VkSurfaceKHR surface);
 
     vren::vk_query_pool create_timestamp_query_pool(vren::context const& ctx, uint32_t query_count);
-
-    std::vector<VkQueueFamilyProperties> get_queue_families_properties(VkPhysicalDevice phy_dev);
 
     // ------------------------------------------------------------------------------------------------
 

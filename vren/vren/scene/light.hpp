@@ -10,7 +10,7 @@
 #include "base/base.hpp"
 #include "gpu_repr.hpp"
 #include "pipeline/render_graph.hpp"
-#include "pool/descriptor_pool.hpp"
+#include "pool/DescriptorPool.hpp"
 #include "vk_helpers/buffer.hpp"
 
 namespace vren

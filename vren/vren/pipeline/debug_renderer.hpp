@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Camera.hpp"
 #include "base/resource_container.hpp"
-#include "camera.hpp"
 #include "gpu_repr.hpp"
 #include "render_graph.hpp"
 #include "render_target.hpp"

@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 #include <glm/gtc/integer.hpp>
 
-#include "toolbox.hpp"
+#include "Toolbox.hpp"
 
 vren::blelloch_scan::blelloch_scan(vren::context const& context) :
     m_context(&context),
