@@ -28,9 +28,12 @@ void ComputePipeline::recreate()
 
     // Push constants
     VkPushConstantRange push_constant_range{};
-    push_constant_range.stageFlags = m_shader->m_shader_stage;
+    push_constant_range.stageFlags = m_shader->shader_stage();
     push_constant_range.offset = 0;
     push_constant_range.size = (uint32_t) m_shader->m_push_constant_block_size;
+
+    // Descriptor set layouts
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
 
     // Pipeline layout
     VkPipelineLayoutCreateInfo pipeline_layout_info{};
