@@ -143,7 +143,7 @@ void run_build_bvh_test(
     std::memcpy(gpu_buffer_ptr, cpu_buffer.data(), padded_leaf_count * sizeof(vren::bvh_node));
 
     // Build BVH GPU-side
-    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         VkBufferMemoryBarrier buffer_memory_barrier{
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,

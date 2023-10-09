@@ -52,7 +52,7 @@ vren::reduce<_data_type_t, _operation_t>::reduce(vren::context const& context) :
 template <typename _data_type_t, vren::reduce_operation _operation_t>
 void vren::reduce<_data_type_t, _operation_t>::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& input_buffer,
     uint32_t input_buffer_length,
     size_t input_buffer_offset,
@@ -178,7 +178,7 @@ void vren::reduce<_data_type_t, _operation_t>::operator()(
 template <typename _data_type_t, vren::reduce_operation _operation_t>
 void vren::reduce<_data_type_t, _operation_t>::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     size_t offset,

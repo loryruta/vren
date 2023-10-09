@@ -22,7 +22,7 @@ public:
     {
         VkBufferMemoryBarrier buffer_memory_barrier{};
 
-        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             buffer_memory_barrier = {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -35,7 +35,7 @@ public:
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-            auto sample = [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            auto sample = [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 VREN_TEST_APP()->m_blelloch_scan(command_buffer, resource_container, *m_gpu_buffer, m_length, 0, 1);
             };
@@ -134,7 +134,7 @@ void run_blelloch_scan_test(uint32_t sample_length, bool verbose)
 
     std::exclusive_scan(cpu_buffer.begin(), cpu_buffer.end(), cpu_buffer.begin(), 0);
 
-    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         VkBufferMemoryBarrier buffer_memory_barrier{
            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,

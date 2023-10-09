@@ -372,7 +372,7 @@ vren::render_graph_t vren::blit_color_buffer_to_swapchain_image(
     );
     node->set_callback(
         [=, &color_buffer](
-            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
         )
         {
             VkImageBlit image_blit{
@@ -424,7 +424,7 @@ vren::transit_swapchain_image_to_present_layout(vren::render_graph_allocator& al
         VK_ACCESS_NONE_KHR
     );
     node->set_callback(
-        [](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container) {}
+        [](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container) {}
     );
     return vren::render_graph_gather(node);
 }

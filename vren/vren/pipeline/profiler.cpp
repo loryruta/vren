@@ -30,9 +30,9 @@ vren::vk_query_pool vren::profiler::create_query_pool() const
 
 void vren::profiler::profile(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     uint32_t slot_idx,
-    std::function<void(VkCommandBuffer command_buffer, vren::resource_container& resource_container)> const& sample_func
+    std::function<void(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)> const& sample_func
 )
 {
     vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, slot_idx * 2, 2);
@@ -49,7 +49,7 @@ vren::profiler::profile(vren::render_graph_allocator& allocator, vren::render_gr
     auto head = allocator.allocate();
     head->set_name("profiler_start");
     head->set_callback(
-        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             vkCmdResetQueryPool(command_buffer, m_query_pool.m_handle, slot_idx * 2, 2);
             vkCmdWriteTimestamp(
@@ -66,7 +66,7 @@ vren::profiler::profile(vren::render_graph_allocator& allocator, vren::render_gr
     auto tail = allocator.allocate();
     tail->set_name("profiler_end");
     tail->set_callback(
-        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             vkCmdWriteTimestamp(
                 command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, m_query_pool.m_handle, slot_idx * 2 + 1

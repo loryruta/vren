@@ -24,7 +24,7 @@ namespace vren_demo
         void bounce(
             uint32_t frame_idx,
             VkCommandBuffer command_buffer,
-            vren::resource_container& resource_container,
+            vren::ResourceContainer& resource_container,
             vren::vk_utils::buffer const& point_light_position_buffer,
             vren::vk_utils::buffer const& point_light_direction_buffer,
             uint32_t point_light_count,

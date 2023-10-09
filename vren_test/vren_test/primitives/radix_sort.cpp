@@ -41,9 +41,9 @@ static void BM_gpu_radix_sort(benchmark::State& state)
 
     for (auto _ : state)
     {
-        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
-            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 radix_sort(command_buffer, resource_container, buffer, length, scratch_buffer_1, scratch_buffer_2);
             });
@@ -87,7 +87,7 @@ void run_radix_sort_test(uint32_t sample_length, bool verbose)
 
     std::sort(cpu_buffer.begin(), cpu_buffer.end());
 
-    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         VkBufferMemoryBarrier buffer_memory_barrier{
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,

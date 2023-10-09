@@ -36,7 +36,7 @@ namespace vren
 
             void operator()(
                 VkCommandBuffer command_buffer,
-                vren::resource_container& resource_container,
+                vren::ResourceContainer& resource_container,
                 vren::light_array const& light_array,
                 vren::vk_utils::buffer const& view_space_point_light_position_buffer,
                 vren::Camera const& camera,
@@ -62,7 +62,7 @@ namespace vren
             void operator()(
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
-                vren::resource_container& resource_container,
+                vren::ResourceContainer& resource_container,
                 glm::uvec2 const& screen,
                 vren::Camera const& camera,
                 vren::gbuffer const& gbuffer,
@@ -91,7 +91,7 @@ namespace vren
             void operator()(
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
-                vren::resource_container& resource_container,
+                vren::ResourceContainer& resource_container,
                 glm::uvec2 const& screen,
                 vren::Camera const& camera,
                 vren::vk_utils::buffer const& cluster_key_buffer,
@@ -124,7 +124,7 @@ namespace vren
             void operator()(
                 uint32_t frame_idx,
                 VkCommandBuffer command_buffer,
-                vren::resource_container& resource_container,
+                vren::ResourceContainer& resource_container,
                 glm::uvec2 const& screen,
                 vren::Camera const& camera,
                 vren::gbuffer const& gbuffer,

@@ -40,7 +40,7 @@ size_t vren::build_bvh::get_required_buffer_size(uint32_t leaf_count)
 
 void vren::build_bvh::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t leaf_count // padded_leaf_count
 )

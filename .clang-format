@@ -18,4 +18,6 @@ AllowAllParametersOfDeclarationOnNextLine: true
 IndentAccessModifiers: false
 AccessModifierOffset: -4
 SpaceAfterCStyleCast: true
+SpaceAfterTemplateKeyword: false
+AlwaysBreakTemplateDeclarations: Yes
 ---

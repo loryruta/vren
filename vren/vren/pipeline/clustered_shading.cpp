@@ -76,7 +76,7 @@ vren::clustered_shading::construct_point_light_bvh::get_required_point_light_ind
 
 void vren::clustered_shading::construct_point_light_bvh::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::light_array const& light_array,
     vren::vk_utils::buffer const& view_space_point_light_position_buffer,
     vren::Camera const& camera,
@@ -532,7 +532,7 @@ vren::clustered_shading::find_unique_cluster_list::find_unique_cluster_list(vren
 void vren::clustered_shading::find_unique_cluster_list::operator()(
     uint32_t frame_idx,
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     glm::uvec2 const& screen,
     vren::Camera const& camera,
     vren::gbuffer const& gbuffer,
@@ -682,7 +682,7 @@ vren::clustered_shading::assign_lights::assign_lights(vren::context const& conte
 void vren::clustered_shading::assign_lights::operator()(
     uint32_t frame_idx,
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     glm::uvec2 const& screen,
     vren::Camera const& camera,
     vren::vk_utils::buffer const& cluster_key_buffer,
@@ -1056,7 +1056,7 @@ vren::clustered_shading::shade::shade(vren::context const& context) :
 void vren::clustered_shading::shade::operator()(
     uint32_t frame_idx,
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     glm::uvec2 const& screen,
     vren::Camera const& camera,
     vren::gbuffer const& gbuffer,
@@ -1284,7 +1284,7 @@ vren::cluster_and_shade::cluster_and_shade(vren::context const& context) :
 
     vren::vk_utils::immediate_graphics_queue_submit(
         *m_context,
-        [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkImageMemoryBarrier image_memory_barrier{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1362,7 +1362,7 @@ vren::render_graph_t vren::cluster_and_shade::operator()(
 
     node->set_callback(
         [this, camera, screen, &gbuffer, &depth_buffer, &light_array, &material_buffer, &output](
-            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
         )
         {
             std::array<VkBufferMemoryBarrier, 3> buffer_memory_barriers{};

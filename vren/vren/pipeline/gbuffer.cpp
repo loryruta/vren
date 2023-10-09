@@ -124,7 +124,7 @@ vren::render_graph_t vren::clear_gbuffer(vren::render_graph_allocator& allocator
     gbuffer.add_render_graph_node_resources(*node, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT);
 
     node->set_callback(
-        [&gbuffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [&gbuffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkClearColorValue clear_color{};
             VkImageSubresourceRange image_subresource_range{

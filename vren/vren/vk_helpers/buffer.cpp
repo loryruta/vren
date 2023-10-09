@@ -254,7 +254,7 @@ void vren::vk_utils::copy_buffer(
 {
     vren::vk_utils::immediate_transfer_queue_submit(
         context,
-        [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkBufferCopy copy_region{.srcOffset = src_offset, .dstOffset = dst_offset, .size = size};
             vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);

@@ -292,7 +292,7 @@ namespace vren_demo
 			uint32_t swapchain_image_idx,
 			vren::swapchain const& swapchain,
 			VkCommandBuffer command_buffer,
-			vren::resource_container& resource_container,
+			vren::ResourceContainer& resource_container,
 			float dt
 		);
 

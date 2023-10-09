@@ -55,7 +55,7 @@ vren::imgui_renderer::imgui_renderer(
 
     vren::vk_utils::immediate_graphics_queue_submit(
         *m_context,
-        [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+        [&](VkCommandBuffer cmd_buf, vren::ResourceContainer& res_container)
         {
             ImGui_ImplVulkan_CreateFontsTexture(cmd_buf);
         }
@@ -168,7 +168,7 @@ vren::render_graph_t vren::imgui_renderer::render(
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     );
     node->set_callback(
-        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             // Create UIs
             ImGui_ImplVulkan_NewFrame();

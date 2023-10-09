@@ -13,7 +13,7 @@ set(SRC
     vren/base/fixed_capacity_vector.hpp
     vren/base/kd_tree.cpp
     vren/base/kd_tree.hpp
-    vren/base/resource_container.hpp
+    vren/base/ResourceContainer.hpp
     vren/base/operation_fork.hpp
 
     vren/model/basic_model_draw_buffer.hpp
@@ -111,10 +111,10 @@ set(SRC
     vren/wrappers/vk_handle_deleters.cpp
     vren/wrappers/shader/Pipeline.hpp
     vren/wrappers/shader/Pipeline.cpp
-    vren/wrappers/shader/SpecializedShaderModule.hpp
-    vren/wrappers/shader/SpecializedShaderModule.cpp
-    vren/wrappers/shader/ShaderModule.hpp
-    vren/wrappers/shader/ShaderModule.cpp vren/wrappers/DescriptorSetLayoutInfo.hpp vren/wrappers/shader/ShaderModule.cpp)
+    vren/wrappers/shader/Shader.hpp
+    vren/wrappers/shader/Shader.cpp
+    vren/wrappers/DescriptorSetLayoutInfo.hpp
+    vren/wrappers/shader/ShaderSpvParser.hpp vren/wrappers/shader/ShaderType.hpp vren/wrappers/shader/exceptions.hpp vren/wrappers/shader/ShaderSpvParser.cpp vren/wrappers/shader/ComputePipeline.hpp vren/wrappers/shader/ComputePipeline.cpp vren/wrappers/shader/GraphicsPipeline.hpp vren/wrappers/shader/GraphicsPipeline.cpp)
 
 add_library(vren ${SRC})
 

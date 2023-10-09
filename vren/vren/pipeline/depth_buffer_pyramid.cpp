@@ -247,7 +247,7 @@ vren::render_graph_t vren::depth_buffer_reductor::copy_and_reduce(
 
     node->set_callback(
         [this, &depth_buffer, &depth_buffer_pyramid](
-            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
         )
         {
             std::shared_ptr<vren::pooled_vk_descriptor_set> descriptor_set{};

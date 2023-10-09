@@ -59,7 +59,7 @@ namespace vren_demo
 	public:
 		void show(
 			uint32_t frame_idx,
-			vren::resource_container& resource_container
+			vren::ResourceContainer& resource_container
 		);
 	};
 }

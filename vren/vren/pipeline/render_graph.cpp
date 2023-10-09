@@ -292,7 +292,7 @@ void vren::detail::render_graph_executor::execute(
 // --------------------------------------------------------------------------------------------------------------------------------
 
 vren::render_graph_executor::render_graph_executor(
-    uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+    uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
 ) :
     m_frame_idx(frame_idx),
     m_command_buffer(command_buffer),
@@ -625,7 +625,7 @@ vren::render_graph_t vren::clear_color_buffer(
         VK_ACCESS_TRANSFER_WRITE_BIT
     );
     node->set_callback(
-        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkImageSubresourceRange subresource_range = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -663,7 +663,7 @@ vren::render_graph_t vren::clear_depth_stencil_buffer(
         VK_ACCESS_TRANSFER_WRITE_BIT
     );
     node->set_callback(
-        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [=](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkImageSubresourceRange subresource_range = {
                 .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,

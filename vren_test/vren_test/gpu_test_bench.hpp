@@ -56,7 +56,7 @@ namespace vren_test
 
         void copy_host_buffer_to_gpu_buffer()
         {
-            vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 VkBufferCopy buffer_copy{
                     .srcOffset = 0,
@@ -120,7 +120,7 @@ namespace vren_test
 
         void copy_gpu_buffer_to_host_buffer()
         {
-            vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 VkBufferCopy buffer_copy{
                     .srcOffset = 0,

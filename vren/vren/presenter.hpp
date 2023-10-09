@@ -5,7 +5,7 @@
 
 #include <volk.h>
 
-#include "base/resource_container.hpp"
+#include "base/ResourceContainer.hpp"
 #include "light.hpp"
 #include "pipeline/render_graph.hpp"
 #include "vk_helpers/image.hpp"
@@ -30,7 +30,7 @@ namespace vren
         /**
          * The resource container holds the resources that are in-use by the frame and ensures they live enough.
          */
-        vren::resource_container m_resource_container;
+        vren::ResourceContainer m_resource_container;
 
         swapchain_frame_data(vren::context const& context);
     };
@@ -119,7 +119,7 @@ namespace vren
             uint32_t swapchain_image_idx,
             vren::swapchain const& swapchain,
             VkCommandBuffer command_buffer,
-            vren::resource_container& resource_container
+            vren::ResourceContainer& resource_container
         )>;
         void present(render_func_t const& render_func);
     };

@@ -447,7 +447,7 @@ void vren_demo::ui::show_camera_window()
 
 void vren_demo::ui::show(
 	uint32_t frame_idx,
-	vren::resource_container& resource_container
+	vren::ResourceContainer& resource_container
 )
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();

@@ -375,7 +375,7 @@ void vren_demo::app::on_update(float dt)
 			dt
 		](uint32_t idx, vren::light_array& light_array)
 		{
-			vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+			vren::vk_utils::immediate_graphics_queue_submit(m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
 			{
 				m_point_light_bouncer.bounce(
 					0,
@@ -399,7 +399,7 @@ void vren_demo::app::record_commands(
 	uint32_t swapchain_image_idx,
 	vren::swapchain const& swapchain,
 	VkCommandBuffer command_buffer,
-	vren::resource_container& resource_container,
+	vren::ResourceContainer& resource_container,
 	float dt
 )
 {
@@ -791,7 +791,7 @@ float vren_demo::app::calc_frame_parallelism_percentage(uint32_t frame_idx)
 
 void vren_demo::app::on_frame(float dt)
 {
-	m_presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	m_presenter.present([&](uint32_t frame_idx, uint32_t swapchain_image_idx, vren::swapchain const& swapchain, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
 	{
 		m_frame_ended_at[frame_idx] =
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();

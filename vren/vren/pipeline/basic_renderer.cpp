@@ -352,7 +352,7 @@ vren::render_graph_t vren::basic_renderer::render(
 
     node->set_callback(
         [this, screen, camera, &draw_buffer, &gbuffer, &depth_buffer](
-            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
         )
         {
             VkRect2D render_area = {.offset = {0, 0}, .extent = {screen.x, screen.y}};
@@ -441,11 +441,9 @@ vren::render_graph_t vren::basic_renderer::render(
             };
 
             m_pipeline.bind_vertex_buffer(
-                command_buffer, 0, draw_buffer.m_vertex_buffer.m_buffer.m_handle
-            ); // Vertex buffer
+                command_buffer, 0, draw_buffer.m_vertex_buffer.m_buffer.m_handle); // Vertex buffer
             m_pipeline.bind_vertex_buffer(
-                command_buffer, 1, draw_buffer.m_instance_buffer.m_buffer.m_handle
-            ); // Instance buffer
+                command_buffer, 1, draw_buffer.m_instance_buffer.m_buffer.m_handle); // Instance buffer
             m_pipeline.bind_index_buffer(
                 command_buffer, draw_buffer.m_index_buffer.m_buffer.m_handle, VK_INDEX_TYPE_UINT32
             ); // Index buffer

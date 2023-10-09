@@ -55,7 +55,7 @@ void vren::blelloch_scan::write_descriptor_set(
 
 void vren::blelloch_scan::downsweep(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     uint32_t offset,
@@ -153,7 +153,7 @@ void vren::blelloch_scan::downsweep(
 
 void vren::blelloch_scan::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     uint32_t offset,

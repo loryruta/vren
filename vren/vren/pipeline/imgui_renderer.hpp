@@ -3,7 +3,7 @@
 #include <functional>
 #include <memory>
 
-#include "base/resource_container.hpp"
+#include "base/ResourceContainer.hpp"
 #include "gpu_repr.hpp"
 #include "render_graph.hpp"
 #include "render_target.hpp"

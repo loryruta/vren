@@ -60,7 +60,7 @@ namespace vren::vk_utils
     inline void set_name(vren::context const& context, vren::pipeline const& pipeline, char const* name)
     {
         vren::vk_utils::set_object_name(
-            context, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(pipeline.m_pipeline.m_handle), name
+            context, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(pipeline.m_handle.m_handle), name
         );
     }
 

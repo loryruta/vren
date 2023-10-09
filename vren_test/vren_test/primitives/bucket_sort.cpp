@@ -48,9 +48,9 @@ static void BM_gpu_bucket_sort(benchmark::State& state)
 
     for (auto _ : state)
     {
-        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
-            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 bucket_sort(command_buffer, resource_container, input_buffer, length, 0, output_buffer, 0);
             });
@@ -120,7 +120,7 @@ void run_bucket_sort_test(uint32_t length, bool verbose, bool check_values)
     }
 
     // Sort GPU array
-    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         bucket_sort(command_buffer, resource_container, input_buffer, length, 0, output_buffer, 0);
     });

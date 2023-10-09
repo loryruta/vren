@@ -8,7 +8,7 @@
 #include <vk_mem_alloc.h>
 #include <volk.h>
 
-#include "base/resource_container.hpp"
+#include "base/ResourceContainer.hpp"
 #include "pool/CommandPool.hpp"
 #include "vk_raii.hpp"
 
@@ -44,7 +44,7 @@ namespace vren::vk_utils
     void upload_image_data(
         vren::context const& ctx,
         VkCommandBuffer cmd_buf,
-        vren::resource_container& res_container,
+        vren::ResourceContainer& res_container,
         VkImage img,
         uint32_t img_width,
         uint32_t img_height,

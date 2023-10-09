@@ -155,7 +155,7 @@ vren::vk_utils::buffer vren::radix_sort::create_scratch_buffer_2(uint32_t length
 
 void vren::radix_sort::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& buffer,
     uint32_t length,
     vren::vk_utils::buffer const& scratch_buffer_1,

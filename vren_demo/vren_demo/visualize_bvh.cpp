@@ -27,8 +27,8 @@ vren::render_graph_t vren_demo::visualize_bvh::write(
 	node->set_src_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 	node->set_dst_stage(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-	node->add_buffer({ .m_buffer = bvh.m_buffer.m_handle }, VK_ACCESS_SHADER_READ_BIT);
-	node->add_buffer({ .m_buffer = draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle }, VK_ACCESS_SHADER_WRITE_BIT);
+	node->add_buffer({ .m_buffer = bvh.m_buffer.m_handle}, VK_ACCESS_SHADER_READ_BIT);
+	node->add_buffer({ .m_buffer = draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle}, VK_ACCESS_SHADER_WRITE_BIT);
 
 	node->set_callback([
 		this,
@@ -38,7 +38,7 @@ vren::render_graph_t vren_demo::visualize_bvh::write(
 	](
 		uint32_t frame_idx,
 		VkCommandBuffer command_buffer,
-		vren::resource_container& resource_container
+		vren::ResourceContainer& resource_container
 	)
 	{
 		VkBufferMemoryBarrier buffer_memory_barrier{

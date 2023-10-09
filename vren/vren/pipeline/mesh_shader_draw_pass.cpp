@@ -208,7 +208,7 @@ void write_meshlet_buffer_descriptor_set(
 void vren::mesh_shader_draw_pass::render(
     uint32_t frame_idx,
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::camera_data const& camera_data,
     vren::clusterized_model_draw_buffer const& draw_buffer,
     vren::light_array const& light_array,

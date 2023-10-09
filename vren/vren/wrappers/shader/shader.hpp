@@ -1,55 +1,68 @@
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <span>
-#include <unordered_map>
+#include <string>
 #include <vector>
 
+#include <shaderc/shaderc.hpp>
 #include <volk.h>
-#include "base/base.hpp"
-#include "base/resource_container.hpp"
+
+#include "ShaderType.hpp"
+#include "wrappers/DescriptorSetLayoutInfo.hpp"
+#include "wrappers/HandleDeleter.hpp"
 
 namespace vren
 {
     // Forward decl
-    class context;
+    class Pipeline;
+    class ComputePipeline;
+    class GraphicsPipeline;
 
-    // ------------------------------------------------------------------------------------------------
+    class Shader
+    {
+        friend class Pipeline;
+        friend class ComputePipeline;
+        friend class GraphicsPipeline;
 
-    static constexpr uint32_t k_max_variable_count_descriptor_count = 65536;
+    private:
+        /// A list containing all the shaders ever created, allows to recompile all shaders.
+        static std::vector<std::shared_ptr<Shader>> s_shaders;
 
-    // ------------------------------------------------------------------------------------------------
-    // Shader module
-    // ------------------------------------------------------------------------------------------------
+        std::string m_filename;
+        ShaderType m_type;
 
-    // void print_descriptor_set_layouts(std::unordered_map<uint32_t, vren::shader_module_descriptor_set_layout_info_t>
-    // const& descriptor_set_layouts);
+        shaderc::CompileOptions m_compile_options;
 
-    // ------------------------------------------------------------------------------------------------
-    // Specialized shader
-    // ------------------------------------------------------------------------------------------------
+        std::shared_ptr<HandleDeleter<VkShaderModule>> m_handle;
 
-    // ------------------------------------------------------------------------------------------------
-    // Pipeline
-    // ------------------------------------------------------------------------------------------------
+        size_t m_push_constant_block_size; // Only one push constant block is supported
+        std::vector<DescriptorSetLayoutInfo> m_descriptor_set_layout_infos;
 
-    vren::pipeline create_compute_pipeline(vren::context const& context, vren::specialized_shader const& shader);
+        /// The pipelines that depends on this shader.
+        std::vector<std::weak_ptr<Pipeline>> m_dependant_pipelines;
 
-    pipeline create_graphics_pipeline(
-        vren::context const& context,
-        std::span<vren::specialized_shader const> shaders,
-        VkPipelineVertexInputStateCreateInfo* vtx_input_state_info,
-        VkPipelineInputAssemblyStateCreateInfo* input_assembly_state_info,
-        VkPipelineTessellationStateCreateInfo* tessellation_state_info,
-        VkPipelineViewportStateCreateInfo* viewport_state_info,
-        VkPipelineRasterizationStateCreateInfo* rasterization_state_info,
-        VkPipelineMultisampleStateCreateInfo* multisample_state_info,
-        VkPipelineDepthStencilStateCreateInfo* depth_stencil_state_info,
-        VkPipelineColorBlendStateCreateInfo* color_blend_state_info,
-        VkPipelineDynamicStateCreateInfo* dynamic_state_info,
-        VkPipelineRenderingCreateInfo* pipeline_rendering_info,
-        VkRenderPass render_pass,
-        uint32_t subpass
-    );
+        explicit Shader(std::string filename, ShaderType shader_type);
+
+    public:
+        ~Shader();
+
+        std::string const& filename() const { return m_filename; }
+        ShaderType type() const { return m_type; }
+
+        VkShaderStageFlags shader_stage() const;
+
+        void add_macro_definition(std::string const& name, std::string const& value);
+
+        /// Checks whether the current shader is compiled (i.e. if VkShaderModule exists).
+        bool is_compiled() const { return bool(m_handle); }
+
+        /// Discards the compiled shader module and recreates it, by reloading the GLSL source code from file.
+        void recompile();
+
+        static std::shared_ptr<Shader> create(std::string const& filename, ShaderType shader_type);
+        static void recompile_all();
+
+    private:
+        void compact_dependant_pipelines();
+    };
 } // namespace vren

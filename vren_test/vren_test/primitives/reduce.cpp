@@ -32,7 +32,7 @@ static void BM_gpu_reduce(benchmark::State& state)
 
     for (auto _ : state)
     {
-        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             vkCmdFillBuffer(command_buffer, buffer.m_buffer.m_handle, 0, length * sizeof(uint32_t), 1);
 
@@ -47,7 +47,7 @@ static void BM_gpu_reduce(benchmark::State& state)
             };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, NULL, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr);
 
-            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+            VREN_TEST_APP()->m_profiler.profile(command_buffer, resource_container, 0, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
             {
                 VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_add(command_buffer, resource_container, buffer, length, 0, 1);
             });
@@ -98,42 +98,42 @@ void run_cpu_reduce(_t* data, uint32_t length)
 }
 
 template<typename _t, vren::reduce_operation _operation>
-void run_gpu_reduce(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
 }
 
 template<>
-void run_gpu_reduce<uint32_t, vren::ReduceOperationAdd>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<uint32_t, vren::ReduceOperationAdd>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_add(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
 
 template<>
-void run_gpu_reduce<uint32_t, vren::ReduceOperationMin>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<uint32_t, vren::ReduceOperationMin>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_min(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
 
 template<>
-void run_gpu_reduce<uint32_t, vren::ReduceOperationMax>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<uint32_t, vren::ReduceOperationMax>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_uint_max(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
 
 template<>
-void run_gpu_reduce<glm::vec4, vren::ReduceOperationAdd>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<glm::vec4, vren::ReduceOperationAdd>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_vec4_add(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
 
 template<>
-void run_gpu_reduce<glm::vec4, vren::ReduceOperationMin>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<glm::vec4, vren::ReduceOperationMin>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_vec4_min(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
 
 template<>
-void run_gpu_reduce<glm::vec4, vren::ReduceOperationMax>(VkCommandBuffer command_buffer, vren::resource_container& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
+void run_gpu_reduce<glm::vec4, vren::ReduceOperationMax>(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container, vren::vk_utils::buffer const& in, vren::vk_utils::buffer const& out, uint32_t length)
 {
     VREN_TEST_APP()->m_context.m_toolbox->m_reduce_vec4_max(command_buffer, resource_container, in, length, 0, out, 0, 1);
 }
@@ -227,7 +227,7 @@ void run_reduce_test(uint32_t length, bool verbose)
     }
 
     // Run GPU reduction
-    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    vren::vk_utils::immediate_graphics_queue_submit(VREN_TEST_APP()->m_context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         run_gpu_reduce<_t, _operation>(command_buffer, resource_container, cpu_buffer, gpu_buffer, length);
     });

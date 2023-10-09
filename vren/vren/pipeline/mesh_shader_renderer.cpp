@@ -47,7 +47,7 @@ vren::render_graph_t vren::mesh_shader_renderer::render(
     );
 
     node->set_callback(
-        [&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        [&](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkRect2D render_area = {.offset = {0, 0}, .extent = {screen.x, screen.y}};
 

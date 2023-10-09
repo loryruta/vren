@@ -56,7 +56,7 @@ vren::render_graph_t vren_demo::blit_depth_buffer_pyramid::operator()(
 	](
 		uint32_t frame_idx,
 		VkCommandBuffer command_buffer,
-		vren::resource_container& resource_container
+		vren::ResourceContainer& resource_container
 	)
 	{
 		m_pipeline.bind(command_buffer);

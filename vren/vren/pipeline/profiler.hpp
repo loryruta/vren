@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base/resource_container.hpp"
+#include "base/ResourceContainer.hpp"
 #include "render_graph.hpp"
 #include "vk_helpers/vk_raii.hpp"
 
@@ -32,9 +32,9 @@ namespace vren
     public:
         void profile(
             VkCommandBuffer command_buffer,
-            vren::resource_container& resource_container,
+            vren::ResourceContainer& resource_container,
             uint32_t slot_idx,
-            std::function<void(VkCommandBuffer command_buffer, vren::resource_container& resource_container)> const&
+            std::function<void(VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)> const&
                 sample_func
         );
 

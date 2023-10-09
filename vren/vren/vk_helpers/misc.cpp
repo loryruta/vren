@@ -74,7 +74,7 @@ void vren::vk_utils::immediate_submit(
 {
     auto cmd_buf = cmd_pool.acquire();
 
-    vren::resource_container res_container;
+    vren::ResourceContainer res_container;
 
     VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

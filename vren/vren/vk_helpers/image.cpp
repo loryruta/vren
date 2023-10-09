@@ -55,7 +55,7 @@ vren::vk_utils::image vren::vk_utils::create_image(
 void vren::vk_utils::upload_image_data(
     vren::context const& ctx,
     VkCommandBuffer cmd_buf,
-    vren::resource_container& res_container,
+    vren::ResourceContainer& res_container,
     VkImage img,
     uint32_t img_width,
     uint32_t img_height,
@@ -237,7 +237,7 @@ vren::vk_utils::texture vren::vk_utils::create_texture(
 
     vren::vk_utils::immediate_graphics_queue_submit(
         ctx,
-        [&](VkCommandBuffer cmd_buf, vren::resource_container& res_container)
+        [&](VkCommandBuffer cmd_buf, vren::ResourceContainer& res_container)
         {
             vren::vk_utils::transition_image_layout_undefined_to_transfer_dst(cmd_buf, img.m_image.m_handle);
 

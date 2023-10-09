@@ -39,7 +39,7 @@ vren::render_graph_t vren_demo::show_clusters::operator()(
 		mode,
 		&cluster_and_shade,
 		&output
-	](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
 	{
 		VkMemoryBarrier memory_barrier{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
@@ -123,7 +123,7 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 	
 	// Retrieve the number of cluster keys from the indirect command's buffer
 	vren::vk_utils::buffer staging_buffer = vren::vk_utils::alloc_host_only_buffer(context, VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(glm::uvec4), true);
-	vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
 	{
 		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr);
 
@@ -149,7 +149,7 @@ vren::debug_renderer_draw_buffer vren_demo::show_clusters_geometry::operator()(
 	debug_draw_buffer.m_vertex_count = vertex_count;
 
 	// Finally fill the debug draw buffer with clusters' geometry
-	vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+	vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
 	{
 		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, NULL, 0, nullptr, 0, nullptr, 0, nullptr);
 

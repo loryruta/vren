@@ -10,8 +10,8 @@
 
 #include "volk.h"
 
+#include "base/ResourceContainer.hpp"
 #include "base/base.hpp"
-#include "base/resource_container.hpp"
 
 namespace vren
 {
@@ -100,7 +100,7 @@ namespace vren
         static const size_t k_max_next_nodes = 4;
 
         using callback_t = std::function<
-            void(uint32_t frame_idx, VkCommandBuffer command_buffer, resource_container& resource_container)>;
+            void(uint32_t frame_idx, VkCommandBuffer command_buffer, ResourceContainer& resource_container)>;
 
         using image_access_index_t = uint16_t;
         using buffer_access_index_t = uint16_t;
@@ -154,7 +154,7 @@ namespace vren
         inline auto const& get_buffer_accesses() const { return m_buffer_accesses; }
 
         inline void
-        operator()(uint32_t frame_idx, VkCommandBuffer command_buffer, resource_container& resource_container) const
+        operator()(uint32_t frame_idx, VkCommandBuffer command_buffer, ResourceContainer& resource_container) const
         {
             if (m_callback)
             {
@@ -436,11 +436,11 @@ namespace vren
     private:
         uint32_t m_frame_idx;
         VkCommandBuffer m_command_buffer;
-        vren::resource_container* m_resource_container;
+        vren::ResourceContainer* m_resource_container;
 
     public:
         render_graph_executor(
-            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container
+            uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container
         );
 
         void execute(vren::render_graph_allocator& allocator, vren::render_graph_t const& graph);

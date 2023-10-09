@@ -3,7 +3,7 @@
 #include <functional>
 #include <memory>
 
-#include "base/resource_container.hpp"
+#include "base/ResourceContainer.hpp"
 #include "buffer.hpp"
 #include "image.hpp"
 #include "pool/CommandPool.hpp"
@@ -31,7 +31,7 @@ namespace vren::vk_utils
     // ------------------------------------------------------------------------------------------------
 
     using record_commands_func_t =
-        std::function<void(VkCommandBuffer cmd_buf, vren::resource_container& res_container)>;
+        std::function<void(VkCommandBuffer cmd_buf, vren::ResourceContainer& res_container)>;
 
     void immediate_submit(
         vren::context const& ctx, vren::CommandPool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func

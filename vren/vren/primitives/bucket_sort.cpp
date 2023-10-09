@@ -80,7 +80,7 @@ size_t vren::bucket_sort::get_required_output_buffer_size(uint32_t length)
 
 void vren::bucket_sort::operator()(
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& input_buffer,
     uint32_t input_buffer_length,
     size_t input_buffer_offset,

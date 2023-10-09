@@ -411,7 +411,7 @@ vren::render_graph_t vren::debug_renderer::render(
     );
     node->set_callback(
         [=,
-         &draw_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+         &draw_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             if (draw_buffer.m_vertex_count == 0)
             {

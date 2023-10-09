@@ -17,7 +17,7 @@ vren_demo::point_light_bouncer::point_light_bouncer(vren::context const& context
 void vren_demo::point_light_bouncer::bounce(
     uint32_t frame_idx,
     VkCommandBuffer command_buffer,
-    vren::resource_container& resource_container,
+    vren::ResourceContainer& resource_container,
     vren::vk_utils::buffer const& point_light_position_buffer,
     vren::vk_utils::buffer const& point_light_direction_buffer,
     uint32_t point_light_count,
@@ -131,7 +131,7 @@ vren::render_graph_t vren_demo::fill_point_light_debug_draw_buffer::operator()(
         .m_name = "debug_draw_buffer",
         .m_buffer = debug_draw_buffer.m_vertex_buffer.m_buffer->m_buffer.m_handle,
     }, VK_ACCESS_SHADER_WRITE_BIT);
-    node->set_callback([=, &point_light_buffer, &debug_draw_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+    node->set_callback([=, &point_light_buffer, &debug_draw_buffer](uint32_t frame_idx, VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
     {
         m_pipeline.bind(command_buffer);
 

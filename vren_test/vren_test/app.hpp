@@ -62,7 +62,7 @@ namespace vren_test
         vren::vk_utils::buffer staging_buffer =
             vren::vk_utils::alloc_host_only_buffer(context, VK_BUFFER_USAGE_TRANSFER_DST_BIT, size, true);
 
-        vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::resource_container& resource_container)
+        vren::vk_utils::immediate_graphics_queue_submit(context, [&](VkCommandBuffer command_buffer, vren::ResourceContainer& resource_container)
         {
             VkBufferCopy region{
                 .srcOffset = 0,
