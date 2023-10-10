@@ -7,8 +7,8 @@
 #include "primitives/build_bvh.hpp"
 #include "primitives/radix_sort.hpp"
 #include "primitives/reduce.hpp"
-#include "scene/texture_manager.hpp"
 #include "scene/material.hpp"
+#include "scene/texture_manager.hpp"
 #include "vk_helpers/image.hpp"
 #include "wrappers/CommandPool.hpp"
 #include "wrappers/DescriptorPool.hpp"
@@ -42,8 +42,9 @@ namespace vren
         Toolbox(Toolbox const& other) = delete;
         ~Toolbox();
 
+        static Toolbox& get();
+
     private:
         void init_descriptor_pool();
-        vren::CommandPool create_graphics_command_pool();
     };
 } // namespace vren

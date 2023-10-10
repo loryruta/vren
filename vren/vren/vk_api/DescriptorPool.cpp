@@ -78,7 +78,7 @@ PooledDescriptorSet DescriptorPool::acquire(VkDescriptorSetLayout descriptor_set
 {
     VkDescriptorPool owner_pool = VK_NULL_HANDLE;
     VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-    for (HandleDeleter<VkDescriptorPool> const& descriptor_pool : m_descriptor_pools)
+    for (vk_descriptor_pool const& descriptor_pool : m_descriptor_pools)
     {
         descriptor_set = allocate_descriptor_set(descriptor_pool.get(), descriptor_set_layout, next_ptr);
         if (descriptor_set != VK_NULL_HANDLE)

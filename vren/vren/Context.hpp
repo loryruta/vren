@@ -66,6 +66,8 @@ namespace vren
         Device& device() { return *m_device; }
         VmaAllocator vma_allocator() { return m_vma_allocator; }
 
+        Toolbox& toolbox() { return *m_toolbox; }
+
         static Context& init(Context::UserOptions user_options);
         static Context& get() { return *s_instance; }
 

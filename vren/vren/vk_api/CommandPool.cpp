@@ -46,7 +46,7 @@ PooledCommandBuffer CommandPool::acquire()
 
     VkCommandBufferAllocateInfo command_buffer_alloc_info{};
     command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    command_buffer_alloc_info.commandPool = m_handle;
+    command_buffer_alloc_info.commandPool = m_handle.get();
     command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     command_buffer_alloc_info.commandBufferCount = 1;
 

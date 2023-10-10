@@ -1,9 +1,10 @@
 #pragma once
 
-#include "HandleDeleter.hpp"
 #include <span>
 #include <vector>
 #include <volk.h>
+
+#include "vk_raii.hpp"
 
 namespace vren
 {
@@ -13,7 +14,7 @@ namespace vren
     class Device
     {
     private:
-        HandleDeleter<VkDevice> m_handle;
+        vk_device m_handle;
 
         int m_num_queues;
         std::vector<VkQueue> m_queues;

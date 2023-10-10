@@ -9,7 +9,7 @@ namespace
 } // namespace
 
 Instance::Instance(VkInstance handle) :
-    m_handle(std::move(handle))
+    m_handle(handle)
 {
 }
 

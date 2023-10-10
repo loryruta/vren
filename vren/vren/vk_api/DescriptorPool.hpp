@@ -6,6 +6,8 @@
 
 #include <volk.h>
 
+#include "vk_raii.hpp"
+
 namespace vren
 {
     // Forward decl
@@ -40,7 +42,7 @@ namespace vren
         static const std::vector<VkDescriptorPoolSize> k_pool_sizes;
 
     private:
-        std::vector<HandleDeleter<VkDescriptorPool>> m_descriptor_pools{};
+        std::vector<vk_descriptor_pool> m_descriptor_pools{};
 
     public:
         /// \param next_ptr Additional struct chain added to VkDescriptorSetAllocateInfo::pNext

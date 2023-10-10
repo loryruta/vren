@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PhysicalDevice.hpp"
-#include "HandleDeleter.hpp"
+#include "vk_raii.hpp"
 #include <span>
 #include <vector>
 #include <volk.h>
@@ -14,7 +14,7 @@ namespace vren
     class Instance
     {
     private:
-        HandleDeleter<VkInstance> m_handle;
+        vk_instance m_handle;
         std::vector<PhysicalDevice> m_physical_devices;
 
     public:

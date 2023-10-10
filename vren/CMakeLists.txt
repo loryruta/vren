@@ -107,14 +107,13 @@ set(SRC
     vren/wrappers/Instance.cpp
     vren/wrappers/Device.hpp
     vren/wrappers/Device.cpp
-    vren/wrappers/HandleDeleter.hpp
-    vren/wrappers/vk_handle_deleters.cpp
+    vren/wrappers/vk_raii.hpp
     vren/wrappers/shader/Pipeline.hpp
     vren/wrappers/shader/Pipeline.cpp
         vren/wrappers/shader/Shader.hpp
         vren/wrappers/shader/Shader.cpp
     vren/wrappers/DescriptorSetLayoutInfo.hpp
-    vren/wrappers/shader/ShaderSpvParser.hpp vren/wrappers/shader/ShaderType.hpp vren/wrappers/shader/exceptions.hpp vren/wrappers/shader/ShaderSpvParser.cpp vren/wrappers/shader/ComputePipeline.hpp vren/wrappers/shader/ComputePipeline.cpp vren/wrappers/shader/GraphicsPipeline.hpp vren/wrappers/shader/GraphicsPipeline.cpp vren/wrappers/DescriptorSetLayoutInfo.cpp vren/wrappers/DescriptorSetLayoutCache.hpp vren/wrappers/DescriptorSetLayoutCache.cpp)
+    vren/wrappers/shader/exceptions.hpp vren/wrappers/shader/ComputePipeline.hpp vren/wrappers/shader/ComputePipeline.cpp vren/wrappers/shader/GraphicsPipeline.hpp vren/wrappers/shader/GraphicsPipeline.cpp vren/wrappers/DescriptorSetLayoutInfo.cpp vren/wrappers/vk_raii.cpp)
 
 add_library(vren ${SRC})
 

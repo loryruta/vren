@@ -15,15 +15,12 @@ namespace vren
             uint32_t m_descriptor_count; // Count 0 means it's a variable descriptor count
 
             bool is_variable_descriptor_count() const { return m_descriptor_count == 0; }
-
-            bool operator==(Binding const& other) const;
         };
 
         std::vector<Binding> m_bindings;
 
-        VkDescriptorSetLayout create_descriptor_set_layout() const;
+        VkDescriptorSetLayout create() const;
 
         DescriptorSetLayoutInfo& operator+=(DescriptorSetLayoutInfo const& other);
-        bool operator==(DescriptorSetLayoutInfo const& other) const;
     };
 } // namespace vren

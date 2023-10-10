@@ -44,3 +44,8 @@ void Toolbox::init_descriptor_pool()
         {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 32}};
     m_descriptor_pool = std::make_unique<DescriptorPool>(32, pool_sizes);
 }
+
+Toolbox& Toolbox::get()
+{
+    return Context::get().toolbox();
+}

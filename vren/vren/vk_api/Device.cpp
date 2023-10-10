@@ -5,7 +5,7 @@
 using namespace vren;
 
 Device::Device(VkDevice handle, int num_queues) :
-    m_handle(std::move(handle)),
+    m_handle(handle),
     m_num_queues(num_queues)
 {
 }

@@ -4,12 +4,6 @@
 
 using namespace vren;
 
-bool DescriptorSetLayoutInfo::Binding::operator==(DescriptorSetLayoutInfo::Binding const& other) const
-{
-    return m_descriptor_type == other.m_descriptor_type &&
-           m_descriptor_count == other.m_descriptor_count;
-}
-
 DescriptorSetLayoutInfo& DescriptorSetLayoutInfo::operator+=(DescriptorSetLayoutInfo const& other)
 {
     m_bindings.insert(other.m_bindings.begin(), other.m_bindings.end());
@@ -17,12 +11,7 @@ DescriptorSetLayoutInfo& DescriptorSetLayoutInfo::operator+=(DescriptorSetLayout
     return *this;
 }
 
-bool DescriptorSetLayoutInfo::operator==(DescriptorSetLayoutInfo const& other) const
-{
-    return m_bindings == other.m_bindings;
-}
-
-VkDescriptorSetLayout DescriptorSetLayoutInfo::create_descriptor_set_layout() const
+VkDescriptorSetLayout DescriptorSetLayoutInfo::create() const
 {
     std::vector<VkDescriptorSetLayoutBinding> vk_binding_infos{};
     vk_binding_infos.reserve(m_bindings.size());

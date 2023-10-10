@@ -4,6 +4,8 @@
 
 #include <volk.h>
 
+#include "vk_raii.hpp"
+
 namespace vren
 {
     // Forward decl
@@ -35,7 +37,7 @@ namespace vren
         friend class PooledCommandBuffer;
 
     private:
-        HandleDeleter<VkCommandPool> m_handle;
+        vk_command_pool m_handle;
         std::vector<VkCommandBuffer> m_unused_command_buffers;
 
         /// \param handle A VkCommandPool that must be created with VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT set.

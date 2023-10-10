@@ -4,19 +4,16 @@
 
 namespace vren
 {
-    class ComputePipeline : public Pipeline
+    class ComputePipeline final : public Pipeline
     {
-    private:
-        std::shared_ptr<Shader> m_shader;
-
     public:
         explicit ComputePipeline(std::shared_ptr<Shader>& shader);
         ~ComputePipeline() = default;
 
         void dispatch(
-            uint32_t workgroup_count_x,
-            uint32_t workgroup_count_y,
-            uint32_t workgroup_count_z,
+            uint32_t num_workgroups_x,
+            uint32_t num_workgroups_y,
+            uint32_t num_workgroups_z,
             VkCommandBuffer command_buffer,
             ResourceContainer& resource_container
         ) const;
