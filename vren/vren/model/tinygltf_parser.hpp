@@ -9,7 +9,7 @@
 #include "base/operation_fork.hpp"
 #include "material.hpp"
 #include "texture_manager.hpp"
-#include "vk_helpers/image.hpp"
+#include "vk_api/image/utils.hpp"
 
 #include "model.hpp"
 

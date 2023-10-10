@@ -1,9 +1,9 @@
 #pragma once
 
-#include "render_graph.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/image.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/image/utils.hpp"
+#include "vk_api/utils.hpp"
 
 namespace vren
 {

@@ -11,7 +11,7 @@
 
 #include <glm/gtc/random.hpp>
 
-#include <vren/vk_helpers/misc.hpp>
+#include "vren/vk_api/utils.hpp"
 #include <vren/vk_helpers/shader.hpp>
 
 #include "app.hpp"

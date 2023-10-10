@@ -1,10 +1,10 @@
 #pragma once
 
+#include "vren/vk_api/buffer/buffer.hpp"
+#include "vren/vk_api/command_graph/render_graph.hpp"
 #include <vren/light.hpp>
-#include <vren/vk_helpers/buffer.hpp>
-#include <vren/vk_helpers/shader.hpp>
 #include <vren/pipeline/debug_renderer.hpp>
-#include <vren/pipeline/render_graph.hpp>
+#include <vren/vk_helpers/shader.hpp>
 
 namespace vren_demo
 {

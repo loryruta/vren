@@ -9,9 +9,9 @@
 
 #include "base/base.hpp"
 #include "gpu_repr.hpp"
-#include "pipeline/render_graph.hpp"
 #include "pool/DescriptorPool.hpp"
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 
 namespace vren
 {

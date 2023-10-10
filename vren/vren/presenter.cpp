@@ -5,8 +5,8 @@
 #include "Context.hpp"
 #include "Toolbox.hpp"
 #include "base/base.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/image_layout_transitions.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/image/image_layout_transitions.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Swapchain frame

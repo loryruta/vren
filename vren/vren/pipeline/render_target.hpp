@@ -2,7 +2,7 @@
 
 #include "volk.h"
 
-#include "vk_helpers/image.hpp"
+#include "vren/vk_api/image/image.hpp"
 
 namespace vren
 {

@@ -1,8 +1,8 @@
 #include "visualize_bvh.hpp"
 
+#include "vren/vk_api/utils.hpp"
 #include <vren/Toolbox.hpp>
 #include <vren/primitives/build_bvh.hpp>
-#include <vren/vk_helpers/misc.hpp>
 
 vren_demo::visualize_bvh::visualize_bvh(vren::context const& context) :
 	m_context(&context),

@@ -3,8 +3,8 @@
 #include <array>
 
 #include "Context.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 vren::basic_renderer::basic_renderer(vren::context& context) :
     m_context(context),

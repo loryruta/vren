@@ -2,8 +2,8 @@
 
 #include "Context.hpp"
 #include "Toolbox.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Texture manager descriptor pool

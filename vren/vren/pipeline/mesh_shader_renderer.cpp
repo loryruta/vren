@@ -3,8 +3,8 @@
 #include <array>
 
 #include "Context.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context, VkBool32 occlusion_culling) :
     m_context(&context),

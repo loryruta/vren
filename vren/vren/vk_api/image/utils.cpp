@@ -1,18 +1,18 @@
-#include "image.hpp"
+#include "utils.hpp"
 
 #include <cstring>
 
 #include "Context.hpp"
-#include "buffer.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/image_layout_transitions.hpp"
-#include "vk_helpers/misc.hpp"
+#include "image_layout_transitions.hpp"
+#include "vk_api/buffer/Buffer.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::image vren::vk_utils::create_image(
+vren::vk_utils::utils vren::vk_utils::create_image(
     vren::context const& ctx,
     uint32_t width,
     uint32_t height,
@@ -198,7 +198,7 @@ vren::vk_utils::storage_image create_storage_image(
     VkImageUsageFlags image_usage_flags
 )
 {
-    vren::vk_utils::image image = vren::vk_utils::create_image(
+    vren::vk_utils::utils image = vren::vk_utils::create_image(
         context, width, height, format, memory_property_flags, VK_IMAGE_USAGE_STORAGE_BIT | image_usage_flags
     );
 
@@ -315,7 +315,7 @@ vren::vk_utils::color_buffer_t vren::vk_utils::create_color_buffer(
     VkImageUsageFlags image_usage_flags
 )
 {
-    vren::vk_utils::image image =
+    vren::vk_utils::utils image =
         vren::vk_utils::create_image(context, width, height, image_format, memory_property_flags, image_usage_flags);
 
     vren::vk_image_view image_view =

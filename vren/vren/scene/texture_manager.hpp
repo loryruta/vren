@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "pool/DescriptorPool.hpp"
-#include "vk_helpers/image.hpp"
+#include "vk_api/image/utils.hpp"
 
 namespace vren
 {

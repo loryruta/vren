@@ -8,3 +8,6 @@
 // #include <stb_image.h> Already included by tinygltf
 
 #include <tiny_gltf.h>
+
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>

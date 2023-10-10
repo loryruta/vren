@@ -8,9 +8,9 @@
 #include <vk_mem_alloc.h>
 #include <volk.h>
 
-#include "wrappers/Device.hpp"
-#include "wrappers/Instance.hpp"
-#include "wrappers/PhysicalDevice.hpp"
+#include "vk_api/Device.hpp"
+#include "vk_api/Instance.hpp"
+#include "vk_api/PhysicalDevice.hpp"
 #include "Toolbox.hpp"
 #include "config.hpp"
 

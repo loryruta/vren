@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "vk_helpers/buffer.hpp"
-#include "vk_helpers/debug_utils.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vren/vk_api/buffer/buffer.hpp"
 
 namespace vren
 {

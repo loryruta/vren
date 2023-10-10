@@ -4,8 +4,8 @@
 
 #include "Toolbox.hpp"
 #include "base/base.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // depth_buffer_pyramid
@@ -23,7 +23,7 @@ vren::depth_buffer_pyramid::depth_buffer_pyramid(vren::context const& context, u
 {
 }
 
-vren::vk_utils::image vren::depth_buffer_pyramid::create_image()
+vren::vk_utils::utils vren::depth_buffer_pyramid::create_image()
 {
     VkImageCreateInfo image_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,

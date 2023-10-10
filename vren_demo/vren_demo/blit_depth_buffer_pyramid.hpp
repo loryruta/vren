@@ -1,9 +1,9 @@
 #pragma once
 
+#include "vren/vk_api/command_graph/render_graph.hpp"
+#include "vren/vk_api/image/utils.hpp"
 #include <vren/Context.hpp>
 #include <vren/pipeline/depth_buffer_pyramid.hpp>
-#include <vren/pipeline/render_graph.hpp>
-#include <vren/vk_helpers/image.hpp>
 #include <vren/vk_helpers/shader.hpp>
 
 namespace vren_demo

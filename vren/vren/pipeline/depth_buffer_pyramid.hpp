@@ -2,8 +2,8 @@
 
 #include <cstdint>
 
-#include "pipeline/render_graph.hpp"
-#include "vk_helpers/image.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
+#include "vk_api/image/utils.hpp"
 #include "vk_helpers/shader.hpp"
 
 namespace vren
@@ -28,7 +28,7 @@ namespace vren
 
         uint32_t m_base_width, m_base_height;
         uint32_t m_level_count;
-        vren::vk_utils::image m_image;
+        vren::vk_utils::utils m_image;
         vren::vk_image_view m_image_view;                     // Image view covering all mipmap levels
         std::vector<vren::vk_image_view> m_level_image_views; // Image views per-mipmap level
         vren::vk_sampler m_sampler;
@@ -37,7 +37,7 @@ namespace vren
         depth_buffer_pyramid(vren::context const& context, uint32_t width, uint32_t height);
 
     private:
-        vren::vk_utils::image create_image();
+        vren::vk_utils::utils create_image();
         vren::vk_image_view create_image_view();
         std::vector<vren::vk_image_view> create_level_image_views();
         vren::vk_sampler create_sampler();

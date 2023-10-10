@@ -4,10 +4,10 @@
 #include <fstream>
 #include <stdexcept>
 
-#include <fmt/format.h>
+#include "fmt/format.h"
 
 #include "log.hpp"
-#include "vk_helpers/vk_enums.hpp"
+#include "vk_api/vk_enums.hpp"
 
 #ifdef VREN_LOG_RENDER_GRAPH_DETAILED
 #define VREN_DEBUG0(m, ...) VREN_DEBUG(m, __VA_ARGS__)

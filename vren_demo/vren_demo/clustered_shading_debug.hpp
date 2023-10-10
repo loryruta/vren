@@ -1,11 +1,11 @@
 #pragma once
 
+#include "vren/vk_api/buffer/buffer.hpp"
+#include "vren/vk_api/command_graph/render_graph.hpp"
+#include "vren/vk_api/image/utils.hpp"
 #include <vren/Camera.hpp>
 #include <vren/pipeline/clustered_shading.hpp>
 #include <vren/pipeline/debug_renderer.hpp>
-#include <vren/pipeline/render_graph.hpp>
-#include <vren/vk_helpers/buffer.hpp>
-#include <vren/vk_helpers/image.hpp>
 #include <vren/vk_helpers/shader.hpp>
 
 namespace vren_demo

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base/ResourceContainer.hpp"
-#include "render_graph.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 #include "vk_helpers/vk_raii.hpp"
 
 namespace vren

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <volk.h>
+#include "../../../cmake-build-debug/_deps/volk-src/volk.h"
 
 namespace vren::vk_utils
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/vk_raii.hpp"
 

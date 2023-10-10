@@ -6,12 +6,12 @@
 #include <algorithm>
 #include <string>
 
+#include "vren/vk_api/buffer/buffer.hpp"
+#include "vren/vk_api/utils.hpp"
 #include <vren/Context.hpp>
 #include <vren/pipeline/profiler.hpp>
 #include <vren/primitives/blelloch_scan.hpp>
 #include <vren/primitives/reduce.hpp>
-#include <vren/vk_helpers/buffer.hpp>
-#include <vren/vk_helpers/misc.hpp>
 
 #define VREN_TEST_APP() vren_test::app::get()
 

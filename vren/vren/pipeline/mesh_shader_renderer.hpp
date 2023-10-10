@@ -4,9 +4,9 @@
 #include "gbuffer.hpp"
 #include "mesh_shader_draw_pass.hpp"
 #include "model/clusterized_model_draw_buffer.hpp"
-#include "render_graph.hpp"
 #include "render_target.hpp"
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 
 namespace vren
 {

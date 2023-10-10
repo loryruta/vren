@@ -4,8 +4,8 @@
 #include <vector>
 #include <cstdint>
 
-#include <vren/vk_helpers/misc.hpp>
-#include <vren/vk_helpers/buffer.hpp>
+#include "vren/vk_api/buffer/buffer.hpp"
+#include "vren/vk_api/utils.hpp"
 
 #include "app.hpp"
 

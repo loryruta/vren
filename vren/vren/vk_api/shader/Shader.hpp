@@ -8,8 +8,8 @@
 #include <shaderc/shaderc.hpp>
 #include <volk.h>
 
-#include "wrappers/DescriptorSetLayoutInfo.hpp"
-#include "wrappers/vk_raii.hpp"
+#include "vk_api/vk_raii.hpp"
+#include "vk_api/DescriptorSetLayoutInfo.hpp"
 
 namespace vren
 {

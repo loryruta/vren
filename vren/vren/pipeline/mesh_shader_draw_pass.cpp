@@ -3,7 +3,7 @@
 #include "Context.hpp"
 #include "Toolbox.hpp"
 #include "mesh_shader_renderer.hpp"
-#include "vk_helpers/debug_utils.hpp"
+#include "vk_api/debug_utils.hpp"
 #include "vk_helpers/shader.hpp"
 
 vren::mesh_shader_draw_pass::mesh_shader_draw_pass(vren::context const& context, VkBool32 occlusion_culling) :

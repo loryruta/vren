@@ -3,9 +3,9 @@
 #include "Camera.hpp"
 #include "base/ResourceContainer.hpp"
 #include "gpu_repr.hpp"
-#include "render_graph.hpp"
 #include "render_target.hpp"
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 #include "vk_helpers/shader.hpp"
 #include "vk_helpers/vk_raii.hpp"
 

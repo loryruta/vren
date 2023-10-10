@@ -5,8 +5,8 @@
 
 #include "base/ResourceContainer.hpp"
 #include "gpu_repr.hpp"
-#include "render_graph.hpp"
 #include "render_target.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 
 namespace vren
 {

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "texture_manager.hpp"
-#include "vk_helpers/buffer.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 namespace vren
 {

@@ -4,8 +4,8 @@
 #include "gbuffer.hpp"
 #include "light.hpp"
 #include "material.hpp"
-#include "vk_helpers/buffer.hpp"
-#include "vk_helpers/image.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/image/utils.hpp"
 #include "vk_helpers/shader.hpp"
 
 namespace vren

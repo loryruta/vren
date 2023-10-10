@@ -1,14 +1,15 @@
 #include "Shader.hpp"
 
 #include <fstream>
-#include <shaderc/shaderc.hpp>
 #include <stdexcept>
 #include <utility>
+
+#include <shaderc/shaderc.hpp>
+#include <spirv_reflect.h>
 
 #include "Context.hpp"
 #include "Pipeline.hpp"
 #include "exceptions.hpp"
-#include <spirv_reflect.h>
 
 using namespace vren;
 using namespace std::string_literals;
@@ -95,9 +96,9 @@ Shader::Shader(std::string filename, VkShaderStageFlags shader_stage) :
     m_filename(std::move(filename)),
     m_shader_stage(shader_stage)
 {
-    recompile();
-
     ShaderRegistry::get().register_shader(shared_from_this());
+
+    recompile();
 }
 
 Shader::~Shader()

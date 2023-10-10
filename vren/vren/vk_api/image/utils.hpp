@@ -5,12 +5,12 @@
 #include <memory>
 #include <span>
 
-#include <vk_mem_alloc.h>
-#include <volk.h>
+#include "vk_mem_alloc.h"
+#include "volk.h"
 
 #include "base/ResourceContainer.hpp"
 #include "pool/CommandPool.hpp"
-#include "vk_raii.hpp"
+#include "vk_api/vk_raii.hpp"
 
 namespace vren
 {
@@ -24,15 +24,20 @@ namespace vren::vk_utils
     // Image
     // ------------------------------------------------------------------------------------------------
 
-    struct image
+    struct Image
     {
-        vren::vk_image m_image;
-        vren::vma_allocation m_allocation;
-        VmaAllocationInfo m_allocation_info;
+    private:
+        vk_image m_image;
+        vma_allocation m_allocation;
+
+    public:
+        explicit Image(VkImage image, VmaAllocation allocation);
+        ~Image() = default;
+
+        VmaAllocationInfo vma_allocation_info() const;
     };
 
-    vren::vk_utils::image create_image(
-        vren::context const& ctx,
+    vren::vk_utils::utils
         uint32_t width,
         uint32_t height,
         VkFormat format,
@@ -59,28 +64,18 @@ namespace vren::vk_utils
     // ------------------------------------------------------------------------------------------------
 
     vren::vk_image_view create_image_view(
-        vren::context const& context, VkImage image, VkFormat format, VkImageAspectFlags image_aspect_flags
+        VkImage image,
+        VkFormat format,
+        VkImageAspectFlags image_aspect_flags
     );
 
-    struct combined_image_view_ref // Non-owning reference to combined_image_view
+    struct CombinedImageView
     {
-        VkImage m_image;
-        VkImageView m_image_view;
-    };
-
-    struct combined_image_view
-    {
-        vren::vk_utils::image m_image;
+        vren::vk_utils::utils m_image;
         vren::vk_image_view m_image_view;
 
-        inline auto get_image() const { return m_image.m_image.m_handle; }
-
-        inline auto get_image_view() const { return m_image_view.m_handle; }
-
-        inline vren::vk_utils::combined_image_view_ref get_ref() const
-        {
-            return vren::vk_utils::combined_image_view_ref{.m_image = get_image(), .m_image_view = get_image_view()};
-        }
+        VkImage image() const { return m_image.m_image; }
+        VkImageView image_view() const { return m_image_view; }
     };
 
     // ------------------------------------------------------------------------------------------------
@@ -103,7 +98,7 @@ namespace vren::vk_utils
 
     struct storage_image
     {
-        vren::vk_utils::image m_image;
+        vren::vk_utils::utils m_image;
         vren::vk_image_view m_image_view;
     };
 
@@ -120,11 +115,19 @@ namespace vren::vk_utils
     // Texture
     // ------------------------------------------------------------------------------------------------
 
-    struct texture
+    class Texture
     {
-        vren::vk_utils::image m_image;
-        vren::vk_image_view m_image_view;
-        vren::vk_sampler m_sampler;
+    private:
+        std::shared_ptr<Image> m_image;
+        std::shared_ptr<vk_image_view> m_image_view;
+        std::shared_ptr<vk_sampler> m_sampler;
+
+    public:
+        explicit Texture(
+            std::shared_ptr<Image> image,
+            std::shared_ptr<vk_image_view> image_view,
+            std::shared_ptr<vk_sampler> sampler
+            );
     };
 
     vren::vk_utils::texture create_texture(

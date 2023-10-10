@@ -1,7 +1,7 @@
 #include "clustered_shading.hpp"
 
 #include "Toolbox.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/utils.hpp"
 
 vren::clustered_shading::construct_point_light_bvh::construct_point_light_bvh(vren::context const& context) :
     m_context(&context),
@@ -1244,7 +1244,7 @@ vren::cluster_and_shade::cluster_and_shade(vren::context const& context) :
     m_cluster_reference_buffer(
         [&]()
         {
-            vren::vk_utils::image image = vren::vk_utils::create_image(
+            vren::vk_utils::utils image = vren::vk_utils::create_image(
                 *m_context,
                 VREN_MAX_SCREEN_WIDTH,
                 VREN_MAX_SCREEN_HEIGHT,

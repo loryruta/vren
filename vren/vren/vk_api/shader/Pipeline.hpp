@@ -10,7 +10,7 @@
 
 #include "Shader.hpp"
 #include "base/ResourceContainer.hpp"
-#include "wrappers/vk_raii.hpp"
+#include "vk_api/vk_raii.hpp"
 
 namespace vren
 {

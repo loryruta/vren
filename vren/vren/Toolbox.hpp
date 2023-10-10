@@ -9,13 +9,11 @@
 #include "primitives/reduce.hpp"
 #include "scene/material.hpp"
 #include "scene/texture_manager.hpp"
-#include "vk_helpers/image.hpp"
-#include "wrappers/CommandPool.hpp"
-#include "wrappers/DescriptorPool.hpp"
+#include "vk_api/image/utils.hpp"
 
 namespace vren
 {
-    class Toolbox
+    class Toolbox // TODO don't like this class, delete it in favor of singletons
     {
     private:
         std::unique_ptr<CommandPool> m_command_pool;

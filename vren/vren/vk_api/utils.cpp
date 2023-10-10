@@ -1,4 +1,4 @@
-#include "misc.hpp"
+#include "utils.hpp"
 
 #include "Context.hpp"
 #include "Toolbox.hpp"
@@ -198,7 +198,7 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::b
     );
 }
 
-void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image)
+void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::utils const& image)
 {
     VkImageMemoryBarrier image_memory_barrier{};
     image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -229,7 +229,7 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::i
 
 void vren::vk_utils::transit_image_layout(
     VkCommandBuffer command_buffer,
-    vren::vk_utils::image const& image,
+    vren::vk_utils::utils const& image,
     VkImageLayout src_image_layout,
     VkImageLayout dst_image_layout
 )

@@ -46,17 +46,12 @@ set(SRC
     vren/pipeline/imgui_renderer.cpp
     vren/pipeline/debug_renderer.hpp
     vren/pipeline/debug_renderer.cpp
-    vren/pipeline/render_graph.hpp
-    vren/pipeline/render_graph.cpp
+        vren/vk_api/command_graph/render_graph.hpp
+        vren/vk_api/command_graph/render_graph.cpp
     vren/pipeline/gbuffer.cpp
     vren/pipeline/gbuffer.hpp
     vren/pipeline/clustered_shading.cpp
     vren/pipeline/clustered_shading.hpp
-
-    vren/wrappers/CommandPool.hpp
-    vren/wrappers/CommandPool.cpp
-    vren/wrappers/DescriptorPool.hpp
-    vren/wrappers/DescriptorPool.cpp
 
     vren/primitives/blelloch_scan.cpp
     vren/primitives/blelloch_scan.hpp
@@ -71,15 +66,15 @@ set(SRC
 
     vren/third_party/impl.cpp
 
-    vren/vk_helpers/debug_utils.hpp
-    vren/vk_helpers/buffer.hpp
-    vren/vk_helpers/buffer.cpp
-    vren/vk_helpers/image.hpp
-    vren/vk_helpers/image.cpp
-    vren/vk_helpers/misc.hpp
-    vren/vk_helpers/misc.cpp
-    vren/vk_helpers/image_layout_transitions.hpp
-    vren/vk_helpers/image_layout_transitions.cpp
+        vren/vk_api/debug_utils.hpp
+        vren/vk_api/buffer/buffer.hpp
+        vren/vk_api/buffer/buffer.cpp
+        vren/vk_api/image/utils.hpp
+        vren/vk_api/image/utils.cpp
+        vren/vk_api/utils.hpp
+        vren/vk_api/utils.cpp
+        vren/vk_api/image/image_layout_transitions.hpp
+        vren/vk_api/image/image_layout_transitions.cpp
 
     vren/scene/gpu_repr.hpp
     vren/scene/material.cpp
@@ -101,19 +96,35 @@ set(SRC
     vren/log.hpp
     vren/base/misc_utils.hpp
     vren/base/misc_utils.cpp
-    vren/wrappers/PhysicalDevice.hpp
-    vren/wrappers/PhysicalDevice.cpp
-    vren/wrappers/Instance.hpp
-    vren/wrappers/Instance.cpp
-    vren/wrappers/Device.hpp
-    vren/wrappers/Device.cpp
-    vren/wrappers/vk_raii.hpp
-    vren/wrappers/shader/Pipeline.hpp
-    vren/wrappers/shader/Pipeline.cpp
-        vren/wrappers/shader/Shader.hpp
-        vren/wrappers/shader/Shader.cpp
-    vren/wrappers/DescriptorSetLayoutInfo.hpp
-    vren/wrappers/shader/exceptions.hpp vren/wrappers/shader/ComputePipeline.hpp vren/wrappers/shader/ComputePipeline.cpp vren/wrappers/shader/GraphicsPipeline.hpp vren/wrappers/shader/GraphicsPipeline.cpp vren/wrappers/DescriptorSetLayoutInfo.cpp vren/wrappers/vk_raii.cpp)
+
+    vren/vk_api/CommandPool.hpp
+    vren/vk_api/CommandPool.cpp
+    vren/vk_api/DescriptorPool.hpp
+    vren/vk_api/DescriptorPool.cpp
+    vren/vk_api/PhysicalDevice.hpp
+    vren/vk_api/PhysicalDevice.cpp
+    vren/vk_api/Instance.hpp
+    vren/vk_api/Instance.cpp
+    vren/vk_api/Device.hpp
+    vren/vk_api/Device.cpp
+    vren/vk_api/DescriptorSetLayoutInfo.hpp
+    vren/vk_api/DescriptorSetLayoutInfo.cpp
+    vren/vk_api/vk_raii.cpp
+    vren/vk_api/vk_raii.hpp
+    vren/vk_api/shader/Pipeline.hpp
+    vren/vk_api/shader/Pipeline.cpp
+    vren/vk_api/shader/Shader.hpp
+    vren/vk_api/shader/Shader.cpp
+    vren/vk_api/shader/exceptions.hpp
+    vren/vk_api/shader/ComputePipeline.hpp
+    vren/vk_api/shader/ComputePipeline.cpp
+    vren/vk_api/shader/GraphicsPipeline.hpp
+    vren/vk_api/shader/GraphicsPipeline.cpp
+        vren/vk_api/buffer/ResizableBuffer.hpp
+        vren/vk_api/buffer/ResizableBuffer.cpp
+    vren/vk_api/buffer/utils.hpp
+    vren/vk_api/buffer/utils.cpp
+        vren/vk_api/buffer/DeferredBuffer.cpp vren/vk_api/image/Texture.hpp vren/vk_api/image/Texture.cpp)
 
 add_library(vren ${SRC})
 

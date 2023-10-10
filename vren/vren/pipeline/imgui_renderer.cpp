@@ -6,7 +6,7 @@
 #include "volk.h"
 
 #include "Context.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/utils.hpp"
 
 vren::imgui_renderer::imgui_renderer(
     vren::context const& context, imgui_windowing_backend_hooks const& windowing_backend_hooks

@@ -4,9 +4,9 @@
 #include <memory>
 
 #include "base/ResourceContainer.hpp"
-#include "buffer.hpp"
-#include "image.hpp"
 #include "pool/CommandPool.hpp"
+#include "vk_api/buffer/Buffer.hpp"
+#include "vk_api/image/utils.hpp"
 #include "vk_raii.hpp"
 
 #define VREN_CHECK(...) vren::vk_utils::check(__VA_ARGS__)
@@ -148,11 +148,11 @@ namespace vren::vk_utils
 
     void pipeline_barrier(VkCommandBuffer cmd_buf);
     void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& buffer);
-    void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::image const& image);
+    void pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::utils const& image);
 
     void transit_image_layout(
         VkCommandBuffer command_buffer,
-        vren::vk_utils::image const& image,
+        vren::vk_utils::utils const& image,
         VkImageLayout src_image_layout,
         VkImageLayout dst_image_layout
     );

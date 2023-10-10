@@ -5,7 +5,7 @@
 #include <glm/gtc/integer.hpp>
 
 #include "Toolbox.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/utils.hpp"
 
 template <typename _data_type_t, vren::reduce_operation _operation_t> char const* get_shader_filepath();
 

@@ -3,8 +3,8 @@
 #include "Context.hpp"
 #include "Toolbox.hpp"
 #include "base/base.hpp"
-#include "vk_helpers/debug_utils.hpp"
-#include "vk_helpers/misc.hpp"
+#include "vk_api/debug_utils.hpp"
+#include "vk_api/utils.hpp"
 
 vren::light_array::light_array(vren::context const& context) :
     m_context(&context),

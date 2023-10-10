@@ -1,7 +1,7 @@
 #pragma once
 
 #include "primitives/blelloch_scan.hpp"
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
 #include "vk_helpers/shader.hpp"
 
 namespace vren

@@ -8,9 +8,9 @@
 #include "gpu_repr.hpp"
 #include "light.hpp"
 #include "model/basic_model_draw_buffer.hpp"
-#include "render_graph.hpp"
 #include "render_target.hpp"
-#include "vk_helpers/buffer.hpp"
+#include "vk_api/buffer/buffer.hpp"
+#include "vk_api/command_graph/render_graph.hpp"
 
 namespace vren
 {
