@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 #include "Context.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 vren::profiler::profiler(vren::context const& context) :
     m_context(&context),

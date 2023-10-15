@@ -6,10 +6,10 @@
 
 using namespace vren;
 
-ComputePipeline::ComputePipeline(std::shared_ptr<Shader>& shader) :
+ComputePipeline::ComputePipeline(std::shared_ptr<Shader> shader) :
     Pipeline(VK_PIPELINE_BIND_POINT_COMPUTE)
 {
-    m_shaders = {shader};
+    m_shaders = {std::move(shader)};
 
     recreate();
 }

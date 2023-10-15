@@ -98,7 +98,7 @@ namespace vren
     class ShaderBuilder
     {
     private:
-        Shader m_shader;
+        std::shared_ptr<Shader> m_shader;
 
     public:
         explicit ShaderBuilder(std::string const& filename, VkShaderStageFlags shader_stage);
@@ -106,7 +106,7 @@ namespace vren
 
         ShaderBuilder& add_macro_definition(std::string const& name, std::string const& value);
 
-        Shader&& build();
+        std::shared_ptr<Shader>&& build();
     };
 
 } // namespace vren

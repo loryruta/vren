@@ -1,6 +1,6 @@
 #include "point_light_bouncer.hpp"
 
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 #include <vren/Toolbox.hpp>
 #include <vren/base/base.hpp>
 

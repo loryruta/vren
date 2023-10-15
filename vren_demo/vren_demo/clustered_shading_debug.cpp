@@ -1,6 +1,6 @@
 #include "clustered_shading_debug.hpp"
 
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 #include <vren/Toolbox.hpp>
 
 vren_demo::show_clusters::show_clusters(

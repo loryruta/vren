@@ -1,4 +1,4 @@
-#include "DeviceImage3d.hpp"
+#include "DeferredImage.hpp"
 
 #include "Renderer.hpp"
 

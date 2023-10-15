@@ -3,7 +3,7 @@
 #include <glm/gtc/integer.hpp>
 
 #include "Toolbox.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 vren::build_bvh::build_bvh(vren::context const& context) :
     m_context(&context),

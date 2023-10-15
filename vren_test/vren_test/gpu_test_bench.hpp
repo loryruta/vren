@@ -5,7 +5,7 @@
 #include <cstdint>
 
 #include "vren/vk_api/buffer/buffer.hpp"
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 
 #include "app.hpp"
 

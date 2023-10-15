@@ -1,8 +1,6 @@
-//
-// Created by lorenzo on 10/10/2023.
-//
+#pragma once
 
-#ifndef VREN_TEXTURE_HPP
-#define VREN_TEXTURE_HPP
+namespace vren
+{
 
-#endif // VREN_TEXTURE_HPP
+}

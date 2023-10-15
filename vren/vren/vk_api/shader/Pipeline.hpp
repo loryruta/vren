@@ -31,6 +31,8 @@ namespace vren
     public:
         ~Pipeline() = default;
 
+        VkDescriptorSetLayout descriptor_set_layout(uint32_t set_id) const { return m_descriptor_set_layouts.at(set_id)->get(); };
+
         void bind(VkCommandBuffer command_buffer) const;
         void push_constants(VkCommandBuffer command_buffer, VkShaderStageFlags shader_stage, void const* data, uint32_t length, uint32_t offset = 0) const;
         void bind_descriptor_set(VkCommandBuffer command_buffer, uint32_t set_id, VkDescriptorSet set) const;

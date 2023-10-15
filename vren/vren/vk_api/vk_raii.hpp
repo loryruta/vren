@@ -46,22 +46,23 @@ namespace vren
     };
 } // namespace vren
 
-VREN_RAII_DECLARE_ALIAS(vk_instance, VkInstance);
-VREN_RAII_DECLARE_ALIAS(vk_device, VkDevice);
-VREN_RAII_DECLARE_ALIAS(vk_image, VkImage);
-VREN_RAII_DECLARE_ALIAS(vk_image_view, VkImageView);
-VREN_RAII_DECLARE_ALIAS(vk_sampler, VkSampler);
-VREN_RAII_DECLARE_ALIAS(vk_framebuffer, VkFramebuffer);
-VREN_RAII_DECLARE_ALIAS(vk_render_pass, VkRenderPass);
-VREN_RAII_DECLARE_ALIAS(vk_buffer, VkBuffer);
-VREN_RAII_DECLARE_ALIAS(vk_semaphore, VkSemaphore);
-VREN_RAII_DECLARE_ALIAS(vk_fence, VkFence);
-VREN_RAII_DECLARE_ALIAS(vk_descriptor_set_layout, VkDescriptorSetLayout);
-VREN_RAII_DECLARE_ALIAS(vk_query_pool, VkQueryPool);
-VREN_RAII_DECLARE_ALIAS(vk_shader_module, VkShaderModule);
-VREN_RAII_DECLARE_ALIAS(vk_pipeline_layout, VkPipelineLayout);
-VREN_RAII_DECLARE_ALIAS(vk_pipeline, VkPipeline);
-VREN_RAII_DECLARE_ALIAS(vk_command_pool, VkCommandPool);
-VREN_RAII_DECLARE_ALIAS(vk_descriptor_pool, VkDescriptorPool);
-VREN_RAII_DECLARE_ALIAS(vk_surface_khr, VkSurfaceKHR);
-VREN_RAII_DECLARE_ALIAS(vma_allocation, VmaAllocation);
+VREN_RAII_DECLARE_ALIAS(vk_instance, VkInstance)
+VREN_RAII_DECLARE_ALIAS(vk_device, VkDevice)
+VREN_RAII_DECLARE_ALIAS(vk_image, VkImage)
+VREN_RAII_DECLARE_ALIAS(vk_image_view, VkImageView)
+VREN_RAII_DECLARE_ALIAS(vk_sampler, VkSampler)
+VREN_RAII_DECLARE_ALIAS(vk_framebuffer, VkFramebuffer)
+VREN_RAII_DECLARE_ALIAS(vk_render_pass, VkRenderPass)
+VREN_RAII_DECLARE_ALIAS(vk_buffer, VkBuffer)
+VREN_RAII_DECLARE_ALIAS(vk_semaphore, VkSemaphore)
+VREN_RAII_DECLARE_ALIAS(vk_fence, VkFence)
+VREN_RAII_DECLARE_ALIAS(vk_descriptor_set_layout, VkDescriptorSetLayout)
+VREN_RAII_DECLARE_ALIAS(vk_query_pool, VkQueryPool)
+VREN_RAII_DECLARE_ALIAS(vk_shader_module, VkShaderModule)
+VREN_RAII_DECLARE_ALIAS(vk_pipeline_layout, VkPipelineLayout)
+VREN_RAII_DECLARE_ALIAS(vk_pipeline, VkPipeline)
+VREN_RAII_DECLARE_ALIAS(vk_command_pool, VkCommandPool)
+VREN_RAII_DECLARE_ALIAS(vk_descriptor_pool, VkDescriptorPool)
+VREN_RAII_DECLARE_ALIAS(vk_surface_khr, VkSurfaceKHR)
+VREN_RAII_DECLARE_ALIAS(vma_allocation, VmaAllocation)
+VREN_RAII_DECLARE_ALIAS(vk_device_memory, VkDeviceMemory)

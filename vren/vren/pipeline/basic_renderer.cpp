@@ -4,7 +4,7 @@
 
 #include "Context.hpp"
 #include "vk_api/debug_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 vren::basic_renderer::basic_renderer(vren::context& context) :
     m_context(context),

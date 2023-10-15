@@ -7,11 +7,11 @@
 #include <string>
 
 #include "vren/vk_api/buffer/buffer.hpp"
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 #include <vren/Context.hpp>
 #include <vren/pipeline/profiler.hpp>
-#include <vren/primitives/blelloch_scan.hpp>
-#include <vren/primitives/reduce.hpp>
+#include <vren/primitives/BlellochScan.hpp>
+#include <vren/primitives/Reduce.hpp>
 
 #define VREN_TEST_APP() vren_test::app::get()
 

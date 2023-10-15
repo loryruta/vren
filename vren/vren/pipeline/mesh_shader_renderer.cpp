@@ -4,7 +4,7 @@
 
 #include "Context.hpp"
 #include "vk_api/debug_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 vren::mesh_shader_renderer::mesh_shader_renderer(vren::context const& context, VkBool32 occlusion_culling) :
     m_context(&context),

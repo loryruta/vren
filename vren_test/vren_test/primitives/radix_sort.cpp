@@ -9,11 +9,11 @@
 #include <glm/gtc/integer.hpp>
 #include <fmt/format.h>
 
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 #include <vren/Context.hpp>
 #include <vren/Toolbox.hpp>
 #include <vren/pipeline/profiler.hpp>
-#include <vren/primitives/blelloch_scan.hpp>
+#include <vren/primitives/BlellochScan.hpp>
 
 #include "app.hpp"
 #include "gpu_test_bench.hpp"

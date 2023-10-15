@@ -5,7 +5,7 @@
 #include "Toolbox.hpp"
 #include "base/base.hpp"
 #include "vk_api/debug_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // depth_buffer_pyramid

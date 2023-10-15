@@ -7,7 +7,7 @@
 
 #include "vk_api/buffer/buffer.hpp"
 #include "vk_api/debug_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // debug_renderer_draw_buffer

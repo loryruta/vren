@@ -5,7 +5,7 @@
 
 #include "Toolbox.hpp"
 #include "base/misc_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 using namespace vren;
 using namespace std::string_literals;
@@ -243,7 +243,7 @@ void Context::init_physical_device()
 void Context::init_logical_device()
 {
     // Queues
-    int num_queues = 2;
+    int num_queues = 2; // TODO Make it a constant
     float queue_priorities[] = {1.0f, 1.0f};
     VkDeviceQueueCreateInfo queue_info{};
     queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;

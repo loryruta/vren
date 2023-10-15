@@ -1,9 +1,10 @@
-#include "utils.hpp"
+#include "misc_utils.hpp"
 
 #include "Context.hpp"
 #include "Toolbox.hpp"
 #include "log.hpp"
-#include "pool/CommandPool.hpp"
+
+using namespace vren;
 
 void what_the_fuck_i_did_wrong(VkQueue queue)
 {
@@ -23,13 +24,13 @@ void what_the_fuck_i_did_wrong(VkQueue queue)
     }
 }
 
-void vren::vk_utils::check(VkResult result, vren::context const* context)
+void vren::check(VkResult result)
 {
     if (result != VK_SUCCESS)
     {
         VREN_ERROR("Vulkan command failed: {} ({:#x})\n", "-", result);
 
-        if (context && result == VK_ERROR_DEVICE_LOST)
+        if (result == VK_ERROR_DEVICE_LOST)
         {
             VREN_ERROR("Graphics queue checkpoints:\n");
             what_the_fuck_i_did_wrong(context->m_graphics_queue);
@@ -42,12 +43,7 @@ void vren::vk_utils::check(VkResult result, vren::context const* context)
     }
 }
 
-void vren::vk_utils::check(VkResult result)
-{
-    vren::vk_utils::check(result, nullptr);
-}
-
-vren::vk_semaphore vren::vk_utils::create_semaphore(vren::context const& ctx)
+vren::vk_semaphore vren::create_semaphore(vren::context const& ctx)
 {
     VkSemaphoreCreateInfo sem_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = NULL};
 
@@ -56,7 +52,7 @@ vren::vk_semaphore vren::vk_utils::create_semaphore(vren::context const& ctx)
     return vren::vk_semaphore(ctx, sem);
 }
 
-vren::vk_fence vren::vk_utils::create_fence(vren::context const& ctx, bool signaled)
+vren::vk_fence vren::create_fence(vren::context const& ctx, bool signaled)
 {
     VkFenceCreateInfo fence_info{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -68,7 +64,7 @@ vren::vk_fence vren::vk_utils::create_fence(vren::context const& ctx, bool signa
     return vren::vk_fence(ctx, fence);
 }
 
-void vren::vk_utils::immediate_submit(
+void vren::immediate_submit(
     vren::context const& ctx, vren::CommandPool& cmd_pool, VkQueue queue, record_commands_func_t const& record_func
 )
 {
@@ -87,7 +83,7 @@ void vren::vk_utils::immediate_submit(
 
     VREN_CHECK(vkEndCommandBuffer(cmd_buf.m_handle), &ctx);
 
-    auto fence = vren::vk_utils::create_fence(ctx);
+    auto fence = vren::create_fence(ctx);
 
     VkSubmitInfo submit_info{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -104,24 +100,24 @@ void vren::vk_utils::immediate_submit(
     VREN_CHECK(vkWaitForFences(ctx.m_device, 1, &fence.m_handle, VK_TRUE, UINT64_MAX), &ctx);
 }
 
-void vren::vk_utils::immediate_graphics_queue_submit(
+void vren::immediate_graphics_queue_submit(
     vren::context const& ctx, record_commands_func_t const& record_func
 )
 {
-    vren::vk_utils::immediate_submit(ctx, ctx.m_toolbox->m_graphics_command_pool, ctx.m_graphics_queue, record_func);
+    vren::immediate_submit(ctx, ctx.m_toolbox->m_graphics_command_pool, ctx.m_graphics_queue, record_func);
 }
 
-void vren::vk_utils::immediate_transfer_queue_submit(
+void vren::immediate_transfer_queue_submit(
     vren::context const& ctx, record_commands_func_t const& record_func
 )
 {
-    vren::vk_utils::immediate_submit(ctx, ctx.m_toolbox->m_transfer_command_pool, ctx.m_transfer_queue, record_func);
+    vren::immediate_submit(ctx, ctx.m_toolbox->m_transfer_command_pool, ctx.m_transfer_queue, record_func);
 }
 
-vren::vk_utils::surface_details
-vren::vk_utils::get_surface_details(VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+vren::surface_details
+vren::get_surface_details(VkPhysicalDevice physical_device, VkSurfaceKHR surface)
 {
-    vren::vk_utils::surface_details surf_det{};
+    vren::surface_details surf_det{};
 
     // Surface capabilities
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &surf_det.m_capabilities);
@@ -153,7 +149,76 @@ vren::vk_utils::get_surface_details(VkPhysicalDevice physical_device, VkSurfaceK
     return surf_det;
 }
 
-void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf)
+void vren::write_buffer_descriptor(
+    VkDescriptorSet descriptor_set,
+    uint32_t binding,
+    VkBuffer buffer,
+    size_t range,
+    size_t offset
+    )
+{
+    assert(offset % VREN_MIN_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0);
+
+    VkDescriptorBufferInfo buffer_info{};
+    buffer_info.buffer = buffer;
+    buffer_info.offset = offset;
+    buffer_info.range = range > 0 ? range : 1; // TODO Better way to handle the case where range is 0?
+
+    VkWriteDescriptorSet descriptor_set_write{};
+    descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_set_write.dstSet = descriptor_set;
+    descriptor_set_write.dstBinding = binding;
+    descriptor_set_write.descriptorCount = 1;
+    descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptor_set_write.pBufferInfo = &buffer_info;
+    vkUpdateDescriptorSets(Context::get().device().handle(), 1, &descriptor_set_write, 0, nullptr);
+}
+
+void vren::write_storage_image_descriptor(
+    VkDescriptorSet descriptor_set,
+    uint32_t binding,
+    VkImageView image_view,
+    VkImageLayout image_layout
+    )
+{
+    VkDescriptorImageInfo image_info{};
+    image_info.imageView = image_view;
+    image_info.imageLayout = image_layout;
+
+    VkWriteDescriptorSet descriptor_set_write{};
+    descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_set_write.dstSet = descriptor_set;
+    descriptor_set_write.dstBinding = binding;
+    descriptor_set_write.descriptorCount = 1;
+    descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptor_set_write.pImageInfo = &image_info;
+    vkUpdateDescriptorSets(Context::get().device().handle(), 1, &descriptor_set_write, 0, nullptr);
+}
+
+void vren::write_combined_image_sampler_descriptor(
+    VkDescriptorSet descriptor_set,
+    uint32_t binding,
+    VkSampler sampler,
+    VkImageView image_view,
+    VkImageLayout image_layout
+    )
+{
+    VkDescriptorImageInfo image_info{};
+    image_info.sampler = sampler;
+    image_info.imageView = image_view;
+    image_info.imageLayout = image_layout;
+
+    VkWriteDescriptorSet descriptor_set_write{};
+    descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_set_write.dstSet = descriptor_set;
+    descriptor_set_write.dstBinding = binding;
+    descriptor_set_write.descriptorCount = 1;
+    descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptor_set_write.pImageInfo = &image_info;
+    vkUpdateDescriptorSets(Context::get().device().handle(), 1, &descriptor_set_write, 0, nullptr);
+}
+
+void vren::pipeline_barrier(VkCommandBuffer cmd_buf)
 {
     VkMemoryBarrier memory_barrier{};
     memory_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -165,16 +230,13 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf)
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         NULL,
-        1,
-        &memory_barrier,
-        0,
-        nullptr,
-        0,
-        nullptr
+        1, &memory_barrier,
+        0, nullptr,
+        0, nullptr
     );
 }
 
-void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::buffer const& buffer)
+void vren::pipeline_barrier(VkCommandBuffer cmd_buf, vren::buffer const& buffer)
 {
     VkBufferMemoryBarrier buffer_memory_barrier{};
     buffer_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -189,16 +251,13 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::b
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         NULL,
-        0,
-        nullptr,
-        1,
-        &buffer_memory_barrier,
-        0,
-        nullptr
+        0, nullptr,
+        1, &buffer_memory_barrier,
+        0, nullptr
     );
 }
 
-void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::utils const& image)
+void vren::pipeline_barrier(VkCommandBuffer cmd_buf, vren::utils const& image)
 {
     VkImageMemoryBarrier image_memory_barrier{};
     image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -227,9 +286,9 @@ void vren::vk_utils::pipeline_barrier(VkCommandBuffer cmd_buf, vren::vk_utils::u
     );
 }
 
-void vren::vk_utils::transit_image_layout(
+void vren::transit_image_layout(
     VkCommandBuffer command_buffer,
-    vren::vk_utils::utils const& image,
+    vren::utils const& image,
     VkImageLayout src_image_layout,
     VkImageLayout dst_image_layout
 )

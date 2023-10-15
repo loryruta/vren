@@ -30,7 +30,7 @@ namespace vren
         void add_span(std::span<std::shared_ptr<T> const> resources)
         {
             for (std::shared_ptr<T> const& resource : resources)
-				add_resource<T>(resource);
+                add_resource<T>(resource);
         }
 
         void inherit(vren::ResourceContainer const& other)

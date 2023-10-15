@@ -53,28 +53,28 @@ set(SRC
     vren/pipeline/clustered_shading.cpp
     vren/pipeline/clustered_shading.hpp
 
-    vren/primitives/blelloch_scan.cpp
-    vren/primitives/blelloch_scan.hpp
+    vren/primitives/BlellochScan.cpp
+    vren/primitives/BlellochScan.hpp
     vren/primitives/bucket_sort.cpp
     vren/primitives/bucket_sort.hpp
     vren/primitives/radix_sort.cpp
     vren/primitives/radix_sort.hpp
-    vren/primitives/reduce.cpp
-    vren/primitives/reduce.hpp
+    vren/primitives/Reduce.cpp
+    vren/primitives/Reduce.hpp
     vren/primitives/build_bvh.cpp
     vren/primitives/build_bvh.hpp
 
     vren/third_party/impl.cpp
 
-        vren/vk_api/debug_utils.hpp
-        vren/vk_api/buffer/buffer.hpp
-        vren/vk_api/buffer/buffer.cpp
-        vren/vk_api/image/utils.hpp
-        vren/vk_api/image/utils.cpp
-        vren/vk_api/utils.hpp
-        vren/vk_api/utils.cpp
-        vren/vk_api/image/image_layout_transitions.hpp
-        vren/vk_api/image/image_layout_transitions.cpp
+    vren/vk_api/debug_utils.hpp
+    vren/vk_api/buffer/Buffer.hpp
+    vren/vk_api/buffer/Buffer.cpp
+    vren/vk_api/image/utils.hpp
+    vren/vk_api/image/utils.cpp
+    vren/vk_api/misc_utils.hpp
+    vren/vk_api/misc_utils.cpp
+    vren/vk_api/image/image_layout_transitions.hpp
+    vren/vk_api/image/image_layout_transitions.cpp
 
     vren/scene/gpu_repr.hpp
     vren/scene/material.cpp
@@ -120,11 +120,9 @@ set(SRC
     vren/vk_api/shader/ComputePipeline.cpp
     vren/vk_api/shader/GraphicsPipeline.hpp
     vren/vk_api/shader/GraphicsPipeline.cpp
-        vren/vk_api/buffer/ResizableBuffer.hpp
-        vren/vk_api/buffer/ResizableBuffer.cpp
-    vren/vk_api/buffer/utils.hpp
-    vren/vk_api/buffer/utils.cpp
-        vren/vk_api/buffer/DeferredBuffer.cpp vren/vk_api/image/Texture.hpp vren/vk_api/image/Texture.cpp)
+    vren/vk_api/buffer/ImmediateBuffer.hpp
+    vren/vk_api/buffer/ImmediateBuffer.cpp
+    vren/vk_api/buffer/DeferredBuffer.cpp vren/vk_api/image/Texture.hpp vren/vk_api/image/Texture.cpp vren/vk_api/image/image.hpp vren/vk_api/image/image.cpp)
 
 add_library(vren ${SRC})
 

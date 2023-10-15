@@ -7,7 +7,7 @@ namespace vren
     class ComputePipeline final : public Pipeline
     {
     public:
-        explicit ComputePipeline(std::shared_ptr<Shader>& shader);
+        explicit ComputePipeline(std::shared_ptr<Shader> shader);
         ~ComputePipeline() = default;
 
         void dispatch(

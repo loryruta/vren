@@ -2,11 +2,11 @@
 
 #include <memory>
 
-#include "primitives/blelloch_scan.hpp"
+#include "primitives/BlellochScan.hpp"
+#include "primitives/Reduce.hpp"
 #include "primitives/bucket_sort.hpp"
 #include "primitives/build_bvh.hpp"
 #include "primitives/radix_sort.hpp"
-#include "primitives/reduce.hpp"
 #include "scene/material.hpp"
 #include "scene/texture_manager.hpp"
 #include "vk_api/image/utils.hpp"
@@ -22,14 +22,14 @@ namespace vren
         vren::texture_manager m_texture_manager;
 
         // Reduce
-        vren::reduce<glm::uint, vren::ReduceOperationAdd> m_reduce_uint_add;
-        vren::reduce<glm::uint, vren::ReduceOperationMin> m_reduce_uint_min;
-        vren::reduce<glm::uint, vren::ReduceOperationMax> m_reduce_uint_max;
-        vren::reduce<glm::vec4, vren::ReduceOperationAdd> m_reduce_vec4_add;
-        vren::reduce<glm::vec4, vren::ReduceOperationMin> m_reduce_vec4_min;
-        vren::reduce<glm::vec4, vren::ReduceOperationMax> m_reduce_vec4_max;
+        vren::Reduce<glm::uint, vren::ReduceOperationAdd> m_reduce_uint_add;
+        vren::Reduce<glm::uint, vren::ReduceOperationMin> m_reduce_uint_min;
+        vren::Reduce<glm::uint, vren::ReduceOperationMax> m_reduce_uint_max;
+        vren::Reduce<glm::vec4, vren::ReduceOperationAdd> m_reduce_vec4_add;
+        vren::Reduce<glm::vec4, vren::ReduceOperationMin> m_reduce_vec4_min;
+        vren::Reduce<glm::vec4, vren::ReduceOperationMax> m_reduce_vec4_max;
 
-        vren::blelloch_scan m_blelloch_scan;
+        BlellochScan m_blelloch_scan;
         vren::radix_sort m_radix_sort;
         vren::bucket_sort m_bucket_sort;
 

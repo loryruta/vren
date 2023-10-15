@@ -3,17 +3,17 @@
 #include <cstring>
 
 #include "Context.hpp"
+#include "image.hpp"
 #include "image_layout_transitions.hpp"
 #include "vk_api/buffer/Buffer.hpp"
 #include "vk_api/debug_utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 // --------------------------------------------------------------------------------------------------------------------------------
 // Image
 // --------------------------------------------------------------------------------------------------------------------------------
 
-vren::vk_utils::utils vren::vk_utils::create_image(
-    vren::context const& ctx,
+vren::Image vren::vk_utils::create_image(
     uint32_t width,
     uint32_t height,
     VkFormat format,
@@ -42,17 +42,16 @@ vren::vk_utils::utils vren::vk_utils::create_image(
     VkImage image;
     VmaAllocation alloc;
     VmaAllocationInfo allocation_info;
-    VREN_CHECK(
-        vmaCreateImage(ctx.m_vma_allocator, &image_info, &alloc_create_info, &image, &alloc, &allocation_info), &ctx
-    );
+    VREN_CHECK(vmaCreateImage(Context::get().vma_allocator(), &image_info, &alloc_create_info, &image, &alloc, &allocation_info));
 
     return {
         .m_image = vren::vk_image(ctx, image),
         .m_allocation = vren::vma_allocation(ctx, alloc),
-        .m_allocation_info = allocation_info};
+        .m_allocation_info = allocation_info
+    };
 }
 
-void vren::vk_utils::upload_image_data(
+void vren::vk_utils::record_upload_image_data(
     vren::context const& ctx,
     VkCommandBuffer cmd_buf,
     vren::ResourceContainer& res_container,
@@ -89,16 +88,22 @@ void vren::vk_utils::upload_image_data(
     );
 }
 
-void vren::vk_utils::clear_color_image(VkCommandBuffer cmd_buf, VkImage img, VkClearColorValue clear_color)
+void vren::record_clear_color_image(
+    std::shared_ptr<Image>& image,
+    VkClearColorValue clear_color,
+    VkCommandBuffer command_buffer,
+    ResourceContainer& resource_container
+    )
 {
-    VkImageSubresourceRange subresource_range{
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .baseMipLevel = 0,
-        .levelCount = 1,
-        .baseArrayLayer = 0,
-        .layerCount = 1,
-    };
-    vkCmdClearColorImage(cmd_buf, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subresource_range);
+    VkImageSubresourceRange subresource_range{};
+    subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresource_range.baseMipLevel = 0;
+    subresource_range.levelCount = 1;
+    subresource_range.baseArrayLayer = 0;
+    subresource_range.layerCount = 1;
+    vkCmdClearColorImage(command_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subresource_range);
+
+    resource_container.add_resource(image);
 }
 
 void vren::vk_utils::clear_depth_image(

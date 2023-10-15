@@ -3,7 +3,7 @@
 #include "vk_api/command_graph/render_graph.hpp"
 #include "vk_api/debug_utils.hpp"
 #include "vk_api/image/utils.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 namespace vren
 {

@@ -30,6 +30,9 @@ namespace vren
         PooledDescriptorSet(PooledDescriptorSet const& other) = delete;
         PooledDescriptorSet(PooledDescriptorSet&& other) noexcept;
         ~PooledDescriptorSet();
+
+        VkDescriptorSet set() const { return m_handle; }
+        VkDescriptorPool pool() const { return m_descriptor_pool; }
     };
 
     // ------------------------------------------------------------------------------------------------ DescriptorSetPool
@@ -37,16 +40,22 @@ namespace vren
     /// An unlimited pool of VkDescriptorSet, of any given VkDescriptorSetLayout.
     class DescriptorPool
     {
-    public:
-        static const int k_max_sets = 32;
-        static const std::vector<VkDescriptorPoolSize> k_pool_sizes;
-
     private:
+        static std::unique_ptr<DescriptorPool> s_default_instance;
+
+        uint32_t m_max_sets;
+        std::vector<VkDescriptorPoolSize> m_pool_sizes;
+
         std::vector<vk_descriptor_pool> m_descriptor_pools{};
 
     public:
+        explicit DescriptorPool(uint32_t max_sets, std::span<VkDescriptorPoolSize> pool_sizes);
+        ~DescriptorPool() = default;
+
         /// \param next_ptr Additional struct chain added to VkDescriptorSetAllocateInfo::pNext
-        PooledDescriptorSet acquire(VkDescriptorSetLayout descriptor_set_layout, void const* next_ptr);
+        PooledDescriptorSet&& acquire(VkDescriptorSetLayout descriptor_set_layout, void const* next_ptr = nullptr);
+
+        static DescriptorPool& get_default();
 
     private:
         VkDescriptorPool create_descriptor_pool();

@@ -8,7 +8,7 @@
 #include <glm/gtc/integer.hpp>
 #include <fmt/format.h>
 
-#include "vren/vk_api/utils.hpp"
+#include "vren/vk_api/misc_utils.hpp"
 #include <vren/Toolbox.hpp>
 #include <vren/pipeline/profiler.hpp>
 

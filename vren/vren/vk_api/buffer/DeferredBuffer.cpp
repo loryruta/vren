@@ -16,12 +16,12 @@ DeferredBuffer::DeferredBuffer(
     m_buffer = std::make_shared<Buffer>(create_buffer(init_size));
 }
 
-void DeferredBuffer::write(void *data, size_t data_size, size_t offset)
+void DeferredBuffer::write(void const* data, size_t data_size, size_t offset)
 {
     // TODO IMPROVEMENT: Cache and re-use the staging buffers; avoid allocating each write
 
-    std::shared_ptr<Buffer> staging_buffer = std::make_shared<Buffer>(vren::vk_utils::alloc_host_visible_buffer(
-        m_buffer_usages | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    std::shared_ptr<Buffer> staging_buffer = std::make_shared<Buffer>(allocate_buffer(
+        m_buffer_usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         data_size,
         false  // Persistently mapped
     ));
@@ -71,7 +71,7 @@ void DeferredBuffer::resize(size_t size)
     m_size = new_size;
 }
 
-void DeferredBuffer::record(VkCommandBuffer command_buffer, vren::resource_container &resource_container)
+void DeferredBuffer::record(VkCommandBuffer command_buffer, ResourceContainer& resource_container)
 {
     // TODO IMPROVEMENT: this could be replaced with a compute shader that performs all the copies in parallel
     // TODO we only have OP_WRITE, don't make an enum and simplify Op
@@ -81,7 +81,7 @@ void DeferredBuffer::record(VkCommandBuffer command_buffer, vren::resource_conta
     m_operations.clear();
 }
 
-void DeferredBuffer::perform_copy(VkCommandBuffer command_buffer, vren::resource_container &resource_container, CopyOp const &copy_op)
+void DeferredBuffer::perform_copy(VkCommandBuffer command_buffer, ResourceContainer& resource_container, CopyOp const &copy_op)
 {
     VkBufferCopy buffer_copy{};
     buffer_copy.srcOffset = copy_op.m_src_offset;
@@ -114,5 +114,5 @@ Buffer&& DeferredBuffer::create_buffer(size_t size)
     VmaAllocation allocation;
     vmaCreateBuffer(Context::get().vma_allocator(), &buffer_info, &alloc_create_info, &buffer, &allocation, nullptr);
 
-    return Buffer(buffer, allocation);
+    return Buffer(buffer, size, allocation);
 }

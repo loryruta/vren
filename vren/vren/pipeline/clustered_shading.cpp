@@ -1,7 +1,7 @@
 #include "clustered_shading.hpp"
 
 #include "Toolbox.hpp"
-#include "vk_api/utils.hpp"
+#include "vk_api/misc_utils.hpp"
 
 vren::clustered_shading::construct_point_light_bvh::construct_point_light_bvh(vren::context const& context) :
     m_context(&context),

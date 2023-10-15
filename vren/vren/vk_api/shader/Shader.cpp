@@ -209,17 +209,17 @@ void Shader::recompile()
 // ------------------------------------------------------------------------------------------------ ShaderBuilder
 
 ShaderBuilder::ShaderBuilder(std::string const& filename, VkShaderStageFlags shader_stage) :
-    m_shader(filename, shader_stage)
+    m_shader(std::shared_ptr<Shader>(new Shader(filename, shader_stage)))
 {
 }
 
 ShaderBuilder& ShaderBuilder::add_macro_definition(std::string const& name, std::string const& value)
 {
-    m_shader.m_compile_options.AddMacroDefinition(name, value);
+    m_shader->m_compile_options.AddMacroDefinition(name, value);
     return *this;
 }
 
-Shader&& ShaderBuilder::build()
+std::shared_ptr<Shader>&& ShaderBuilder::build()
 {
     return std::move(m_shader);
 }

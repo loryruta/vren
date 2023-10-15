@@ -1,4 +1,6 @@
-\#pragma once
+#pragma once
+
+#include <memory>
 
 #include <glm/glm.hpp>
 #include <vren/vk_helpers/buffer.hpp>
@@ -14,7 +16,7 @@ namespace explo
     public:
         struct WriteRegionOp
         {
-            std::shared_ptr<vren::vk_utils::buffer> m_buffer;
+            std::shared_ptr<Buffer> m_buffer;
             size_t m_buffer_offset;
             glm::ivec3 m_region_position;
             glm::ivec3 m_region_size;
@@ -35,7 +37,7 @@ namespace explo
     private:
         Renderer &m_renderer;
 
-        std::shared_ptr<vren::vk_utils::combined_image_view> m_image;
+        std::shared_ptr<CombinedImageView> m_image;
         glm::ivec3 m_size;
         VkFormat m_format;
         VkMemoryPropertyFlags m_memory_properties;
